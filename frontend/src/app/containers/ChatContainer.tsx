@@ -68,6 +68,9 @@ export function ChatContainer({
     setText: composer.setText,
     textareaRef: composer.textareaRef,
   });
+  // Same resolution the browser drawer uses; the header's preview chip needs
+  // the project's slug to build preview URLs.
+  const chatProject = browser.browserProject;
   const terminal = useTerminalOverlayController(chat.id);
   const drawers = useChatDrawerController({
     chatId: chat.id,
@@ -171,6 +174,7 @@ export function ChatContainer({
         <div class={`min-w-0 flex-1 h-full ${activePane ? "hidden md:block" : ""}`}>
           <ChatThread
             chat={displayMeta}
+            project={chatProject}
             blocks={blocks}
             hasOlder={hasOlder}
             loadingOlder={loadingOlder}

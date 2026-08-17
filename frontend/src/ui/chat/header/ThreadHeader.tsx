@@ -1,13 +1,17 @@
 import type { ChatMeta } from "../../../models/chat";
+import type { ProjectMeta } from "../../../models/project";
 import { providerDisplayLabel } from "../../../config/chat";
 import { Menu, MessageSquare } from "../../primitives/icons";
+import { ChatPreviewChip } from "../../preview/ChatPreviewChip";
 
 export function ThreadHeader({
   chat,
+  project,
   streaming,
   onHamburger,
 }: {
   chat: ChatMeta;
+  project: ProjectMeta | null;
   streaming: boolean;
   onHamburger: () => void;
 }) {
@@ -44,6 +48,7 @@ export function ThreadHeader({
         </div>
       </div>
 
+      {project && <ChatPreviewChip project={project} streaming={streaming} />}
     </header>
   );
 }
