@@ -4,15 +4,17 @@ import type { UserDirectory } from "../../state/hooks/users/useUserDirectory";
 import type { GlobalSkillLibrary } from "../../state/hooks/settings/useGlobalSkills";
 import type { ProjectMeta } from "../../models/project";
 import type { ServerInfo } from "../../models/serverInfo";
+import type { FleetResourcesView, FleetSettings } from "../../models/resources";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import type { ComponentType } from "preact";
-import { Activity, Bell, Bot, ChevronLeft, Code, Download, Info, Menu, Monitor, Users } from "../primitives/icons";
+import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Info, Menu, Monitor, Users } from "../primitives/icons";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { ClaudeAuthSettings } from "./ClaudeAuthSettings";
 import { CodexAuthSettings } from "./CodexAuthSettings";
 import { KimiAuthSettings } from "./KimiAuthSettings";
 import { GoogleOAuthSettings } from "./GoogleOAuthSettings";
 import { NotificationsSettings } from "./NotificationsSettings";
+import { ResourcesSettings } from "./ResourcesSettings";
 import { ServerInfoSettings } from "./ServerInfoSettings";
 import { UpdatesSettings } from "./UpdatesSettings";
 import { GlobalSkillsSettings } from "./GlobalSkillsSettings";
@@ -27,6 +29,7 @@ export type SettingsTab =
   | "notifications"
   | "skills"
   | "usage"
+  | "resources"
   | "updates"
   | "info";
 
@@ -73,6 +76,12 @@ const tabs: Array<{
     Icon: Bell,
   },
   {
+    id: "resources",
+    label: "Resources",
+    description: "Set the CPU, memory, and disk envelope every project container inherits.",
+    Icon: Cpu,
+  },
+  {
     id: "updates",
     label: "Updates",
     description: "Check for new releases and install them.",
@@ -95,6 +104,11 @@ export function SettingsPage({
   serverInfoLoading,
   serverInfoRefreshing,
   serverInfoError,
+  fleetResources,
+  fleetResourcesLoading,
+  fleetResourcesSaving,
+  fleetResourcesError,
+  onSaveFleetResources,
   selfUpdate,
   selfUpdateLoading,
   selfUpdateChecking,
@@ -141,6 +155,11 @@ export function SettingsPage({
   serverInfoLoading: boolean;
   serverInfoRefreshing: boolean;
   serverInfoError: string | null;
+  fleetResources: FleetResourcesView | null;
+  fleetResourcesLoading: boolean;
+  fleetResourcesSaving: boolean;
+  fleetResourcesError: string | null;
+  onSaveFleetResources: (settings: Partial<FleetSettings>) => Promise<void>;
   selfUpdate: SelfUpdateStatus | null;
   selfUpdateLoading: boolean;
   selfUpdateChecking: boolean;
@@ -320,6 +339,21 @@ export function SettingsPage({
               ) : (
                 <SettingsNotice>
                   Notifications are managed by server administrators.
+                </SettingsNotice>
+              ))}
+
+            {activeTab === "resources" &&
+              (isAdmin ? (
+                <ResourcesSettings
+                  view={fleetResources}
+                  loading={fleetResourcesLoading}
+                  saving={fleetResourcesSaving}
+                  error={fleetResourcesError}
+                  onSave={onSaveFleetResources}
+                />
+              ) : (
+                <SettingsNotice>
+                  Container resource limits are managed by server administrators.
                 </SettingsNotice>
               ))}
 

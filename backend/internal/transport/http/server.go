@@ -29,6 +29,7 @@ type Handlers struct {
 	Notifications    RouteRegistrar
 	ServerInfo       RouteRegistrar
 	SelfUpdate       RouteRegistrar
+	AdminResources   RouteRegistrar
 	Skills           RouteRegistrar
 	GlobalSkills     RouteRegistrar
 	BrowserInspector RouteRegistrar
@@ -63,6 +64,7 @@ func NewHandler(handlers Handlers) http.Handler {
 	register(handlers.Notifications)
 	register(handlers.ServerInfo)
 	register(handlers.SelfUpdate)
+	register(handlers.AdminResources)
 	register(handlers.Skills)
 	register(handlers.GlobalSkills)
 	register(handlers.BrowserInspector)

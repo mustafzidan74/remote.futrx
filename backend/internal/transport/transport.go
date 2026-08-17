@@ -123,6 +123,10 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			deps.Services.GlobalSkills,
 			deps.Services.Auth,
 		),
+		AdminResources: httphandlers.NewAdminResourcesHandler(
+			deps.Services.Resources,
+			httptransport.NewPrincipalResolver(deps.Services.Auth),
+		),
 		BrowserInspector: httphandlers.NewBrowserInspectorHandler(),
 		Schedules:        scheduleHandler,
 		Usage:            usageHandler,

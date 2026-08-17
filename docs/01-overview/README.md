@@ -28,6 +28,7 @@ This documentation maps the complete `remote.futrx` application: how to use ever
 | [07-notifications.md](../02-workspaces/07-notifications.md) | Outbound Telegram and webhook alerts for run, attention, and scheduled-task events |
 | [09-global-skills.md](../02-workspaces/09-global-skills.md) | Platform-wide skills library: storage, shadowing, container sync, always-on policy, and the admin API |
 | [10-usage-and-cost.md](../02-workspaces/10-usage-and-cost.md) | Token and cost ledger, per-provider accuracy, price table, aggregation API, and rebuild |
+| [11-resource-limits.md](../02-workspaces/11-resource-limits.md) | Fleet defaults, host-aware derivation, per-project overrides, disk quotas, and the aggregate start guard |
 | [06-previews-and-browser.md](../03-platform/06-previews-and-browser.md) | App discovery, HTTPS preview URLs, element inspection, and Agent Browser |
 | [07-data-and-frontend-state.md](../03-platform/07-data-and-frontend-state.md) | File-backed persistence, workspace files, entities, and UI state |
 | [08-api-and-realtime.md](../03-platform/08-api-and-realtime.md) | HTTP endpoints, WebSockets, events, and access gates |

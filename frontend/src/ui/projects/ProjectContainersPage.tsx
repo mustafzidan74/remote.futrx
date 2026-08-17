@@ -36,6 +36,7 @@ import {
   Users,
 } from "../primitives/icons";
 import type { UsageSummary } from "../../models/usage";
+import type { ProjectResources } from "../../models/resources";
 
 export type ProjectSettingsTab = "info" | "settings" | "secrets" | "sharing";
 
@@ -80,12 +81,13 @@ export function ProjectContainersPage({
   accessRecord,
   sharesRecord,
   refreshing,
-  isAdmin,
-  serverMemoryTotalBytes,
-  serverMemoryLoading,
   usageSummary,
   usageLoading,
   usageError,
+  resources,
+  resourcesLoading,
+  resourcesSaving,
+  resourcesError,
   onRefresh,
   onBack,
   onHamburger,
@@ -110,12 +112,13 @@ export function ProjectContainersPage({
   accessRecord: AccessRecord;
   sharesRecord: SharesRecord;
   refreshing: boolean;
-  isAdmin: boolean;
-  serverMemoryTotalBytes?: number;
-  serverMemoryLoading: boolean;
   usageSummary: UsageSummary | null;
   usageLoading: boolean;
   usageError: string | null;
+  resources: ProjectResources | null;
+  resourcesLoading: boolean;
+  resourcesSaving: boolean;
+  resourcesError: string | null;
   onRefresh: () => void;
   onBack: () => void;
   onHamburger: () => void;
@@ -128,7 +131,7 @@ export function ProjectContainersPage({
   onRevokeShare: (shareId: string) => Promise<void>;
   onRepairNetwork: () => Promise<void>;
   onSetResourceLimits: (limits: ContainerLimits) => Promise<void>;
-  onStartProject: () => Promise<void>;
+  onStartProject: (force?: boolean) => Promise<void>;
   onStopProject: () => Promise<void>;
   onRestartProject: () => Promise<void>;
   onDeleteProject: () => Promise<void>;
@@ -224,12 +227,10 @@ export function ProjectContainersPage({
                 {activeTab === "settings" && (
                   <div class="space-y-4">
                     <ProjectResourceLimits
-                      effective={infoRecord.data?.limits}
-                      overrides={infoRecord.data ? infoRecord.data.limitOverrides : project.resourceLimits}
-                      loading={infoRecord.loading}
-                      isAdmin={isAdmin}
-                      serverMemoryTotalBytes={serverMemoryTotalBytes}
-                      serverMemoryLoading={serverMemoryLoading}
+                      resources={resources}
+                      loading={resourcesLoading}
+                      saving={resourcesSaving}
+                      error={resourcesError}
                       onSave={onSetResourceLimits}
                     />
                     <ProjectSettingsPanel

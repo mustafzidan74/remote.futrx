@@ -7,6 +7,7 @@ import (
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
+	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
 	serviceskills "github.com/futrx-com/remote.futrx.com/internal/service/skills"
@@ -20,6 +21,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectaccess"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectsecrets"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectshares"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/fileresources"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileschedule"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileskillsglobal"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileusage"
@@ -38,6 +40,7 @@ type Stores struct {
 	ProjectAccess  serviceproject.AccessRepository
 	ProjectShares  serviceshare.Repository
 	Schedules      serviceschedule.Repository
+	Resources      serviceresources.Repository
 	Auth           AuthStore
 	Users          serviceuser.Repository
 	UserSettings   serviceusersettings.Repository
@@ -77,6 +80,11 @@ func New(dataDir string) (Stores, error) {
 		return Stores{}, fmt.Errorf("init scheduled tasks store: %w", err)
 	}
 
+	resources, err := fileresources.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init resource settings store: %w", err)
+	}
+
 	users, err := fileusers.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init users store: %w", err)
@@ -109,6 +117,7 @@ func New(dataDir string) (Stores, error) {
 		ProjectAccess:  projectAccess,
 		ProjectShares:  projectShares,
 		Schedules:      schedules,
+		Resources:      resources,
 		Auth:           fileauth.New(dataDir),
 		Users:          users,
 		UserSettings:   userSettings,

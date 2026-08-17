@@ -12,6 +12,7 @@ import { useServerInfo } from "../../state/hooks/server/useServerInfo";
 import { useSelfUpdate } from "../../state/hooks/server/useSelfUpdate";
 import { useUsageDashboard } from "../../state/hooks/usage/useUsageDashboard";
 import { usageApi } from "../../api/usageApi";
+import { useFleetResources } from "../../state/hooks/server/useFleetResources";
 
 export function SettingsContainer({
   onBack,
@@ -49,6 +50,7 @@ export function SettingsContainer({
       setUsageRebuilding(false);
     }
   }, [usageDashboard]);
+  const fleetResources = useFleetResources(activeTab === "resources" && auth.isAdmin);
 
   return (
     <SettingsPage
@@ -60,6 +62,11 @@ export function SettingsContainer({
       serverInfoLoading={serverInfo.loading}
       serverInfoRefreshing={serverInfo.refreshing}
       serverInfoError={serverInfo.error}
+      fleetResources={fleetResources.view}
+      fleetResourcesLoading={fleetResources.loading}
+      fleetResourcesSaving={fleetResources.saving}
+      fleetResourcesError={fleetResources.error}
+      onSaveFleetResources={fleetResources.save}
       selfUpdate={selfUpdate.status}
       selfUpdateLoading={selfUpdate.loading}
       selfUpdateChecking={selfUpdate.checking}
