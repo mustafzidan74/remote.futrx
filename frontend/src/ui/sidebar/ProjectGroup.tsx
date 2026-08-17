@@ -1,6 +1,7 @@
 import type { ChatMeta } from "../../models/chat";
 import type { ProjectMeta } from "../../models/project";
 import { ChevronDown, ChevronRight, Loader, Plus, Settings } from "../primitives/icons";
+import { ProjectPreviewButton } from "../preview/ProjectPreviewButton";
 import { ChatRow } from "./ChatRow";
 
 export function ProjectGroup({
@@ -96,6 +97,7 @@ export function ProjectGroup({
             </div>
           </div>
         </div>
+        <ProjectPreviewButton project={project} />
         <button
           type="button"
           onClick={(event) => {

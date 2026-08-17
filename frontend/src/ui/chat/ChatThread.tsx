@@ -1,5 +1,6 @@
 import type { ComponentChildren, RefObject } from "preact";
 import type { ChatMeta, ChatStatus } from "../../models/chat";
+import type { ProjectMeta } from "../../models/project";
 import type { ChatMessageBlock } from "../../models/chatMessage";
 import { ChatComposer, type ChatComposerProps } from "./composer/ChatComposer";
 import { JumpToLatestButton } from "./messages/JumpToLatestButton";
@@ -8,6 +9,7 @@ import { ThreadHeader } from "./header/ThreadHeader";
 
 export function ChatThread({
   chat,
+  project,
   blocks,
   hasOlder,
   loadingOlder,
@@ -27,6 +29,7 @@ export function ChatThread({
   mobileToolbar,
 }: {
   chat: ChatMeta;
+  project: ProjectMeta | null;
   blocks: ChatMessageBlock[];
   hasOlder: boolean;
   loadingOlder: boolean;
@@ -50,6 +53,7 @@ export function ChatThread({
       <div class="flex min-w-0 flex-1 flex-col">
         <ThreadHeader
           chat={chat}
+          project={project}
           streaming={composer.streaming}
           onHamburger={onHamburger}
         />

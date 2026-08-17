@@ -29,6 +29,31 @@ Preview host rules:
 - The authenticated user must be an admin or project member, or the request must carry a valid public share link for that exact slug and port.
 - Platform cookies are stripped before the request enters project code.
 
+## Quick access to a preview
+
+Reaching a preview does not require the project settings page. Two entry points
+open the same panel:
+
+- **Sidebar project row.** A globe button next to each project lists the ports
+  that project is listening on right now.
+- **Chat header chip.** When the chat's project has at least one shareable
+  listener, a `Preview :<port>` chip opens that port in a new tab; its caret
+  opens the same panel for the other ports.
+
+Each row offers **Open**, **Copy URL**, and **Share 24h** — the last creates a
+public link through the same share API and copies the one-time URL, which is
+also printed in the panel in case the clipboard was refused. Platform ports
+(6080 noVNC, 8842 and 8081 code-server, 9222 CDP) are listed so their presence
+is explained, but they carry no Share action; the share service refuses them
+anyway.
+
+The chip picks the port that already has a live public link, falling back to the
+lowest non-platform port. Ports are re-scanned when a panel opens, every 15
+seconds while it stays open, and once each time an agent turn finishes — the
+workspace WebSocket carries no listener events to piggyback on, and each scan
+costs an `ss` run inside the container. A project whose container is stopped,
+missing, or still provisioning reports that state instead of scanning.
+
 ## Public share links
 
 A preview can be shown to someone who has no platform account. A project member creates a share link for one port; the link authorizes that port and nothing else.
@@ -174,6 +199,7 @@ Project apps may set and receive their own cookies. Only the platform's session,
 
 - App scanning: [`backend/internal/integration/containers/listeners/scanner.go`](../../backend/internal/integration/containers/listeners/scanner.go)
 - Browser drawer: [`frontend/src/ui/chat/browser/BrowserDrawer.tsx`](../../frontend/src/ui/chat/browser/BrowserDrawer.tsx)
+- Preview quick access: [`frontend/src/ui/preview/`](../../frontend/src/ui/preview/), [`frontend/src/state/projects/projectPreviewLinksState.ts`](../../frontend/src/state/projects/projectPreviewLinksState.ts)
 - Inspector handler: [`backend/internal/transport/http/handlers/browser_inspector_handler.go`](../../backend/internal/transport/http/handlers/browser_inspector_handler.go)
 - Agent Browser service: [`backend/internal/service/container/browser/service.go`](../../backend/internal/service/container/browser/service.go)
 - Caddy routes: [`infra/templates/Caddyfile.tmpl`](../../infra/templates/Caddyfile.tmpl)
