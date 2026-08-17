@@ -1,5 +1,6 @@
 import type { ComponentChildren, RefObject } from "preact";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { createPortal } from "preact/compat";
 import { X } from "../primitives/icons";
 
 const PANEL_WIDTH = 304;
@@ -98,7 +99,10 @@ export function PreviewPopover({
       (box.top === undefined ? `bottom:${box.bottom}px` : `top:${box.top}px`)
     : "left:-9999px;top:-9999px";
 
-  return (
+  // The sidebar is a transformed element (slide-in drawer), which turns it into
+  // the containing block for fixed-position descendants and clips them at its
+  // edge; rendering into <body> keeps "fixed" meaning the viewport.
+  return createPortal(
     <div
       ref={panelRef}
       role="dialog"
@@ -120,6 +124,7 @@ export function PreviewPopover({
         </button>
       </div>
       <div class="min-h-0 flex-1 overflow-y-auto touch-scroll scrollbar-thin p-2">{children}</div>
-    </div>
+    </div>,
+    document.body,
   );
 }
