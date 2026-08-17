@@ -32,6 +32,7 @@ import (
 	serviceworkspaceide "github.com/futrx-com/remote.futrx.com/internal/service/workspaceide"
 	"github.com/futrx-com/remote.futrx.com/internal/stores"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileproject"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/fileskillsglobal"
 	"github.com/futrx-com/remote.futrx.com/internal/transport"
 	"github.com/futrx-com/remote.futrx.com/internal/version"
 )
@@ -54,6 +55,7 @@ func main() {
 		service.AgentProfiles(),
 		config.ContainerStackOptions{
 			AgentInstructions: provisioning.InstructionsTemplate(publicHostname),
+			GlobalSkillsDir:   fileskillsglobal.Dir(cfg.DataDir),
 		},
 	)
 	tmuxClient := tmuxcli.New()
@@ -68,6 +70,7 @@ func main() {
 		Users:             storeSet.Users,
 		UserSettings:      storeSet.UserSettings,
 		Notifications:     storeSet.Notifications,
+		GlobalSkills:      storeSet.GlobalSkills,
 		AuthBaseURL:       cfg.BaseURL,
 		ProjectContainers: containerStack.ProjectDependencies(),
 		AgentContainers:   containerStack.AgentDependencies(),
@@ -87,6 +90,11 @@ func main() {
 		serviceSet.Auth.GoogleOAuthEnabled(),
 		cfg.BaseURL,
 	)
+	if seeded, err := serviceSet.GlobalSkills.SeedBuiltins(ctx); err != nil {
+		log.Printf("global skills: seed warning: %v", err)
+	} else if seeded > 0 {
+		log.Printf("global skills: installed %d built-in skills", seeded)
+	}
 	if err := serviceSet.Reconcile(ctx); err != nil {
 		log.Printf("services: reconcile warning: %v", err)
 	}

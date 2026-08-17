@@ -156,6 +156,7 @@ A chat with **no project** ("loose chat") runs the CLI directly on the host inst
 | Chat events | `DATA_DIR/chats/<id>/events.jsonl` | JSONL | append-only, monotonic `seq`, no rotation |
 | Scheduled tasks | `DATA_DIR/scheduled-tasks/tasks.json` | JSON | definitions, deadlines, durable claims, pending state, and last outcomes |
 | Notification settings | `DATA_DIR/notifications.json` | JSON | Telegram bot token + webhook secret, **plaintext**, mode 0600 |
+| Global skills library | `DATA_DIR/skills-global/<name>/` | SKILL.md dirs + `_index.json` | admin-published skills pushed into every project container ([deep dive](docs/02-workspaces/09-global-skills.md)) |
 | Session key | `DATA_DIR/session.key` | 32 random bytes | mode 0600 |
 | Google OAuth secret | `DATA_DIR/oauth.json` | JSON | plaintext, mode 0600 |
 | Provider tokens | `/root/.claude*`, `/root/.codex`, `/root/.kimi-code` | provider files | copied into every container |

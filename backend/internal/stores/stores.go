@@ -9,6 +9,7 @@ import (
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
+	serviceskills "github.com/futrx-com/remote.futrx.com/internal/service/skills"
 	serviceuser "github.com/futrx-com/remote.futrx.com/internal/service/user"
 	serviceusersettings "github.com/futrx-com/remote.futrx.com/internal/service/usersettings"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileauth"
@@ -19,6 +20,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectsecrets"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectshares"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileschedule"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/fileskillsglobal"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileusers"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileusersettings"
 )
@@ -38,6 +40,7 @@ type Stores struct {
 	Users          serviceuser.Repository
 	UserSettings   serviceusersettings.Repository
 	Notifications  servicenotify.Store
+	GlobalSkills   serviceskills.GlobalRepository
 }
 
 func New(dataDir string) (Stores, error) {
@@ -86,6 +89,11 @@ func New(dataDir string) (Stores, error) {
 		return Stores{}, fmt.Errorf("init notification settings store: %w", err)
 	}
 
+	globalSkills, err := fileskillsglobal.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init global skills store: %w", err)
+	}
+
 	return Stores{
 		Chats:          chats,
 		Projects:       projects,
@@ -97,5 +105,6 @@ func New(dataDir string) (Stores, error) {
 		Users:          users,
 		UserSettings:   userSettings,
 		Notifications:  notifications,
+		GlobalSkills:   globalSkills,
 	}, nil
 }
