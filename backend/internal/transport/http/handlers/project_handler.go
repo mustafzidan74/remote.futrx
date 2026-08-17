@@ -26,6 +26,7 @@ type ProjectHandler struct {
 	auth               *serviceauth.Service
 	shares             *serviceshare.Service
 	publicHostname     string
+	usage              *UsageHandler
 	projectHostPattern *regexp.Regexp
 	codeHostPattern    *regexp.Regexp
 }
@@ -56,6 +57,14 @@ func NewProjectHandler(
 // /api/projects/{id}/shares. Without it those routes report 503.
 func (h *ProjectHandler) WithShares(shares *serviceshare.Service) *ProjectHandler {
 	h.shares = shares
+	return h
+}
+
+// WithUsage attaches the usage handler so /api/projects/{id}/usage can be
+// served from the existing project route, which already resolves the project
+// and authorizes the caller.
+func (h *ProjectHandler) WithUsage(usage *UsageHandler) *ProjectHandler {
+	h.usage = usage
 	return h
 }
 
@@ -195,6 +204,15 @@ func (h *ProjectHandler) HandleResource(w http.ResponseWriter, r *http.Request) 
 
 	if len(parts) >= 2 && parts[1] == "shares" {
 		h.handleShares(w, r, id, parts)
+		return
+	}
+
+	if len(parts) >= 2 && parts[1] == "usage" {
+		if h.usage == nil {
+			httptransport.SendErr(w, http.StatusServiceUnavailable, "usage ledger unavailable")
+			return
+		}
+		h.usage.HandleProjectSummary(w, r, string(id), email, isAdmin)
 		return
 	}
 

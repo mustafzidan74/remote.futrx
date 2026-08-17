@@ -71,6 +71,7 @@ func main() {
 		UserSettings:      storeSet.UserSettings,
 		Notifications:     storeSet.Notifications,
 		GlobalSkills:      storeSet.GlobalSkills,
+		Usage:             storeSet.Usage,
 		AuthBaseURL:       cfg.BaseURL,
 		ProjectContainers: containerStack.ProjectDependencies(),
 		AgentContainers:   containerStack.AgentDependencies(),

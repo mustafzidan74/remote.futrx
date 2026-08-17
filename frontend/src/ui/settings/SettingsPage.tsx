@@ -6,7 +6,7 @@ import type { ProjectMeta } from "../../models/project";
 import type { ServerInfo } from "../../models/serverInfo";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import type { ComponentType } from "preact";
-import { Bell, Bot, ChevronLeft, Code, Download, Info, Menu, Monitor, Users } from "../primitives/icons";
+import { Activity, Bell, Bot, ChevronLeft, Code, Download, Info, Menu, Monitor, Users } from "../primitives/icons";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { ClaudeAuthSettings } from "./ClaudeAuthSettings";
 import { CodexAuthSettings } from "./CodexAuthSettings";
@@ -16,7 +16,9 @@ import { NotificationsSettings } from "./NotificationsSettings";
 import { ServerInfoSettings } from "./ServerInfoSettings";
 import { UpdatesSettings } from "./UpdatesSettings";
 import { GlobalSkillsSettings } from "./GlobalSkillsSettings";
+import { UsageSettings } from "./UsageSettings";
 import { UsersPanel } from "../account/UsersPanel";
+import type { UsageDashboard } from "../../state/hooks/usage/useUsageDashboard";
 
 export type SettingsTab =
   | "appearance"
@@ -24,6 +26,7 @@ export type SettingsTab =
   | "users"
   | "notifications"
   | "skills"
+  | "usage"
   | "updates"
   | "info";
 
@@ -50,6 +53,12 @@ const tabs: Array<{
     label: "Global skills",
     description: "Publish skills that every project can select.",
     Icon: Code,
+  },
+  {
+    id: "usage",
+    label: "Usage",
+    description: "Track tokens and estimated cost per project, user, provider, and model.",
+    Icon: Activity,
   },
   {
     id: "users",
@@ -95,6 +104,10 @@ export function SettingsPage({
   userDirectory,
   globalSkills,
   projects,
+  usageDashboard,
+  usageRebuilding,
+  usageRebuildMessage,
+  onRebuildUsage,
   appearanceTheme,
   appearanceLoading,
   appearanceSaving,
@@ -137,6 +150,10 @@ export function SettingsPage({
   userDirectory: UserDirectory;
   globalSkills: GlobalSkillLibrary;
   projects: ProjectMeta[];
+  usageDashboard: UsageDashboard;
+  usageRebuilding: boolean;
+  usageRebuildMessage: string | null;
+  onRebuildUsage: () => Promise<void>;
   appearanceTheme: AppearanceTheme;
   appearanceLoading: boolean;
   appearanceSaving: boolean;
@@ -267,6 +284,16 @@ export function SettingsPage({
                 isAdmin={isAdmin}
                 library={globalSkills}
                 projects={projects}
+              />
+            )}
+
+            {activeTab === "usage" && (
+              <UsageSettings
+                dashboard={usageDashboard}
+                isAdmin={isAdmin}
+                onRebuild={onRebuildUsage}
+                rebuilding={usageRebuilding}
+                rebuildMessage={usageRebuildMessage}
               />
             )}
 

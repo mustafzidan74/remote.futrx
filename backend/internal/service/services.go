@@ -21,6 +21,7 @@ import (
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
 	serviceskills "github.com/futrx-com/remote.futrx.com/internal/service/skills"
 	servicetmux "github.com/futrx-com/remote.futrx.com/internal/service/tmux"
+	serviceusage "github.com/futrx-com/remote.futrx.com/internal/service/usage"
 	serviceuser "github.com/futrx-com/remote.futrx.com/internal/service/user"
 	serviceusersettings "github.com/futrx-com/remote.futrx.com/internal/service/usersettings"
 	"github.com/futrx-com/remote.futrx.com/internal/service/workspacehub"
@@ -46,6 +47,7 @@ type Dependencies struct {
 	UserSettings      serviceusersettings.Repository
 	Notifications     servicenotify.Store
 	GlobalSkills      serviceskills.GlobalRepository
+	Usage             serviceusage.Repository
 	AuthBaseURL       string
 	ProjectContainers serviceproject.ContainerDependencies
 	AgentContainers   provisioning.ContainerDependencies
@@ -82,6 +84,7 @@ type Services struct {
 	Tmux          *servicetmux.Service
 	Access        *serviceauth.AccessVerifier
 	GlobalSkills  *serviceskills.GlobalService
+	Usage         *serviceusage.Service
 }
 
 func New(ctx context.Context, deps Dependencies) (Services, error) {
@@ -168,14 +171,22 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		chats:         chats,
 		projects:      projectService,
 	}
+	var usageService *serviceusage.Service
+	promptOptions := []prompt.Option{
+		prompt.WithScheduleToolIssuer(scheduleCaps),
+		prompt.WithRunObserver(runNotifications),
+	}
+	if deps.Usage != nil {
+		usageService = serviceusage.New(deps.Usage, projectService, chats)
+		promptOptions = append(promptOptions, prompt.WithUsageRecorder(usageService))
+	}
 	promptService := prompt.New(
 		chats,
 		deps.TmuxClient,
 		projectService,
 		runs,
 		agents,
-		prompt.WithScheduleToolIssuer(scheduleCaps),
-		prompt.WithRunObserver(runNotifications),
+		promptOptions...,
 	)
 	scheduleService := serviceschedule.New(
 		deps.Schedules,
@@ -227,6 +238,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Tmux:          tmuxService,
 		Access:        accessVerifier,
 		GlobalSkills:  globalSkillService,
+		Usage:         usageService,
 	}, nil
 }
 

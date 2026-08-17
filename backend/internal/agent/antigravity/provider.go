@@ -99,11 +99,14 @@ func (p *Provider) Run(ctx context.Context, req agent.RunRequest, emit func(agen
 			})
 		}
 	}
+	// agy print mode reports no tokens and no price, so the completion event
+	// carries the model alone; cost is recorded as unknown downstream.
 	emit(agent.Event{
 		T:              time.Now().UnixMilli(),
 		Type:           agent.EventRunCompleted,
 		Provider:       agent.ProviderAntigravity,
 		ConversationID: req.ConversationID,
+		Usage:          agent.Usage{Model: req.Model}.Raw(),
 	})
 	return nil
 }

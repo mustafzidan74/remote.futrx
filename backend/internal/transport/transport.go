@@ -84,6 +84,7 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		deps.Services.ScheduleCaps,
 		deps.Services.Auth,
 	)
+	usageHandler := httphandlers.NewUsageHandler(deps.Services.Usage, deps.Services.Auth)
 	chatHandler := httphandlers.NewChatHandler(
 		deps.Services.Chats,
 		deps.Services.ChatAccess,
@@ -101,7 +102,7 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			deps.Services.Users,
 			deps.Services.Auth,
 			deps.PublicHostname,
-		).WithShares(deps.Services.Shares),
+		).WithShares(deps.Services.Shares).WithUsage(usageHandler),
 		Users: httphandlers.NewUsersHandler(deps.Services.Users, deps.Services.Auth),
 		AgentAuth: httphandlers.NewAgentAuthHandler(
 			agentAuthBindings,
@@ -124,6 +125,7 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		),
 		BrowserInspector: httphandlers.NewBrowserInspectorHandler(),
 		Schedules:        scheduleHandler,
+		Usage:            usageHandler,
 		Uploads:          uploads,
 		TmuxWS:           wstransport.NewTmuxSocket(deps.TmuxClient),
 		TerminalWS:       terminalSocket,

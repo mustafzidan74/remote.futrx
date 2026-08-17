@@ -82,11 +82,19 @@ export const API_ROUTES = {
     shares: (id: string) => `/api/projects/${encodeURIComponent(id)}/shares`,
     share: (id: string, shareId: string) =>
       `/api/projects/${encodeURIComponent(id)}/shares/${encodeURIComponent(shareId)}`,
+    usage: (id: string, query = "") =>
+      `/api/projects/${encodeURIComponent(id)}/usage${query ? `?${query}` : ""}`,
     access: (id: string) => `/api/projects/${encodeURIComponent(id)}/access`,
     accessMember: (id: string, email: string) =>
       `/api/projects/${encodeURIComponent(id)}/access/${encodeURIComponent(email)}`,
   },
   settings: "/api/me/settings",
+  usage: {
+    summary: (query: string) => `/api/usage/summary${query ? `?${query}` : ""}`,
+    records: (query: string) => `/api/usage/records${query ? `?${query}` : ""}`,
+    prices: "/api/admin/usage/prices",
+    rebuild: "/api/admin/usage/rebuild",
+  },
   serverInfo: "/api/server/info",
   selfUpdate: {
     status: "/api/admin/update/status",
