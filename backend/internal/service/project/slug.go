@@ -5,7 +5,11 @@ import (
 	"unicode"
 )
 
-const MaxSlugLen = 32
+const (
+	MaxSlugLen = 32
+	// MinSlugLen keeps "<slug>--<port>" a valid IDNA label (see Slugify).
+	MinSlugLen = 3
+)
 
 // Slugify produces an LXC- and DNS-safe identifier from a display name.
 func Slugify(name string) string {
@@ -33,11 +37,23 @@ func Slugify(name string) string {
 	if len(s) > MaxSlugLen {
 		s = strings.TrimRight(s[:MaxSlugLen], "-")
 	}
+	if len(s) < MinSlugLen {
+		// Preview hosts are "<slug>--<port>": a two-character slug puts the
+		// "--" at label positions 3-4, which IDNA reserves for punycode
+		// ("xn--"), so Go's TLS stack rejects the host name and no
+		// certificate can ever be issued for the project's previews.
+		s += "-project"
+	}
 	return s
 }
 
 func ValidSlug(s string) bool {
-	if s == "" || len(s) > MaxSlugLen {
+	if len(s) < MinSlugLen || len(s) > MaxSlugLen {
+		return false
+	}
+	// "--" at positions 3-4 is reserved by IDNA; the preview host would be
+	// unresolvable for TLS purposes.
+	if strings.HasPrefix(s[2:], "--") {
 		return false
 	}
 	if !(s[0] >= 'a' && s[0] <= 'z') {
