@@ -37,6 +37,25 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githu
 apt-get update -qq
 apt-get install -y -qq gh`
 
+// playwrightInstallScript bakes the Playwright test runner and a headless
+// Chromium into every workspace so agents can run e2e tests without a
+// per-project download (~150 MB and several minutes on small hosts). The
+// browsers live outside any project so /workspace stays clean; NODE_PATH lets
+// project specs import "@playwright/test" from the global install without a
+// local node_modules.
+const playwrightInstallScript = `# Playwright test runner + headless Chromium for in-workspace e2e tests.
+export PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
+npm install -g @playwright/test playwright --silent 2>&1 | tail -3
+npx --yes playwright install --with-deps chromium 2>&1 | tail -3
+chmod -R a+rX /opt/pw-browsers
+cat > /etc/profile.d/playwright.sh <<'PWENV'
+export PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
+export NODE_PATH=/usr/lib/node_modules
+PWENV
+grep -q PLAYWRIGHT_BROWSERS_PATH /etc/environment || echo 'PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers' >> /etc/environment
+grep -q NODE_PATH /etc/environment || echo 'NODE_PATH=/usr/lib/node_modules' >> /etc/environment
+npx playwright --version`
+
 // InstallScript generates the provider-neutral base recipe plus every
 // configured agent CLI at its configured version. npm-packaged CLIs install in
 // one npm invocation; script-installed CLIs contribute their own pinned
@@ -78,6 +97,8 @@ func InstallScript(profiles []provisioning.Profile) (string, error) {
 		script.WriteString("\n\n")
 		script.WriteString(installer)
 	}
+	script.WriteString("\n\n")
+	script.WriteString(playwrightInstallScript)
 	script.WriteString("\n\n# Sanity check the full toolchain.\nwhich ")
 	script.WriteString(strings.Join(binaries, " "))
 	script.WriteString(" git gh jq node npm python3 ssh\n")
