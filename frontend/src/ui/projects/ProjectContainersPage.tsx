@@ -17,6 +17,10 @@ import { ProjectPreviewSharesSection } from "./project-containers/ProjectPreview
 import { ProjectSharingSection } from "./project-containers/ProjectSharingSection";
 import { ProjectResourceLimits } from "./project-containers/ProjectResourceLimits";
 import { ProjectUsageLine } from "./project-containers/ProjectUsageLine";
+import {
+  TemplateBadge,
+  TemplateStatusBadge,
+} from "./project-containers/ProjectTemplateSection";
 import { formatRelativeTime as fmtRelative } from "./project-containers/projectContainerFormat";
 import type {
   ContainerLimits,
@@ -37,6 +41,7 @@ import {
 } from "../primitives/icons";
 import type { UsageSummary } from "../../models/usage";
 import type { ProjectResources } from "../../models/resources";
+import { projectTemplateName } from "../../models/project";
 
 export type ProjectSettingsTab = "info" | "settings" | "secrets" | "sharing";
 
@@ -411,9 +416,16 @@ function ProjectHeader({
         <Settings class="w-4 h-4 text-ink-200" />
       </div>
       <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap min-w-0">
           <span class="text-[14.5px] font-semibold text-ink-50 truncate">{project.name}</span>
           {info && <ContainerStateBadge state={info.state ?? "UNKNOWN"} />}
+          {/* The container payload carries the title and provisioning
+              status; project metadata alone is enough for the name, so the
+              badge appears before the inspection request resolves. */}
+          <TemplateBadge
+            template={info?.template ?? { name: projectTemplateName(project), status: "none" }}
+          />
+          {info?.template && <TemplateStatusBadge status={info.template.status} />}
         </div>
         <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug font-mono truncate">
           {project.containerName || project.slug}

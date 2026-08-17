@@ -55,6 +55,7 @@ All `/api/*` and `/ws*` requests require a signed session for a registered user.
 | GET, POST | `/api/admin/skills-global` | List the global skills library, or publish a skill (JSON files map or zip body); admin only |
 | GET, PUT, DELETE | `/api/admin/skills-global/{name}` | Read, replace (files and/or the always-on flag), or delete one global skill; admin only |
 | POST | `/api/admin/skills-global/import` | Copy an existing project skill into the global library; admin only |
+| GET | `/api/templates` | List project templates and whether each has a pre-built image on this host |
 
 `{provider}` can also be `antigravity` for the generic status binding, but
 Antigravity has no host login route. Its status is unavailable by design
@@ -64,7 +65,7 @@ because users authenticate `agy` inside each project.
 
 | Method | Route | Purpose |
 | --- | --- | --- |
-| GET, POST | `/api/projects` | List visible projects or create a project |
+| GET, POST | `/api/projects` | List visible projects or create a project (`{"name","template"}`; an unknown template is a 400) |
 | POST | `/api/projects/reorder` | Update project ordering |
 | GET, PATCH, DELETE | `/api/projects/{id}` | Read, rename, or admin-delete a project |
 | POST | `/api/projects/{id}/start` | Start or relaunch a project; `?force=1` skips the aggregate resource guard (admin only) |
@@ -73,6 +74,7 @@ because users authenticate `agy` inside each project.
 | GET | `/api/projects/{id}/container` | Detailed container inspection |
 | GET | `/api/projects/{id}/resources` | Effective envelope, project overrides, fleet policy, and live usage |
 | PUT | `/api/projects/{id}/resources` | Set or clear CPU, memory, and disk overrides; admin only |
+| GET | `/api/projects/{id}/container` | Detailed container inspection, including `template` provisioning status |
 | POST | `/api/projects/{id}/repair-network` | Reconfigure container networking and reinspect |
 | GET | `/api/projects/{id}/apps` | List externally reachable container listeners |
 | GET | `/api/projects/{id}/agent-browser` | Get Agent Browser core/view status and record activity |

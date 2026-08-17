@@ -706,7 +706,8 @@ func sendProjectError(w http.ResponseWriter, err error) {
 		errors.Is(err, serviceproject.ErrInvalidSecretKey),
 		errors.Is(err, serviceproject.ErrInvalidLimits),
 		errors.Is(err, serviceresources.ErrInvalidSettings),
-		errors.Is(err, serviceresources.ErrOverrideTooLarge):
+		errors.Is(err, serviceresources.ErrOverrideTooLarge),
+		errors.Is(err, serviceproject.ErrUnknownTemplate):
 		httptransport.SendErr(w, http.StatusBadRequest, err.Error())
 	// The aggregate guard refused a start: the request is well formed, the
 	// host simply has no room. 409 tells the UI to offer the force option.

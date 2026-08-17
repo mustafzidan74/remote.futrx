@@ -114,6 +114,7 @@ export const API_ROUTES = {
       `/api/admin/skills-global/${encodeURIComponent(name)}`,
     import: "/api/admin/skills-global/import",
   },
+  templates: "/api/templates",
   uploads: "/api/uploads",
   users: {
     collection: "/api/admin/users",
