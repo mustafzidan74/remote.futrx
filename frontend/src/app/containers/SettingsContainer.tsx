@@ -8,6 +8,7 @@ import { useUserSettingsContext } from "../../state/context/UserSettingsContext"
 import { useUserDirectory } from "../../state/hooks/users/useUserDirectory";
 import { useGlobalSkills } from "../../state/hooks/settings/useGlobalSkills";
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
+import { useAuditLog } from "../../state/hooks/admin/useAuditLog";
 import { useServerInfo } from "../../state/hooks/server/useServerInfo";
 import { useSelfUpdate } from "../../state/hooks/server/useSelfUpdate";
 import { useUsageDashboard } from "../../state/hooks/usage/useUsageDashboard";
@@ -51,6 +52,7 @@ export function SettingsContainer({
     }
   }, [usageDashboard]);
   const fleetResources = useFleetResources(activeTab === "resources" && auth.isAdmin);
+  const auditLog = useAuditLog(activeTab === "audit" && auth.isAdmin);
 
   return (
     <SettingsPage
@@ -80,6 +82,7 @@ export function SettingsContainer({
       usageRebuilding={usageRebuilding}
       usageRebuildMessage={usageRebuildMessage}
       onRebuildUsage={rebuildUsage}
+      auditLog={auditLog}
       appearanceTheme={userSettings.settings.appearance.theme}
       appearanceLoading={userSettings.loading}
       appearanceSaving={userSettings.saving}

@@ -3,12 +3,14 @@ import type { CodexDeviceLogin, KimiDeviceLogin } from "../../models/auth";
 import type { UserDirectory } from "../../state/hooks/users/useUserDirectory";
 import type { GlobalSkillLibrary } from "../../state/hooks/settings/useGlobalSkills";
 import type { ProjectMeta } from "../../models/project";
+import type { AuditLog } from "../../state/hooks/admin/useAuditLog";
 import type { ServerInfo } from "../../models/serverInfo";
 import type { FleetResourcesView, FleetSettings } from "../../models/resources";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import type { ComponentType } from "preact";
 import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Info, Menu, Monitor, Users } from "../primitives/icons";
 import { AppearanceSettings } from "./AppearanceSettings";
+import { AuditLogSettings } from "./AuditLogSettings";
 import { ClaudeAuthSettings } from "./ClaudeAuthSettings";
 import { CodexAuthSettings } from "./CodexAuthSettings";
 import { KimiAuthSettings } from "./KimiAuthSettings";
@@ -30,6 +32,7 @@ export type SettingsTab =
   | "skills"
   | "usage"
   | "resources"
+  | "audit"
   | "updates"
   | "info";
 
@@ -82,6 +85,12 @@ const tabs: Array<{
     Icon: Cpu,
   },
   {
+    id: "audit",
+    label: "Audit log",
+    description: "Review who did what on this server.",
+    Icon: Activity,
+  },
+  {
     id: "updates",
     label: "Updates",
     description: "Check for new releases and install them.",
@@ -122,6 +131,7 @@ export function SettingsPage({
   usageRebuilding,
   usageRebuildMessage,
   onRebuildUsage,
+  auditLog,
   appearanceTheme,
   appearanceLoading,
   appearanceSaving,
@@ -173,6 +183,7 @@ export function SettingsPage({
   usageRebuilding: boolean;
   usageRebuildMessage: string | null;
   onRebuildUsage: () => Promise<void>;
+  auditLog: AuditLog;
   appearanceTheme: AppearanceTheme;
   appearanceLoading: boolean;
   appearanceSaving: boolean;
@@ -354,6 +365,26 @@ export function SettingsPage({
               ) : (
                 <SettingsNotice>
                   Container resource limits are managed by server administrators.
+                </SettingsNotice>
+              ))}
+
+            {activeTab === "audit" &&
+              (isAdmin ? (
+                <AuditLogSettings
+                  entries={auditLog.entries}
+                  filters={auditLog.filters}
+                  loading={auditLog.loading}
+                  loadingMore={auditLog.loadingMore}
+                  hasMore={auditLog.hasMore}
+                  error={auditLog.error}
+                  exportUrl={auditLog.exportUrl}
+                  onFiltersChange={auditLog.setFilters}
+                  onRefresh={auditLog.refresh}
+                  onLoadMore={auditLog.loadMore}
+                />
+              ) : (
+                <SettingsNotice>
+                  The audit log is visible to server administrators only.
                 </SettingsNotice>
               ))}
 

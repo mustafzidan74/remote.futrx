@@ -78,6 +78,8 @@ func main() {
 		ResourceSettings:  storeSet.Resources,
 		ResourceFleet:     containerStack.Resources,
 		HostCollector:     hostCollector,
+		Audit:             storeSet.Audit,
+		AuditRetention:    cfg.Audit.RetentionMonths,
 		AuthBaseURL:       cfg.BaseURL,
 		ProjectContainers: containerStack.ProjectDependencies(),
 		AgentContainers:   containerStack.AgentDependencies(),
@@ -111,7 +113,13 @@ func main() {
 		log.Fatal(err)
 	}
 	serverInfoService := serviceserverinfo.New(hostCollector, version.Version, cfg.DataDir, fileproject.WorkspaceRoot)
-	selfUpdateService := serviceselfupdate.New(version.Version, cfg.InstallDir, cfg.DataDir, updatecli.New())
+	selfUpdateService := serviceselfupdate.New(
+		version.Version,
+		cfg.InstallDir,
+		cfg.DataDir,
+		updatecli.New(),
+		serviceselfupdate.WithAudit(serviceSet.Audit),
+	)
 	workspaceFileService := serviceworkspacefiles.New(hostfs.NewWorkspaceFileStore())
 	gitHistoryService := servicegithistory.New(gitcli.NewHistoryClient())
 	codeServerBaseURL, err := config.CodeServerBaseURL(cfg.BaseURL)

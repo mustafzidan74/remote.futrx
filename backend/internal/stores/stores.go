@@ -3,6 +3,7 @@ package stores
 import (
 	"fmt"
 
+	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
@@ -14,6 +15,7 @@ import (
 	serviceusage "github.com/futrx-com/remote.futrx.com/internal/service/usage"
 	serviceuser "github.com/futrx-com/remote.futrx.com/internal/service/user"
 	serviceusersettings "github.com/futrx-com/remote.futrx.com/internal/service/usersettings"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/fileaudit"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileauth"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filechat"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filenotify"
@@ -47,6 +49,7 @@ type Stores struct {
 	Notifications  servicenotify.Store
 	GlobalSkills   serviceskills.GlobalRepository
 	Usage          serviceusage.Repository
+	Audit          serviceaudit.Store
 }
 
 func New(dataDir string) (Stores, error) {
@@ -110,6 +113,11 @@ func New(dataDir string) (Stores, error) {
 		return Stores{}, fmt.Errorf("init usage store: %w", err)
 	}
 
+	auditLog, err := fileaudit.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init audit store: %w", err)
+	}
+
 	return Stores{
 		Chats:          chats,
 		Projects:       projects,
@@ -124,5 +132,6 @@ func New(dataDir string) (Stores, error) {
 		Notifications:  notifications,
 		GlobalSkills:   globalSkills,
 		Usage:          usage,
+		Audit:          auditLog,
 	}, nil
 }

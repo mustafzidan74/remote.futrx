@@ -36,6 +36,7 @@ type Handlers struct {
 	BrowserInspector RouteRegistrar
 	Schedules        RouteRegistrar
 	Usage            RouteRegistrar
+	Audit            RouteRegistrar
 	Uploads          RouteRegistrar
 	TmuxWS           WebSocketRegistrar
 	TerminalWS       WebSocketRegistrar
@@ -72,6 +73,7 @@ func NewHandler(handlers Handlers) http.Handler {
 	register(handlers.BrowserInspector)
 	register(handlers.Schedules)
 	register(handlers.Usage)
+	register(handlers.Audit)
 	register(handlers.Uploads)
 
 	upgrader := NewUpgrader()

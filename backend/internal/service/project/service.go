@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/futrx-com/remote.futrx.com/internal/service/audit"
 )
 
 type Service struct {
@@ -24,6 +26,7 @@ type Service struct {
 	containerTemplates   ContainerTemplates
 	secrets              SecretsRepository
 	access               AccessRepository
+	audit                audit.Recorder
 
 	agentBrowserMu    sync.Mutex
 	agentBrowserInfo  map[ID]AgentBrowserInfo
@@ -45,8 +48,9 @@ func New(
 	containers ContainerDependencies,
 	secrets SecretsRepository,
 	access AccessRepository,
+	options ...Option,
 ) *Service {
-	return &Service{
+	service := &Service{
 		repo:                 repo,
 		containerLifecycle:   containers.Lifecycle,
 		containerEnvironment: containers.Environment,
@@ -61,10 +65,26 @@ func New(
 		access:               access,
 		agentBrowserInfo:     make(map[ID]AgentBrowserInfo),
 		agentBrowserStart:    make(map[ID]int64),
+		audit:                audit.Nop{},
 	}
+	for _, option := range options {
+		if option != nil {
+			option(service)
+		}
+	}
+	return service
 }
 
+// ListSecrets returns every secret with its plaintext value, so a call is a
+// secret read and is audited as one. The internal env-sync paths talk to the
+// repository directly and stay out of the trail.
 func (s *Service) ListSecrets(ctx context.Context, id ID) ([]Secret, error) {
+	secrets, err := s.listSecrets(ctx, id)
+	s.record(ctx, audit.ActionProjectSecretRead, auditTargetID(id), audit.Meta{"count": len(secrets)}, err)
+	return secrets, err
+}
+
+func (s *Service) listSecrets(ctx context.Context, id ID) ([]Secret, error) {
 	if !ValidID(id) {
 		return nil, ErrInvalidID
 	}
@@ -78,6 +98,12 @@ func (s *Service) ListSecrets(ctx context.Context, id ID) ([]Secret, error) {
 }
 
 func (s *Service) SetSecret(ctx context.Context, id ID, key, value string) (Secret, error) {
+	secret, err := s.setSecret(ctx, id, key, value)
+	s.record(ctx, audit.ActionProjectSecretSet, auditTargetID(id), audit.Meta{"key": key}, err)
+	return secret, err
+}
+
+func (s *Service) setSecret(ctx context.Context, id ID, key, value string) (Secret, error) {
 	if !ValidID(id) {
 		return Secret{}, ErrInvalidID
 	}
@@ -110,6 +136,12 @@ func (s *Service) SetSecret(ctx context.Context, id ID, key, value string) (Secr
 }
 
 func (s *Service) DeleteSecret(ctx context.Context, id ID, key string) error {
+	err := s.deleteSecret(ctx, id, key)
+	s.record(ctx, audit.ActionProjectSecretDelete, auditTargetID(id), audit.Meta{"key": key}, err)
+	return err
+}
+
+func (s *Service) deleteSecret(ctx context.Context, id ID, key string) error {
 	if !ValidID(id) {
 		return ErrInvalidID
 	}
@@ -198,6 +230,17 @@ func (s *Service) WorkspaceForProject(ctx context.Context, id ID) (string, error
 // Create provisions a new project. callerEmail (if non-empty) is added to
 // the project's access list so the creator immediately has access.
 func (s *Service) Create(ctx context.Context, in CreateInput, callerEmail string) (Meta, error) {
+	m, err := s.create(ctx, in, callerEmail)
+	target := auditProjectTarget(m.ID, m)
+	if target.Name == "" {
+		// The store never assigned an id or name, so record the request.
+		target.Name = strings.TrimSpace(in.Name)
+	}
+	s.record(ctx, audit.ActionProjectCreate, target, audit.Meta{"slug": m.Slug, "status": string(m.Status)}, err)
+	return m, err
+}
+
+func (s *Service) create(ctx context.Context, in CreateInput, callerEmail string) (Meta, error) {
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
 		return Meta{}, ErrNameRequired
@@ -269,11 +312,24 @@ func (s *Service) Update(ctx context.Context, id ID, in UpdateInput) (Meta, erro
 	if !ValidID(id) {
 		return Meta{}, ErrInvalidID
 	}
-	return s.repo.Update(ctx, id, func(m *Meta) {
+	previous, _ := s.repo.Get(ctx, id)
+	m, err := s.repo.Update(ctx, id, func(m *Meta) {
 		if in.Name != nil && strings.TrimSpace(*in.Name) != "" {
 			m.Name = strings.TrimSpace(*in.Name)
 		}
 	})
+	// Name is the only field UpdateInput can change today, so an update that
+	// carries one is a rename.
+	if in.Name != nil && strings.TrimSpace(*in.Name) != "" {
+		s.record(
+			ctx,
+			audit.ActionProjectRename,
+			auditProjectTarget(id, m),
+			audit.Meta{"from": previous.Name, "to": strings.TrimSpace(*in.Name)},
+			err,
+		)
+	}
+	return m, err
 }
 
 var resourceSizePattern = regexp.MustCompile(`^[1-9][0-9]*(MiB|GiB|TiB)$`)
@@ -333,14 +389,20 @@ func (s *Service) Reorder(ctx context.Context, ids []ID) ([]Meta, error) {
 }
 
 func (s *Service) Delete(ctx context.Context, id ID) error {
+	deleted, err := s.delete(ctx, id)
+	s.record(ctx, audit.ActionProjectDelete, auditProjectTarget(id, deleted), nil, err)
+	return err
+}
+
+func (s *Service) delete(ctx context.Context, id ID) (Meta, error) {
 	if !ValidID(id) {
-		return ErrInvalidID
+		return Meta{}, ErrInvalidID
 	}
 	unlock := s.lockRunState(id)
 	defer unlock()
 	m, err := s.repo.Get(ctx, id)
 	if err != nil {
-		return err
+		return Meta{}, err
 	}
 	s.clearAgentBrowserState(id)
 	if s.containerTemplates != nil && m.ContainerName != "" {
@@ -361,7 +423,7 @@ func (s *Service) Delete(ctx context.Context, id ID) error {
 			log.Printf("projects: delete access %s: %v", id, err)
 		}
 	}
-	return s.repo.Delete(ctx, id)
+	return m, s.repo.Delete(ctx, id)
 }
 
 // lockRunState serializes container lifecycle transitions for a single project.
@@ -394,31 +456,43 @@ func (s *Service) StartWithOptions(ctx context.Context, id ID, options StartOpti
 	}
 	unlock := s.lockRunState(id)
 	defer unlock()
-	return s.startLocked(ctx, id, options)
+	m, converged, err := s.startLocked(ctx, id, options)
+	// Start is idempotent and every agent run calls it. Only an actual
+	// transition (or a failure) is worth an audit line.
+	if converged || err != nil {
+		s.record(ctx, audit.ActionProjectContainerStart, auditProjectTarget(id, m), nil, err)
+	}
+	return m, err
 }
 
 // startLocked converges one project to RUNNING while the caller owns its
 // run-state lock. Restart uses this directly for a missing instance to avoid
-// recursively acquiring the same non-reentrant mutex.
-func (s *Service) startLocked(ctx context.Context, id ID, options StartOptions) (Meta, error) {
+// recursively acquiring the same non-reentrant mutex. The bool reports whether
+// the container was not already running, which is what makes a start worth
+// auditing.
+func (s *Service) startLocked(ctx context.Context, id ID, options StartOptions) (Meta, bool, error) {
 	m, err := s.repo.Get(ctx, id)
 	if err != nil {
-		return Meta{}, err
+		return Meta{}, false, err
 	}
+	converged := true
 	if s.containerLifecycle != nil {
 		state, err := s.containerLifecycle.State(ctx, m.ContainerName)
 		if err != nil {
-			return s.setStartError(ctx, id, err)
+			meta, startErr := s.setStartError(ctx, id, err)
+			return meta, converged, startErr
 		}
+		converged = state != ContainerStateRunning
 		// A container that is already running commits its memory whether or
 		// not this call succeeds; only a real start needs admission.
 		if state != ContainerStateRunning {
 			if err := s.authorizeStart(ctx, m, options.Force); err != nil {
-				return Meta{}, err
+				return Meta{}, converged, err
 			}
 		}
 		if err := s.containerLifecycle.Ensure(ctx, s.withEffectiveLimits(ctx, m)); err != nil {
-			return s.setStartError(ctx, id, err)
+			meta, startErr := s.setStartError(ctx, id, err)
+			return meta, converged, startErr
 		}
 		if state == ContainerStateMissing {
 			if syncErr := s.syncContainerEnv(ctx, id, m.ContainerName); syncErr != nil {
@@ -426,7 +500,8 @@ func (s *Service) startLocked(ctx context.Context, id ID, options StartOptions) 
 			}
 		}
 	}
-	return s.repo.SetStatus(ctx, id, StatusRunning, "")
+	meta, err := s.repo.SetStatus(ctx, id, StatusRunning, "")
+	return meta, converged, err
 }
 
 var ErrProjectBusy = errors.New("project has an active agent process")
@@ -434,6 +509,18 @@ var ErrProjectBusy = errors.New("project has an active agent process")
 // Upgrade replaces one project container through the same convergence path
 // used by normal starts. Legacy agent homes are migrated before deletion.
 func (s *Service) Upgrade(ctx context.Context, id ID, includeBusy bool) (Meta, error) {
+	m, err := s.upgrade(ctx, id, includeBusy)
+	s.record(
+		ctx,
+		audit.ActionProjectContainerRecycle,
+		auditProjectTarget(id, m),
+		audit.Meta{"includeBusy": includeBusy},
+		err,
+	)
+	return m, err
+}
+
+func (s *Service) upgrade(ctx context.Context, id ID, includeBusy bool) (Meta, error) {
 	if !ValidID(id) {
 		return Meta{}, ErrInvalidID
 	}
@@ -508,6 +595,12 @@ func (s *Service) setStartError(ctx context.Context, id ID, cause error) (Meta, 
 }
 
 func (s *Service) Stop(ctx context.Context, id ID) (Meta, error) {
+	m, err := s.stop(ctx, id)
+	s.record(ctx, audit.ActionProjectContainerStop, auditProjectTarget(id, m), nil, err)
+	return m, err
+}
+
+func (s *Service) stop(ctx context.Context, id ID) (Meta, error) {
 	if !ValidID(id) {
 		return Meta{}, ErrInvalidID
 	}
@@ -531,6 +624,12 @@ func (s *Service) Stop(ctx context.Context, id ID) (Meta, error) {
 // missing container is launched instead, so Restart always converges on a
 // running workspace.
 func (s *Service) Restart(ctx context.Context, id ID) (Meta, error) {
+	m, err := s.restart(ctx, id)
+	s.record(ctx, audit.ActionProjectContainerRestart, auditProjectTarget(id, m), nil, err)
+	return m, err
+}
+
+func (s *Service) restart(ctx context.Context, id ID) (Meta, error) {
 	if !ValidID(id) {
 		return Meta{}, ErrInvalidID
 	}
@@ -546,7 +645,8 @@ func (s *Service) Restart(ctx context.Context, id ID) (Meta, error) {
 			return s.repo.SetStatus(ctx, id, StatusError, err.Error())
 		}
 		if state == ContainerStateMissing {
-			return s.startLocked(ctx, id, StartOptions{})
+			meta, _, startErr := s.startLocked(ctx, id, StartOptions{})
+			return meta, startErr
 		}
 		if err := s.containerLifecycle.Restart(ctx, m.ContainerName); err != nil {
 			return s.repo.SetStatus(ctx, id, StatusError, err.Error())
@@ -595,6 +695,12 @@ func (s *Service) describeTemplate(ctx context.Context, m Meta, info *ContainerI
 // short grace period if DHCP is slow). Manual recovery for the
 // networkd-dropped-lease failure mode.
 func (s *Service) RepairNetwork(ctx context.Context, id ID) (ContainerInspect, error) {
+	info, err := s.repairNetwork(ctx, id)
+	s.record(ctx, audit.ActionProjectContainerRepair, auditTargetID(id), nil, err)
+	return info, err
+}
+
+func (s *Service) repairNetwork(ctx context.Context, id ID) (ContainerInspect, error) {
 	if !ValidID(id) {
 		return ContainerInspect{}, ErrInvalidID
 	}
@@ -686,6 +792,12 @@ func (s *Service) forgetAgentBrowserActivity(id ID) {
 // Agent Browser as starting, and provisions the stack in the background.
 // Idempotent while a start is already in flight.
 func (s *Service) StartAgentBrowser(ctx context.Context, id ID) (AgentBrowserInfo, error) {
+	info, err := s.startAgentBrowser(ctx, id)
+	s.record(ctx, audit.ActionProjectBrowserStart, auditTargetID(id), nil, err)
+	return info, err
+}
+
+func (s *Service) startAgentBrowser(ctx context.Context, id ID) (AgentBrowserInfo, error) {
 	m, err := s.Start(ctx, id)
 	if err != nil {
 		return AgentBrowserInfo{}, err
@@ -767,6 +879,12 @@ func (s *Service) AgentBrowserStatus(ctx context.Context, id ID) (AgentBrowserIn
 // container, leaving the container running and the persistent browser
 // profile on disk so logins survive.
 func (s *Service) StopAgentBrowser(ctx context.Context, id ID) error {
+	err := s.stopAgentBrowser(ctx, id)
+	s.record(ctx, audit.ActionProjectBrowserStop, auditTargetID(id), nil, err)
+	return err
+}
+
+func (s *Service) stopAgentBrowser(ctx context.Context, id ID) error {
 	if !ValidID(id) {
 		return ErrInvalidID
 	}
@@ -862,6 +980,12 @@ func (s *Service) ensureAgentBrowserStateLocked() {
 
 // StopAgentBrowserView tears down only the human noVNC layer.
 func (s *Service) StopAgentBrowserView(ctx context.Context, id ID) error {
+	err := s.stopAgentBrowserView(ctx, id)
+	s.record(ctx, audit.ActionProjectBrowserStop, auditTargetID(id), audit.Meta{"scope": "view"}, err)
+	return err
+}
+
+func (s *Service) stopAgentBrowserView(ctx context.Context, id ID) error {
 	if !ValidID(id) {
 		return ErrInvalidID
 	}
@@ -1035,6 +1159,12 @@ func (s *Service) ListAccess(ctx context.Context, id ID) ([]string, error) {
 // AddAccess adds email to the project's membership list. Caller is
 // responsible for verifying the email belongs to a registered user.
 func (s *Service) AddAccess(ctx context.Context, id ID, email string) error {
+	err := s.addAccess(ctx, id, email)
+	s.record(ctx, audit.ActionProjectMemberAdd, auditTargetID(id), audit.Meta{"member": email}, err)
+	return err
+}
+
+func (s *Service) addAccess(ctx context.Context, id ID, email string) error {
 	if !ValidID(id) {
 		return ErrInvalidID
 	}
@@ -1053,6 +1183,12 @@ func (s *Service) AddAccess(ctx context.Context, id ID, email string) error {
 
 // RemoveAccess deletes email from the project's membership list.
 func (s *Service) RemoveAccess(ctx context.Context, id ID, email string) error {
+	err := s.removeAccess(ctx, id, email)
+	s.record(ctx, audit.ActionProjectMemberRemove, auditTargetID(id), audit.Meta{"member": email}, err)
+	return err
+}
+
+func (s *Service) removeAccess(ctx context.Context, id ID, email string) error {
 	if !ValidID(id) {
 		return ErrInvalidID
 	}

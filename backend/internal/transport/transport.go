@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	service "github.com/futrx-com/remote.futrx.com/internal/service"
+	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicetemplates "github.com/futrx-com/remote.futrx.com/internal/service/container/templates"
@@ -41,10 +42,13 @@ type Dependencies struct {
 
 func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 	agentAuthBindings := deps.Services.AgentAuth.Bindings()
+	// A nil audit service is still a usable Recorder (its methods are
+	// nil-safe), so handlers can take it unconditionally.
+	var auditLog serviceaudit.Recorder = deps.Services.Audit
 	var auth httptransport.RouteRegistrar
 	var middleware httptransport.Middleware
 	if deps.Services.Auth != nil {
-		auth = httphandlers.NewAuthHandler(deps.Services.Auth, deps.Services.Access).
+		auth = httphandlers.NewAuthHandler(deps.Services.Auth, deps.Services.Access, auditLog).
 			WithShares(deps.Services.Shares)
 		providerAuthPrefixes := make([]string, 0, len(agentAuthBindings)*2)
 		for _, binding := range agentAuthBindings {
@@ -69,8 +73,12 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
+	uploads = uploads.WithAudit(auditLog)
 	chatSocket := wstransport.NewChatSocket(deps.Services.Chats, deps.Services.Runs, deps.Services.Prompt)
-	terminalSocket := wstransport.NewContainerTerminalSocket(deps.Services.Chats, deps.Services.Projects)
+	terminalSocket := wstransport.NewContainerTerminalSocket(
+		deps.Services.Chats,
+		deps.Services.Projects,
+	).WithAudit(auditLog)
 	workspaceSocket := wstransport.NewWorkspaceSocket(
 		deps.Services.Chats,
 		deps.Services.Projects,
@@ -94,10 +102,10 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		deps.Files,
 		deps.GitHistory,
 		deps.IDE,
-	).WithSchedules(scheduleHandler)
+	).WithSchedules(scheduleHandler).WithAudit(auditLog)
 
 	return httptransport.NewHandler(httptransport.Handlers{
-		Sessions: httphandlers.NewTmuxHandler(deps.Services.Tmux),
+		Sessions: httphandlers.NewTmuxHandler(deps.Services.Tmux).WithAudit(auditLog),
 		Chats:    chatHandler,
 		Projects: httphandlers.NewProjectHandler(
 			deps.Services.Projects,
@@ -109,7 +117,7 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		AgentAuth: httphandlers.NewAgentAuthHandler(
 			agentAuthBindings,
 			deps.Services.Auth,
-		),
+		).WithAudit(auditLog),
 		UserSettings: httphandlers.NewUserSettingsHandler(
 			deps.Services.UserSettings,
 			deps.Services.Auth,
@@ -133,6 +141,7 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		BrowserInspector: httphandlers.NewBrowserInspectorHandler(),
 		Schedules:        scheduleHandler,
 		Usage:            usageHandler,
+		Audit:            httphandlers.NewAuditHandler(deps.Services.Audit, deps.Services.Auth),
 		Uploads:          uploads,
 		TmuxWS:           wstransport.NewTmuxSocket(deps.TmuxClient),
 		TerminalWS:       terminalSocket,

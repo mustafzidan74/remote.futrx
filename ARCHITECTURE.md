@@ -158,6 +158,7 @@ A chat with **no project** ("loose chat") runs the CLI directly on the host inst
 | Notification settings | `DATA_DIR/notifications.json` | JSON | Telegram bot token + webhook secret, **plaintext**, mode 0600 |
 | Global skills library | `DATA_DIR/skills-global/<name>/` | SKILL.md dirs + `_index.json` | admin-published skills pushed into every project container ([deep dive](docs/02-workspaces/09-global-skills.md)) |
 | Fleet resource policy | `DATA_DIR/resources.json` | JSON | container defaults, host reserve, per-project ceiling, running-container cap |
+| Audit log | `DATA_DIR/audit/audit-YYYY-MM.jsonl` | JSONL | append-only, one file per month, mode 0600, pruned by retention |
 | Session key | `DATA_DIR/session.key` | 32 random bytes | mode 0600 |
 | Google OAuth secret | `DATA_DIR/oauth.json` | JSON | plaintext, mode 0600 |
 | Provider tokens | `/root/.claude*`, `/root/.codex`, `/root/.kimi-code` | provider files | copied into every container |
@@ -235,5 +236,5 @@ These are the boundaries the [threat model](docs/threat-model.md) reasons about:
 - [`docs/01-overview/`](docs/01-overview/) — system overview and the code map
 - [`docs/02-workspaces/`](docs/02-workspaces/) — auth, projects/containers, chat/agents, workspace tools
 - [`docs/03-platform/`](docs/03-platform/) — previews & browser, data & frontend state, API & realtime
-- [`docs/04-operations/`](docs/04-operations/) — deployment and operations
+- [`docs/04-operations/`](docs/04-operations/) — deployment, operations, and the [audit log](docs/04-operations/10-audit-log.md)
 - [Threat model](docs/threat-model.md) · [Known limitations](docs/known-limitations.md)

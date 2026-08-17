@@ -12,6 +12,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/googleoauth"
 	agentauth "github.com/futrx-com/remote.futrx.com/internal/service/agent/auth"
+	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
@@ -55,6 +56,8 @@ type Dependencies struct {
 	ResourceSettings  serviceresources.Repository
 	ResourceFleet     serviceresources.Fleet
 	HostCollector     serviceserverinfo.Collector
+	Audit             serviceaudit.Store
+	AuditRetention    int
 	AuthBaseURL       string
 	ProjectContainers serviceproject.ContainerDependencies
 	AgentContainers   provisioning.ContainerDependencies
@@ -93,6 +96,7 @@ type Services struct {
 	GlobalSkills  *serviceskills.GlobalService
 	Usage         *serviceusage.Service
 	Resources     *serviceresources.Service
+	Audit         *serviceaudit.Service
 }
 
 func New(ctx context.Context, deps Dependencies) (Services, error) {
@@ -102,6 +106,14 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	if deps.Schedules == nil {
 		return Services{}, errors.New("scheduled task repository is required")
 	}
+
+	// The audit recorder is built first so every other service can take it.
+	auditRetention := deps.AuditRetention
+	if auditRetention == 0 {
+		auditRetention = serviceaudit.DefaultRetentionMonths
+	}
+	auditLog := serviceaudit.New(deps.Audit, serviceaudit.WithRetentionMonths(auditRetention))
+	auditLog.StartJanitor(ctx, 24*time.Hour)
 
 	workspace := workspacehub.New()
 	var runs *runhub.Hub
@@ -133,7 +145,13 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		deps.ProjectContainers.Admission = policy
 	}
 
-	projectService := serviceproject.New(projects, deps.ProjectContainers, deps.ProjectSecrets, deps.ProjectAccess)
+	projectService := serviceproject.New(
+		projects,
+		deps.ProjectContainers,
+		deps.ProjectSecrets,
+		deps.ProjectAccess,
+		serviceproject.WithAudit(auditLog),
+	)
 	projectService.StartAgentBrowserReaper(ctx, 20*time.Minute)
 	runs = runhub.New(chats)
 	runs.SetRunningSubscriber(func(id servicechat.ID, _ bool) {
@@ -146,7 +164,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	}
 
 	globalSkillService := serviceskills.NewGlobalService(deps.GlobalSkills, projectService)
-	chatOptions := []servicechat.Option(nil)
+	chatOptions := []servicechat.Option{servicechat.WithAudit(auditLog)}
 	if globalSkillService != nil {
 		chatOptions = append(
 			chatOptions,
@@ -185,8 +203,8 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 			return Services{}, err
 		}
 	}
-	userService := serviceuser.New(deps.Users)
-	authService, err := newAuth(ctx, deps.Auth, userService, deps.AuthBaseURL)
+	userService := serviceuser.New(deps.Users, serviceuser.WithAudit(auditLog))
+	authService, err := newAuth(ctx, deps.Auth, userService, deps.AuthBaseURL, auditLog)
 	if err != nil {
 		return Services{}, err
 	}
@@ -201,6 +219,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	promptOptions := []prompt.Option{
 		prompt.WithScheduleToolIssuer(scheduleCaps),
 		prompt.WithRunObserver(runNotifications),
+		prompt.WithAudit(auditLog),
 	}
 	if deps.Usage != nil {
 		usageService = serviceusage.New(deps.Usage, projectService, chats)
@@ -224,6 +243,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		serviceschedule.WithMaxConcurrentRuns(deps.ScheduleLimits.MaxConcurrentRuns),
 		serviceschedule.WithMaxTasksPerProject(deps.ScheduleLimits.MaxTasksPerProject),
 		serviceschedule.WithRunObserver(runNotifications),
+		serviceschedule.WithAudit(auditLog),
 	)
 	if err := scheduleService.Start(ctx); err != nil {
 		return Services{}, fmt.Errorf("start scheduled tasks: %w", err)
@@ -266,6 +286,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		GlobalSkills:  globalSkillService,
 		Usage:         usageService,
 		Resources:     resourceService,
+		Audit:         auditLog,
 	}, nil
 }
 
@@ -484,6 +505,7 @@ func newAuth(
 	store AuthStore,
 	users *serviceuser.Service,
 	baseURL string,
+	auditLog serviceaudit.Recorder,
 ) (*serviceauth.Service, error) {
 	if store == nil {
 		return nil, errors.New("authentication store is required")
@@ -510,6 +532,7 @@ func newAuth(
 		},
 		baseURL,
 		sessionKey,
+		serviceauth.WithAudit(auditLog),
 	)
 }
 

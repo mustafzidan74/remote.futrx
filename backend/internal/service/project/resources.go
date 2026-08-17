@@ -2,6 +2,7 @@ package project
 
 import (
 	"context"
+	"github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	"strconv"
 	"strings"
 )
@@ -115,6 +116,18 @@ func (s *Service) Resources(ctx context.Context, id ID, editable bool) (ProjectR
 // immediately; a changed disk quota on a running container needs a restart,
 // which the response reports rather than performing.
 func (s *Service) SetResources(ctx context.Context, id ID, limits ContainerLimits) (ProjectResources, error) {
+	res, err := s.setResources(ctx, id, limits)
+	s.record(
+		ctx,
+		audit.ActionProjectContainerLimits,
+		auditTargetID(id),
+		audit.Meta{"cpu": limits.CPU, "memory": limits.Memory, "disk": limits.Disk},
+		err,
+	)
+	return res, err
+}
+
+func (s *Service) setResources(ctx context.Context, id ID, limits ContainerLimits) (ProjectResources, error) {
 	if !ValidID(id) {
 		return ProjectResources{}, ErrInvalidID
 	}
