@@ -4,6 +4,7 @@ import type { ProjectMeta } from "../../../models/project";
 import { Menu, MessageSquare } from "../../primitives/icons";
 import { ChatPreviewChip } from "../../preview/ChatPreviewChip";
 import type { ChatPolicies } from "../../../state/hooks/chat/useChatPolicies";
+import { TeamPanel } from "../team/TeamPanel";
 import { ChatStatusPill } from "./ChatStatusPill";
 
 /**
@@ -13,7 +14,10 @@ import { ChatStatusPill } from "./ChatStatusPill";
  * can never squeeze the title into a two-character stub.
  *
  * The title says what the chat is; `ChatStatusPill` says what it is doing.
- * Those are the only two claims the header makes, and each is made once.
+ * Those are the only two claims the header makes, and each is made once — with
+ * one exception: a chat running team mode also carries the team pill, because
+ * "what is this chat doing" and "where is the review up to" are genuinely two
+ * different questions once three agents are working on one change.
  *
  * Extra header controls belong in `actions`, which renders in the same
  * right-aligned flex group as the status pill and the preview chip.
@@ -26,6 +30,7 @@ export function ThreadHeader({
   actions,
   onHamburger,
   onOpenAgentBrowser,
+  onOpenCompanionChat,
 }: {
   chat: ChatMeta;
   project: ProjectMeta | null;
@@ -35,6 +40,8 @@ export function ThreadHeader({
   actions?: ComponentChildren;
   onHamburger: () => void;
   onOpenAgentBrowser?: () => void;
+  /** Opens a team companion chat in the normal chat view. */
+  onOpenCompanionChat?: (chatId: string) => void;
 }) {
   const title = chat.title || "Untitled chat";
 
@@ -72,6 +79,14 @@ export function ThreadHeader({
           busy={policies?.busy}
           onStopAutopilot={policies?.stopAutopilot}
         />
+        {policies?.team && onOpenCompanionChat && (
+          <TeamPanel
+            view={policies.team}
+            busy={policies.busy}
+            onOpenChat={onOpenCompanionChat}
+            onStop={policies.stopTeam}
+          />
+        )}
         {actions}
         {project && (
           <ChatPreviewChip

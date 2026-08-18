@@ -15,6 +15,22 @@ const (
 	// sends the same kind when a human triggers a check by hand, because the
 	// prompt and the badge are the same either way.
 	SyntheticAutoTest = "autotest"
+
+	// The team-mode hops. Each one is a run the orchestrator started on the
+	// operator's behalf, and each names the seat it was started for so a
+	// transcript and an audit line read the same.
+	//
+	// SyntheticTeamReview is the reviewer's pass in its companion chat.
+	SyntheticTeamReview = "team-review"
+	// SyntheticTeamTest is the tester's Playwright pass in its companion chat.
+	SyntheticTeamTest = "team-test"
+	// SyntheticTeamFix carries review findings back to the implementer chat.
+	SyntheticTeamFix = "team-fix"
+	// SyntheticTeamSummary labels the closing message the orchestrator posts
+	// in the parent chat. It is not a prompt — no run is started from it —
+	// but it rides the same badge so it is never read as something a human
+	// typed.
+	SyntheticTeamSummary = "team-summary"
 )
 
 // Autopilot defaults and bounds. The defaults are what a chat gets when the
@@ -39,9 +55,34 @@ func NormalizeSynthetic(kind string) string {
 		return SyntheticAutopilot
 	case SyntheticAutoTest:
 		return SyntheticAutoTest
+	case SyntheticTeamReview:
+		return SyntheticTeamReview
+	case SyntheticTeamTest:
+		return SyntheticTeamTest
+	case SyntheticTeamFix:
+		return SyntheticTeamFix
+	case SyntheticTeamSummary:
+		return SyntheticTeamSummary
 	default:
 		return ""
 	}
+}
+
+// NormalizeClientSynthetic maps a label a *browser* supplied to one of the
+// kinds a browser is allowed to claim.
+//
+// The composer's Test menu is the only client-side source of a synthetic
+// prompt, so SyntheticAutoTest is the only label that survives. Every other
+// kind is platform-issued: an autopilot round, or a team hop whose label the
+// orchestrator reads back to decide where the loop goes next. Letting a client
+// send `team-review` would let a project member forge a verdict for their own
+// review loop, and letting it send `autopilot` would let any prompt wear a
+// badge that says nobody asked for it.
+func NormalizeClientSynthetic(kind string) string {
+	if NormalizeSynthetic(kind) == SyntheticAutoTest {
+		return SyntheticAutoTest
+	}
+	return ""
 }
 
 // ValidAutopilotInput reports whether the limits a caller supplied are inside
@@ -138,7 +179,10 @@ func (m Meta) PolicyActor() string {
 	if actor := strings.TrimSpace(m.Autopilot.EnabledBy); actor != "" {
 		return actor
 	}
-	return strings.TrimSpace(m.AutoTest.EnabledBy)
+	if actor := strings.TrimSpace(m.AutoTest.EnabledBy); actor != "" {
+		return actor
+	}
+	return strings.TrimSpace(m.Team.EnabledBy)
 }
 
 func clamp(value, fallback, low, high int) int {

@@ -235,6 +235,14 @@ func (d *Driver) followUp(
 		return
 	}
 
+	// Team mode reacts to the same settled run on a goroutine of its own, so
+	// the phase read during Decide may already be stale by now. Re-reading it
+	// here is what makes "the team goes first" hold without the two drivers
+	// having to know about each other.
+	if current, err := d.chats.Get(ctx, chatID); err == nil && servicechat.TeamActive(current.Team) {
+		return
+	}
+
 	actor := meta.PolicyActor()
 	_, err := d.starter.Start(prompt.StartInput{
 		ChatID:        chatID,

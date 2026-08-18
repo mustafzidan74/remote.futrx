@@ -262,3 +262,43 @@ func TestStopSummary(t *testing.T) {
 		})
 	}
 }
+
+// Team mode and autopilot both react to the same settled run and both would
+// prompt the same chat. While a team loop has a hop in flight its next prompt
+// is already decided, so autopilot stands down rather than racing it — and
+// picks up again once the loop settles.
+func TestDecideStandsDownWhileATeamLoopIsInFlight(t *testing.T) {
+	tests := []struct {
+		phase string
+		want  Action
+	}{
+		{phase: servicechat.TeamPhaseReviewing, want: ActionNone},
+		{phase: servicechat.TeamPhaseTesting, want: ActionNone},
+		{phase: servicechat.TeamPhaseFixing, want: ActionNone},
+		{phase: servicechat.TeamPhaseDone, want: ActionContinue},
+		{phase: servicechat.TeamPhaseError, want: ActionContinue},
+		{phase: servicechat.TeamPhaseIdle, want: ActionContinue},
+	}
+
+	for _, test := range tests {
+		t.Run("phase "+test.phase, func(t *testing.T) {
+			meta := autopilotMeta(func(m *servicechat.Meta) {
+				m.Team = servicechat.TeamPolicy{Enabled: true, Phase: test.phase}
+			})
+
+			decision := Decide(meta, Outcome{Output: "ended a step"}, Conditions{Now: armedAt})
+
+			if decision.Action != test.want {
+				t.Fatalf("action = %q, want %q", decision.Action, test.want)
+			}
+		})
+	}
+
+	// A chat with team mode switched off is never held back by a stale phase.
+	meta := autopilotMeta(func(m *servicechat.Meta) {
+		m.Team = servicechat.TeamPolicy{Phase: servicechat.TeamPhaseReviewing}
+	})
+	if decision := Decide(meta, Outcome{Output: "ended a step"}, Conditions{Now: armedAt}); decision.Action != ActionContinue {
+		t.Errorf("action = %q, want autopilot to run", decision.Action)
+	}
+}

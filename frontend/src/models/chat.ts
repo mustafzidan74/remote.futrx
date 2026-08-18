@@ -35,6 +35,71 @@ export interface ChatMeta {
   /** Post-run policies: what the platform does on its own once a turn settles. */
   autopilot?: AutopilotPolicy;
   autoTest?: AutoTestPolicy;
+  /** Team mode: implementer → reviewer → tester, all inside this project. */
+  team?: TeamPolicy;
+  /**
+   * Set on a reviewer's or tester's own thread, naming the chat it answers to.
+   * Companions are hidden from the sidebar and opened from the parent's Team
+   * panel, so a team session adds one row to the chat list rather than three.
+   */
+  companionOf?: string;
+  companionRole?: TeamRoleName;
+}
+
+export type TeamRoleName = "implementer" | "reviewer" | "tester";
+
+/** Where a team session currently is. "" is armed but between loops. */
+export type TeamPhase = "" | "reviewing" | "testing" | "fixing" | "done" | "error";
+
+/** Ship/fix come from the reviewer, pass/fail from the tester. */
+export type TeamVerdict = "" | "ship" | "fix" | "pass" | "fail" | "unknown";
+
+/**
+ * Team mode configuration plus the live state of the current loop. The server
+ * owns everything below `autoFix`: the browser reads the counters, it never
+ * spends one.
+ */
+export interface TeamPolicy {
+  enabled: boolean;
+  roles: TeamRoles;
+  maxLoops?: number;
+  autoFix?: boolean;
+  phase?: TeamPhase;
+  loopsUsed?: number;
+  verdict?: TeamVerdict;
+  hops?: TeamHop[];
+  enabledBy?: string;
+  updatedAt?: number;
+}
+
+export interface TeamRoles {
+  implementer: TeamRole;
+  reviewer: TeamRole;
+  tester: TeamRole;
+}
+
+/**
+ * One seat. An empty `provider` means "let the platform pick", which is how a
+ * chat armed before a second provider was connected still gets a fresh-eyes
+ * reviewer once one is.
+ */
+export interface TeamRole {
+  provider?: ChatProvider | "";
+  model?: string;
+  enabled: boolean;
+  /** The companion chat this seat runs in; empty for the implementer. */
+  chatId?: string;
+}
+
+/** One recorded step of the loop, as the Team panel renders it. */
+export interface TeamHop {
+  loop: number;
+  role: TeamRoleName;
+  kind?: SyntheticKind;
+  chatId?: string;
+  verdict?: TeamVerdict;
+  findings?: string;
+  at?: number;
 }
 
 /**
@@ -99,7 +164,13 @@ export interface ChatEventPage {
  * server normalizes anything it does not recognize away, so these two strings
  * are the whole vocabulary.
  */
-export type SyntheticKind = "autopilot" | "autotest";
+export type SyntheticKind =
+  | "autopilot"
+  | "autotest"
+  | "team-review"
+  | "team-test"
+  | "team-fix"
+  | "team-summary";
 
 export type ClientToServer =
   | { type: "prompt"; text: string; clientId?: string; synthetic?: SyntheticKind }
@@ -144,6 +215,7 @@ export interface UpdateChatInput {
   selectedSkills?: SelectedSkill[];
   autopilot?: AutopilotPatch;
   autoTest?: AutoTestPatch;
+  team?: TeamPatch;
 }
 
 /** Every field is optional so a toggle need not restate the limits. */
@@ -154,5 +226,26 @@ export interface AutopilotPatch {
 }
 
 export interface AutoTestPatch {
+  enabled?: boolean;
+}
+
+/**
+ * Patches the configuration half of team mode. The loop counters, the phase,
+ * and the companion chat ids are the server's; sending them changes nothing.
+ */
+export interface TeamPatch {
+  enabled?: boolean;
+  maxLoops?: number;
+  autoFix?: boolean;
+  roles?: {
+    implementer?: TeamRolePatch;
+    reviewer?: TeamRolePatch;
+    tester?: TeamRolePatch;
+  };
+}
+
+export interface TeamRolePatch {
+  provider?: ChatProvider | "";
+  model?: string;
   enabled?: boolean;
 }

@@ -35,6 +35,7 @@ import (
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
 	serviceskills "github.com/futrx-com/remote.futrx.com/internal/service/skills"
 	servicesnapshot "github.com/futrx-com/remote.futrx.com/internal/service/snapshot"
+	serviceteam "github.com/futrx-com/remote.futrx.com/internal/service/team"
 	servicetmux "github.com/futrx-com/remote.futrx.com/internal/service/tmux"
 	servicetranscribe "github.com/futrx-com/remote.futrx.com/internal/service/transcribe"
 	serviceusage "github.com/futrx-com/remote.futrx.com/internal/service/usage"
@@ -181,6 +182,7 @@ type Services struct {
 	Snapshots     *servicesnapshot.Service
 	Screenshots   *servicescreenshot.Service
 	PostRun       *servicepostrun.Driver
+	Team          *serviceteam.Driver
 }
 
 func New(ctx context.Context, deps Dependencies) (Services, error) {
@@ -418,10 +420,26 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		bindWorkspacePreferences(deps.AgentContainers.Workspace, agentPreferences)
 	}
 
+	// Team mode drives the same settled runs as the post-run driver, one hop
+	// at a time, through the same prompt service. It is registered after the
+	// post-run driver so the two see a run in a stable order; neither knows
+	// about the other, and the stand-down rule lives in postrun.Decide.
+	teamDriver := serviceteam.New(serviceteam.Dependencies{
+		Chats:       chats,
+		ChatFactory: chatService,
+		Runs:        runs,
+		Starter:     postRunStarter{prompts: &promptService},
+		Events:      runs,
+		Providers:   connectedProviders{registry: agentAuth},
+		Skills:      globalSkillNames{global: globalSkillService},
+		Notifier:    runNotifications,
+	})
+
 	promptOptions := []prompt.Option{
 		prompt.WithScheduleToolIssuer(scheduleCaps),
 		prompt.WithRunObserver(runNotifications),
 		prompt.WithRunObserver(postRunDriver),
+		prompt.WithRunObserver(teamDriver),
 		prompt.WithAudit(auditLog),
 		prompt.WithReplyPreferences(replyPreferencePreamble{prefs: agentPreferences}),
 	}
@@ -569,7 +587,52 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Snapshots:     snapshotService,
 		Screenshots:   screenshotService,
 		PostRun:       postRunDriver,
+		Team:          teamDriver,
 	}, nil
+}
+
+// connectedProviders answers "which providers can actually run a turn right
+// now" from the agent auth registry. Team mode needs it to pick a reviewer
+// that is a genuine second opinion rather than a provider nobody logged in to.
+type connectedProviders struct {
+	registry *agentauth.Registry
+}
+
+func (p connectedProviders) Connected() []servicechat.Provider {
+	if p.registry == nil {
+		return nil
+	}
+	bindings := p.registry.Bindings()
+	providers := make([]servicechat.Provider, 0, len(bindings))
+	for _, binding := range bindings {
+		if binding.Authenticated() {
+			providers = append(providers, servicechat.Provider(binding.ID()))
+		}
+	}
+	return providers
+}
+
+// globalSkillNames narrows the team's wish list to skills the operator has
+// actually published. A library read failure is not an error worth stopping a
+// review for, so it reports "nothing known" and the team falls back to its
+// optimistic defaults.
+type globalSkillNames struct {
+	global *serviceskills.GlobalService
+}
+
+func (s globalSkillNames) GlobalSkillNames(ctx context.Context) []string {
+	if s.global == nil {
+		return nil
+	}
+	entries, err := s.global.List(ctx)
+	if err != nil {
+		return nil
+	}
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		names = append(names, entry.Name)
+	}
+	return names
 }
 
 // screenshotNotifier translates between the screenshot service's picture port
@@ -788,6 +851,9 @@ func (d globalSkillDefaults) DefaultSkills(
 // pointers are filled in during composition, long before an agent run can
 // settle, so a nil dereference here would mean the composition root changed
 // order — hence the explicit guards rather than a silent panic.
+//
+// postRunStarter is shared with the team driver: both start follow-up runs
+// through the same prompt service and neither exists before it does.
 type postRunStarter struct {
 	prompts **prompt.Service
 }

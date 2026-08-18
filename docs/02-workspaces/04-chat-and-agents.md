@@ -171,6 +171,7 @@ chat. Loose chats have no container and therefore no global skills. See
 | Delete | Cancels an active run, then removes chat metadata and history |
 | Load older | Pages backward through the JSONL event log |
 | Autopilot / Auto-test | Per-chat post-run policies: keep prompting until the agent reports `<<DONE>>`, and verify each change with Playwright. Both default off — see [Autopilot and auto-test](15-autopilot-and-auto-test.md) |
+| Team mode | Per-chat multi-agent workflow: the chat you type in implements, a second connected provider reviews the diff in a companion chat, and a third runs the Playwright pass. Defaults off — see [Team mode](20-team-mode.md) |
 
 Draft text and queued prompts are mirrored into per-tab `sessionStorage` by
 chat ID. They survive switching chats, navigation, and reloads in the same tab,

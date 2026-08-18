@@ -1,26 +1,66 @@
 import type { SyntheticKind } from "../../../models/chat";
-import { PlaneTakeoff, RotateCcw, TestTube } from "../../primitives/icons";
+import { Eye, PlaneTakeoff, RotateCcw, TestTube, Users } from "../../primitives/icons";
 
 /**
- * The badge above a prompt the platform sent on the operator's behalf. Without
- * it an autopilot round is indistinguishable from something the user typed,
- * which matters when reading back what an unattended agent was told to do.
+ * How each platform-issued prompt announces itself. Without a badge an
+ * autopilot round or a team hand-off is indistinguishable from something the
+ * user typed, which matters when reading back what an unattended agent was
+ * told to do — and, for a team loop, *which* agent was told.
  */
+const SYNTHETIC_BADGES: Record<
+  SyntheticKind,
+  { label: string; title: string; Icon: typeof PlaneTakeoff; tone: string }
+> = {
+  autopilot: {
+    label: "auto-continue",
+    title: "Sent automatically by autopilot to keep the agent working",
+    Icon: PlaneTakeoff,
+    tone: "bg-accent-blue/[0.14] text-accent-blue",
+  },
+  autotest: {
+    label: "auto-test",
+    title: "Sent automatically to verify the change with Playwright",
+    Icon: TestTube,
+    tone: "bg-accent-green/[0.14] text-accent-green",
+  },
+  "team-review": {
+    label: "team review",
+    title: "Sent by team mode: review the change another agent just made",
+    Icon: Eye,
+    tone: "bg-accent-purple/[0.14] text-accent-purple",
+  },
+  "team-test": {
+    label: "team test",
+    title: "Sent by team mode: run the Playwright pass over the change",
+    Icon: TestTube,
+    tone: "bg-accent-purple/[0.14] text-accent-purple",
+  },
+  "team-fix": {
+    label: "team fix",
+    title: "Sent by team mode: the review findings, handed back to the implementer",
+    Icon: Users,
+    tone: "bg-accent-purple/[0.14] text-accent-purple",
+  },
+  "team-summary": {
+    label: "team",
+    title: "Posted by team mode when the loop finished",
+    Icon: Users,
+    tone: "bg-accent-purple/[0.14] text-accent-purple",
+  },
+};
+
 function SyntheticBadge({ kind }: { kind: SyntheticKind }) {
-  const isTest = kind === "autotest";
-  const Icon = isTest ? TestTube : PlaneTakeoff;
+  const badge = SYNTHETIC_BADGES[kind];
+  if (!badge) return null;
+  const { Icon } = badge;
   return (
     <span
       class={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]
-              ${isTest ? "bg-accent-green/[0.14] text-accent-green" : "bg-accent-blue/[0.14] text-accent-blue"}`}
-      title={
-        isTest
-          ? "Sent automatically to verify the change with Playwright"
-          : "Sent automatically by autopilot to keep the agent working"
-      }
+              ${badge.tone}`}
+      title={badge.title}
     >
       <Icon class="h-2.5 w-2.5" aria-hidden="true" />
-      {isTest ? "auto-test" : "auto-continue"}
+      {badge.label}
     </span>
   );
 }

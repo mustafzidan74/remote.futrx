@@ -1,4 +1,4 @@
-import type { ChatMeta, UpdateChatInput } from "../../models/chat";
+import type { ChatMeta, ChatProvider, UpdateChatInput } from "../../models/chat";
 import type { ProjectMeta } from "../../models/project";
 import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
 import { BrowserDrawer } from "../../ui/chat/browser/BrowserDrawer";
@@ -10,6 +10,7 @@ import { HistoryDrawer } from "../../ui/chat/history/HistoryDrawer";
 import { FileManagerDrawer } from "../../ui/chat/files/FileManagerDrawer";
 import { ScheduleDrawer } from "../../ui/chat/schedules/ScheduleDrawer";
 import { chatAttachmentState } from "../../state/chat/chatAttachmentState";
+import { useAuthContext } from "../../state/context/AuthContext";
 import { useChat } from "../../state/hooks/chat/useChat";
 import { useChatBrowserController } from "../../state/hooks/chat/useChatBrowserController";
 import { useChatComposerController } from "../../state/hooks/chat/useChatComposerController";
@@ -28,12 +29,15 @@ export function ChatContainer({
   projects,
   highlightAt,
   onHamburger,
+  onSelectChat,
 }: {
   chat: ChatMeta;
   projects: ProjectMeta[];
   /** A message instant a search hit or deep link asked the thread to reveal. */
   highlightAt?: number | null;
   onHamburger: () => void;
+  /** Opens another chat — the Team panel's links to the companion threads. */
+  onSelectChat: (chatId: string) => void;
 }) {
   const {
     meta,
@@ -97,6 +101,16 @@ export function ChatContainer({
     }),
     [displayMeta.provider, selectedSkills, displayMode],
   );
+  // Team mode may only seat a provider that is actually logged in on the host;
+  // the auth context already keeps those three sockets live for the setup gate.
+  const { claudeAuth, codexAuth, kimiAuth } = useAuthContext();
+  const connectedProviders = useMemo(() => {
+    const connected: ChatProvider[] = [];
+    if (claudeAuth.authenticated) connected.push("claude");
+    if (codexAuth.authenticated) connected.push("codex");
+    if (kimiAuth.authenticated) connected.push("kimi");
+    return connected;
+  }, [claudeAuth.authenticated, codexAuth.authenticated, kimiAuth.authenticated]);
   const applyMeta = preferences.applyMeta;
   const applyPlaybookMeta = useCallback(
     (patch: UpdateChatInput) => applyMeta(patch),
@@ -117,6 +131,7 @@ export function ChatContainer({
   const policies = useChatPolicies({
     chat: displayMeta,
     streaming: status === "streaming",
+    connectedProviders,
     applyMeta,
     sendPrompt: (text) => composer.submitTest(text),
   });
@@ -268,6 +283,7 @@ export function ChatContainer({
             onLoadOlder={loadOlder}
             onRewind={composer.handleRewind}
             onOpenAgentBrowser={browser.openAgentBrowserPane}
+            onOpenCompanionChat={onSelectChat}
             mobileToolbar={
               <aside class="workspace-action-toolbar relative z-30 flex flex-none justify-end border-b border-white/10 bg-[#101318] px-3 py-2 md:hidden">
                 <WorkspaceActions {...workspaceActions} orientation="horizontal" />

@@ -26,6 +26,17 @@ class ChatPreferenceState {
     const baseMeta = loadedMeta ?? chat;
     return {
       ...baseMeta,
+      // The policies the server drives on its own — an autopilot round it
+      // spent, a team hop it advanced — are read from the workspace copy,
+      // which the workspace socket upserts on every metadata write. The
+      // loaded copy is fetched once per chat and would otherwise freeze the
+      // header pill at whatever the state was when the chat was opened.
+      // They are spread in only when the workspace copy actually carries
+      // them, so a chat resolved before the list has loaded keeps the shape
+      // it had rather than gaining three undefined keys.
+      ...(chat.autopilot ? { autopilot: chat.autopilot } : {}),
+      ...(chat.autoTest ? { autoTest: chat.autoTest } : {}),
+      ...(chat.team ? { team: chat.team } : {}),
       provider: baseMeta.provider || defaults.provider,
       model: baseMeta.model ?? defaults.model,
       mode: baseMeta.mode || defaults.mode,

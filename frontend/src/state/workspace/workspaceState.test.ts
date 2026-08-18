@@ -87,3 +87,47 @@ test("points a project row at its newest chat", () => {
   // A project with no chats has nothing to open, so the row starts one.
   assert.equal(workspaceSidebarState.mostRecentChatId(chats, "older"), null);
 });
+
+// A team session runs a reviewer and a tester in companion chats. Listing them
+// beside the parent would triple the sidebar for one piece of work, so they are
+// opened from the parent's Team panel instead — while staying selectable, which
+// is what lets that panel's links work at all.
+test("keeps team companion chats out of the sidebar without hiding them from the app", () => {
+  const withCompanions: ChatMeta[] = [
+    ...chats,
+    {
+      id: "reviewer-chat",
+      title: "🧐 Reviewer — New",
+      projectId: "newer",
+      companionOf: "new-chat",
+      companionRole: "reviewer",
+      createdAt: 4,
+      lastMessageAt: 4,
+    },
+  ];
+
+  const model = workspaceSidebarState.model(withCompanions, projects, "");
+  assert.deepEqual(model.visibleProjects[0].chats.map((chat) => chat.id), [
+    "new-chat",
+    "old-chat",
+  ]);
+  assert.equal(model.totalChats, 3);
+  assert.equal(
+    model.recentChats.some((chat) => chat.id === "reviewer-chat"),
+    false,
+  );
+
+  // A project row opens the work, not the review of it.
+  assert.equal(workspaceSidebarState.mostRecentChatId(withCompanions, "newer"), "new-chat");
+  // And the first chat a fresh session lands on is never a companion.
+  assert.equal(
+    workspaceSidebarState.initialChatId(true, null, [withCompanions[3], ...chats]),
+    "old-chat",
+  );
+
+  // Selecting one still resolves, which is how the Team panel's links open it.
+  assert.equal(
+    workspaceSidebarState.activeChat(withCompanions, "reviewer-chat")?.id,
+    "reviewer-chat",
+  );
+});

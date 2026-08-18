@@ -30,6 +30,7 @@ export function ChatThread({
   onLoadOlder,
   onRewind,
   onOpenAgentBrowser,
+  onOpenCompanionChat,
   mobileToolbar,
 }: {
   chat: ChatMeta;
@@ -54,6 +55,8 @@ export function ChatThread({
   onLoadOlder: () => Promise<void>;
   onRewind: (t: number, text: string) => void;
   onOpenAgentBrowser: () => void;
+  /** Opens a team companion chat in the normal chat view. */
+  onOpenCompanionChat: (chatId: string) => void;
   mobileToolbar: ComponentChildren;
 }) {
   return (
@@ -66,6 +69,7 @@ export function ChatThread({
           policies={policies}
           onHamburger={onHamburger}
           onOpenAgentBrowser={onOpenAgentBrowser}
+          onOpenCompanionChat={onOpenCompanionChat}
         />
         {mobileToolbar}
 

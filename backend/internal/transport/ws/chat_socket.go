@@ -162,8 +162,9 @@ func (s *ChatSocket) handle(upgrader websocket.Upgrader, w http.ResponseWriter, 
 			ClientID string `json:"clientId,omitempty"`
 			// Synthetic lets the composer's Test menu label a prompt it
 			// composed for the user, so the transcript badges it the same way
-			// an automatic verification pass is badged. It is normalized to a
-			// known kind, so a client cannot invent a label.
+			// an automatic verification pass is badged. It is normalized to
+			// the one kind a browser may claim, so a client can neither invent
+			// a label nor wear a platform-issued one.
 			Synthetic string `json:"synthetic,omitempty"`
 		}
 		if err := json.Unmarshal(raw, &msg); err != nil {
@@ -179,7 +180,7 @@ func (s *ChatSocket) handle(upgrader websocket.Upgrader, w http.ResponseWriter, 
 					Sub:     subject,
 					IsAdmin: isAdmin,
 				},
-				Synthetic:     servicechat.NormalizeSynthetic(msg.Synthetic),
+				Synthetic:     servicechat.NormalizeClientSynthetic(msg.Synthetic),
 				ParentContext: runCtx,
 			}, sub.SendTransient)
 			if msg.ClientID != "" {

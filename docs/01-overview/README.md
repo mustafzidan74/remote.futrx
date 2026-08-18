@@ -38,6 +38,7 @@ This documentation maps the complete `remote.futrx` application: how to use ever
 | [17-voice-input.md](../02-workspaces/17-voice-input.md) | Dictation in the chat composer: the browser Web Speech engine, the optional server transcription fallback, Arabic and RTL handling, limits, and privacy |
 | [19-slash-commands.md](../02-workspaces/19-slash-commands.md) | The composer's `/` menu: built-in verbs, playbooks and skills as commands, keyboard model, argument parsing, and the literal-slash escape |
 | [18-reply-preferences-and-search.md](../02-workspaces/18-reply-preferences-and-search.md) | Platform-wide agent reply language, tone, and house rules (managed AGENTS.md block plus prompt preamble, per-user language override), and full-text Arabic-aware search across chat transcripts |
+| [20-team-mode.md](../02-workspaces/20-team-mode.md) | One-switch multi-agent workflow in one chat: implementer → reviewer → tester across connected providers, companion chats, verdict parsing, loop caps, and the Team panel |
 | [06-previews-and-browser.md](../03-platform/06-previews-and-browser.md) | App discovery, HTTPS preview URLs, element inspection, and Agent Browser |
 | [07-data-and-frontend-state.md](../03-platform/07-data-and-frontend-state.md) | File-backed persistence, workspace files, entities, and UI state |
 | [08-api-and-realtime.md](../03-platform/08-api-and-realtime.md) | HTTP endpoints, WebSockets, events, and access gates |
