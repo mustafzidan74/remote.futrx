@@ -16,9 +16,12 @@ import { PreviewPortList } from "./PreviewPortList";
 export function ChatPreviewChip({
   project,
   streaming,
+  onAgentBrowserOpened,
 }: {
   project: ProjectMeta;
   streaming: boolean;
+  /** Reveals the chat's Agent Browser pane after a successful navigation. */
+  onAgentBrowserOpened?: (port: number) => void;
 }) {
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -74,7 +77,14 @@ export function ChatPreviewChip({
           title={`${project.name} — preview`}
           onClose={() => setOpen(false)}
         >
-          <PreviewPortList project={project} links={links} />
+          <PreviewPortList
+            project={project}
+            links={links}
+            onAgentBrowserOpened={(port) => {
+              setOpen(false);
+              onAgentBrowserOpened?.(port);
+            }}
+          />
         </PreviewPopover>
       )}
     </div>

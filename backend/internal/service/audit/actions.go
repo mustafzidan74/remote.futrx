@@ -31,8 +31,9 @@ const (
 	ActionProjectContainerRepair  = "project.container.repair-network"
 	ActionProjectContainerLimits  = "project.container.limits"
 
-	ActionProjectBrowserStart = "project.browser.start"
-	ActionProjectBrowserStop  = "project.browser.stop"
+	ActionProjectBrowserStart    = "project.browser.start"
+	ActionProjectBrowserStop     = "project.browser.stop"
+	ActionProjectBrowserNavigate = "project.browser.navigate"
 
 	ActionChatCreate = "chat.create"
 	ActionChatDelete = "chat.delete"
@@ -47,6 +48,7 @@ const (
 	ActionScheduleRunNow = "schedule.run-now"
 
 	ActionSettingsGoogleOAuth     = "settings.google-oauth.configure"
+	ActionSettingsPlaybooks       = "settings.playbooks.update"
 	ActionSettingsAgentConnect    = "settings.agent.connect"
 	ActionSettingsAgentDisconnect = "settings.agent.disconnect"
 

@@ -141,6 +141,10 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			deps.Services.GlobalSkills,
 			deps.Services.Auth,
 		),
+		Playbooks: httphandlers.NewPlaybookHandler(
+			deps.Services.Playbooks,
+			deps.Services.Auth,
+		),
 		AdminResources: httphandlers.NewAdminResourcesHandler(
 			deps.Services.Resources,
 			httptransport.NewPrincipalResolver(deps.Services.Auth),

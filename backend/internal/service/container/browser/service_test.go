@@ -121,6 +121,11 @@ func (*recordingRuntime) Stop(context.Context, string) error { return nil }
 
 func (*recordingRuntime) StopView(context.Context, string) error { return nil }
 
+func (r *recordingRuntime) Navigate(_ context.Context, containerName, url string) error {
+	*r.events = append(*r.events, "navigate:"+containerName+":"+url)
+	return nil
+}
+
 func (*recordingRuntime) Running(context.Context, string) (bool, error) { return false, nil }
 
 func (*recordingRuntime) Status(context.Context, string) (serviceproject.AgentBrowserInfo, error) {

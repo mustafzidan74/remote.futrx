@@ -7,6 +7,7 @@ import (
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
+	serviceplaybooks "github.com/futrx-com/remote.futrx.com/internal/service/playbooks"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
@@ -19,6 +20,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileauth"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filechat"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filenotify"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/fileplaybooks"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileproject"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectaccess"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectsecrets"
@@ -47,6 +49,7 @@ type Stores struct {
 	Users          serviceuser.Repository
 	UserSettings   serviceusersettings.Repository
 	Notifications  servicenotify.Store
+	Playbooks      serviceplaybooks.Repository
 	GlobalSkills   serviceskills.GlobalRepository
 	Usage          serviceusage.Repository
 	Audit          serviceaudit.Store
@@ -103,6 +106,11 @@ func New(dataDir string) (Stores, error) {
 		return Stores{}, fmt.Errorf("init notification settings store: %w", err)
 	}
 
+	playbooks, err := fileplaybooks.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init playbooks store: %w", err)
+	}
+
 	globalSkills, err := fileskillsglobal.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init global skills store: %w", err)
@@ -130,6 +138,7 @@ func New(dataDir string) (Stores, error) {
 		Users:          users,
 		UserSettings:   userSettings,
 		Notifications:  notifications,
+		Playbooks:      playbooks,
 		GlobalSkills:   globalSkills,
 		Usage:          usage,
 		Audit:          auditLog,

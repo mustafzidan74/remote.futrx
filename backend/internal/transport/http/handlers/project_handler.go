@@ -417,6 +417,21 @@ func (h *ProjectHandler) handleAgentBrowser(w http.ResponseWriter, r *http.Reque
 		}
 		h.sendAgentBrowserInfo(w, r, info)
 
+	case r.Method == http.MethodPost && action == "navigate":
+		var body struct {
+			URL string `json:"url"`
+		}
+		if err := readJSONBody(r, &body); err != nil {
+			httptransport.SendErr(w, http.StatusBadRequest, "invalid json")
+			return
+		}
+		target, err := h.projects.NavigateAgentBrowser(r.Context(), id, body.URL, h.publicHostname)
+		if err != nil {
+			sendProjectError(w, err)
+			return
+		}
+		httptransport.SendJSON(w, http.StatusOK, map[string]string{"url": target})
+
 	case r.Method == http.MethodDelete && action == "":
 		scope := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("scope")))
 		if scope == "view" {
@@ -710,8 +725,13 @@ func sendProjectError(w http.ResponseWriter, err error) {
 		errors.Is(err, serviceresources.ErrInvalidSettings),
 		errors.Is(err, serviceresources.ErrOverrideTooLarge),
 		errors.Is(err, serviceproject.ErrUnknownTemplate),
-		errors.Is(err, serviceproject.ErrInvalidTemplateInput):
+		errors.Is(err, serviceproject.ErrInvalidTemplateInput),
+		errors.Is(err, serviceproject.ErrInvalidBrowserURL):
 		httptransport.SendErr(w, http.StatusBadRequest, err.Error())
+	// The browser has to be started (and finish provisioning) before it can
+	// be driven; 409 tells the UI to keep waiting rather than to give up.
+	case errors.Is(err, serviceproject.ErrAgentBrowserNotReady):
+		httptransport.SendErr(w, http.StatusConflict, err.Error())
 	// The aggregate guard refused a start: the request is well formed, the
 	// host simply has no room. 409 tells the UI to offer the force option.
 	case errors.Is(err, serviceresources.ErrHostMemoryExhausted),

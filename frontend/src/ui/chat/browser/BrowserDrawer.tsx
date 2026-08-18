@@ -34,6 +34,7 @@ export function BrowserDrawer({
   apps,
   appsLoading,
   selectedPort,
+  agentBrowserRequest,
   onSelectPort,
   onRefreshApps,
   onCaptureElement,
@@ -46,6 +47,8 @@ export function BrowserDrawer({
   apps: ContainerApp[];
   appsLoading: boolean;
   selectedPort: number | null;
+  /** Counter bumped by "Open in Agent Browser" to focus the GUI pane. */
+  agentBrowserRequest: number;
   onSelectPort: (port: number | null) => void;
   onRefreshApps: () => void;
   onCaptureElement: (capture: BrowserElementCapture) => void;
@@ -95,6 +98,15 @@ export function BrowserDrawer({
   useEffect(() => {
     setGuiMode(false);
   }, [projectId]);
+
+  // Someone outside the drawer asked for the Agent Browser: switch to it and
+  // drop the app preview's inspect mode, which cannot coexist with it.
+  useEffect(() => {
+    if (agentBrowserRequest <= 0) return;
+    setGuiMode(true);
+    setInspectMode(false);
+    setUseInspectorFrame(false);
+  }, [agentBrowserRequest]);
 
   useEffect(() => {
     if (!canLoad) {

@@ -40,12 +40,13 @@ open the same panel:
   listener, a `Preview :<port>` chip opens that port in a new tab; its caret
   opens the same panel for the other ports.
 
-Each row offers **Open**, **Copy URL**, and **Share 24h** — the last creates a
-public link through the same share API and copies the one-time URL, which is
-also printed in the panel in case the clipboard was refused. Platform ports
-(6080 noVNC, 8842 and 8081 code-server, 9222 CDP) are listed so their presence
-is explained, but they carry no Share action; the share service refuses them
-anyway.
+Each row offers **Open**, **Copy URL**, **Agent Browser**, and **Share 24h** —
+the last creates a public link through the same share API and copies the
+one-time URL, which is also printed in the panel in case the clipboard was
+refused. Platform ports (6080 noVNC, 8842 and 8081 code-server, 9222 CDP) are
+listed so their presence is explained, but they carry no Share or Agent Browser
+action; the share service refuses them anyway, and pointing the Agent Browser
+at its own noVNC view or DevTools port is a loop rather than a preview.
 
 The chip picks the port that already has a live public link, falling back to the
 lowest non-platform port. Ports are re-scanned when a panel opens, every 15
@@ -53,6 +54,61 @@ seconds while it stays open, and once each time an agent turn finishes — the
 workspace WebSocket carries no listener events to piggyback on, and each scan
 costs an `ss` run inside the container. A project whose container is stopped,
 missing, or still provisioning reports that state instead of scanning.
+
+## Open in Agent Browser
+
+The **Agent Browser** action on a port row loads that port in the project's
+shared headed browser instead of the user's own browser, so the user and the
+agent look at the same signed-in session.
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as Preview panel
+    participant API as Backend
+    participant LXD as Project container
+    participant Chrome as Headed Chromium
+
+    User->>UI: Agent Browser on :3000
+    UI->>API: POST /api/projects/{id}/agent-browser/start
+    API->>LXD: provision and start the browser stack
+    UI->>UI: reveal the Agent Browser pane
+    UI->>API: GET /api/projects/{id}/agent-browser until core is ready
+    UI->>API: POST /api/projects/{id}/agent-browser/navigate {url}
+    API->>LXD: lxc exec — curl -X PUT 127.0.0.1:9222/json/new?<url>
+    LXD->>Chrome: open and focus a new tab
+```
+
+Three properties are load-bearing:
+
+- **The browser is driven to container loopback**, `http://127.0.0.1:<port>/`,
+  not to the public preview host. The Agent Browser runs inside the project's
+  own container, so loopback reaches the dev server directly and the platform's
+  `forward_auth` sign-in never appears inside the shared session.
+- **Navigation is a policy decision, not a passthrough.** The service accepts
+  `http` and `https` only, rejects embedded credentials and any whitespace or
+  quoting that could smuggle a second argument, and accepts exactly two kinds
+  of host: container loopback (`127.0.0.1`, `localhost`, `::1`) or this
+  project's own `<slug>--<port>.dev.<host>` preview host. Another project's
+  slug, the platform host, and the IDE host are all refused with `400`.
+  ([`service/project/agent_browser_url.go`](../../backend/internal/service/project/agent_browser_url.go))
+- **The browser must already be running.** Navigation drives an existing
+  session rather than launching one; a request that arrives before the core is
+  ready answers `409`, which is why the UI starts the browser, reveals the
+  pane, and waits for `core: "ready"` before navigating. A cold container needs
+  about a minute to install Chromium, and the pane already renders that state.
+
+The action appears in both entry points. From the chat header chip it also
+switches the workspace Browser pane to the Agent Browser view. The sidebar
+popover has no chat pane to reveal, so it reports the result in place instead.
+
+| Method | Path | Result |
+| --- | --- | --- |
+| `POST` | `/api/projects/{id}/agent-browser/navigate` | Opens `{url}` in a new tab of the running browser; returns the accepted URL |
+
+Failures are shown on the port row that caused them: an invalid URL (`400`), a
+browser that never became ready (`409` or a timeout), or a container-side
+`curl` failure.
 
 ## Public share links
 

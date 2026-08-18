@@ -21,6 +21,7 @@ type Runtime interface {
 	StartView(ctx context.Context, containerName string) error
 	Stop(ctx context.Context, containerName string) error
 	StopView(ctx context.Context, containerName string) error
+	Navigate(ctx context.Context, containerName, url string) error
 	Running(ctx context.Context, containerName string) (bool, error)
 	Status(ctx context.Context, containerName string) (serviceproject.AgentBrowserInfo, error)
 }
@@ -94,6 +95,13 @@ func (s *Service) Stop(ctx context.Context, containerName string) error {
 
 func (s *Service) StopView(ctx context.Context, containerName string) error {
 	return s.runtime.StopView(ctx, containerName)
+}
+
+// Navigate points the already-running browser at url. It deliberately does
+// not provision or start anything: navigating a browser that is not up is a
+// caller error, not something to paper over with a 60-second launch.
+func (s *Service) Navigate(ctx context.Context, containerName, url string) error {
+	return s.runtime.Navigate(ctx, containerName, url)
 }
 
 func (s *Service) Running(ctx context.Context, containerName string) (bool, error) {

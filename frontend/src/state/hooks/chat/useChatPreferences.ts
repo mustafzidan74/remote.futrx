@@ -73,6 +73,9 @@ export function useChatPreferences({
     displayMeta,
     displayMode,
     selectedSkills,
+    // Exposed for prompt sources that change several settings at once — the
+    // Playbooks menu applies skills, mode, and provider in a single patch.
+    applyMeta: metaActions.applyMeta,
     changeProvider,
     changeModel,
     changeMode,

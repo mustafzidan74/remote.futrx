@@ -83,6 +83,12 @@ func (a *Adapter) StopView(ctx context.Context, containerName string) error {
 	return a.runtime.stopView(ctx, containerName)
 }
 
+// Navigate points the container's running Chrome at url by opening a new tab
+// through its loopback DevTools endpoint.
+func (a *Adapter) Navigate(ctx context.Context, containerName, url string) error {
+	return a.runtime.navigate(ctx, containerName, url)
+}
+
 // Running reports whether the core is currently ready.
 func (a *Adapter) Running(ctx context.Context, containerName string) (bool, error) {
 	return a.runtime.running(ctx, containerName)

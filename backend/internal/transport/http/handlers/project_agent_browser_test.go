@@ -156,6 +156,7 @@ type fakeProjectContainers struct {
 	agentBrowserStartedCh       chan struct{}
 	agentBrowserAllowCh         chan struct{}
 	resourceLimits              serviceproject.ContainerLimits
+	navigatedURLs               []string
 }
 
 func newFakeProjectContainers() *fakeProjectContainers {
@@ -179,6 +180,10 @@ func (f fakeProjectBrowser) Stop(ctx context.Context, containerName string) erro
 
 func (f fakeProjectBrowser) StopView(ctx context.Context, containerName string) error {
 	return f.containers.stopBrowserView(ctx, containerName)
+}
+
+func (f fakeProjectBrowser) Navigate(ctx context.Context, containerName, url string) error {
+	return f.containers.navigateBrowser(ctx, containerName, url)
 }
 
 func (f fakeProjectBrowser) Status(ctx context.Context, containerName string) (serviceproject.AgentBrowserInfo, error) {
@@ -270,6 +275,19 @@ func (f *fakeProjectContainers) stopBrowserView(context.Context, string) error {
 	return nil
 }
 
+func (f *fakeProjectContainers) navigateBrowser(_ context.Context, _, url string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.navigatedURLs = append(f.navigatedURLs, url)
+	return nil
+}
+
+func (f *fakeProjectContainers) navigatedTo() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.navigatedURLs...)
+}
+
 func (f *fakeProjectContainers) browserStatus(context.Context, string) (serviceproject.AgentBrowserInfo, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -340,4 +358,120 @@ func waitForAgentBrowserReady(t *testing.T, handler *ProjectHandler, project ser
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
+}
+
+func TestProjectAgentBrowserNavigate(t *testing.T) {
+	handler, containers, project := newAgentBrowserProjectHandler(t)
+	target := "/api/projects/" + string(project.ID) + "/agent-browser/navigate"
+
+	// Nothing is running yet, so there is no session to drive.
+	rec := httptest.NewRecorder()
+	handler.HandleResource(rec, navigateRequest(target, `{"url":"http://127.0.0.1:3000/"}`))
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("navigate before start = %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	startRec := httptest.NewRecorder()
+	handler.HandleResource(startRec, navigateRequest(
+		"/api/projects/"+string(project.ID)+"/agent-browser/start", "{}",
+	))
+	if startRec.Code != http.StatusOK {
+		t.Fatalf("start = %d body=%s", startRec.Code, startRec.Body.String())
+	}
+	containers.waitForAgentBrowserStart(t)
+	containers.completeAgentBrowserStart()
+	waitForAgentBrowserReady(t, handler, project)
+
+	tests := []struct {
+		name       string
+		body       string
+		wantStatus int
+		wantURL    string
+	}{
+		{
+			name:       "container loopback",
+			body:       `{"url":"http://127.0.0.1:3000/"}`,
+			wantStatus: http.StatusOK,
+			wantURL:    "http://127.0.0.1:3000/",
+		},
+		{
+			name:       "the project's own preview host",
+			body:       `{"url":"https://` + project.Slug + `--3000.dev.remote.futrx.com/"}`,
+			wantStatus: http.StatusOK,
+			wantURL:    "https://" + project.Slug + "--3000.dev.remote.futrx.com/",
+		},
+		{
+			name:       "another host is refused",
+			body:       `{"url":"https://evil.example.com/"}`,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "a non-http scheme is refused",
+			body:       `{"url":"file:///etc/passwd"}`,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "a missing url is refused",
+			body:       `{}`,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "a malformed body is refused",
+			body:       `not json`,
+			wantStatus: http.StatusBadRequest,
+		},
+	}
+
+	var wantNavigations []string
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			handler.HandleResource(rec, navigateRequest(target, tt.body))
+			if rec.Code != tt.wantStatus {
+				t.Fatalf("status = %d, want %d (body %s)", rec.Code, tt.wantStatus, rec.Body.String())
+			}
+			if tt.wantURL == "" {
+				return
+			}
+			wantNavigations = append(wantNavigations, tt.wantURL)
+			var payload map[string]string
+			if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+				t.Fatal(err)
+			}
+			if payload["url"] != tt.wantURL {
+				t.Fatalf("response url = %q, want %q", payload["url"], tt.wantURL)
+			}
+		})
+	}
+
+	got := containers.navigatedTo()
+	if len(got) != len(wantNavigations) {
+		t.Fatalf("container saw %v, want %v", got, wantNavigations)
+	}
+	for i, want := range wantNavigations {
+		if got[i] != want {
+			t.Fatalf("navigation %d = %q, want %q", i, got[i], want)
+		}
+	}
+}
+
+func TestProjectAgentBrowserNavigateRejectsNonPost(t *testing.T) {
+	handler, _, project := newAgentBrowserProjectHandler(t)
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/projects/"+string(project.ID)+"/agent-browser/navigate",
+		nil,
+	)
+	rec := httptest.NewRecorder()
+	handler.HandleResource(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("GET /agent-browser/navigate = %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func navigateRequest(target, body string) *http.Request {
+	req := httptest.NewRequest(http.MethodPost, target, strings.NewReader(body))
+	req.Host = "remote.futrx.com"
+	req.Header.Set("X-Forwarded-Proto", "https")
+	return req
 }

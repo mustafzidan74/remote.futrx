@@ -1,6 +1,6 @@
-import type { ChatMeta } from "../../models/chat";
+import type { ChatMeta, UpdateChatInput } from "../../models/chat";
 import type { ProjectMeta } from "../../models/project";
-import { useEffect, useRef } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
 import { BrowserDrawer } from "../../ui/chat/browser/BrowserDrawer";
 import { ChatThread } from "../../ui/chat/ChatThread";
 import { MediaViewerOverlay } from "../../ui/chat/files/MediaViewerOverlay";
@@ -17,6 +17,7 @@ import { useChatDrawerController } from "../../state/hooks/chat/useChatDrawerCon
 import { useChatKeyboardShortcuts } from "../../state/hooks/chat/useChatKeyboardShortcuts";
 import { useChatPreferences } from "../../state/hooks/chat/useChatPreferences";
 import { useChatReadMarker } from "../../state/hooks/chat/useChatReadMarker";
+import { usePlaybooks } from "../../state/hooks/chat/usePlaybooks";
 import { useTerminalOverlayController } from "../../state/hooks/chat/useTerminalOverlayController";
 import { useWorkspaceGitRepos } from "../../state/hooks/chat/useWorkspaceGitRepos";
 
@@ -72,6 +73,38 @@ export function ChatContainer({
   // the project's slug to build preview URLs.
   const chatProject = browser.browserProject;
   const terminal = useTerminalOverlayController(chat.id);
+  // The composer's Playbooks menu. Its context comes from the chat's project
+  // and the newest preview URL the conversation mentioned, so a template can
+  // name the project it is about without a port scan.
+  const playbookContext = useMemo(
+    () => ({
+      projectName: chatProject?.name,
+      slug: chatProject?.slug,
+      previewUrl: browser.previewUrl,
+    }),
+    [chatProject?.name, chatProject?.slug, browser.previewUrl],
+  );
+  const playbookChatState = useMemo(
+    () => ({
+      provider: displayMeta.provider || ("codex" as const),
+      selectedSkills,
+      mode: displayMode,
+    }),
+    [displayMeta.provider, selectedSkills, displayMode],
+  );
+  const applyMeta = preferences.applyMeta;
+  const applyPlaybookMeta = useCallback(
+    (patch: UpdateChatInput) => applyMeta(patch),
+    [applyMeta],
+  );
+  const playbooks = usePlaybooks({
+    enabled: true,
+    context: playbookContext,
+    current: playbookChatState,
+    applyMeta: applyPlaybookMeta,
+    insertPrompt: composer.insertText,
+    submitPrompt: composer.submitText,
+  });
   const drawers = useChatDrawerController({
     chatId: chat.id,
     showBrowser: browser.openBrowserDrawer,
@@ -151,6 +184,7 @@ export function ChatContainer({
     },
     queuedPrompts: composer.queue.queuedPrompts,
     selectedSkills,
+    playbooks,
     attachments: composer.upload.attachments,
     uploading: composer.upload.uploading,
     dragging: composer.drag.dragging,
@@ -191,6 +225,7 @@ export function ChatContainer({
             onAnswerQuestion={composer.handleAnswerQuestion}
             onLoadOlder={loadOlder}
             onRewind={composer.handleRewind}
+            onOpenAgentBrowser={browser.openAgentBrowserPane}
             mobileToolbar={
               <aside class="workspace-action-toolbar relative z-30 flex flex-none justify-end border-b border-white/10 bg-[#101318] px-3 py-2 md:hidden">
                 <WorkspaceActions {...workspaceActions} orientation="horizontal" />
@@ -221,6 +256,7 @@ export function ChatContainer({
           apps={browser.containerApps}
           appsLoading={browser.appsLoading}
           selectedPort={browser.selectedAppPort}
+          agentBrowserRequest={browser.agentBrowserRequest}
           onSelectPort={browser.setSelectedAppPort}
           onRefreshApps={() => void browser.loadContainerApps()}
           onCaptureElement={browser.insertBrowserElementContext}

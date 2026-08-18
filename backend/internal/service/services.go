@@ -17,6 +17,7 @@ import (
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicehealth "github.com/futrx-com/remote.futrx.com/internal/service/health"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
+	serviceplaybooks "github.com/futrx-com/remote.futrx.com/internal/service/playbooks"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	"github.com/futrx-com/remote.futrx.com/internal/service/prompt"
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
@@ -52,6 +53,7 @@ type Dependencies struct {
 	Users             serviceuser.Repository
 	UserSettings      serviceusersettings.Repository
 	Notifications     servicenotify.Store
+	Playbooks         serviceplaybooks.Repository
 	GlobalSkills      serviceskills.GlobalRepository
 	Usage             serviceusage.Repository
 	ResourceSettings  serviceresources.Repository
@@ -97,6 +99,7 @@ type Services struct {
 	Users         *serviceuser.Service
 	UserSettings  *serviceusersettings.Service
 	Notifications *servicenotify.Service
+	Playbooks     *serviceplaybooks.Service
 	Skills        *serviceskills.Catalog
 	Tmux          *servicetmux.Service
 	Access        *serviceauth.AccessVerifier
@@ -257,6 +260,19 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	if err := scheduleService.Start(ctx); err != nil {
 		return Services{}, fmt.Errorf("start scheduled tasks: %w", err)
 	}
+	// The playbook library is seeded on the first start that finds no
+	// document, so a fresh install already offers the composer's one-click
+	// prompts. A seeding failure is logged, never fatal: the library is a
+	// convenience, not a precondition for running agents.
+	playbookService := serviceplaybooks.New(deps.Playbooks, serviceplaybooks.WithAudit(auditLog))
+	if deps.Playbooks != nil {
+		if seeded, err := playbookService.Ensure(ctx); err != nil {
+			log.Printf("playbooks: seed warning: %v", err)
+		} else if seeded > 0 {
+			log.Printf("playbooks: seeded %d built-in playbooks", seeded)
+		}
+	}
+
 	userSettingsService := serviceusersettings.New(deps.UserSettings)
 	skillService := serviceskills.New()
 	skillCatalog := serviceskills.NewCatalog(skillService, projectService, authService).
@@ -302,6 +318,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Users:         userService,
 		UserSettings:  userSettingsService,
 		Notifications: notifications,
+		Playbooks:     playbookService,
 		Skills:        skillCatalog,
 		Tmux:          tmuxService,
 		Access:        accessVerifier,

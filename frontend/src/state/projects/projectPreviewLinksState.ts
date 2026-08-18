@@ -75,6 +75,25 @@ export function hasPreviewPort(rows: PreviewPortRow[]): boolean {
   return preferredPreviewPort(rows) !== null;
 }
 
+/**
+ * Whether a row may be opened in the project's Agent Browser. Platform ports
+ * are excluded for the same reason they carry no Share action, plus one of
+ * their own: pointing the Agent Browser at its own noVNC view (:6080) or its
+ * own DevTools port (:9222) is a loop, not a preview.
+ */
+export function canOpenInAgentBrowser(row: PreviewPortRow): boolean {
+  return row.shareable;
+}
+
+/**
+ * The in-container address the Agent Browser is sent to. It is loopback on
+ * purpose: the browser lives in the same container as the app, so this reaches
+ * the dev server directly and never meets the platform's sign-in page.
+ */
+export function agentBrowserTargetUrl(port: number): string {
+  return `http://127.0.0.1:${port}/`;
+}
+
 export function previewChipLabel(port: number): string {
   return `Preview :${port}`;
 }
@@ -93,7 +112,7 @@ export function previewUnavailableReason(status: string): PreviewUnavailableReas
  * Copy / share feedback
  * ------------------------------------------------------------------ */
 
-export type PreviewLinkAction = "copy" | "share";
+export type PreviewLinkAction = "copy" | "share" | "agent-browser";
 export type PreviewLinkStatus = "idle" | "working" | "done" | "error";
 
 export interface PreviewLinkFeedback {

@@ -82,6 +82,7 @@ type ContainerBrowser interface {
 	Ensure(ctx context.Context, containerName string) error
 	Stop(ctx context.Context, containerName string) error
 	StopView(ctx context.Context, containerName string) error
+	Navigate(ctx context.Context, containerName, url string) error
 	Status(ctx context.Context, containerName string) (AgentBrowserInfo, error)
 	Port() int
 }

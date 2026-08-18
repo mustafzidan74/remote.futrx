@@ -75,6 +75,7 @@ func main() {
 		Users:             storeSet.Users,
 		UserSettings:      storeSet.UserSettings,
 		Notifications:     storeSet.Notifications,
+		Playbooks:         storeSet.Playbooks,
 		GlobalSkills:      storeSet.GlobalSkills,
 		Usage:             storeSet.Usage,
 		ResourceSettings:  storeSet.Resources,

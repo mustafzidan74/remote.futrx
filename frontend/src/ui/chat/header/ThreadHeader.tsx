@@ -9,11 +9,13 @@ export function ThreadHeader({
   project,
   streaming,
   onHamburger,
+  onOpenAgentBrowser,
 }: {
   chat: ChatMeta;
   project: ProjectMeta | null;
   streaming: boolean;
   onHamburger: () => void;
+  onOpenAgentBrowser?: () => void;
 }) {
   return (
     <header class="codex-header top-chrome z-20 flex flex-none items-center border-b border-white/10 bg-[#101318] px-3 py-2 md:bg-[#101318]/95 md:backdrop-blur">
@@ -48,7 +50,13 @@ export function ThreadHeader({
         </div>
       </div>
 
-      {project && <ChatPreviewChip project={project} streaming={streaming} />}
+      {project && (
+        <ChatPreviewChip
+          project={project}
+          streaming={streaming}
+          onAgentBrowserOpened={onOpenAgentBrowser}
+        />
+      )}
     </header>
   );
 }

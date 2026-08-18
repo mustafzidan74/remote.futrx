@@ -24,6 +24,10 @@ export function useChatBrowserController({
   textareaRef: RefObject<HTMLTextAreaElement>;
 }) {
   const [browserOpen, setBrowserOpen] = useState(false);
+  // Bumped to ask the drawer to switch to the Agent Browser pane. A counter
+  // rather than a boolean so a second request re-focuses the pane even if the
+  // user has since switched back to the app preview.
+  const [agentBrowserRequest, setAgentBrowserRequest] = useState(0);
   const [containerApps, setContainerApps] = useState<ContainerApp[]>([]);
   const [appsLoading, setAppsLoading] = useState(false);
   const [selectedAppPort, setSelectedAppPort] = useState<number | null>(null);
@@ -36,6 +40,7 @@ export function useChatBrowserController({
 
   useEffect(() => {
     setBrowserOpen(false);
+    setAgentBrowserRequest(0);
   }, [chat.id]);
 
   const loadContainerApps = useCallback(async () => {
@@ -72,6 +77,16 @@ export function useChatBrowserController({
     void loadContainerApps();
   }
 
+  // Opens the drawer straight onto the Agent Browser pane. Used by the
+  // preview popover's "Open in Agent Browser" action, which starts and
+  // navigates the shared browser and then wants the user looking at it.
+  function openAgentBrowserPane() {
+    if (!chat.projectId) return;
+    setBrowserOpen(true);
+    setAgentBrowserRequest((value) => value + 1);
+    void loadContainerApps();
+  }
+
   function insertBrowserElementContext(capture: BrowserElementCapture) {
     const insertion = `\n\n${chatBrowserState.formatElementCapture(capture)}\n\n`;
     const textarea = textareaRef.current;
@@ -89,6 +104,11 @@ export function useChatBrowserController({
   return {
     browserOpen,
     browserProject,
+    // The most recent preview URL this chat mentioned, used to resolve a
+    // playbook's {{previewUrl}} without paying for a port scan.
+    previewUrl: browserUrl,
+    agentBrowserRequest,
+    openAgentBrowserPane,
     containerApps,
     appsLoading,
     selectedAppPort,

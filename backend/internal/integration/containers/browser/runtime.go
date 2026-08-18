@@ -15,6 +15,12 @@ import (
 const (
 	agentBrowserReadyTimeout = 60 * time.Second
 	stopTimeout              = 30 * time.Second
+	navigateTimeout          = 15 * time.Second
+
+	// cdpEndpoint is the DevTools HTTP endpoint gui-up.sh binds Chrome to,
+	// on container loopback only. `PUT /json/new?<url>` opens a new tab and
+	// focuses it; newer Chrome refuses the historic GET form.
+	cdpEndpoint = "http://127.0.0.1:9222"
 )
 
 // agentBrowserRuntime owns launcher commands and translation of the launcher's
@@ -46,6 +52,25 @@ func (r *agentBrowserRuntime) stopView(ctx context.Context, containerName string
 	}
 	if out, err := command.RunWithTimeout(ctx, r.runner, stopTimeout, "exec", containerName, "--", "sh", containerGUIScript, "stop-view"); err != nil {
 		return fmt.Errorf("stop agent browser view: %w; output: %s", err, output.TruncateTail(out, 1000))
+	}
+	return nil
+}
+
+// navigate opens url in a new tab of the container's running Chrome. The
+// request is made from inside the container, so the CDP port never has to
+// leave loopback and a preview served on 127.0.0.1 is reached without the
+// platform's authenticated public edge.
+func (r *agentBrowserRuntime) navigate(ctx context.Context, containerName, url string) error {
+	if !r.runner.Available() {
+		return command.ErrUnavailable
+	}
+	out, err := command.RunWithTimeout(
+		ctx, r.runner, navigateTimeout,
+		"exec", containerName, "--",
+		"curl", "-sS", "-f", "--max-time", "10", "-X", "PUT", cdpEndpoint+"/json/new?"+url,
+	)
+	if err != nil {
+		return fmt.Errorf("navigate agent browser: %w; output: %s", err, output.TruncateTail(out, 1000))
 	}
 	return nil
 }

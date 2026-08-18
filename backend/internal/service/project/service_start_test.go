@@ -136,7 +136,8 @@ func (b *upgradeTestBrowser) Stop(context.Context, string) error {
 	b.stopCalls++
 	return nil
 }
-func (*upgradeTestBrowser) StopView(context.Context, string) error { return nil }
+func (*upgradeTestBrowser) StopView(context.Context, string) error         { return nil }
+func (*upgradeTestBrowser) Navigate(context.Context, string, string) error { return nil }
 func (*upgradeTestBrowser) Status(context.Context, string) (AgentBrowserInfo, error) {
 	return AgentBrowserInfo{}, nil
 }
