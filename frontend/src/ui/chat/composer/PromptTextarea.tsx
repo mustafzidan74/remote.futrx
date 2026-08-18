@@ -37,6 +37,7 @@ export function PromptTextarea({
       }}
       onPaste={(event) => onPaste(event as ClipboardEvent)}
       rows={1}
+      dir="auto"
       enterkeyhint="enter"
       aria-keyshortcuts="Control+Enter Meta+Enter"
       autocomplete="off"
@@ -50,7 +51,7 @@ export function PromptTextarea({
         "Ask anything, @ to add files, / for commands"
       }
       disabled={disconnected}
-      class="codex-composer-textarea flex-1 resize-none rounded-md
+      class="codex-composer-textarea min-w-0 flex-1 resize-none rounded-md
              bg-transparent border-0 text-ink-100 placeholder:text-ink-300
              focus:outline-none
              px-2.5 py-2.5 text-[16px] sm:text-[14px] leading-normal

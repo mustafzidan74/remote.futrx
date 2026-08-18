@@ -53,7 +53,7 @@ export function KimiAuthSettings({
           type="button"
           onClick={() => void onStartDeviceLogin()}
           disabled={starting || loginActive}
-          class="h-10 px-3 rounded bg-accent-blue/80 hover:bg-accent-blue text-white text-[13px] font-medium disabled:opacity-50"
+          class="h-10 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50"
         >
           {starting ? "Starting..." : loginActive ? "Login in progress" : authenticated ? "Refresh Kimi login" : "Sign in with Kimi"}
         </button>
@@ -61,7 +61,7 @@ export function KimiAuthSettings({
       </div>
 
       {loginActive && (
-        <div class="rounded border border-accent-blue/25 bg-accent-blue/[0.08] p-3 space-y-2">
+        <div class="rounded-md border border-accent-blue/25 bg-accent-blue/[0.08] p-3 space-y-2">
           <div class="text-[12px] text-ink-200">Open the link and confirm this code:</div>
           <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
             <div class="font-mono text-[18px] tracking-wide text-ink-50 bg-black/30 border border-white/10 rounded px-3 py-2">

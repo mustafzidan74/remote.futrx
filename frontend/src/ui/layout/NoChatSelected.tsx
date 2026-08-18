@@ -47,8 +47,8 @@ export function NoChatSelected({
             <button
               type="button"
               onClick={onNewProject}
-              class="inline-flex items-center gap-2 bg-accent-blue hover:bg-accent-blue/90 active:scale-[0.99]
-                     text-white text-sm font-medium px-4 h-11 rounded-md transition"
+              class="inline-flex items-center gap-2 bg-accent-blue hover:bg-accent-blue/85 active:scale-[0.99]
+                     text-ink-900 text-sm font-medium px-4 h-11 rounded-md transition"
             >
               <Folder class="w-4 h-4" /> New project
             </button>

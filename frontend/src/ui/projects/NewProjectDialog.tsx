@@ -23,15 +23,38 @@ export function NewProjectDialog({
   onClose: () => void;
 }) {
   const nameInput = useRef<HTMLInputElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (state.open) nameInput.current?.focus();
   }, [state.open]);
 
+  // Escape closes, and Tab stays inside the panel: a modal that leaks focus to
+  // the sidebar behind it is unusable with a keyboard or a screen reader.
   useEffect(() => {
     if (!state.open) return;
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab" || !panel.current) return;
+      const focusable = Array.from(
+        panel.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((element) => element.offsetParent !== null);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const current = document.activeElement as HTMLElement | null;
+      if (event.shiftKey && (current === first || !panel.current.contains(current))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && current === last) {
+        event.preventDefault();
+        first.focus();
+      }
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
@@ -48,10 +71,11 @@ export function NewProjectDialog({
       onClick={onClose}
     >
       <div
+        ref={panel}
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-project-title"
-        class="w-full md:max-w-2xl max-h-[92vh] flex flex-col rounded-t-xl md:rounded-xl
+        class="dialog-panel w-full md:max-w-2xl flex flex-col rounded-t-xl md:rounded-xl
                border border-white/10 bg-[#101318] shadow-2xl overflow-hidden"
         onClick={(event) => event.stopPropagation()}
       >
@@ -89,11 +113,12 @@ export function NewProjectDialog({
                 ref={nameInput}
                 type="text"
                 value={state.name}
+                dir="auto"
                 onInput={(event) => onNameChange((event.target as HTMLInputElement).value)}
                 placeholder="My project"
                 class="mt-1.5 w-full h-10 px-3 rounded-md bg-white/[0.04] border border-white/10
                        text-[14px] text-ink-50 placeholder:text-ink-400
-                       focus:outline-none focus:border-accent-blue/60"
+                       focus:outline-none focus:border-accent-blue/60 focus:ring-1 focus:ring-accent-blue/30"
               />
             </label>
 
@@ -107,7 +132,7 @@ export function NewProjectDialog({
                 onSelect={onSelectTemplate}
               />
               {notice && (
-                <p class="mt-2 text-[12px] text-ink-300 leading-snug">{notice}</p>
+                <p dir="auto" class="bidi-auto mt-2 text-[12px] text-ink-300 leading-snug">{notice}</p>
               )}
             </div>
 
@@ -117,7 +142,7 @@ export function NewProjectDialog({
               <div class="flex items-start gap-2.5 rounded-md border border-accent-red/30
                           bg-accent-red/[0.08] px-3 py-2 text-[12.5px]">
                 <AlertCircle class="w-4 h-4 mt-0.5 flex-none text-accent-red" />
-                <span class="text-ink-100 break-words">{state.error}</span>
+                <span dir="auto" class="bidi-auto min-w-0 text-ink-100 break-words">{state.error}</span>
               </div>
             )}
           </div>
@@ -134,7 +159,7 @@ export function NewProjectDialog({
               type="submit"
               disabled={!canSubmit}
               class="h-10 px-4 rounded-md text-[13.5px] font-medium text-white
-                     bg-accent-blue hover:bg-accent-blue/90 disabled:opacity-50
+                     bg-accent-blue hover:bg-accent-blue/85 disabled:opacity-50
                      disabled:cursor-not-allowed inline-flex items-center gap-2"
             >
               {state.submitting && <Loader class="w-4 h-4 animate-spin" />}
@@ -195,7 +220,7 @@ function TemplateInputField({
   const describedBy = error ? `${fieldId}-error` : input.help ? `${fieldId}-help` : undefined;
   const control =
     "w-full h-10 px-3 rounded-md bg-white/[0.04] border text-[14px] text-ink-50 " +
-    "placeholder:text-ink-400 focus:outline-none " +
+    "placeholder:text-ink-400 focus:outline-none focus:ring-1 focus:ring-accent-blue/30 " +
     (error ? "border-accent-red/60" : "border-white/10 focus:border-accent-blue/60");
 
   if (input.type === "checkbox") {
@@ -211,7 +236,7 @@ function TemplateInputField({
             }
             class="mt-0.5 h-4 w-4 flex-none rounded border-white/20 bg-white/[0.04] accent-[#3b82f6]"
           />
-          <span class="text-[13px] text-ink-100 leading-snug">{input.label}</span>
+          <span dir="auto" class="bidi-auto text-[13px] text-ink-100 leading-snug">{input.label}</span>
         </label>
         {input.help && (
           <p id={`${fieldId}-help`} class="mt-1 ml-[26px] text-[11.5px] text-ink-400 leading-snug">
@@ -251,6 +276,7 @@ function TemplateInputField({
           id={fieldId}
           type={input.type === "password" ? "password" : input.type === "email" ? "email" : "text"}
           value={value}
+          dir={input.type === "password" ? "ltr" : "auto"}
           autocomplete={input.type === "password" ? "new-password" : "off"}
           placeholder={placeholderFor(input)}
           aria-describedby={describedBy}

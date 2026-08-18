@@ -2,7 +2,8 @@ import { useState } from "preact/hooks";
 import type { TrashedProject } from "../../models/project";
 import type { ProjectTrash } from "../../state/hooks/admin/useProjectTrash";
 import { snapshotState } from "../../state/projects/snapshotState";
-import { AlertCircle, Clock, Loader, RotateCcw, Trash } from "../primitives/icons";
+import { Clock, Loader, RotateCcw, Trash } from "../primitives/icons";
+import { EmptyState, ErrorBanner } from "../primitives/Feedback";
 import { formatEpochMillis } from "../projects/project-containers/projectContainerFormat";
 
 export function TrashSettings({ trash, isAdmin }: { trash: ProjectTrash; isAdmin: boolean }) {
@@ -63,12 +64,13 @@ export function TrashSettings({ trash, isAdmin }: { trash: ProjectTrash; isAdmin
           </button>
         </header>
 
-        <div class="p-3 space-y-2">
+        <div class="p-3 space-y-3">
           {(trash.error || actionError) && (
-            <div class="flex items-start gap-2.5 rounded-lg border border-accent-red/30 bg-accent-red/[0.08] px-3 py-2.5 text-[13px]">
-              <AlertCircle class="w-4 h-4 mt-0.5 flex-none text-accent-red" />
-              <div class="text-accent-red break-words">{trash.error ?? actionError}</div>
-            </div>
+            <ErrorBanner
+              message={(trash.error ?? actionError) as string}
+              retrying={trash.loading}
+              onRetry={() => void trash.refresh()}
+            />
           )}
 
           {trash.loading && trash.projects.length === 0 ? (
@@ -76,9 +78,11 @@ export function TrashSettings({ trash, isAdmin }: { trash: ProjectTrash; isAdmin
               Loading the Trash…
             </div>
           ) : trash.projects.length === 0 ? (
-            <div class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-4 text-center text-[12.5px] text-ink-300">
-              The Trash is empty.
-            </div>
+            <EmptyState
+              Icon={Trash}
+              title="The Trash is empty"
+              hint="Deleted projects land here and stay recoverable until their retention window closes."
+            />
           ) : (
             trash.projects.map((project) => (
               <TrashedProjectRow
@@ -95,7 +99,7 @@ export function TrashSettings({ trash, isAdmin }: { trash: ProjectTrash; isAdmin
         </div>
       </section>
 
-      <p class="text-[11.5px] text-ink-400 leading-relaxed px-1">
+      <p class="text-[11.5px] text-ink-300 leading-relaxed px-1">
         Restoring moves the files back, re-creates the container from the project's
         template, and re-imports the database captured when it was deleted. The name of
         a trashed project stays reserved: a new project cannot take it until this one is

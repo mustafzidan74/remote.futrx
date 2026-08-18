@@ -62,7 +62,7 @@ export function UpdatesSettings({
             disabled={checking || runActive}
             class="h-9 px-2.5 rounded-md inline-flex items-center gap-2 text-[12px] text-ink-200 hover:text-ink-50 hover:bg-white/[0.08] disabled:opacity-60"
           >
-            <RotateCcw class={`w-3.5 h-3.5 ${checking ? "animate-spin" : ""}`} />
+            <RotateCcw class={`w-4 h-4 ${checking ? "animate-spin" : ""}`} aria-hidden="true" />
             <span class="hidden sm:inline">{checking ? "Checking…" : "Check for updates"}</span>
           </button>
         </header>
@@ -92,7 +92,7 @@ export function UpdatesSettings({
             type="button"
             onClick={() => void onApply(latestTag)}
             disabled={applying}
-            class="mt-3 h-10 px-3 rounded bg-accent-blue/80 hover:bg-accent-blue text-white text-[13px] font-medium disabled:opacity-50"
+            class="mt-3 h-10 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50"
           >
             {applying ? "Starting update…" : `Update to ${latestTag}`}
           </button>
@@ -135,7 +135,7 @@ export function UpdatesSettings({
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                class="mt-2.5 h-9 px-3 rounded bg-accent-green/80 hover:bg-accent-green text-white text-[13px] font-medium"
+                class="mt-2.5 h-9 px-3 rounded-md bg-accent-green text-ink-900 hover:bg-accent-green/85 text-[13px] font-medium"
               >
                 Reload to use the new version
               </button>

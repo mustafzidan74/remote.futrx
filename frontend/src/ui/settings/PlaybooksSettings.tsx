@@ -15,6 +15,7 @@ import {
   updatePlaybook,
 } from "../../state/settings/playbookLibraryState";
 import { AlertCircle, ArrowDown, ArrowUp, Check, Loader, Plus, Trash, Zap } from "../primitives/icons";
+import { EmptyState, ErrorBanner } from "../primitives/Feedback";
 
 /**
  * Admin editor for the composer's playbook library.
@@ -66,12 +67,7 @@ export function PlaybooksSettings({ editor }: { editor: PlaybookLibraryEditor })
         </div>
       </div>
 
-      {editor.error && (
-        <div class="flex items-start gap-2 rounded-lg border border-accent-red/30 bg-accent-red/[0.08] px-3 py-2.5 text-[12.5px] text-accent-red">
-          <AlertCircle class="mt-0.5 h-4 w-4 flex-none" />
-          <span class="min-w-0 break-words">{editor.error}</span>
-        </div>
-      )}
+      {editor.error && <ErrorBanner message={editor.error} />}
 
       {editor.loading ? (
         <div class="rounded-lg border border-white/10 bg-[#101318] px-4 py-6 text-[13px] text-ink-300">
@@ -80,9 +76,11 @@ export function PlaybooksSettings({ editor }: { editor: PlaybookLibraryEditor })
       ) : (
         <div class="space-y-3">
           {editor.draft.length === 0 && (
-            <div class="rounded-lg border border-white/10 bg-[#101318] px-4 py-6 text-[13px] text-ink-300">
-              The library is empty. Add a playbook to give every chat a one-click prompt.
-            </div>
+            <EmptyState
+              Icon={Zap}
+              title="The library is empty"
+              hint="Add a playbook to give every chat composer a one-click prompt."
+            />
           )}
           {editor.draft.map((playbook, index) => (
             <PlaybookCard
@@ -117,8 +115,8 @@ export function PlaybooksSettings({ editor }: { editor: PlaybookLibraryEditor })
           type="button"
           onClick={() => void editor.save()}
           disabled={editor.saving || !editor.dirty || editor.problem !== null}
-          class="inline-flex h-8 items-center gap-1.5 rounded-md bg-accent-blue/80 px-3 text-[12.5px]
-                 font-medium text-white transition hover:bg-accent-blue disabled:opacity-40"
+          class="inline-flex h-8 items-center gap-1.5 rounded-md bg-accent-blue px-3 text-[12.5px]
+                 font-medium text-ink-900 transition hover:bg-accent-blue/85 disabled:opacity-40"
         >
           {editor.saving ? <Loader class="h-3.5 w-3.5 animate-spin" /> : <Check class="h-3.5 w-3.5" />}
           {editor.saving ? "Saving…" : "Save library"}
@@ -225,7 +223,7 @@ function PlaybookCard({
         aria-label="One-line hint"
         placeholder="One-line hint shown under the title in the composer menu"
         class="mt-2 h-8 w-full rounded-md border border-white/10 bg-[#0b0d11] px-2.5 text-[12.5px] text-ink-100
-               placeholder:text-ink-500 focus:border-accent-blue/50 focus:outline-none"
+               placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
       />
 
       <textarea
@@ -235,7 +233,7 @@ function PlaybookCard({
         aria-label="Prompt"
         placeholder="The prompt this playbook loads into the composer"
         class="mt-2 w-full resize-y rounded-md border border-white/10 bg-[#0b0d11] px-2.5 py-2 font-mono text-[12px]
-               leading-5 text-ink-100 placeholder:text-ink-500 focus:border-accent-blue/50 focus:outline-none"
+               leading-5 text-ink-100 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
       />
 
       <div class="mt-2 flex flex-wrap items-center gap-2">
@@ -296,7 +294,7 @@ function PlaybookCard({
           {(playbook.skills ?? []).map((skill) => (
             <span
               key={`${skill.source ?? ""}:${skill.command ?? skill.name}`}
-              class="rounded border border-white/10 bg-white/[0.05] px-1.5 py-0.5 font-mono text-[10.5px] text-ink-200"
+              class="rounded-md border border-white/10 bg-white/[0.05] px-1.5 py-0.5 font-mono text-[10.5px] text-ink-200"
             >
               {skill.command || skill.name}
             </span>

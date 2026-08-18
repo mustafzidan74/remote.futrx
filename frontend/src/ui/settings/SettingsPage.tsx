@@ -42,80 +42,108 @@ export type SettingsTab =
   | "updates"
   | "info";
 
+type SettingsTabGroup = "personal" | "agents" | "insights" | "platform" | "system";
+
+/**
+ * Twelve destinations in one flat column read as a wall. The ids are the
+ * routing contract and stay exactly as they are; only the rendering groups
+ * them, so the operator scans five short lists instead of one long one.
+ */
+const GROUP_LABELS: Array<{ id: SettingsTabGroup; label: string }> = [
+  { id: "personal", label: "Personal" },
+  { id: "agents", label: "Agents & skills" },
+  { id: "insights", label: "Insights" },
+  { id: "platform", label: "Platform" },
+  { id: "system", label: "System" },
+];
+
 const tabs: Array<{
   id: SettingsTab;
+  group: SettingsTabGroup;
   label: string;
   description: string;
   Icon: ComponentType<{ class?: string }>;
 }> = [
   {
     id: "appearance",
+    group: "personal",
     label: "Appearance",
     description: "Choose how Remote looks on this device.",
     Icon: Monitor,
   },
   {
     id: "agents",
+    group: "agents",
     label: "Agents",
     description: "Manage host authentication for coding agents.",
     Icon: Bot,
   },
   {
     id: "skills",
+    group: "agents",
     label: "Global skills",
     description: "Publish skills that every project can select.",
     Icon: Code,
   },
   {
     id: "playbooks",
+    group: "agents",
     label: "Playbooks",
     description: "Curate the one-click prompt templates every chat composer offers.",
     Icon: Zap,
   },
   {
     id: "usage",
+    group: "insights",
     label: "Usage",
     description: "Track tokens and estimated cost per project, user, provider, and model.",
     Icon: Activity,
   },
   {
     id: "users",
+    group: "platform",
     label: "Users",
     description: "Control who can access this server.",
     Icon: Users,
   },
   {
     id: "notifications",
+    group: "platform",
     label: "Notifications",
     description: "Get pinged when an agent finishes, fails, or needs you.",
     Icon: Bell,
   },
   {
     id: "resources",
+    group: "platform",
     label: "Resources",
     description: "Set the CPU, memory, and disk envelope every project container inherits.",
     Icon: Cpu,
   },
   {
     id: "trash",
+    group: "platform",
     label: "Trash",
     description: "Restore a deleted project, or purge it before its retention window closes.",
     Icon: Trash,
   },
   {
     id: "audit",
+    group: "insights",
     label: "Audit log",
     description: "Review who did what on this server.",
     Icon: Activity,
   },
   {
     id: "updates",
+    group: "system",
     label: "Updates",
     description: "Check for new releases and install them.",
     Icon: Download,
   },
   {
     id: "info",
+    group: "system",
     label: "Info",
     description: "View details about the main parent server.",
     Icon: Info,
@@ -262,7 +290,7 @@ export function SettingsPage({
         <SettingsNavigation
           activeTab={activeTab}
           onTabChange={onTabChange}
-          className="theme-submenu-surface hidden md:flex w-56 flex-none border-r border-white/10 bg-[#0f1217] p-3"
+          className="theme-submenu-surface hidden md:flex w-56 flex-none overflow-y-auto touch-scroll scrollbar-thin border-r border-white/10 bg-[#0f1217] p-3"
         />
         <SettingsNavigation
           activeTab={activeTab}
@@ -274,10 +302,10 @@ export function SettingsPage({
         <main
           id="settings-active-panel"
           role="tabpanel"
-          class="flex-1 min-w-0 overflow-y-auto touch-scroll"
+          class="flex-1 min-w-0 overflow-y-auto overflow-x-hidden touch-scroll"
         >
           <div class="w-full px-4 py-5 md:px-6 md:py-7">
-            <header class="mb-5">
+            <header class="mb-5 max-w-3xl">
               <h1 class="text-xl font-semibold text-ink-50">{activeTabDetails.label}</h1>
               <p class="mt-1 text-[13px] leading-relaxed text-ink-300">
                 {activeTabDetails.description}
@@ -471,37 +499,134 @@ function SettingsNavigation({
   mobile?: boolean;
   className: string;
 }) {
+  const order = orderedTabs();
+
+  // Roving tabindex without arrow keys leaves every tab but the active one
+  // unreachable, so the tablist handles the arrows, Home and End itself.
+  function onKeyDown(event: KeyboardEvent) {
+    const next = mobile ? "ArrowRight" : "ArrowDown";
+    const previous = mobile ? "ArrowLeft" : "ArrowUp";
+    const index = order.findIndex((tab) => tab.id === activeTab);
+    if (index < 0) return;
+    let target = index;
+    if (event.key === next) target = (index + 1) % order.length;
+    else if (event.key === previous) target = (index - 1 + order.length) % order.length;
+    else if (event.key === "Home") target = 0;
+    else if (event.key === "End") target = order.length - 1;
+    else return;
+    event.preventDefault();
+    // currentTarget is cleared once dispatch finishes, so grab the list now.
+    const nav = event.currentTarget as HTMLElement | null;
+    const id = order[target].id;
+    onTabChange(id);
+    requestAnimationFrame(() => {
+      nav?.querySelector<HTMLElement>(`[data-settings-tab="${id}"]`)?.focus();
+    });
+  }
+
+  if (mobile) {
+    // One horizontally scrolling segmented strip: the group order still holds,
+    // but a phone gets a single swipeable row instead of five stacked lists.
+    return (
+      <aside class={className} aria-label="Settings sections">
+        <nav
+          class="flex gap-1 min-w-max"
+          role="tablist"
+          aria-orientation="horizontal"
+          onKeyDown={onKeyDown}
+        >
+          {order.map((tab) => (
+            <SettingsTabButton
+              key={tab.id}
+              tab={tab}
+              active={tab.id === activeTab}
+              mobile
+              onSelect={onTabChange}
+            />
+          ))}
+        </nav>
+      </aside>
+    );
+  }
+
   return (
     <aside class={className} aria-label="Settings sections">
       <nav
-        class={mobile ? "flex gap-1 min-w-max" : "w-full space-y-1"}
+        class="w-full space-y-3"
         role="tablist"
-        aria-orientation={mobile ? "horizontal" : "vertical"}
+        aria-orientation="vertical"
+        onKeyDown={onKeyDown}
       >
-        {tabs.map(({ id, label, Icon }) => {
-          const active = id === activeTab;
+        {GROUP_LABELS.map((group) => {
+          const groupTabs = tabsInGroup(group.id);
+          if (groupTabs.length === 0) return null;
+          // `presentation` keeps the buttons direct children of the tablist in
+          // the accessibility tree; the heading is a visual affordance only.
           return (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              aria-controls="settings-active-panel"
-              tabIndex={active ? 0 : -1}
-              onClick={() => onTabChange(id)}
-              class={`${mobile ? "h-9 px-3" : "w-full h-10 px-3"} rounded-md inline-flex items-center gap-2.5 border text-[13px] font-medium transition-colors ${
-                active
-                  ? "border-white/10 bg-white/[0.08] text-ink-50"
-                  : "border-transparent text-ink-300 hover:text-ink-100 hover:bg-white/[0.05]"
-              }`}
-            >
-              <Icon class={`w-4 h-4 flex-none ${active ? "text-accent-blue" : "text-ink-400"}`} />
-              <span>{label}</span>
-            </button>
+            <div key={group.id} role="presentation">
+              <div
+                aria-hidden="true"
+                class="px-3 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-ink-300"
+              >
+                {group.label}
+              </div>
+              <div class="space-y-0.5" role="presentation">
+                {groupTabs.map((tab) => (
+                  <SettingsTabButton
+                    key={tab.id}
+                    tab={tab}
+                    active={tab.id === activeTab}
+                    onSelect={onTabChange}
+                  />
+                ))}
+              </div>
+            </div>
           );
         })}
       </nav>
     </aside>
+  );
+}
+
+function tabsInGroup(group: SettingsTabGroup) {
+  return tabs.filter((tab) => tab.group === group);
+}
+
+/** Reading order: grouped, and identical on both the desktop and mobile nav. */
+function orderedTabs() {
+  return GROUP_LABELS.flatMap((group) => tabsInGroup(group.id));
+}
+
+function SettingsTabButton({
+  tab,
+  active,
+  mobile = false,
+  onSelect,
+}: {
+  tab: (typeof tabs)[number];
+  active: boolean;
+  mobile?: boolean;
+  onSelect: (tab: SettingsTab) => void;
+}) {
+  const { id, label, Icon } = tab;
+  return (
+    <button
+      type="button"
+      role="tab"
+      data-settings-tab={id}
+      aria-selected={active}
+      aria-controls="settings-active-panel"
+      tabIndex={active ? 0 : -1}
+      onClick={() => onSelect(id)}
+      class={`${mobile ? "h-10 px-3 whitespace-nowrap" : "w-full h-10 px-3"} rounded-md inline-flex items-center gap-2.5 border text-[13px] font-medium transition-colors ${
+        active
+          ? "border-white/10 bg-white/[0.08] text-ink-50"
+          : "border-transparent text-ink-300 hover:text-ink-100 hover:bg-white/[0.05]"
+      }`}
+    >
+      <Icon class={`w-4 h-4 flex-none ${active ? "text-accent-blue" : "text-ink-300"}`} />
+      <span class="truncate">{label}</span>
+    </button>
   );
 }
 

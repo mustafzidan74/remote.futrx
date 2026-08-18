@@ -195,7 +195,7 @@ export function ProjectResourceLimits({
               <button
                 type="submit"
                 disabled={saving || !!validationError}
-                class="h-9 px-4 rounded-md bg-accent-blue/80 hover:bg-accent-blue text-white text-[13px] font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                class="h-9 px-4 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2"
               >
                 {saving && <Loader class="w-3.5 h-3.5 animate-spin" />}
                 Save limits
@@ -261,7 +261,7 @@ function LimitInput({
         placeholder={placeholder}
         onInput={(event) => onInput(event.currentTarget.value)}
         spellcheck={false}
-        class="mt-1.5 h-10 w-full rounded-md border border-white/10 bg-[#0c0f13] px-3 font-mono text-[13px] text-ink-50 outline-none placeholder:text-ink-500 focus:border-accent-blue/60 focus:ring-1 focus:ring-accent-blue/25"
+        class="mt-1.5 h-10 w-full rounded-md border border-white/10 bg-[#0c0f13] px-3 font-mono text-[13px] text-ink-50 outline-none placeholder:text-ink-400 focus:border-accent-blue/60 focus:ring-1 focus:ring-accent-blue/25"
       />
       <span class="mt-1 block text-[11px] text-ink-400">{hint}</span>
     </label>

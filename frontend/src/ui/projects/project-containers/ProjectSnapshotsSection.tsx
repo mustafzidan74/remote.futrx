@@ -87,7 +87,7 @@ export function ProjectSnapshotsSection({
             placeholder="before the plugin upgrade"
             onInput={(event) => setLabel((event.target as HTMLInputElement).value)}
             class="mt-1 w-full h-9 rounded-md border border-white/10 bg-[#0f1217] px-2.5 text-[13px]
-                   text-ink-100 placeholder:text-ink-500 focus:outline-none focus:border-accent-blue/50"
+                   text-ink-100 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue/50"
           />
         </label>
         <label class="flex items-start gap-2 text-[12.5px] text-ink-200">
@@ -174,7 +174,7 @@ function SnapshotRow({
             {snapshot.label || formatEpochMillis(snapshot.createdAt)}
           </span>
           {snapshot.kind === "trash" && (
-            <span class="text-[10.5px] px-1.5 py-0.5 rounded border border-accent-orange/30 bg-accent-orange/[0.10] text-accent-orange">
+            <span class="text-[10.5px] px-1.5 py-0.5 rounded-md border border-accent-orange/30 bg-accent-orange/[0.10] text-accent-orange">
               automatic
             </span>
           )}

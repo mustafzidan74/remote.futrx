@@ -214,7 +214,7 @@ export function ResourcesSettings({
             <button
               type="submit"
               disabled={saving || !!validationError}
-              class="h-9 px-4 rounded-md bg-accent-blue/80 hover:bg-accent-blue text-white text-[13px] font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2"
+              class="h-9 px-4 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2"
             >
               {saving && <Loader class="w-3.5 h-3.5 animate-spin" />}
               Save fleet defaults
@@ -248,7 +248,7 @@ function Panel({
           <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug">{description}</div>
         </div>
       </header>
-      <div class="p-4 space-y-4">{children}</div>
+      <div class="p-3 space-y-3">{children}</div>
     </section>
   );
 }
@@ -264,10 +264,10 @@ function Stat({
 }) {
   return (
     <div class="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2.5">
-      <div class="flex items-center gap-1.5 text-[11px] text-ink-400">
+      <div class="flex items-center gap-1.5 text-[11px] text-ink-300">
         <Icon class="w-3.5 h-3.5" /> {label}
       </div>
-      <div class="mt-1 font-mono text-[13px] text-ink-100">{value}</div>
+      <div class="mt-1 font-mono text-[13px] tabular-nums text-ink-100">{value}</div>
     </div>
   );
 }
@@ -291,9 +291,9 @@ function Field({
         value={value}
         onInput={(event) => onInput(event.currentTarget.value)}
         spellcheck={false}
-        class="mt-1.5 h-10 w-full rounded-md border border-white/10 bg-[#0c0f13] px-3 font-mono text-[13px] text-ink-50 outline-none placeholder:text-ink-500 focus:border-accent-blue/60 focus:ring-1 focus:ring-accent-blue/25"
+        class="mt-1.5 h-10 w-full rounded-md border border-white/10 bg-[#0c0f13] px-3 font-mono text-[13px] text-ink-50 outline-none placeholder:text-ink-400 focus:border-accent-blue/60 focus:ring-1 focus:ring-accent-blue/25"
       />
-      <span class="mt-1 block text-[11px] text-ink-400">{hint}</span>
+      <span class="mt-1 block text-[11px] text-ink-300">{hint}</span>
     </label>
   );
 }

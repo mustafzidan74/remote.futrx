@@ -93,7 +93,7 @@ export function SkillPicker({
                 ref={searchRef}
                 value={query}
                 onInput={(event) => setQuery((event.currentTarget as HTMLInputElement).value)}
-                class="min-w-0 flex-1 bg-transparent text-[13px] text-ink-100 placeholder:text-ink-500 focus:outline-none"
+                class="min-w-0 flex-1 bg-transparent text-[13px] text-ink-100 placeholder:text-ink-400 focus:outline-none"
                 placeholder={`Search ${providerLabel} skills`}
               />
             </div>

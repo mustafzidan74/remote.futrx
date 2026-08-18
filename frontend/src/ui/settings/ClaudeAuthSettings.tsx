@@ -57,7 +57,7 @@ export function ClaudeAuthSettings() {
           type="button"
           onClick={() => void login.startLogin()}
           disabled={busy || active}
-          class="h-10 px-3 rounded bg-accent-blue/80 hover:bg-accent-blue text-white text-[13px] font-medium disabled:opacity-50"
+          class="h-10 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50"
         >
           {login.phase === "starting"
             ? "Starting..."
@@ -71,7 +71,7 @@ export function ClaudeAuthSettings() {
       </div>
 
       {active && (
-        <div class="rounded border border-accent-blue/25 bg-accent-blue/[0.08] p-3 space-y-2">
+        <div class="rounded-md border border-accent-blue/25 bg-accent-blue/[0.08] p-3 space-y-2">
           <div class="text-[12px] text-ink-200">
             Open the link, sign in, then paste the code Anthropic shows back here:
           </div>
@@ -114,7 +114,7 @@ export function ClaudeAuthSettings() {
               type="button"
               onClick={() => void login.submitCode()}
               disabled={!login.code.trim()}
-              class="flex-1 bg-accent-blue/80 hover:bg-accent-blue disabled:opacity-50 text-white text-[13px] font-medium rounded h-10"
+              class="flex-1 bg-accent-blue text-ink-900 hover:bg-accent-blue/85 disabled:opacity-50 text-[13px] font-medium rounded-md h-10"
             >
               Submit code
             </button>

@@ -12,9 +12,11 @@ export function UserMessage({
   return (
     <div class="group flex justify-end">
       <div class="max-w-[92%] sm:max-w-[78%] flex flex-col items-end gap-1.5">
-        <div class="codex-user-bubble bg-accent-blue/15 border border-accent-blue/30
-                    rounded-[18px] rounded-br-md px-3.5 py-2.5 text-[14.5px] leading-relaxed
-                    whitespace-pre-wrap break-words shadow-sm">
+        <div
+          dir="auto"
+          class="codex-user-bubble bidi-auto bg-accent-blue/15 border border-accent-blue/30
+                 rounded-[18px] rounded-br-md px-3.5 py-2.5 text-[14.5px] leading-relaxed
+                 whitespace-pre-wrap break-words shadow-sm">
           {text}
         </div>
         {onRewind && (

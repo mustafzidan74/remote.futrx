@@ -12,7 +12,7 @@ export default {
           100: "#e4e4e7",
           200: "#c7c7cc",
           300: "#9b9ba3",
-          400: "#707078",
+          400: "#8b8b94",
           500: "#3f4047",
           600: "#303137",
           700: "#24252b",
@@ -29,8 +29,28 @@ export default {
         },
       },
       fontFamily: {
-        mono: ['ui-monospace', '"SF Mono"', 'Menlo', 'Consolas', 'monospace'],
-        sans: ['-apple-system', 'system-ui', '"Segoe UI"', 'sans-serif'],
+        // The Arabic faces are appended (never prepended) so Latin text keeps
+        // the original stack and only Arabic runs fall through to a face that
+        // actually has the glyphs. All of them ship with the OS - no webfont.
+        mono: [
+          'ui-monospace',
+          '"SF Mono"',
+          'Menlo',
+          'Consolas',
+          '"Noto Sans Mono"',
+          '"Noto Sans Arabic"',
+          'monospace',
+        ],
+        sans: [
+          '-apple-system',
+          'system-ui',
+          '"Segoe UI"',
+          '"Noto Naskh Arabic UI"',
+          '"Noto Sans Arabic"',
+          '"Geeza Pro"',
+          'Tahoma',
+          'sans-serif',
+        ],
       },
       animation: {
         "pulse-fast": "pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite",

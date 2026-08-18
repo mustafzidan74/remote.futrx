@@ -160,7 +160,7 @@ export function ProjectClientPortalSection({
               type="button"
               onClick={() => void run("save")}
               disabled={busy !== null}
-              class="h-10 px-3 rounded-md bg-accent-blue/80 hover:bg-accent-blue text-white text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+              class="h-10 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
             >
               {busy === "save" && <Loader class="w-3.5 h-3.5 animate-spin" />}
               Save portal settings
@@ -196,7 +196,7 @@ export function ProjectClientPortalSection({
             type="button"
             onClick={() => void run("enable", { enabled: true })}
             disabled={busy !== null}
-            class="h-10 px-3 rounded-md bg-accent-blue/80 hover:bg-accent-blue text-white text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+            class="h-10 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
           >
             {busy === "enable" && <Loader class="w-3.5 h-3.5 animate-spin" />}
             Enable client portal
@@ -250,7 +250,7 @@ function IssuedPortalLink({ url, onDismiss }: { url: string; onDismiss: () => vo
         <button
           type="button"
           onClick={copy}
-          class="h-8 px-2.5 rounded bg-accent-blue/80 hover:bg-accent-blue text-white text-[12px] font-medium inline-flex items-center gap-1.5 flex-none"
+          class="h-8 px-2.5 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[12px] font-medium inline-flex items-center gap-1.5 flex-none"
         >
           {copied ? <Check class="w-3.5 h-3.5" /> : null}
           {copied ? "Copied" : "Copy"}

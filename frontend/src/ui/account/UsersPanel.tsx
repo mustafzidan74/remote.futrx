@@ -1,6 +1,7 @@
 import { useState } from "preact/hooks";
 import type { User, UserRole } from "../../models/user";
-import { AlertCircle, Check, Loader, X } from "../primitives/icons";
+import { Check, Loader, Users, X } from "../primitives/icons";
+import { EmptyState, ErrorBanner } from "../primitives/Feedback";
 
 interface UsersPanelProps {
   currentEmail: string;
@@ -57,12 +58,7 @@ export function UsersPanel({
       </header>
 
       <div class="p-3 space-y-3">
-        {error && (
-          <div class="flex items-start gap-2.5 rounded-lg border border-accent-red/30 bg-accent-red/[0.08] px-3 py-2.5 text-[13px]">
-            <AlertCircle class="w-4 h-4 mt-0.5 flex-none text-accent-red" />
-            <div class="text-accent-red break-words">{error}</div>
-          </div>
-        )}
+        {error && <ErrorBanner message={error} />}
         {canAddUsers ? (
           <AddUserForm onAdd={onAdd} />
         ) : (
@@ -129,12 +125,12 @@ function AddUserForm({
           placeholder="someone@example.com"
           spellcheck={false}
           autoComplete="off"
-          class="h-9 px-2.5 rounded border border-white/10 bg-black/30 text-[13px] text-ink-50 placeholder-ink-400 focus:outline-none focus:border-accent-blue/50"
+          class="h-9 px-2.5 rounded-md border border-white/10 bg-white/[0.04] text-[13px] text-ink-50 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue/60 focus:ring-1 focus:ring-accent-blue/30"
         />
         <select
           value={role}
           onChange={(e) => setRole((e.target as HTMLSelectElement).value as UserRole)}
-          class="h-9 px-2 rounded border border-white/10 bg-black/30 text-[13px] text-ink-50 focus:outline-none focus:border-accent-blue/50"
+          class="h-9 px-2 rounded-md border border-white/10 bg-white/[0.04] text-[13px] text-ink-50 focus:outline-none focus:border-accent-blue/60 focus:ring-1 focus:ring-accent-blue/30"
         >
           <option value="member">member</option>
           <option value="admin">admin</option>
@@ -142,7 +138,7 @@ function AddUserForm({
         <button
           type="submit"
           disabled={submitting}
-          class="h-9 px-3 rounded bg-accent-blue/80 hover:bg-accent-blue text-white text-[13px] font-medium disabled:opacity-50"
+          class="h-9 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitting ? "Adding…" : "Add"}
         </button>
@@ -174,9 +170,7 @@ function UserList({
   }
   if (users.length === 0) {
     return (
-      <div class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[13px] text-ink-300">
-        No users yet.
-      </div>
+      <EmptyState Icon={Users} title="No users yet" hint="Add an email above to let someone sign in." />
     );
   }
   return (

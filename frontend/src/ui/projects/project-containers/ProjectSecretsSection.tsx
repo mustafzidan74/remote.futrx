@@ -76,7 +76,7 @@ function SecretEditor({
           value={key}
           onInput={(event) => setKey((event.target as HTMLInputElement).value)}
           placeholder="KEY"
-          class="h-9 px-2.5 rounded border border-white/10 bg-black/30 text-[13px] font-mono text-ink-50 placeholder-ink-400 focus:outline-none focus:border-accent-blue/50"
+          class="h-9 px-2.5 rounded-md border border-white/10 bg-black/30 text-[13px] font-mono text-ink-50 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue/50"
         />
         <textarea
           value={value}
@@ -85,13 +85,13 @@ function SecretEditor({
           rows={1}
           spellcheck={false}
           autoComplete="off"
-          class="min-h-9 max-h-48 px-2.5 py-1.5 rounded border border-white/10 bg-black/30 text-[13px] font-mono text-ink-50 placeholder-ink-400 focus:outline-none focus:border-accent-blue/50 resize-y leading-[1.45] overflow-y-auto"
+          class="min-h-9 max-h-48 px-2.5 py-1.5 rounded-md border border-white/10 bg-black/30 text-[13px] font-mono text-ink-50 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue/50 resize-y leading-[1.45] overflow-y-auto"
           style={{ fieldSizing: "content" } as any}
         />
         <button
           type="submit"
           disabled={submitting}
-          class="h-9 px-3 rounded bg-accent-blue/80 hover:bg-accent-blue text-white text-[13px] font-medium disabled:opacity-50"
+          class="h-9 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50"
         >
           {submitting ? "Saving…" : "Add"}
         </button>
@@ -178,7 +178,7 @@ function SecretRow({
             onInput={(event) => setDraft((event.target as HTMLTextAreaElement).value)}
             rows={1}
             spellcheck={false}
-            class="flex-1 min-h-8 max-h-48 px-2 py-1 rounded border border-white/10 bg-black/30 text-[12.5px] font-mono text-ink-50 focus:outline-none focus:border-accent-blue/50 resize-y leading-[1.45] overflow-y-auto"
+            class="flex-1 min-h-8 max-h-48 px-2 py-1 rounded-md border border-white/10 bg-black/30 text-[12.5px] font-mono text-ink-50 focus:outline-none focus:border-accent-blue/50 resize-y leading-[1.45] overflow-y-auto"
             style={{ fieldSizing: "content" } as any}
           />
           <button
@@ -192,7 +192,7 @@ function SecretRow({
             type="button"
             onClick={save}
             disabled={busy}
-            class="h-8 px-2.5 rounded bg-accent-blue/80 hover:bg-accent-blue text-white text-[12px] font-medium disabled:opacity-50"
+            class="h-8 px-2.5 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[12px] font-medium disabled:opacity-50"
           >
             Save
           </button>
