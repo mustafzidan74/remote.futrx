@@ -96,6 +96,10 @@ func (r notifyingProjectRepository) Create(ctx context.Context, meta serviceproj
 	return next, err
 }
 
+// Update is also how a project enters and leaves the trash. A trashed project
+// must vanish from every connected sidebar immediately, so it is published as
+// a deletion rather than an upsert; restoring it publishes the upsert that
+// brings it back.
 func (r notifyingProjectRepository) Update(
 	ctx context.Context,
 	id serviceproject.ID,
@@ -103,9 +107,17 @@ func (r notifyingProjectRepository) Update(
 ) (serviceproject.Meta, error) {
 	next, err := r.Repository.Update(ctx, id, fn)
 	if err == nil {
-		r.workspace.PublishProjectUpsert(next)
+		r.publish(next)
 	}
 	return next, err
+}
+
+func (r notifyingProjectRepository) publish(meta serviceproject.Meta) {
+	if meta.Trashed() {
+		r.workspace.PublishProjectDelete(meta.ID)
+		return
+	}
+	r.workspace.PublishProjectUpsert(meta)
 }
 
 func (r notifyingProjectRepository) SetStatus(
@@ -116,7 +128,7 @@ func (r notifyingProjectRepository) SetStatus(
 ) (serviceproject.Meta, error) {
 	next, err := r.Repository.SetStatus(ctx, id, status, errMsg)
 	if err == nil {
-		r.workspace.PublishProjectUpsert(next)
+		r.publish(next)
 	}
 	return next, err
 }

@@ -5,11 +5,12 @@ import type { GlobalSkillLibrary } from "../../state/hooks/settings/useGlobalSki
 import type { PlaybookLibraryEditor } from "../../state/hooks/settings/usePlaybookLibrary";
 import type { ProjectMeta } from "../../models/project";
 import type { AuditLog } from "../../state/hooks/admin/useAuditLog";
+import type { ProjectTrash } from "../../state/hooks/admin/useProjectTrash";
 import type { ServerInfo } from "../../models/serverInfo";
 import type { FleetResourcesView, FleetSettings } from "../../models/resources";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import type { ComponentType } from "preact";
-import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Info, Menu, Monitor, Users, Zap } from "../primitives/icons";
+import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Info, Menu, Monitor, Trash, Users, Zap } from "../primitives/icons";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { AuditLogSettings } from "./AuditLogSettings";
 import { ClaudeAuthSettings } from "./ClaudeAuthSettings";
@@ -19,6 +20,7 @@ import { GoogleOAuthSettings } from "./GoogleOAuthSettings";
 import { NotificationsSettings } from "./NotificationsSettings";
 import { ResourcesSettings } from "./ResourcesSettings";
 import { ServerInfoSettings } from "./ServerInfoSettings";
+import { TrashSettings } from "./TrashSettings";
 import { UpdatesSettings } from "./UpdatesSettings";
 import { GlobalSkillsSettings } from "./GlobalSkillsSettings";
 import { PlaybooksSettings } from "./PlaybooksSettings";
@@ -35,6 +37,7 @@ export type SettingsTab =
   | "playbooks"
   | "usage"
   | "resources"
+  | "trash"
   | "audit"
   | "updates"
   | "info";
@@ -94,6 +97,12 @@ const tabs: Array<{
     Icon: Cpu,
   },
   {
+    id: "trash",
+    label: "Trash",
+    description: "Restore a deleted project, or purge it before its retention window closes.",
+    Icon: Trash,
+  },
+  {
     id: "audit",
     label: "Audit log",
     description: "Review who did what on this server.",
@@ -142,6 +151,7 @@ export function SettingsPage({
   usageRebuildMessage,
   onRebuildUsage,
   auditLog,
+  projectTrash,
   appearanceTheme,
   appearanceLoading,
   appearanceSaving,
@@ -195,6 +205,7 @@ export function SettingsPage({
   usageRebuildMessage: string | null;
   onRebuildUsage: () => Promise<void>;
   auditLog: AuditLog;
+  projectTrash: ProjectTrash;
   appearanceTheme: AppearanceTheme;
   appearanceLoading: boolean;
   appearanceSaving: boolean;
@@ -388,6 +399,10 @@ export function SettingsPage({
                   Container resource limits are managed by server administrators.
                 </SettingsNotice>
               ))}
+
+            {activeTab === "trash" && (
+              <TrashSettings trash={projectTrash} isAdmin={isAdmin} />
+            )}
 
             {activeTab === "audit" &&
               (isAdmin ? (

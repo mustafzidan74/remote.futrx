@@ -68,6 +68,14 @@ export const API_ROUTES = {
     item: (id: string) => `/api/projects/${encodeURIComponent(id)}`,
     reorder: "/api/projects/reorder",
     health: "/api/projects/health",
+    trash: "/api/projects/trash",
+    restore: (id: string) => `/api/projects/${encodeURIComponent(id)}/restore`,
+    purge: (id: string) => `/api/projects/${encodeURIComponent(id)}/purge`,
+    snapshots: (id: string) => `/api/projects/${encodeURIComponent(id)}/snapshots`,
+    snapshot: (id: string, snapshotId: string) =>
+      `/api/projects/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(snapshotId)}`,
+    snapshotRestore: (id: string, snapshotId: string) =>
+      `/api/projects/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(snapshotId)}/restore`,
     start: (id: string, force = false) =>
       `/api/projects/${encodeURIComponent(id)}/start${force ? "?force=1" : ""}`,
     stop: (id: string) => `/api/projects/${encodeURIComponent(id)}/stop`,

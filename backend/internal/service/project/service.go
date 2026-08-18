@@ -26,9 +26,17 @@ type Service struct {
 	containerPolicy      ContainerPolicy
 	containerAdmission   ContainerAdmission
 	containerTemplates   ContainerTemplates
+	containerDatabase    ContainerDatabase
 	secrets              SecretsRepository
 	access               AccessRepository
+	storage              ProjectStorage
 	audit                audit.Recorder
+
+	// snapshots is attached after construction (see SetSnapshots): the
+	// snapshot service needs this service, so the two cannot both be built
+	// with the other already in hand.
+	snapshotsMu sync.RWMutex
+	snapshots   Snapshots
 
 	agentBrowserMu    sync.Mutex
 	agentBrowserInfo  map[ID]AgentBrowserInfo
@@ -63,6 +71,7 @@ func New(
 		containerPolicy:      containers.Policy,
 		containerAdmission:   containers.Admission,
 		containerTemplates:   containers.Templates,
+		containerDatabase:    containers.Database,
 		secrets:              secrets,
 		access:               access,
 		agentBrowserInfo:     make(map[ID]AgentBrowserInfo),
@@ -173,16 +182,33 @@ func (s *Service) deleteSecret(ctx context.Context, id ID, key string) error {
 	return nil
 }
 
-// List returns every project. Use ListVisible to apply per-caller filtering.
+// List returns every live project. Trashed projects are excluded here rather
+// than in each caller: the sidebar, the reconcile sweep, and every listing
+// must agree that a trashed project is gone.
 func (s *Service) List(ctx context.Context) ([]Meta, error) {
-	return s.repo.List(ctx)
+	all, err := s.repo.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return liveOnly(all), nil
+}
+
+// liveOnly drops trashed projects from a store listing.
+func liveOnly(all []Meta) []Meta {
+	out := make([]Meta, 0, len(all))
+	for _, m := range all {
+		if !m.Trashed() {
+			out = append(out, m)
+		}
+	}
+	return out
 }
 
 // ListVisible returns projects the caller can see. Admins see everything;
 // non-admins only see projects where they're a member. callerEmail is
 // already normalized when this is called from the handler.
 func (s *Service) ListVisible(ctx context.Context, callerEmail string, isAdmin bool) ([]Meta, error) {
-	all, err := s.repo.List(ctx)
+	all, err := s.List(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -214,11 +240,21 @@ func (s *Service) Get(ctx context.Context, id ID) (Meta, error) {
 	return s.repo.Get(ctx, id)
 }
 
+// GetBySlug resolves a preview or IDE hostname back to its project. A trashed
+// project answers ErrNotFound: its slug stays reserved in the store, but no
+// certificate may be minted and no share link may resolve for it.
 func (s *Service) GetBySlug(ctx context.Context, slug string) (Meta, error) {
 	if !ValidSlug(slug) {
 		return Meta{}, ErrNotFound
 	}
-	return s.repo.GetBySlug(ctx, slug)
+	m, err := s.repo.GetBySlug(ctx, slug)
+	if err != nil {
+		return Meta{}, err
+	}
+	if m.Trashed() {
+		return Meta{}, ErrNotFound
+	}
+	return m, nil
 }
 
 func (s *Service) WorkspaceForProject(ctx context.Context, id ID) (string, error) {
@@ -456,44 +492,6 @@ func (s *Service) Reorder(ctx context.Context, ids []ID) ([]Meta, error) {
 	return out, nil
 }
 
-func (s *Service) Delete(ctx context.Context, id ID) error {
-	deleted, err := s.delete(ctx, id)
-	s.record(ctx, audit.ActionProjectDelete, auditProjectTarget(id, deleted), nil, err)
-	return err
-}
-
-func (s *Service) delete(ctx context.Context, id ID) (Meta, error) {
-	if !ValidID(id) {
-		return Meta{}, ErrInvalidID
-	}
-	unlock := s.lockRunState(id)
-	defer unlock()
-	m, err := s.repo.Get(ctx, id)
-	if err != nil {
-		return Meta{}, err
-	}
-	s.clearAgentBrowserState(id)
-	if s.containerTemplates != nil && m.ContainerName != "" {
-		s.containerTemplates.ForgetTemplateState(m.ContainerName)
-	}
-	if s.containerLifecycle != nil && m.ContainerName != "" {
-		if err := s.containerLifecycle.Delete(ctx, m.ContainerName); err != nil {
-			log.Printf("projects: delete container %s: %v", m.ContainerName, err)
-		}
-	}
-	if s.secrets != nil {
-		if err := s.secrets.DeleteAll(ctx, id); err != nil {
-			log.Printf("projects: delete secrets %s: %v", id, err)
-		}
-	}
-	if s.access != nil {
-		if err := s.access.DeleteAll(ctx, id); err != nil {
-			log.Printf("projects: delete access %s: %v", id, err)
-		}
-	}
-	return m, s.repo.Delete(ctx, id)
-}
-
 // lockRunState serializes container lifecycle transitions for a single project.
 // This prevents double-launches and keeps an explicit stop, restart, or delete
 // from racing an agent-triggered recovery. Different projects remain independent.
@@ -542,6 +540,9 @@ func (s *Service) startLocked(ctx context.Context, id ID, options StartOptions) 
 	m, err := s.repo.Get(ctx, id)
 	if err != nil {
 		return Meta{}, false, err
+	}
+	if m.Trashed() {
+		return m, false, ErrTrashed
 	}
 	converged := true
 	if s.containerLifecycle != nil {
@@ -597,6 +598,9 @@ func (s *Service) upgrade(ctx context.Context, id ID, includeBusy bool) (Meta, e
 	m, err := s.repo.Get(ctx, id)
 	if err != nil {
 		return Meta{}, err
+	}
+	if m.Trashed() {
+		return m, ErrTrashed
 	}
 	if s.containerLifecycle == nil {
 		return m, nil
@@ -678,6 +682,9 @@ func (s *Service) stop(ctx context.Context, id ID) (Meta, error) {
 	if err != nil {
 		return Meta{}, err
 	}
+	if m.Trashed() {
+		return m, ErrTrashed
+	}
 	if s.containerLifecycle != nil {
 		if err := s.containerLifecycle.Stop(ctx, m.ContainerName); err != nil {
 			return s.repo.SetStatus(ctx, id, StatusError, err.Error())
@@ -706,6 +713,9 @@ func (s *Service) restart(ctx context.Context, id ID) (Meta, error) {
 	m, err := s.repo.Get(ctx, id)
 	if err != nil {
 		return Meta{}, err
+	}
+	if m.Trashed() {
+		return m, ErrTrashed
 	}
 	if s.containerLifecycle != nil {
 		state, err := s.containerLifecycle.State(ctx, m.ContainerName)
@@ -1199,7 +1209,7 @@ func (s *Service) Reconcile(ctx context.Context) error {
 	if s.containerLifecycle == nil || !s.containerLifecycle.Available() {
 		return nil
 	}
-	metas, err := s.repo.List(ctx)
+	metas, err := s.List(ctx)
 	if err != nil {
 		return err
 	}

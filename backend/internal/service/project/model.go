@@ -1,5 +1,7 @@
 package project
 
+import "time"
+
 type ID string
 type Status string
 type ContainerState string
@@ -63,6 +65,26 @@ type Meta struct {
 	ErrorMsg       string            `json:"errorMsg,omitempty"`
 	CreatedAt      int64             `json:"createdAt"`
 	UpdatedAt      int64             `json:"updatedAt"`
+	// DeletedAt is the unix-ms instant the project was moved to the trash.
+	// A trashed project keeps its metadata (so it can be restored, and so its
+	// slug stays reserved) but is excluded from every normal listing.
+	DeletedAt int64  `json:"deletedAt,omitempty"`
+	DeletedBy string `json:"deletedBy,omitempty"`
+	// TrashSnapshotID is the automatic snapshot taken on the way to the
+	// trash. Restoring the project re-imports its database from it.
+	TrashSnapshotID string `json:"trashSnapshotId,omitempty"`
+}
+
+// Trashed reports whether the project is in the trash rather than live.
+func (m Meta) Trashed() bool { return m.DeletedAt > 0 }
+
+// TrashExpiresAt is when the janitor will purge a trashed project, given the
+// configured retention. Zero for a live project.
+func (m Meta) TrashExpiresAt(retention time.Duration) int64 {
+	if m.DeletedAt == 0 || retention <= 0 {
+		return 0
+	}
+	return m.DeletedAt + retention.Milliseconds()
 }
 
 // TemplateName is the backward-compatible accessor for Meta.Template: project

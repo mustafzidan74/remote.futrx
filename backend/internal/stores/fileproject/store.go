@@ -19,6 +19,14 @@ import (
 
 const WorkspaceRoot = "/var/lib/remote/projects"
 
+// slugEntry is one row of the in-memory slug index. Trashed projects keep
+// their slug reserved: it is the container name they will be restored under,
+// and it is the DNS label their preview hosts already answered on.
+type slugEntry struct {
+	id      serviceproject.ID
+	trashed bool
+}
+
 var _ serviceproject.Repository = (*Store)(nil)
 
 type Store struct {
@@ -27,7 +35,7 @@ type Store struct {
 	mu            sync.Mutex
 	locks         map[serviceproject.ID]*sync.Mutex
 	indexMu       sync.RWMutex
-	bySlug        map[string]serviceproject.ID
+	bySlug        map[string]slugEntry
 }
 
 func New(dataDir string) (*Store, error) {
@@ -46,7 +54,7 @@ func NewWithWorkspaceRoot(dataDir, workspaceRoot string) (*Store, error) {
 		root:          dir,
 		workspaceRoot: workspaceRoot,
 		locks:         map[serviceproject.ID]*sync.Mutex{},
-		bySlug:        map[string]serviceproject.ID{},
+		bySlug:        map[string]slugEntry{},
 	}
 	if err := s.loadSlugIndex(); err != nil {
 		return nil, err
@@ -117,7 +125,7 @@ func (s *Store) Create(ctx context.Context, m serviceproject.Meta) (serviceproje
 	if err := s.writeMeta(m); err != nil {
 		return serviceproject.Meta{}, err
 	}
-	s.bySlug[slug] = m.ID
+	s.bySlug[slug] = slugEntry{id: m.ID}
 	return m, nil
 }
 
@@ -127,12 +135,12 @@ func (s *Store) Get(ctx context.Context, id serviceproject.ID) (serviceproject.M
 
 func (s *Store) GetBySlug(ctx context.Context, slug string) (serviceproject.Meta, error) {
 	s.indexMu.RLock()
-	id, ok := s.bySlug[slug]
+	entry, ok := s.bySlug[slug]
 	s.indexMu.RUnlock()
 	if !ok {
 		return serviceproject.Meta{}, serviceproject.ErrNotFound
 	}
-	return s.Get(ctx, id)
+	return s.Get(ctx, entry.id)
 }
 
 func (s *Store) List(ctx context.Context) ([]serviceproject.Meta, error) {
@@ -187,6 +195,11 @@ func (s *Store) Update(
 	if err := s.writeMeta(m); err != nil {
 		return serviceproject.Meta{}, err
 	}
+	// Trashing and restoring both run through Update, so this is where the
+	// slug index learns that a name is reserved by the trash.
+	s.indexMu.Lock()
+	s.bySlug[m.Slug] = slugEntry{id: m.ID, trashed: m.Trashed()}
+	s.indexMu.Unlock()
 	return m, nil
 }
 
@@ -274,14 +287,23 @@ func (s *Store) loadSlugIndex() error {
 		if err != nil {
 			continue
 		}
-		s.bySlug[m.Slug] = m.ID
+		s.bySlug[m.Slug] = slugEntry{id: m.ID, trashed: m.Trashed()}
 	}
 	return nil
 }
 
+// resolveSlugLocked picks the container name a new project gets. A collision
+// with a live project is resolved with a numeric suffix, exactly as before.
+// A collision with a project in the trash is refused instead: renaming the
+// trashed project would break the container name and preview hostnames it is
+// restored under, so the operator decides whether to restore or purge first.
 func (s *Store) resolveSlugLocked(base string) (string, error) {
-	if _, taken := s.bySlug[base]; !taken {
+	entry, taken := s.bySlug[base]
+	if !taken {
 		return base, nil
+	}
+	if entry.trashed {
+		return "", serviceproject.ErrSlugInTrash
 	}
 	for i := 2; i < 1000; i++ {
 		suffix := fmt.Sprintf("-%d", i)

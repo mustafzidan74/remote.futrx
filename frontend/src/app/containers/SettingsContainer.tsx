@@ -10,6 +10,7 @@ import { useGlobalSkills } from "../../state/hooks/settings/useGlobalSkills";
 import { usePlaybookLibrary } from "../../state/hooks/settings/usePlaybookLibrary";
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
 import { useAuditLog } from "../../state/hooks/admin/useAuditLog";
+import { useProjectTrash } from "../../state/hooks/admin/useProjectTrash";
 import { useServerInfo } from "../../state/hooks/server/useServerInfo";
 import { useSelfUpdate } from "../../state/hooks/server/useSelfUpdate";
 import { useUsageDashboard } from "../../state/hooks/usage/useUsageDashboard";
@@ -55,6 +56,9 @@ export function SettingsContainer({
   }, [usageDashboard]);
   const fleetResources = useFleetResources(activeTab === "resources" && auth.isAdmin);
   const auditLog = useAuditLog(activeTab === "audit" && auth.isAdmin);
+  // Members see their own trashed projects here too, so this is not gated on
+  // admin: the backend already scopes the listing to the caller.
+  const projectTrash = useProjectTrash(activeTab === "trash");
 
   return (
     <SettingsPage
@@ -86,6 +90,7 @@ export function SettingsContainer({
       usageRebuildMessage={usageRebuildMessage}
       onRebuildUsage={rebuildUsage}
       auditLog={auditLog}
+      projectTrash={projectTrash}
       appearanceTheme={userSettings.settings.appearance.theme}
       appearanceLoading={userSettings.loading}
       appearanceSaving={userSettings.saving}

@@ -29,6 +29,7 @@ This documentation maps the complete `remote.futrx` application: how to use ever
 | [09-global-skills.md](../02-workspaces/09-global-skills.md) | Platform-wide skills library: storage, shadowing, container sync, always-on policy, and the admin API |
 | [10-usage-and-cost.md](../02-workspaces/10-usage-and-cost.md) | Token and cost ledger, per-provider accuracy, price table, aggregation API, and rebuild |
 | [11-resource-limits.md](../02-workspaces/11-resource-limits.md) | Fleet defaults, host-aware derivation, per-project overrides, disk quotas, and the aggregate start guard |
+| [12-snapshots-and-trash.md](../02-workspaces/12-snapshots-and-trash.md) | Per-project snapshot archives (files + database), soft delete with restore, and the trash janitor |
 | [08-project-templates.md](../02-workspaces/08-project-templates.md) | Stack presets, in-container provisioning, pre-built template images, and adding a template |
 | [13-playbooks.md](../02-workspaces/13-playbooks.md) | One-click composer prompt templates: storage, seeding, placeholders, skill/mode/provider application, and the admin API |
 | [06-previews-and-browser.md](../03-platform/06-previews-and-browser.md) | App discovery, HTTPS preview URLs, element inspection, and Agent Browser |

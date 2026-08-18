@@ -24,9 +24,13 @@ export function ProjectContainersContainer({
   onHamburger: () => void;
   onDeleteProject: (projectId: string) => Promise<void>;
 }) {
-  const controller = useProjectContainersController(projects, selectedProjectId);
-  const { selectedProject, info, secrets, access, shares } = controller;
   const [activeTab, setActiveTab] = useState<ProjectSettingsTab>("info");
+  const controller = useProjectContainersController(
+    projects,
+    selectedProjectId,
+    activeTab === "snapshots"
+  );
+  const { selectedProject, info, secrets, access, shares, snapshots } = controller;
   const usage = useProjectUsage(selectedProject?.id);
   const resources = useProjectResources(selectedProject, activeTab === "settings");
 
@@ -45,6 +49,8 @@ export function ProjectContainersContainer({
       secretsRecord={secrets.record}
       accessRecord={access.record}
       sharesRecord={shares.record}
+      snapshotsRecord={snapshots.record}
+      snapshotsRunning={snapshots.running}
       refreshing={controller.refreshing}
       usageSummary={usage.summary}
       usageLoading={usage.loading}
@@ -63,6 +69,9 @@ export function ProjectContainersContainer({
       onRemoveMember={access.remove}
       onCreateShare={shares.create}
       onRevokeShare={shares.revoke}
+      onCreateSnapshot={snapshots.create}
+      onRestoreSnapshot={snapshots.restore}
+      onDeleteSnapshot={snapshots.remove}
       onRepairNetwork={info.repairNetwork}
       onSetResourceLimits={resources.save}
       onStartProject={info.start}

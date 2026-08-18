@@ -27,6 +27,7 @@ import (
 	serviceserverinfo "github.com/futrx-com/remote.futrx.com/internal/service/serverinfo"
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
 	serviceskills "github.com/futrx-com/remote.futrx.com/internal/service/skills"
+	servicesnapshot "github.com/futrx-com/remote.futrx.com/internal/service/snapshot"
 	servicetmux "github.com/futrx-com/remote.futrx.com/internal/service/tmux"
 	serviceusage "github.com/futrx-com/remote.futrx.com/internal/service/usage"
 	serviceuser "github.com/futrx-com/remote.futrx.com/internal/service/user"
@@ -48,6 +49,11 @@ type Dependencies struct {
 	ProjectSecrets    serviceproject.SecretsRepository
 	ProjectAccess     serviceproject.AccessRepository
 	ProjectShares     serviceshare.Repository
+	Snapshots         servicesnapshot.Repository
+	SnapshotArchive   servicesnapshot.Archive
+	ProjectStorage    serviceproject.ProjectStorage
+	WorkspacePreparer servicesnapshot.Preparer
+	Database          servicesnapshot.Database
 	Schedules         serviceschedule.Repository
 	Auth              AuthStore
 	Users             serviceuser.Repository
@@ -61,6 +67,9 @@ type Dependencies struct {
 	HostCollector     serviceserverinfo.Collector
 	Audit             serviceaudit.Store
 	AuditRetention    int
+	// TrashRetention is how long a soft-deleted project survives before the
+	// janitor purges it. Zero disables the sweep.
+	TrashRetention    time.Duration
 	AuthBaseURL       string
 	ProjectContainers serviceproject.ContainerDependencies
 	// HealthVitals is the cheap per-container usage probe the health monitor
@@ -108,6 +117,7 @@ type Services struct {
 	Resources     *serviceresources.Service
 	Audit         *serviceaudit.Service
 	Health        *servicehealth.Service
+	Snapshots     *servicesnapshot.Service
 }
 
 func New(ctx context.Context, deps Dependencies) (Services, error) {
@@ -162,8 +172,30 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		deps.ProjectSecrets,
 		deps.ProjectAccess,
 		serviceproject.WithAudit(auditLog),
+		serviceproject.WithStorage(deps.ProjectStorage),
 	)
 	projectService.StartAgentBrowserReaper(ctx, 20*time.Minute)
+
+	// Snapshots and projects each need the other: a delete takes a snapshot,
+	// and a snapshot resolves the project it belongs to. The project service
+	// is built first and told about snapshots afterwards, before anything
+	// serves a request.
+	var snapshotService *servicesnapshot.Service
+	if deps.Snapshots != nil && deps.SnapshotArchive != nil {
+		snapshotOptions := []servicesnapshot.Option{
+			servicesnapshot.WithAudit(auditLog),
+			servicesnapshot.WithDatabase(deps.Database),
+			servicesnapshot.WithPreparer(deps.WorkspacePreparer),
+		}
+		if deps.ProjectSecrets != nil {
+			snapshotOptions = append(snapshotOptions, servicesnapshot.WithSecrets(deps.ProjectSecrets))
+		}
+		snapshotService = servicesnapshot.New(
+			deps.Snapshots, deps.SnapshotArchive, projectService, snapshotOptions...,
+		)
+		projectService.SetSnapshots(snapshotService)
+	}
+	projectService.StartTrashJanitor(ctx, deps.TrashRetention)
 	runs = runhub.New(chats)
 	runs.SetRunningSubscriber(func(id servicechat.ID, _ bool) {
 		chats.publishChat(context.Background(), id)
@@ -327,6 +359,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Resources:     resourceService,
 		Audit:         auditLog,
 		Health:        healthService,
+		Snapshots:     snapshotService,
 	}, nil
 }
 

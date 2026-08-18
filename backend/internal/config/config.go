@@ -10,6 +10,7 @@ import (
 
 	"github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	"github.com/futrx-com/remote.futrx.com/internal/service/health"
+	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 )
 
 type Config struct {
@@ -21,6 +22,7 @@ type Config struct {
 	Schedule   ScheduleLimits
 	Audit      AuditLimits
 	Health     HealthLimits
+	Trash      TrashLimits
 }
 
 // HealthLimits is the project health monitor's single knob.
@@ -29,6 +31,14 @@ type HealthLimits struct {
 	// (HEALTH_MONITOR_INTERVAL, Go duration, default 1m). An explicit "0"
 	// switches the monitor off: no sweeps, no dots, no health alerts.
 	Interval time.Duration
+}
+
+// TrashLimits are the soft-delete housekeeping knobs.
+type TrashLimits struct {
+	// Retention is how long a trashed project survives before the janitor
+	// purges it permanently (TRASH_RETENTION_DAYS, default 7). Zero disables
+	// the janitor and keeps trashed projects until an admin purges them.
+	Retention time.Duration
 }
 
 // AuditLimits are the audit-log housekeeping knobs.
@@ -71,6 +81,9 @@ func Load() Config {
 		},
 		Health: HealthLimits{
 			Interval: envDuration("HEALTH_MONITOR_INTERVAL", health.DefaultInterval),
+		},
+		Trash: TrashLimits{
+			Retention: envDays("TRASH_RETENTION_DAYS", serviceproject.TrashRetention),
 		},
 	}
 }
@@ -135,6 +148,21 @@ func envDuration(key string, def time.Duration) time.Duration {
 		return def
 	}
 	return parsed
+}
+
+// envDays parses a whole number of days from the environment. Unset or
+// invalid values fall back to the default; an explicit "0" disables the
+// retention sweep.
+func envDays(key string, def time.Duration) time.Duration {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return def
+	}
+	days, err := strconv.Atoi(raw)
+	if err != nil || days < 0 {
+		return def
+	}
+	return time.Duration(days) * 24 * time.Hour
 }
 
 // envInt parses a non-negative integer from the environment. Unset or invalid

@@ -33,6 +33,21 @@ export interface ProjectMeta {
   resourceLimits?: ContainerLimits;
   createdAt: number;
   updatedAt: number;
+  /**
+   * Unix-ms instant the project was moved to the Trash. A trashed project is
+   * excluded from every normal listing (the sidebar never shows one) but keeps
+   * its metadata so it can be restored.
+   */
+  deletedAt?: number;
+  deletedBy?: string;
+  /** The automatic snapshot taken on the way to the Trash. */
+  trashSnapshotId?: string;
+}
+
+/** A project in the Trash, with the instant the janitor will purge it. Zero
+ *  when retention is disabled, meaning "kept until an admin purges it". */
+export interface TrashedProject extends ProjectMeta {
+  expiresAt?: number;
 }
 
 /** Backward-compatible read of ProjectMeta.template. */

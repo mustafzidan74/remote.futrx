@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/fs"
 	"net/http"
+	"time"
 
 	service "github.com/futrx-com/remote.futrx.com/internal/service"
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
@@ -38,6 +39,9 @@ type Dependencies struct {
 	GitHistory     *servicegithistory.Service
 	IDE            *serviceworkspaceide.Service
 	Templates      *servicetemplates.Service
+	// TrashRetention is how long a soft-deleted project survives; the trash
+	// listing reports the resulting expiry per project.
+	TrashRetention time.Duration
 }
 
 func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
@@ -115,7 +119,9 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			deps.Services.Users,
 			deps.Services.Auth,
 			deps.PublicHostname,
-		).WithShares(deps.Services.Shares).WithUsage(usageHandler),
+		).WithShares(deps.Services.Shares).
+			WithSnapshots(deps.Services.Snapshots, deps.TrashRetention).
+			WithUsage(usageHandler),
 		ProjectHealth: httphandlers.NewProjectHealthHandler(
 			deps.Services.Projects,
 			deps.Services.Health,

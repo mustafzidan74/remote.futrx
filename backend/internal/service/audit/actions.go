@@ -17,6 +17,9 @@ const (
 	ActionProjectCreate       = "project.create"
 	ActionProjectRename       = "project.rename"
 	ActionProjectDelete       = "project.delete"
+	ActionProjectTrash        = "project.trash"
+	ActionProjectRestore      = "project.restore"
+	ActionProjectPurge        = "project.purge"
 	ActionProjectMemberAdd    = "project.member.add"
 	ActionProjectMemberRemove = "project.member.remove"
 
@@ -34,6 +37,9 @@ const (
 	ActionProjectBrowserStart    = "project.browser.start"
 	ActionProjectBrowserStop     = "project.browser.stop"
 	ActionProjectBrowserNavigate = "project.browser.navigate"
+	ActionSnapshotCreate         = "snapshot.create"
+	ActionSnapshotRestore        = "snapshot.restore"
+	ActionSnapshotDelete         = "snapshot.delete"
 
 	ActionChatCreate = "chat.create"
 	ActionChatDelete = "chat.delete"
@@ -74,4 +80,5 @@ const (
 	TargetFile     = "file"
 	TargetSession  = "session"
 	TargetServer   = "server"
+	TargetSnapshot = "snapshot"
 )

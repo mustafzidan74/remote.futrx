@@ -13,6 +13,7 @@ import {
   ProjectInfoSection,
 } from "./project-containers/ProjectInfoSection";
 import { ProjectSecretsSection } from "./project-containers/ProjectSecretsSection";
+import { ProjectSnapshotsSection } from "./project-containers/ProjectSnapshotsSection";
 import { ProjectPreviewSharesSection } from "./project-containers/ProjectPreviewSharesSection";
 import { ProjectSharingSection } from "./project-containers/ProjectSharingSection";
 import { ProjectResourceLimits } from "./project-containers/ProjectResourceLimits";
@@ -34,6 +35,7 @@ import type {
 } from "../../models/project";
 import type { ProjectHealth } from "../../models/health";
 import {
+  Archive,
   ChevronLeft,
   ExternalLink,
   Info,
@@ -44,11 +46,12 @@ import {
   Settings,
   Users,
 } from "../primitives/icons";
+import type { SnapshotsRecord } from "../../state/hooks/projects/useProjectSnapshots";
 import type { UsageSummary } from "../../models/usage";
 import type { ProjectResources } from "../../models/resources";
 import { projectTemplateName } from "../../models/project";
 
-export type ProjectSettingsTab = "info" | "settings" | "secrets" | "sharing";
+export type ProjectSettingsTab = "info" | "settings" | "snapshots" | "secrets" | "sharing";
 
 const tabs: Array<{
   id: ProjectSettingsTab;
@@ -67,6 +70,13 @@ const tabs: Array<{
     label: "Settings",
     description: "Manage this project's container lifecycle and destructive actions.",
     Icon: Settings,
+  },
+  {
+    id: "snapshots",
+    label: "Snapshots",
+    description:
+      "Archive this project's files and database, and roll back to an earlier copy.",
+    Icon: Archive,
   },
   {
     id: "secrets",
@@ -91,6 +101,8 @@ export function ProjectContainersPage({
   secretsRecord,
   accessRecord,
   sharesRecord,
+  snapshotsRecord,
+  snapshotsRunning,
   refreshing,
   usageSummary,
   usageLoading,
@@ -109,6 +121,9 @@ export function ProjectContainersPage({
   onRemoveMember,
   onCreateShare,
   onRevokeShare,
+  onCreateSnapshot,
+  onRestoreSnapshot,
+  onDeleteSnapshot,
   onRepairNetwork,
   onSetResourceLimits,
   onStartProject,
@@ -123,6 +138,8 @@ export function ProjectContainersPage({
   secretsRecord: SecretsRecord;
   accessRecord: AccessRecord;
   sharesRecord: SharesRecord;
+  snapshotsRecord: SnapshotsRecord;
+  snapshotsRunning: boolean;
   refreshing: boolean;
   usageSummary: UsageSummary | null;
   usageLoading: boolean;
@@ -141,6 +158,9 @@ export function ProjectContainersPage({
   onRemoveMember: (email: string) => Promise<void>;
   onCreateShare: (port: number, ttlHours: number, label?: string) => Promise<ProjectShare>;
   onRevokeShare: (shareId: string) => Promise<void>;
+  onCreateSnapshot: (label: string, includeSecrets: boolean) => Promise<void>;
+  onRestoreSnapshot: (snapshotId: string) => Promise<void>;
+  onDeleteSnapshot: (snapshotId: string) => Promise<void>;
   onRepairNetwork: () => Promise<void>;
   onSetResourceLimits: (limits: ContainerLimits) => Promise<void>;
   onStartProject: (force?: boolean) => Promise<void>;
@@ -261,6 +281,22 @@ export function ProjectContainersPage({
                       />
                     </ProjectSettingsPanel>
                   </div>
+                )}
+
+                {activeTab === "snapshots" && (
+                  <ProjectSettingsPanel
+                    title="Snapshots"
+                    description={snapshotsDescription(snapshotsRecord)}
+                    Icon={Archive}
+                  >
+                    <ProjectSnapshotsSection
+                      record={snapshotsRecord}
+                      running={snapshotsRunning}
+                      onCreate={onCreateSnapshot}
+                      onRestore={onRestoreSnapshot}
+                      onDelete={onDeleteSnapshot}
+                    />
+                  </ProjectSettingsPanel>
                 )}
 
                 {activeTab === "secrets" && (
@@ -389,6 +425,13 @@ function secretsDescription(record: SecretsRecord): string {
   if (record.error) return "Project secrets could not be loaded.";
   const count = record.data?.length ?? 0;
   return `${count} configured secret${count === 1 ? "" : "s"}`;
+}
+
+function snapshotsDescription(record: SnapshotsRecord): string {
+  if (record.loading && !record.data) return "Loading snapshots…";
+  if (record.error) return "Snapshots could not be loaded.";
+  const count = record.data?.length ?? 0;
+  return `${count} snapshot${count === 1 ? "" : "s"} kept for this project`;
 }
 
 function accessDescription(record: AccessRecord): string {

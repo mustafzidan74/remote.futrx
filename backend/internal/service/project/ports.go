@@ -36,6 +36,55 @@ type ContainerLifecycle interface {
 	SetResourceLimits(ctx context.Context, containerName string, limits ContainerLimits) error
 }
 
+// Snapshots is the project service's safety-net port. Deleting a project
+// takes an automatic snapshot first, and un-deleting one re-imports the
+// database that lived in the destroyed container rootfs.
+//
+// The port is declared here, and satisfied by the snapshot service, so the
+// dependency points one way only: snapshots know about projects, projects
+// only know this interface.
+type Snapshots interface {
+	// CaptureTrash records the automatic snapshot taken while a project is
+	// moved to the trash. sourceDir is where the project files now live and
+	// database is the dump taken before the container was destroyed. It
+	// returns the snapshot id, which the project meta remembers.
+	CaptureTrash(
+		ctx context.Context,
+		id ID,
+		sourceDir string,
+		database []byte,
+		engine, actor string,
+	) (string, error)
+	// RestoreDatabase re-imports one snapshot's database into the project's
+	// running container. A snapshot without a database is a no-op.
+	RestoreDatabase(ctx context.Context, id ID, snapshotID string) error
+	// PurgeAll drops every snapshot of a project, permanently.
+	PurgeAll(ctx context.Context, id ID) error
+	// Busy reports whether a capture or restore is still running. Moving a
+	// project out of the trash while its trash snapshot is being packed would
+	// pull the directories out from under the archiver.
+	Busy(id ID) bool
+}
+
+// ProjectStorage moves a project's durable host directories between the live
+// workspace root and the trash root. It is the only thing that knows either
+// path; project policy only knows "trashed" and "not trashed".
+type ProjectStorage interface {
+	// Trash moves projectDir into the trash root and returns its new path.
+	Trash(ctx context.Context, id ID, projectDir string) (string, error)
+	// Untrash moves the trashed copy back to projectDir.
+	Untrash(ctx context.Context, id ID, projectDir string) error
+	// PurgeTrash permanently removes the trashed copy.
+	PurgeTrash(ctx context.Context, id ID) error
+}
+
+// ContainerDatabase dumps a template's database from inside the container.
+// The engine is empty when the container has no dump tool, which is the
+// normal answer for a template that ships no database.
+type ContainerDatabase interface {
+	Dump(ctx context.Context, containerName string) ([]byte, string, error)
+}
+
 // ContainerPolicy supplies the fleet-wide resource policy that per-project
 // operations are measured against: the defaults a project inherits, the
 // ceiling an override may not pass, live host capacity, and whether the
@@ -124,4 +173,5 @@ type ContainerDependencies struct {
 	Policy      ContainerPolicy
 	Admission   ContainerAdmission
 	Templates   ContainerTemplates
+	Database    ContainerDatabase
 }

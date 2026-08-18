@@ -27,7 +27,19 @@ export function ProjectActions({
   const canRestart = project.status === "running" || project.status === "error";
 
   async function run(action: "start" | "stop" | "restart" | "delete", operation: () => Promise<void>) {
-    if (action === "delete" && !confirm(`Delete project "${project.name}"? This destroys the container and removes project settings.`)) return;
+    if (
+      action === "delete" &&
+      !confirm(
+        `Delete project "${project.name}"?
+
+` +
+          "The container is destroyed, but the workspace, the agent homes and a " +
+          "snapshot of the database move to Trash for 7 days. Restore it from " +
+          "Settings -> Trash before then, or purge it to free the space now."
+      )
+    ) {
+      return;
+    }
     if (action === "restart" && !confirm(`Force-restart "${project.name}"? All processes inside the container are killed immediately — use this to recover a workspace stuck at its resource limits.`)) return;
     setBusy(action);
     setErr(null);
@@ -95,7 +107,7 @@ export function ProjectActions({
         disabled={busy !== null}
         class="h-10 w-full rounded-md border border-accent-red/30 bg-accent-red/[0.08] px-3 text-[13px] font-semibold text-accent-red hover:bg-accent-red/[0.14] disabled:opacity-45 disabled:cursor-not-allowed"
       >
-        {busy === "delete" ? "Deleting..." : "Delete project"}
+        {busy === "delete" ? "Moving to Trash..." : "Delete project"}
       </button>
     </div>
   );

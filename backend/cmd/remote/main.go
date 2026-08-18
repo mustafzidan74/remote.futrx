@@ -19,6 +19,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
 	"github.com/futrx-com/remote.futrx.com/internal/config"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/gitcli"
+	"github.com/futrx-com/remote.futrx.com/internal/integration/hostarchive"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/hostfs"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/hostinfo"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/lxc"
@@ -33,6 +34,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileproject"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileskillsglobal"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filesnapshot"
 	"github.com/futrx-com/remote.futrx.com/internal/transport"
 	"github.com/futrx-com/remote.futrx.com/internal/version"
 )
@@ -60,6 +62,10 @@ func main() {
 			ProjectSecrets:    storeSet.ProjectSecrets,
 		},
 	)
+	// Snapshot archives and trashed workspaces are host data, not DATA_DIR
+	// metadata: they sit next to the live workspaces they were taken from.
+	snapshotArchiver := hostarchive.NewArchiver(filesnapshot.ArchiveRoot)
+	projectTrash := hostarchive.NewTrashStorage(filesnapshot.TrashRoot)
 	tmuxClient := tmuxcli.New()
 	// One host collector serves both the server-info page and the resource
 	// policy, so displayed capacity and enforced capacity never disagree.
@@ -70,6 +76,11 @@ func main() {
 		ProjectSecrets:    storeSet.ProjectSecrets,
 		ProjectAccess:     storeSet.ProjectAccess,
 		ProjectShares:     storeSet.ProjectShares,
+		Snapshots:         storeSet.Snapshots,
+		SnapshotArchive:   snapshotArchiver,
+		ProjectStorage:    projectTrash,
+		WorkspacePreparer: containerStack.Preparer,
+		Database:          containerStack.Database,
 		Schedules:         storeSet.Schedules,
 		Auth:              storeSet.Auth,
 		Users:             storeSet.Users,
@@ -83,6 +94,7 @@ func main() {
 		HostCollector:     hostCollector,
 		Audit:             storeSet.Audit,
 		AuditRetention:    cfg.Audit.RetentionMonths,
+		TrashRetention:    cfg.Trash.Retention,
 		AuthBaseURL:       cfg.BaseURL,
 		ProjectContainers: containerStack.ProjectDependencies(),
 		HealthVitals:      containerStack.Inspection,
@@ -145,6 +157,7 @@ func main() {
 		GitHistory:     gitHistoryService,
 		IDE:            workspaceIDEService,
 		Templates:      containerStack.Templates,
+		TrashRetention: cfg.Trash.Retention,
 	})
 	if err != nil {
 		log.Fatalf("init http handler: %v", err)
