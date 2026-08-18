@@ -13,6 +13,7 @@ import (
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicetemplates "github.com/futrx-com/remote.futrx.com/internal/service/container/templates"
 	servicegithistory "github.com/futrx-com/remote.futrx.com/internal/service/githistory"
+	servicegithub "github.com/futrx-com/remote.futrx.com/internal/service/github"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
 	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
@@ -103,6 +104,13 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		terminalSocket = terminalSocket.WithAccessChecker(gate)
 		workspaceSocket = workspaceSocket.WithVisibility(gate)
 	}
+	// One handler serves both halves of the GitHub integration: the panel
+	// routes, mounted under the project handler that has already checked
+	// membership, and the public webhook route, registered on its own below.
+	gitHubHandler := httphandlers.NewGitHubHandler(
+		githubService(deps.Services.GitHub),
+		deps.Services.Auth,
+	).WithAudit(auditLog)
 	scheduleHandler := httphandlers.NewScheduleHandler(
 		deps.Services.Schedules,
 		deps.Services.ScheduleCaps,
@@ -130,6 +138,7 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			WithSnapshots(deps.Services.Snapshots, deps.TrashRetention).
 			WithScreenshots(deps.Services.Screenshots).
 			WithPortal(portalService(deps.Services.Portals)).
+			WithGitHub(gitHubHandler).
 			WithUsage(usageHandler),
 		ProjectHealth: httphandlers.NewProjectHealthHandler(
 			deps.Services.Projects,
@@ -170,9 +179,12 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		// The second public, session-less route: a 24h token that shows one
 		// stored preview screenshot to a chat app that cannot carry pictures.
 		ScreenshotLinks: screenshotLinkHandler(deps.Services.Screenshots),
-		ServerInfo:      httphandlers.NewServerInfoHandler(deps.ServerInfo),
-		SelfUpdate:      httphandlers.NewSelfUpdateHandler(deps.SelfUpdate, deps.Services.Auth),
-		Skills:          httphandlers.NewSkillHandler(deps.Services.Skills),
+		// The third: GitHub's own deliveries, authenticated by an HMAC
+		// signature over the raw body rather than by a session.
+		GitHubHooks: gitHubHookRoutes(gitHubHandler),
+		ServerInfo:  httphandlers.NewServerInfoHandler(deps.ServerInfo),
+		SelfUpdate:  httphandlers.NewSelfUpdateHandler(deps.SelfUpdate, deps.Services.Auth),
+		Skills:      httphandlers.NewSkillHandler(deps.Services.Skills),
 		GlobalSkills: httphandlers.NewGlobalSkillHandler(
 			deps.Services.GlobalSkills,
 			deps.Services.Auth,
@@ -272,6 +284,26 @@ func transcriptionService(service *servicetranscribe.Service) httphandlers.Trans
 		return nil
 	}
 	return service
+}
+
+// githubService narrows the concrete GitHub service to the transport's
+// interface while keeping a nil service nil, so a deployment without a
+// settings store or a container runtime reports 503 instead of panicking.
+func githubService(service *servicegithub.Service) httphandlers.GitHubService {
+	if service == nil {
+		return nil
+	}
+	return service
+}
+
+// gitHubHookRoutes keeps a nil handler out of the route table entirely: a
+// typed nil pointer stored in the interface would still be dispatched to, and
+// would panic on registration.
+func gitHubHookRoutes(handler *httphandlers.GitHubHandler) httptransport.RouteRegistrar {
+	if handler == nil {
+		return nil
+	}
+	return handler
 }
 
 // portalService narrows the concrete portal service to the transport's

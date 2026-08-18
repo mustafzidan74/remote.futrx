@@ -2,6 +2,7 @@ import { requestJson } from "./apiRequest";
 import { projectAccessApi } from "./project/projectAccessApi";
 import { projectAppsApi } from "./project/projectAppsApi";
 import { projectContainerApi } from "./project/projectContainerApi";
+import { projectGitHubApi } from "./project/projectGitHubApi";
 import { projectSecretsApi } from "./project/projectSecretsApi";
 import { projectPortalApi } from "./project/projectPortalApi";
 import { projectScreenshotApi } from "./project/projectScreenshotApi";
@@ -38,6 +39,7 @@ export const projectApi = {
   ...projectSharesApi,
   ...projectScreenshotApi,
   ...projectPortalApi,
+  ...projectGitHubApi,
   ...projectAccessApi,
   ...projectSnapshotsApi,
   ...projectTrashApi,

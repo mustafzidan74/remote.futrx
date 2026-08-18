@@ -28,6 +28,12 @@ import {
 } from "../../chat/slashCommandState";
 import { testCommandPrompt } from "../../chat/testPrompts";
 import { isShareablePort } from "../../projects/projectShareState";
+import {
+  githubActions,
+  needsNewBranch,
+  suggestBranchName,
+} from "../../projects/githubPanelState";
+import { GitHubDirtyWorkspaceError } from "../../../models/github";
 import type { ChatPolicies } from "./useChatPolicies";
 import type { PlaybookLibrary } from "./usePlaybooks";
 import { useAgentBrowserOpener } from "../projects/useAgentBrowserOpener";
@@ -239,6 +245,96 @@ export function useSlashCommands({
         });
       } catch (cause) {
         report({ tone: "error", text: (cause as Error).message || "Could not start the snapshot." });
+      } finally {
+        if (alive.current) setBusy(false);
+      }
+    },
+    [report, requireProject],
+  );
+
+  /**
+   * `/pr [title]` opens a pull request from the composer.
+   *
+   * It reads the panel's own status first rather than guessing, for two
+   * reasons: it needs a branch name when the workspace is sitting on the
+   * default branch (GitHub refuses a pull request from a branch onto itself),
+   * and it needs to know whether to ask about uncommitted changes before it
+   * pushes anything.
+   *
+   * The commit message is never composed here and never written by an agent:
+   * the server generates a deterministic one, and this command shows exactly
+   * that string in the confirmation.
+   */
+  const runPullRequest = useCallback(
+    async (arg: string) => {
+      const id = requireProject();
+      if (!id) return;
+      const title = arg.trim();
+      setBusy(true);
+      report({ tone: "busy", text: "Opening a pull request…" });
+      try {
+        const status = await projectApi.getGitHubStatus(id);
+        if (!alive.current) return;
+        if (!status.linked) {
+          report({
+            tone: "error",
+            text: "This project is not linked to a GitHub repository. Link one under Project settings → GitHub.",
+          });
+          return;
+        }
+        const actions = githubActions(status);
+        if (!actions.canOpenPR) {
+          report({ tone: "error", text: actions.blockedReason });
+          return;
+        }
+        const head = needsNewBranch(status)
+          ? suggestBranchName(title, new Date())
+          : (status.branch ?? "");
+
+        let commit = false;
+        let commitMessage = status.defaultCommitMessage ?? "";
+        if (status.dirty) {
+          if (!confirmCommit(status.dirtyCount, commitMessage)) {
+            report({ tone: "info", text: "Pull request cancelled." });
+            return;
+          }
+          commit = true;
+        }
+
+        const open = (withCommit: boolean, message: string) =>
+          projectApi.createGitHubPullRequest(id, {
+            title,
+            head,
+            commit: withCommit,
+            commitMessage: message,
+          });
+
+        let created;
+        try {
+          created = await open(commit, commitMessage);
+        } catch (cause) {
+          // The workspace went dirty between reading the status and pushing,
+          // or the status was stale. The server tells us what it would commit;
+          // ask once, then retry.
+          if (!(cause instanceof GitHubDirtyWorkspaceError)) throw cause;
+          commitMessage = cause.defaultCommitMessage;
+          if (!confirmCommit(cause.dirtyCount, commitMessage)) {
+            report({ tone: "info", text: "Pull request cancelled." });
+            return;
+          }
+          created = await open(true, commitMessage);
+        }
+        if (!alive.current) return;
+        report({
+          tone: "info",
+          text: `Pull request opened on ${created.branch}.`,
+          detail: created.url,
+        });
+      } catch (cause) {
+        report({
+          tone: "error",
+          text: (cause as Error).message || "Could not open the pull request.",
+        });
       } finally {
         if (alive.current) setBusy(false);
       }
@@ -506,6 +602,8 @@ export function useSlashCommands({
           return runAutoTest(arg);
         case "review":
           return runReview();
+        case "pr":
+          return void runPullRequest(arg);
         case "browser":
           return runBrowser(arg);
         // "skills" is absent on purpose: it needs to know where in the draft
@@ -518,7 +616,7 @@ export function useSlashCommands({
     },
     [
       openPreview, registry, report, runAutoTest, runAutopilot, runBrowser, runDeploy,
-      runPlaybook, runReview, runScreenshot, runSkill, runSnapshot, runTest,
+      runPlaybook, runPullRequest, runReview, runScreenshot, runSkill, runSnapshot, runTest,
     ],
   );
 
@@ -629,4 +727,22 @@ export function useSlashCommands({
     sendScreenshot: (card) => void sendScreenshot(card),
     insertScreenshot,
   };
+}
+
+/**
+ * The commit question `/pr` asks when /workspace is dirty.
+ *
+ * A native confirm is deliberate here: the composer has no dialog of its own,
+ * and the alternative — pushing whatever happens to be uncommitted without
+ * asking — is exactly what the server refuses to do. Anyone who wants to edit
+ * the message uses the dialog under Project settings → GitHub, which offers
+ * the same default in an editable field.
+ */
+function confirmCommit(dirtyCount: number, message: string): boolean {
+  const paths = `${dirtyCount} uncommitted change${dirtyCount === 1 ? "" : "s"}`;
+  return confirm(
+    `There ${dirtyCount === 1 ? "is" : "are"} ${paths} in /workspace.\n\n` +
+      `Commit them as "${message}" and open the pull request?\n\n` +
+      "To edit the message, use Project settings → GitHub → Open pull request instead.",
+  );
 }

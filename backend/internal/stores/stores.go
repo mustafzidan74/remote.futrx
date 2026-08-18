@@ -7,6 +7,7 @@ import (
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
+	servicegithub "github.com/futrx-com/remote.futrx.com/internal/service/github"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
@@ -27,6 +28,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileaudit"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileauth"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filechat"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filegithub"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileglobalsecrets"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filemonitoring"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filenotify"
@@ -79,9 +81,12 @@ type Stores struct {
 	Playbooks      serviceplaybooks.Repository
 	GlobalSkills   serviceskills.GlobalRepository
 	GlobalSecrets  serviceglobalsecrets.Store
-	Usage          serviceusage.Repository
-	Transcription  servicetranscribe.Store
-	Audit          serviceaudit.Store
+	// GitHub backs the per-project repository automation settings: the
+	// webhook secret, the automation toggles, and the delivery log.
+	GitHub        servicegithub.Store
+	Usage         serviceusage.Repository
+	Transcription servicetranscribe.Store
+	Audit         serviceaudit.Store
 	// AgentPreferences backs the platform-wide agent reply preferences.
 	AgentPreferences serviceagentprefs.Repository
 }
@@ -172,6 +177,11 @@ func New(dataDir string) (Stores, error) {
 		return Stores{}, fmt.Errorf("init secrets vault store: %w", err)
 	}
 
+	gitHub, err := filegithub.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init github settings store: %w", err)
+	}
+
 	usage, err := fileusage.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init usage store: %w", err)
@@ -211,6 +221,7 @@ func New(dataDir string) (Stores, error) {
 		Playbooks:      playbooks,
 		GlobalSkills:   globalSkills,
 		GlobalSecrets:  globalSecrets,
+		GitHub:         gitHub,
 		Usage:          usage,
 		Transcription:  transcription,
 		Audit:          auditLog,

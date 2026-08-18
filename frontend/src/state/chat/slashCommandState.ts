@@ -34,6 +34,7 @@ export type SlashAction =
   | "autopilot"
   | "autotest"
   | "review"
+  | "pr"
   | "skills"
   | "browser"
   | "help";
@@ -146,6 +147,17 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommand[] = [
     title: "/review",
     hint: "Switch to review mode and review the last change.",
     keywords: "audit inspect critique",
+  },
+  {
+    id: "builtin:pr",
+    command: "pr",
+    group: "builtin",
+    action: "pr",
+    title: "/pr",
+    argHint: "[title]",
+    takesArg: true,
+    hint: "Open a GitHub pull request from this project's workspace.",
+    keywords: "github pull request push branch merge",
   },
   {
     id: "builtin:skills",

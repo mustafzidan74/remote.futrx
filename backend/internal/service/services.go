@@ -16,6 +16,7 @@ import (
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
+	servicegithub "github.com/futrx-com/remote.futrx.com/internal/service/github"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	servicehealth "github.com/futrx-com/remote.futrx.com/internal/service/health"
 	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
@@ -88,6 +89,12 @@ type Dependencies struct {
 	// GlobalSecrets backs the platform secrets vault. Nil leaves the vault
 	// unavailable: projects keep their own secrets and nothing is inherited.
 	GlobalSecrets serviceglobalsecrets.Store
+	// GitHub is the per-project repository automation store, and GitHubCLI is
+	// the container port every git and gh invocation goes through. Either one
+	// nil leaves the whole integration reporting 503, including the public
+	// webhook route.
+	GitHub    servicegithub.Store
+	GitHubCLI servicegithub.CLI
 	// SecretsContainers are the two container ports the vault materializes
 	// through. Nil leaves entries stored but never pushed anywhere.
 	SecretsContainers SecretsContainerDependencies
@@ -170,6 +177,7 @@ type Services struct {
 	AgentPrefs    *serviceagentprefs.Service
 	Search        *servicesearch.Service
 	GlobalSecrets *serviceglobalsecrets.Service
+	GitHub        *servicegithub.Service
 	Skills        *serviceskills.Catalog
 	Tmux          *servicetmux.Service
 	Access        *serviceauth.AccessVerifier
@@ -524,6 +532,24 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	})
 	monitoringService.Start(ctx)
 
+	// The GitHub integration is built here because it needs nearly everything
+	// above it: projects to resolve a container, chats and the prompt service
+	// to turn an inbound issue into a run, and the notification observer to
+	// report that run with the issue's own link attached.
+	var gitHubService *servicegithub.Service
+	if deps.GitHub != nil && deps.GitHubCLI != nil {
+		gitHubService = servicegithub.New(
+			deps.GitHub,
+			deps.GitHubCLI,
+			projectService,
+			servicegithub.WithAudit(auditLog),
+			servicegithub.WithChats(chatService),
+			servicegithub.WithStarter(postRunStarter{prompts: &promptService}),
+			servicegithub.WithNotifier(gitHubNotifier{observer: runNotifications}),
+			servicegithub.WithBaseURL(deps.AuthBaseURL),
+		)
+	}
+
 	// Full-text chat search. The index is built in the background because a
 	// large history takes seconds to walk and nothing else may wait on it;
 	// live updates arrive through the notifying chat repository above, which
@@ -558,6 +584,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		AgentPrefs:    agentPreferences,
 		Search:        searchService,
 		GlobalSecrets: globalSecrets,
+		GitHub:        gitHubService,
 		Skills:        skillCatalog,
 		Tmux:          tmuxService,
 		Access:        accessVerifier,

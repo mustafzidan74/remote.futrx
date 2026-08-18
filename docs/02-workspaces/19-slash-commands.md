@@ -45,14 +45,16 @@ agent as `/deploy tomorrow`.
 | `/screenshot [port]` | Captures the preview and shows a thumbnail card. See [previews](../02-user-guide/06-previews-and-inspector.md#share-a-screenshot). |
 | `/autopilot on\|off [rounds]` | Arms or stops the unattended follow-up loop. Without a round count it keeps the chat's current limit. |
 | `/autotest on\|off` | Turns the post-run Playwright check on or off. |
+| `/pr [title]` | Opens a GitHub pull request from `/workspace`, pushing the current branch (or a suggested one when you are on the default branch). Uncommitted changes are never swept in silently: it asks first, showing the server's deterministic default message. See [GitHub integration](22-github-integration.md). |
 | `/review` | Switches the chat to review mode, selects the review skill if one is registered, and loads "Review the last change." |
 | `/skills` | Re-opens the menu showing only skills. |
 | `/browser <url or port>` | Loads an address in the project's Agent Browser and reveals the pane. A bare port becomes `http://127.0.0.1:<port>/`, which is what the in-container browser can actually reach. |
 | `/help` | Lists every command available in this chat. |
 
 Commands that need a container (`/snapshot`, `/preview`, `/screenshot`,
-`/browser`) report "This chat is not attached to a project container." in a
-chat that has none.
+`/browser`, `/pr`) report "This chat is not attached to a project container."
+in a chat that has none. `/pr` additionally needs a linked repository and a
+`GITHUB_TOKEN` the container can see, and says which is missing.
 
 ## Playbooks
 

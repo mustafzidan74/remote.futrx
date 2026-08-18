@@ -33,6 +33,7 @@ type ProjectHandler struct {
 	screenshots        *servicescreenshot.Service
 	trashRetention     time.Duration
 	portal             PortalService
+	github             *GitHubHandler
 	publicHostname     string
 	usage              *UsageHandler
 	projectHostPattern *regexp.Regexp
@@ -91,6 +92,15 @@ func (h *ProjectHandler) WithScreenshots(screenshots *servicescreenshot.Service)
 // /api/projects/{id}/portal. Without it those routes report 503.
 func (h *ProjectHandler) WithPortal(portal PortalService) *ProjectHandler {
 	h.portal = portal
+	return h
+}
+
+// WithGitHub enables the repository routes under /api/projects/{id}/github.
+// They are mounted here rather than registered separately so they inherit the
+// membership check this handler has already made. Without it those routes
+// report 503.
+func (h *ProjectHandler) WithGitHub(github *GitHubHandler) *ProjectHandler {
+	h.github = github
 	return h
 }
 
@@ -259,6 +269,20 @@ func (h *ProjectHandler) HandleResource(w http.ResponseWriter, r *http.Request) 
 
 	if len(parts) >= 2 && parts[1] == "portal" {
 		h.handleProjectPortal(w, r, id)
+		return
+	}
+
+	if len(parts) >= 2 && parts[1] == "github" {
+		if h.github == nil {
+			httptransport.SendErr(w, http.StatusServiceUnavailable,
+				"GitHub integration is unavailable on this server")
+			return
+		}
+		rest := ""
+		if len(parts) == 3 {
+			rest = parts[2]
+		}
+		h.github.HandleProjectResource(w, r, id, rest, email, isAdmin)
 		return
 	}
 

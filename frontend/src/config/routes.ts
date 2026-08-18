@@ -102,6 +102,16 @@ export const API_ROUTES = {
     secret: (id: string, key: string) =>
       `/api/projects/${encodeURIComponent(id)}/secrets/${encodeURIComponent(key)}`,
     portal: (id: string) => `/api/projects/${encodeURIComponent(id)}/portal`,
+    github: (id: string) => `/api/projects/${encodeURIComponent(id)}/github`,
+    githubSettings: (id: string) =>
+      `/api/projects/${encodeURIComponent(id)}/github/settings`,
+    githubClone: (id: string) =>
+      `/api/projects/${encodeURIComponent(id)}/github/clone`,
+    githubPR: (id: string) => `/api/projects/${encodeURIComponent(id)}/github/pr`,
+    githubPullRequests: (id: string) =>
+      `/api/projects/${encodeURIComponent(id)}/github/prs`,
+    githubImportComments: (id: string, number: number) =>
+      `/api/projects/${encodeURIComponent(id)}/github/prs/${encodeURIComponent(String(number))}/import-comments`,
     shares: (id: string) => `/api/projects/${encodeURIComponent(id)}/shares`,
     share: (id: string, shareId: string) =>
       `/api/projects/${encodeURIComponent(id)}/shares/${encodeURIComponent(shareId)}`,

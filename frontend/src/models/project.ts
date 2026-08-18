@@ -1,3 +1,4 @@
+import type { GitHubLink } from "./github";
 import type { ProjectTemplateStatus } from "./template";
 
 export type ProjectStatus =
@@ -31,6 +32,12 @@ export interface ProjectMeta {
   order?: number;
   errorMsg?: string;
   resourceLimits?: ContainerLimits;
+  /**
+   * The GitHub repository this project is linked to, or absent when it is not
+   * linked. Identity only — the webhook secret and the automation toggles live
+   * behind /api/projects/{id}/github/settings, never on this document.
+   */
+  github?: GitHubLink;
   createdAt: number;
   updatedAt: number;
   /**

@@ -32,6 +32,7 @@ type Handlers struct {
 	Transcribe       RouteRegistrar
 	Portal           RouteRegistrar
 	ScreenshotLinks  RouteRegistrar
+	GitHubHooks      RouteRegistrar
 	ServerInfo       RouteRegistrar
 	SelfUpdate       RouteRegistrar
 	AdminResources   RouteRegistrar
@@ -78,6 +79,7 @@ func NewHandler(handlers Handlers) http.Handler {
 	register(handlers.Transcribe)
 	register(handlers.Portal)
 	register(handlers.ScreenshotLinks)
+	register(handlers.GitHubHooks)
 	register(handlers.ServerInfo)
 	register(handlers.SelfUpdate)
 	register(handlers.AdminResources)

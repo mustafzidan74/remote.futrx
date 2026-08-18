@@ -1,26 +1,47 @@
 import type { SyntheticKind } from "../../../models/chat";
-import { PlaneTakeoff, RotateCcw, TestTube } from "../../primitives/icons";
+import { GitFork, PlaneTakeoff, RotateCcw, TestTube } from "../../primitives/icons";
 
 /**
  * The badge above a prompt the platform sent on the operator's behalf. Without
  * it an autopilot round is indistinguishable from something the user typed,
  * which matters when reading back what an unattended agent was told to do.
  */
+const SYNTHETIC_BADGES: Record<
+  SyntheticKind,
+  { label: string; title: string; Icon: typeof TestTube; tone: string }
+> = {
+  autotest: {
+    label: "auto-test",
+    title: "Sent automatically to verify the change with Playwright",
+    Icon: TestTube,
+    tone: "bg-accent-green/[0.14] text-accent-green",
+  },
+  autopilot: {
+    label: "auto-continue",
+    title: "Sent automatically by autopilot to keep the agent working",
+    Icon: PlaneTakeoff,
+    tone: "bg-accent-blue/[0.14] text-accent-blue",
+  },
+  "github-review": {
+    label: "from GitHub",
+    title:
+      "Composed from a GitHub pull request, issue, or review. The text inside came from " +
+      "outside this server.",
+    Icon: GitFork,
+    tone: "bg-accent-orange/[0.14] text-accent-orange",
+  },
+};
+
 function SyntheticBadge({ kind }: { kind: SyntheticKind }) {
-  const isTest = kind === "autotest";
-  const Icon = isTest ? TestTube : PlaneTakeoff;
+  const badge = SYNTHETIC_BADGES[kind] ?? SYNTHETIC_BADGES.autopilot;
+  const { Icon } = badge;
   return (
     <span
-      class={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]
-              ${isTest ? "bg-accent-green/[0.14] text-accent-green" : "bg-accent-blue/[0.14] text-accent-blue"}`}
-      title={
-        isTest
-          ? "Sent automatically to verify the change with Playwright"
-          : "Sent automatically by autopilot to keep the agent working"
-      }
+      class={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${badge.tone}`}
+      title={badge.title}
     >
       <Icon class="h-2.5 w-2.5" aria-hidden="true" />
-      {isTest ? "auto-test" : "auto-continue"}
+      {badge.label}
     </span>
   );
 }

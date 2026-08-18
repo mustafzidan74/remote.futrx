@@ -96,10 +96,14 @@ export interface ChatEventPage {
 
 /**
  * Labels a prompt the platform composed rather than one the user typed. The
- * server normalizes anything it does not recognize away, so these two strings
- * are the whole vocabulary.
+ * server normalizes anything it does not recognize away, so these three
+ * strings are the whole vocabulary.
+ *
+ * "github-review" is the odd one out: the other two are unattended rounds the
+ * platform decided on, while this one was asked for by a human but is built
+ * from text that arrived from outside this server.
  */
-export type SyntheticKind = "autopilot" | "autotest";
+export type SyntheticKind = "autopilot" | "autotest" | "github-review";
 
 export type ClientToServer =
   | { type: "prompt"; text: string; clientId?: string; synthetic?: SyntheticKind }

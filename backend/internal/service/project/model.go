@@ -61,10 +61,15 @@ type Meta struct {
 	// store, so this file never holds a password.
 	TemplateInputs map[string]string `json:"templateInputs,omitempty"`
 	ResourceLimits *ContainerLimits  `json:"resourceLimits,omitempty"`
-	Order          int64             `json:"order,omitempty"`
-	ErrorMsg       string            `json:"errorMsg,omitempty"`
-	CreatedAt      int64             `json:"createdAt"`
-	UpdatedAt      int64             `json:"updatedAt"`
+	// GitHub is the repository this project is linked to, or nil when it is
+	// not linked. It carries identity only — the webhook secret and the
+	// automation toggles live in their own per-project store, because this
+	// document is returned verbatim to every project member.
+	GitHub    *GitHubLink `json:"github,omitempty"`
+	Order     int64       `json:"order,omitempty"`
+	ErrorMsg  string      `json:"errorMsg,omitempty"`
+	CreatedAt int64       `json:"createdAt"`
+	UpdatedAt int64       `json:"updatedAt"`
 	// DeletedAt is the unix-ms instant the project was moved to the trash.
 	// A trashed project keeps its metadata (so it can be restored, and so its
 	// slug stays reserved) but is excluded from every normal listing.
