@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
+	servicegithub "github.com/futrx-com/remote.futrx.com/internal/service/github"
 	servicehealth "github.com/futrx-com/remote.futrx.com/internal/service/health"
 	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
@@ -54,10 +55,17 @@ func (o *notifyObserver) PlatformStarted(_ context.Context, version string) {
 	})
 }
 
-// RunSettled reports a finished interactive run. Scheduled runs are skipped:
-// the schedule service reports those with richer task context.
+// RunSettled reports a finished interactive run.
+//
+// Two kinds are skipped because another service reports them with context this
+// observer cannot see: a scheduled run (the schedule service names its task)
+// and a GitHub-driven one (the github service attaches the issue or pull
+// request link, which is the only place that report is actionable from).
 func (o *notifyObserver) RunSettled(ctx context.Context, outcome prompt.RunOutcome) {
 	if o == nil || outcome.ScheduledTaskID != "" {
+		return
+	}
+	if outcome.Synthetic == servicechat.SyntheticGitHubReview {
 		return
 	}
 	kind, status := servicenotify.RunKind(outcome.Err, outcome.Cancelled)
@@ -296,4 +304,44 @@ func (s usageDigestSource) WeeklyDigest(
 		digest.TopModel = byModel.Groups[0].Label
 	}
 	return digest, nil
+}
+
+// gitHubNotifier translates the GitHub integration's sink-neutral event into
+// the notification service's vocabulary, so neither package imports the
+// other's types. It exists for the same reason screenshotNotifier does: the
+// feature knows what happened, the observer knows which chat and project it
+// happened in, and only the composition root may see both.
+type gitHubNotifier struct {
+	observer *notifyObserver
+}
+
+var _ servicegithub.Notifier = gitHubNotifier{}
+
+func (n gitHubNotifier) PublishChatEvent(
+	ctx context.Context,
+	chatID servicechat.ID,
+	event servicegithub.NotifyEvent,
+) {
+	if n.observer == nil {
+		return
+	}
+	kind := servicenotify.KindRunFinished
+	if event.Failed {
+		kind = servicenotify.KindRunFailed
+	} else if event.Status == servicenotify.StatusWaiting {
+		// A delivery that stopped at the autoRun gate is precisely the
+		// "somebody has to look at this" case the needs-attention event
+		// exists for.
+		kind = servicenotify.KindNeedsAttention
+	}
+	n.observer.PublishChatEvent(ctx, chatID, servicenotify.Event{
+		Event:     kind,
+		Status:    event.Status,
+		Summary:   servicenotify.Summary(event.Summary),
+		DedupeKey: event.DedupeKey,
+		// The issue link replaces the chat deep link the observer would
+		// otherwise fill in: for a run that came from GitHub, the thread that
+		// asked for it is the more useful place to land.
+		URL: event.URL,
+	})
 }

@@ -39,6 +39,7 @@ export type SlashAction =
   | "autotest"
   | "review"
   | "snippet"
+  | "pr"
   | "skills"
   | "browser"
   | "help";
@@ -163,6 +164,17 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommand[] = [
     takesArg: true,
     hint: "Insert one of your own saved snippets by its shortcut.",
     keywords: "template saved prompt library mine",
+  },
+  {
+    id: "builtin:pr",
+    command: "pr",
+    group: "builtin",
+    action: "pr",
+    title: "/pr",
+    argHint: "[title]",
+    takesArg: true,
+    hint: "Open a GitHub pull request from this project's workspace.",
+    keywords: "github pull request push branch merge",
   },
   {
     id: "builtin:skills",

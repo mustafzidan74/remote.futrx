@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import {
   ProjectContainersPage,
   isProjectSettingsTab,
@@ -9,6 +9,8 @@ import { useProjectContainersController } from "../../state/hooks/projects/usePr
 import { useProjectUsage } from "../../state/hooks/usage/useProjectUsage";
 import { useProjectResources } from "../../state/hooks/projects/useProjectResources";
 import type { ProjectHealthMap } from "../../state/workspace/projectHealthState";
+import { useAuthContext } from "../../state/context/AuthContext";
+import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
 
 export function ProjectContainersContainer({
   projects,
@@ -29,6 +31,12 @@ export function ProjectContainersContainer({
   onDeleteProject: (projectId: string) => Promise<void>;
 }) {
   const [activeTab, setActiveTab] = useState<ProjectSettingsTab>("info");
+  // The GitHub tab imports a pull request's review comments into a chat, so it
+  // needs the chat list and a way to open the one it landed in. Both already
+  // live in the workspace context; passing them down through every caller of
+  // this container would buy nothing.
+  const { chats, selectChat } = useWorkspaceContext();
+  const { auth } = useAuthContext();
 
   useEffect(() => {
     if (isProjectSettingsTab(requestedTab)) setActiveTab(requestedTab);
@@ -37,11 +45,20 @@ export function ProjectContainersContainer({
   const controller = useProjectContainersController(
     projects,
     selectedProjectId,
-    activeTab === "snapshots"
+    activeTab === "snapshots",
+    activeTab === "github",
   );
   const { selectedProject, info, secrets, access, shares, snapshots, portal } = controller;
   const usage = useProjectUsage(selectedProject?.id);
   const resources = useProjectResources(selectedProject, activeTab === "settings");
+
+  const githubChats = useMemo(
+    () =>
+      chats
+        .filter((chat) => chat.projectId === selectedProjectId)
+        .map((chat) => ({ id: chat.id, title: chat.title || "Untitled chat" })),
+    [chats, selectedProjectId],
+  );
 
   const deleteSelectedProject = useCallback(async () => {
     if (!selectedProject) return;
@@ -62,6 +79,10 @@ export function ProjectContainersContainer({
       snapshotsRunning={snapshots.running}
       portalRecord={portal.record}
       portalIssuedUrl={portal.issuedUrl}
+      github={controller.github}
+      githubChats={githubChats}
+      isAdmin={auth.isAdmin}
+      onOpenChat={selectChat}
       refreshing={controller.refreshing}
       usageSummary={usage.summary}
       usageLoading={usage.loading}

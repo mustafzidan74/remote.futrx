@@ -44,6 +44,19 @@ const (
 	ActionSnapshotRestore   = "snapshot.restore"
 	ActionSnapshotDelete    = "snapshot.delete"
 
+	// GitHub integration. The link and the automation toggles are project
+	// actions; a webhook delivery is recorded under github.webhook so an
+	// operator can filter inbound repository traffic on its own.
+	ActionProjectGitHubLink     = "project.github.link"
+	ActionProjectGitHubUnlink   = "project.github.unlink"
+	ActionProjectGitHubClone    = "project.github.clone"
+	ActionProjectGitHubPR       = "project.github.pr-create"
+	ActionProjectGitHubImport   = "project.github.import-comments"
+	ActionProjectGitHubSettings = "project.github.settings"
+
+	ActionGitHubWebhookReceived = "github.webhook.received"
+	ActionGitHubWebhookRejected = "github.webhook.rejected"
+
 	ActionPortalEnable  = "portal.enable"
 	ActionPortalRotate  = "portal.rotate"
 	ActionPortalDisable = "portal.disable"

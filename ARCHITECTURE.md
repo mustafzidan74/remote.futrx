@@ -164,6 +164,7 @@ A chat with **no project** ("loose chat") runs the CLI directly on the host inst
 | Fleet resource policy | `DATA_DIR/resources.json` | JSON | container defaults, host reserve, per-project ceiling, running-container cap |
 | Playbook library | `DATA_DIR/playbooks.json` | JSON | admin-curated composer prompt templates, seeded once on first run ([deep dive](docs/02-workspaces/13-playbooks.md)) |
 | Personal snippets | `DATA_DIR/snippets/<owner>-<digest>.json` | JSON | one private library per user: saved prompts plus bilingual client message templates, seeded on that user's first read, mode 0600 ([deep dive](docs/02-workspaces/21-snippets-and-client-messages.md)) |
+| GitHub automation | `DATA_DIR/github/<id>.json` | JSON | Per-project webhook secret (**plaintext**, mode 0600 — HMAC verification needs the secret itself), automation toggles, and the last 20 inbound deliveries ([deep dive](docs/02-workspaces/22-github-integration.md)) |
 | Audit log | `DATA_DIR/audit/audit-YYYY-MM.jsonl` | JSONL | append-only, one file per month, mode 0600, pruned by retention |
 | Session key | `DATA_DIR/session.key` | 32 random bytes | mode 0600 |
 | Google OAuth secret | `DATA_DIR/oauth.json` | JSON | plaintext, mode 0600 |

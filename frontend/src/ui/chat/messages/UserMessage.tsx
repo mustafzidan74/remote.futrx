@@ -1,5 +1,5 @@
 import type { SyntheticKind } from "../../../models/chat";
-import { Eye, FileText, PlaneTakeoff, RotateCcw, TestTube, Users } from "../../primitives/icons";
+import { Eye, FileText, GitFork, PlaneTakeoff, RotateCcw, TestTube, Users } from "../../primitives/icons";
 
 /**
  * How each platform-issued prompt announces itself. Without a badge an
@@ -47,16 +47,22 @@ const SYNTHETIC_BADGES: Record<
     Icon: Users,
     tone: "bg-accent-purple/[0.14] text-accent-purple",
   },
+  "github-review": {
+    label: "from GitHub",
+    title:
+      "Composed from a GitHub pull request, issue, or review. The text inside came from " +
+      "outside this server.",
+    Icon: GitFork,
+    tone: "bg-accent-orange/[0.14] text-accent-orange",
+  },
 };
 
 function SyntheticBadge({ kind }: { kind: SyntheticKind }) {
-  const badge = SYNTHETIC_BADGES[kind];
-  if (!badge) return null;
+  const badge = SYNTHETIC_BADGES[kind] ?? SYNTHETIC_BADGES.autopilot;
   const { Icon } = badge;
   return (
     <span
-      class={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]
-              ${badge.tone}`}
+      class={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${badge.tone}`}
       title={badge.title}
     >
       <Icon class="h-2.5 w-2.5" aria-hidden="true" />

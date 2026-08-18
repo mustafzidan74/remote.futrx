@@ -7,6 +7,10 @@ import type {
   SharesRecord,
 } from "../../state/projects/projectContainerRecords";
 import { describePortal, portalFormFrom } from "../../state/projects/projectPortalState";
+import {
+  describeAutomation,
+  describeGitHub,
+} from "../../state/projects/githubPanelState";
 import type { PortalFormState } from "../../state/projects/projectPortalState";
 import { buildProjectPreviewUrl } from "../../shared/projectPreviewUrls";
 import { PUBLIC_HOSTNAME } from "../../config/runtime";
@@ -21,6 +25,11 @@ import { ProjectSecretsSection } from "./project-containers/ProjectSecretsSectio
 import { ProjectSnapshotsSection } from "./project-containers/ProjectSnapshotsSection";
 import { ProjectClientMessageSection } from "./project-containers/ProjectClientMessageSection";
 import { ProjectClientPortalSection } from "./project-containers/ProjectClientPortalSection";
+import {
+  ProjectGitHubSection,
+  type GitHubImportTarget,
+} from "./project-containers/ProjectGitHubSection";
+import { ProjectGitHubAutomation } from "./project-containers/ProjectGitHubAutomation";
 import { ProjectPreviewSharesSection } from "./project-containers/ProjectPreviewSharesSection";
 import { ProjectSharingSection } from "./project-containers/ProjectSharingSection";
 import { ProjectResourceLimits } from "./project-containers/ProjectResourceLimits";
@@ -46,6 +55,7 @@ import {
   Archive,
   ChevronLeft,
   ExternalLink,
+  GitFork,
   Info,
   Key,
   Loader,
@@ -55,13 +65,21 @@ import {
   RotateCcw,
   Settings,
   Users,
+  Zap,
 } from "../primitives/icons";
 import type { SnapshotsRecord } from "../../state/hooks/projects/useProjectSnapshots";
+import type { ProjectGitHub } from "../../state/hooks/projects/useProjectGitHub";
 import type { UsageSummary } from "../../models/usage";
 import type { ProjectResources } from "../../models/resources";
 import { projectTemplateName } from "../../models/project";
 
-export type ProjectSettingsTab = "info" | "settings" | "snapshots" | "secrets" | "sharing";
+export type ProjectSettingsTab =
+  | "info"
+  | "settings"
+  | "github"
+  | "snapshots"
+  | "secrets"
+  | "sharing";
 
 const tabs: Array<{
   id: ProjectSettingsTab;
@@ -80,6 +98,14 @@ const tabs: Array<{
     label: "Settings",
     description: "Manage this project's container lifecycle and destructive actions.",
     Icon: Settings,
+  },
+  {
+    id: "github",
+    label: "GitHub",
+    description:
+      "Link a repository, open pull requests from this project, pull review comments into a " +
+      "chat, and let repository events start agent runs.",
+    Icon: GitFork,
   },
   {
     id: "snapshots",
@@ -120,6 +146,10 @@ export function ProjectContainersPage({
   snapshotsRunning,
   portalRecord,
   portalIssuedUrl,
+  github,
+  githubChats,
+  isAdmin,
+  onOpenChat,
   refreshing,
   usageSummary,
   usageLoading,
@@ -161,6 +191,13 @@ export function ProjectContainersPage({
   snapshotsRunning: boolean;
   portalRecord: PortalRecord;
   portalIssuedUrl: string | null;
+  /** Everything the GitHub tab reads and does, from useProjectGitHub. */
+  github: ProjectGitHub;
+  /** This project's chats, offered as import destinations for PR comments. */
+  githubChats: GitHubImportTarget[];
+  /** Arming inbound automation is administrator-only; the panel says so. */
+  isAdmin: boolean;
+  onOpenChat: (chatId: string) => void;
   refreshing: boolean;
   usageSummary: UsageSummary | null;
   usageLoading: boolean;
@@ -304,6 +341,48 @@ export function ProjectContainersPage({
                         onStop={onStopProject}
                         onRestart={onRestartProject}
                         onDelete={onDeleteProject}
+                      />
+                    </ProjectSettingsPanel>
+                  </div>
+                )}
+
+                {activeTab === "github" && (
+                  <div class="space-y-4">
+                    <ProjectSettingsPanel
+                      title="GitHub repository"
+                      description={describeGitHub(github.record.status, github.record.loading)}
+                      Icon={GitFork}
+                    >
+                      <ProjectGitHubSection
+                        record={github.record}
+                        pulls={github.pulls}
+                        busy={github.busy}
+                        chats={githubChats}
+                        onLink={github.link}
+                        onUnlink={github.unlink}
+                        onClone={github.clone}
+                        onLoadPulls={github.loadPulls}
+                        onCreatePR={github.createPullRequest}
+                        onImportComments={github.importComments}
+                        onOpenChat={onOpenChat}
+                      />
+                    </ProjectSettingsPanel>
+                    <ProjectSettingsPanel
+                      title="Repository events"
+                      description={describeAutomation(
+                        github.record.settings,
+                        github.record.loading,
+                      )}
+                      Icon={Zap}
+                    >
+                      <ProjectGitHubAutomation
+                        settings={github.record.settings}
+                        issuedSecret={github.issuedSecret}
+                        busy={github.busy}
+                        linked={github.record.status?.linked === true}
+                        isAdmin={isAdmin}
+                        onDismissIssuedSecret={github.dismissIssuedSecret}
+                        onSave={github.saveSettings}
                       />
                     </ProjectSettingsPanel>
                   </div>

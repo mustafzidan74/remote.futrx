@@ -10,6 +10,10 @@ var (
 	ErrInvalidLimits      = errors.New("invalid container resource limits")
 	ErrSecretsUnavailable = errors.New("secrets store is not configured")
 	ErrUnknownTemplate    = errors.New("unknown project template")
+	// ErrInvalidGitHubRepo rejects a repository reference that is not two
+	// well-formed path segments. Everything downstream puts the stored value
+	// on a command line, so the grammar is enforced before it is persisted.
+	ErrInvalidGitHubRepo = errors.New("invalid GitHub repository (expected owner/repo)")
 	// ErrInvalidTemplateInput is the class every template-input rejection
 	// belongs to. Rejections carry their own message (which input, and why),
 	// so handlers match the class and forward the message.

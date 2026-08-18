@@ -18,6 +18,7 @@ import (
 	remote "github.com/futrx-com/remote.futrx.com"
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
 	"github.com/futrx-com/remote.futrx.com/internal/config"
+	"github.com/futrx-com/remote.futrx.com/internal/integration/containers/githubcli"
 	containerscreenshot "github.com/futrx-com/remote.futrx.com/internal/integration/containers/screenshot"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/gitcli"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/hostarchive"
@@ -108,6 +109,11 @@ func main() {
 		AgentPreferences:  storeSet.AgentPreferences,
 		GlobalSkills:      storeSet.GlobalSkills,
 		GlobalSecrets:     storeSet.GlobalSecrets,
+		GitHub:            storeSet.GitHub,
+		// `git` and `gh` run inside the project's container, never on the
+		// host, so the GitHub credential stays in the container's environment
+		// where LXD already put it.
+		GitHubCLI: githubcli.NewAdapter(lxcClient),
 		SecretsContainers: service.SecretsContainerDependencies{
 			Environment: containerStack.Environment,
 			Material:    containerStack.Secrets,

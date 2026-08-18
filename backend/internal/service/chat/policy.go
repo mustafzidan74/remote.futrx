@@ -31,6 +31,11 @@ const (
 	// but it rides the same badge so it is never read as something a human
 	// typed.
 	SyntheticTeamSummary = "team-summary"
+	// SyntheticGitHubReview is a pull request's review comments, imported
+	// into the chat as a prompt. It is badged separately from the two
+	// unattended kinds because a human asked for it and its content came from
+	// outside this server.
+	SyntheticGitHubReview = "github-review"
 )
 
 // Autopilot defaults and bounds. The defaults are what a chat gets when the
@@ -63,6 +68,8 @@ func NormalizeSynthetic(kind string) string {
 		return SyntheticTeamFix
 	case SyntheticTeamSummary:
 		return SyntheticTeamSummary
+	case SyntheticGitHubReview:
+		return SyntheticGitHubReview
 	default:
 		return ""
 	}
