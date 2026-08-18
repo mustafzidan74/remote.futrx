@@ -59,6 +59,14 @@ type ContainerStackOptions struct {
 	// GlobalSkillsDir is the host directory holding the platform-wide skills
 	// library. Empty disables the per-container global skill sync.
 	GlobalSkillsDir string
+	// PublicHostname is the hostname the platform is reachable on. Template
+	// provisioning uses it to derive the <slug>--<port>.dev.<host> origin a
+	// stack installs itself on. Empty falls back to the in-container address.
+	PublicHostname string
+	// ProjectSecrets lets template provisioning read back the secret inputs
+	// (an admin password) it was created with. Nil provisions with empty
+	// values for those inputs.
+	ProjectSecrets serviceproject.SecretsRepository
 }
 
 // ProjectDependencies exposes only the capabilities consumed by project
@@ -128,6 +136,8 @@ func NewContainerStack(
 	templates := servicetemplates.NewService(
 		servicetemplates.MustLoad(),
 		containertemplates.NewAdapter(runner),
+		servicetemplates.WithPreviewHost(options.PublicHostname),
+		servicetemplates.WithSecrets(options.ProjectSecrets),
 	)
 	launchProvisioner := containerlaunch.NewProvisioner(
 		credentials,

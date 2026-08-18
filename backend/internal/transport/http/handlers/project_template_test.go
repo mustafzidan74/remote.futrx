@@ -3,6 +3,7 @@ package httphandlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -21,9 +22,25 @@ func (s stubTemplateCatalog) DefaultName() string { return serviceproject.Defaul
 
 func (s stubTemplateCatalog) TemplateStatus(
 	_ context.Context,
-	_, template string,
+	project serviceproject.Meta,
 ) serviceproject.TemplateStatus {
-	return serviceproject.TemplateStatus{Name: template, Status: "pending"}
+	return serviceproject.TemplateStatus{Name: project.TemplateName(), Status: "pending"}
+}
+
+// ResolveTemplateInputs accepts nothing: the stub catalog declares no inputs,
+// which is what makes "unknown input" a 400 in the transport test below.
+func (s stubTemplateCatalog) ResolveTemplateInputs(
+	template string,
+	raw map[string]any,
+	_ serviceproject.TemplateInputContext,
+) (serviceproject.TemplateInputValues, error) {
+	if len(raw) > 0 {
+		return serviceproject.TemplateInputValues{}, fmt.Errorf(
+			"%w: template %q takes no inputs",
+			serviceproject.ErrInvalidTemplateInput, template,
+		)
+	}
+	return serviceproject.TemplateInputValues{}, nil
 }
 
 func (s stubTemplateCatalog) ForgetTemplateState(string) {}
@@ -65,6 +82,13 @@ func TestProjectCreateAcceptsATemplate(t *testing.T) {
 		{
 			name:     "unknown template is a client error",
 			body:     `{"name":"Nope","template":"cobol"}`,
+			wantCode: http.StatusBadRequest,
+		},
+		{
+			// A rejected input must read as a client error, not a 500: the
+			// operator can fix it in the dialog and retry.
+			name:     "an input the template does not declare is a client error",
+			body:     `{"name":"Nope","template":"wordpress","templateInputs":{"dbPassword":"x"}}`,
 			wantCode: http.StatusBadRequest,
 		},
 	}

@@ -12,6 +12,11 @@ type templateCatalogStub struct {
 	status      TemplateStatus
 	statusCalls []string
 	forgotten   []string
+	// resolved records every ResolveTemplateInputs call, and inputs is what
+	// it answers with.
+	resolved   []string
+	inputs     TemplateInputValues
+	resolveErr error
 }
 
 func newTemplateCatalogStub(names ...string) *templateCatalogStub {
@@ -30,9 +35,27 @@ func (s *templateCatalogStub) Has(name string) bool { return s.known[name] }
 
 func (s *templateCatalogStub) DefaultName() string { return s.defaultName }
 
-func (s *templateCatalogStub) TemplateStatus(_ context.Context, container, template string) TemplateStatus {
-	s.statusCalls = append(s.statusCalls, container+" "+template)
+func (s *templateCatalogStub) TemplateStatus(_ context.Context, project Meta) TemplateStatus {
+	s.statusCalls = append(s.statusCalls, project.ContainerName+" "+project.TemplateName())
 	return s.status
+}
+
+func (s *templateCatalogStub) ResolveTemplateInputs(
+	template string,
+	raw map[string]any,
+	inputContext TemplateInputContext,
+) (TemplateInputValues, error) {
+	s.resolved = append(
+		s.resolved,
+		template+" "+inputContext.ProjectName+" "+inputContext.UserEmail,
+	)
+	if s.resolveErr != nil {
+		return TemplateInputValues{}, s.resolveErr
+	}
+	if len(raw) == 0 && s.inputs.Values == nil && s.inputs.Secrets == nil {
+		return TemplateInputValues{}, nil
+	}
+	return s.inputs, nil
 }
 
 func (s *templateCatalogStub) ForgetTemplateState(containerName string) {

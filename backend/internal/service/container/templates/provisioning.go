@@ -25,13 +25,21 @@ type Observation struct {
 	// InFlight is true when this process already has a provisioning goroutine
 	// running for the container.
 	InFlight bool
+	// WorkspaceMissing is true when the template declares a workspace marker
+	// and that path is absent from the durable /workspace mount. It is what
+	// stops a container launched from a pre-built template image from
+	// reporting "done" over an empty workspace. A template that declares no
+	// workspace marker leaves it false, which is the pre-existing behaviour.
+	WorkspaceMissing bool
 }
 
 // Decide applies the provisioning rule:
 //
 //   - a template with nothing to install never touches the container;
 //   - the success marker wins over everything else, so a container launched
-//     from a pre-built template image is never re-provisioned;
+//     from a pre-built template image is never re-provisioned — unless the
+//     template also declares a workspace marker that is missing, which means
+//     the durable mount does not hold what the rootfs marker claims;
 //   - one run at a time per container;
 //   - otherwise provision, including after a previous failure — the rootfs is
 //     disposable, and every script is written to be idempotent.
@@ -39,11 +47,14 @@ func Decide(template Template, observation Observation) Decision {
 	if !template.Provisions() {
 		return Decision{Status: StatusNone, Reason: "template installs nothing"}
 	}
-	if observation.MarkerPresent {
+	if observation.MarkerPresent && !observation.WorkspaceMissing {
 		return Decision{Status: StatusDone, Reason: "marker present"}
 	}
 	if observation.InFlight {
 		return Decision{Status: StatusRunning, Reason: "provisioning already in flight"}
+	}
+	if observation.MarkerPresent {
+		return Decision{Run: true, Status: StatusRunning, Reason: "workspace marker absent"}
 	}
 	if observation.FailurePresent {
 		return Decision{Run: true, Status: StatusRunning, Reason: "retrying after a failed run"}
@@ -58,7 +69,7 @@ func ObservedStatus(template Template, observation Observation) Status {
 		return StatusNone
 	}
 	switch {
-	case observation.MarkerPresent:
+	case observation.MarkerPresent && !observation.WorkspaceMissing:
 		return StatusDone
 	case observation.InFlight:
 		return StatusRunning
@@ -81,12 +92,18 @@ REMOTE_TEMPLATE_NAME='__TEMPLATE__'
 REMOTE_TEMPLATE_LOG='__LOG__'
 REMOTE_TEMPLATE_MARKER='__MARKER__'
 REMOTE_TEMPLATE_FAILED='__FAILED__'
+REMOTE_TEMPLATE_WORKSPACE_MARKER='__WORKSPACE_MARKER__'
 mkdir -p "$(dirname "$REMOTE_TEMPLATE_LOG")" "$(dirname "$REMOTE_TEMPLATE_MARKER")"
 # Everything below is both streamed back to the caller and appended to the
 # in-container log, so a failure is diagnosable from the host and from inside.
 exec > >(tee -a "$REMOTE_TEMPLATE_LOG") 2>&1
 echo "=== remote template '$REMOTE_TEMPLATE_NAME' provisioning $(date -u '+%Y-%m-%dT%H:%M:%SZ') ==="
-if [ -f "$REMOTE_TEMPLATE_MARKER" ]; then
+# The rootfs marker alone cannot speak for /workspace: a container launched
+# from a pre-built template image carries the marker while its durable mount is
+# empty. A template that installs into /workspace names a file there, and both
+# must be present before the run is skipped.
+if [ -f "$REMOTE_TEMPLATE_MARKER" ] &&
+  { [ -z "$REMOTE_TEMPLATE_WORKSPACE_MARKER" ] || [ -e "$REMOTE_TEMPLATE_WORKSPACE_MARKER" ]; }; then
   echo "marker $REMOTE_TEMPLATE_MARKER present - nothing to do"
   exit 0
 fi
@@ -131,6 +148,7 @@ func ProvisionProgram(template Template) string {
 		"__LOG__", LogPath,
 		"__MARKER__", MarkerPath,
 		"__FAILED__", FailurePath,
+		"__WORKSPACE_MARKER__", template.WorkspaceMarker,
 	)
 	var program strings.Builder
 	program.WriteString(replacer.Replace(provisionPreamble))

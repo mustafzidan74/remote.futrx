@@ -35,6 +35,7 @@ interface WorkspaceContextValue {
   closeNewProject: () => void;
   setNewProjectName: (name: string) => void;
   selectNewProjectTemplate: (template: string) => void;
+  setNewProjectInput: (key: string, value: string) => void;
   submitNewProject: () => Promise<void>;
   createChat: (projectId?: string) => Promise<ChatMeta>;
   deleteChat: (chatId: string) => Promise<void>;
@@ -111,7 +112,11 @@ export function WorkspaceProvider({
     if (!name) return;
     dispatchNewProject({ type: "submit" });
     try {
-      await projectApi.create(name, newProject.template);
+      await projectApi.create(
+        name,
+        newProject.template,
+        newProjectState.submittedInputs(newProject)
+      );
       dispatchNewProject({ type: "close" });
     } catch (error) {
       dispatchNewProject({ type: "submit-failed", error: (error as Error).message });
@@ -178,6 +183,8 @@ export function WorkspaceProvider({
         setNewProjectName: (name) => dispatchNewProject({ type: "set-name", name }),
         selectNewProjectTemplate: (template) =>
           dispatchNewProject({ type: "select-template", template }),
+        setNewProjectInput: (key, value) =>
+          dispatchNewProject({ type: "set-input", key, value }),
         submitNewProject,
         createChat,
         deleteChat,

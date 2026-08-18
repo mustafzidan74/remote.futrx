@@ -7,6 +7,8 @@ import (
 	"sync"
 	"testing"
 	"testing/fstest"
+
+	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 )
 
 type fakeRuntime struct {
@@ -20,6 +22,7 @@ type fakeRuntime struct {
 	pushed    map[string]string
 	pushModes map[string]string
 	probeErr  error
+	env       map[string]string
 }
 
 func newFakeRuntime() *fakeRuntime {
@@ -61,10 +64,15 @@ func (f *fakeRuntime) PushFile(_ context.Context, container string, content []by
 	return nil
 }
 
-func (f *fakeRuntime) RunScript(_ context.Context, container, script string) (string, error) {
+func (f *fakeRuntime) RunScript(
+	_ context.Context,
+	container, script string,
+	env map[string]string,
+) (string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls = append(f.calls, "run "+container)
+	f.env = env
 	if f.scriptErr != nil {
 		return "boom output", f.scriptErr
 	}
@@ -94,6 +102,18 @@ func (f *fakeRuntime) setFile(path string, present bool) {
 	f.files[path] = present
 }
 
+// testProject is the minimal project a provisioning run needs: a container to
+// run in and a template to apply.
+func testProject(container, template string) serviceproject.Meta {
+	return serviceproject.Meta{
+		ID:            "abcd1234",
+		Name:          "Project one",
+		Slug:          container,
+		ContainerName: container,
+		Template:      template,
+	}
+}
+
 func testCatalog(t *testing.T) *Catalog {
 	t.Helper()
 	catalog, err := LoadFS(fstest.MapFS{
@@ -120,7 +140,7 @@ func TestEnsureIsANoOpForTheDefaultTemplate(t *testing.T) {
 	runtime := newFakeRuntime()
 	service := NewService(testCatalog(t), runtime)
 
-	<-service.Ensure(context.Background(), "project-1", "blank")
+	<-service.Ensure(context.Background(), testProject("project-1", "blank"))
 
 	if calls := runtime.recorded(); len(calls) != 0 {
 		t.Fatalf("blank template touched the runtime: %v", calls)
@@ -136,7 +156,7 @@ func TestEnsureProvisionsThenBecomesANoOp(t *testing.T) {
 	service := NewService(testCatalog(t), runtime)
 	ctx := context.Background()
 
-	<-service.Ensure(ctx, "project-1", "stack")
+	<-service.Ensure(ctx, testProject("project-1", "stack"))
 
 	if runtime.pushed["/workspace/README.md"] != "readme\n" {
 		t.Fatalf("seed not written: %v", runtime.pushed)
@@ -150,7 +170,7 @@ func TestEnsureProvisionsThenBecomesANoOp(t *testing.T) {
 
 	// Second convergence: the marker is present, so no script and no seeds.
 	before := len(runtime.recorded())
-	<-service.Ensure(ctx, "project-1", "stack")
+	<-service.Ensure(ctx, testProject("project-1", "stack"))
 	after := runtime.recorded()
 	for _, call := range after[before:] {
 		if strings.HasPrefix(call, "run ") || strings.HasPrefix(call, "push ") {
@@ -164,7 +184,7 @@ func TestEnsureNeverOverwritesAnExistingSeed(t *testing.T) {
 	runtime.setFile("/workspace/README.md", true)
 	service := NewService(testCatalog(t), runtime)
 
-	<-service.Ensure(context.Background(), "project-1", "stack")
+	<-service.Ensure(context.Background(), testProject("project-1", "stack"))
 
 	if _, written := runtime.pushed["/workspace/README.md"]; written {
 		t.Fatal("an existing workspace file was overwritten")
@@ -181,7 +201,7 @@ func TestEnsureSkipsWhenTheMarkerIsAlreadyPresent(t *testing.T) {
 	runtime.setFile(MarkerPath, true)
 	service := NewService(testCatalog(t), runtime)
 
-	<-service.Ensure(context.Background(), "project-1", "stack")
+	<-service.Ensure(context.Background(), testProject("project-1", "stack"))
 
 	for _, call := range runtime.recorded() {
 		if strings.HasPrefix(call, "run ") || strings.HasPrefix(call, "push ") {
@@ -199,7 +219,7 @@ func TestEnsureRecordsFailure(t *testing.T) {
 	service := NewService(testCatalog(t), runtime)
 	ctx := context.Background()
 
-	<-service.Ensure(ctx, "project-1", "stack")
+	<-service.Ensure(ctx, testProject("project-1", "stack"))
 
 	state := service.Status(ctx, "project-1", "stack")
 	if state.Status != StatusFailed {
@@ -264,7 +284,7 @@ func TestStatusUsesTheProjectsOwnTemplate(t *testing.T) {
 	// under a different template must not inherit the old answer.
 	runtime := newFakeRuntime()
 	service := NewService(testCatalog(t), runtime)
-	<-service.Ensure(context.Background(), "project-1", "stack")
+	<-service.Ensure(context.Background(), testProject("project-1", "stack"))
 
 	state := service.Status(context.Background(), "project-1", "blank")
 	if state.Status != StatusNone || state.Template != "blank" {
@@ -331,9 +351,9 @@ func TestTemplateStatusAdaptsToTheProjectPayload(t *testing.T) {
 	runtime := newFakeRuntime()
 	service := NewService(testCatalog(t), runtime)
 	ctx := context.Background()
-	<-service.Ensure(ctx, "project-1", "stack")
+	<-service.Ensure(ctx, testProject("project-1", "stack"))
 
-	status := service.TemplateStatus(ctx, "project-1", "stack")
+	status := service.TemplateStatus(ctx, testProject("project-1", "stack"))
 	if status.Name != "stack" || status.Title != "Stack" || status.Status != string(StatusDone) {
 		t.Fatalf("TemplateStatus() = %+v", status)
 	}
@@ -346,7 +366,7 @@ func TestForgetTemplateStateDropsCachedState(t *testing.T) {
 	runtime := newFakeRuntime()
 	service := NewService(testCatalog(t), runtime)
 	ctx := context.Background()
-	<-service.Ensure(ctx, "project-1", "stack")
+	<-service.Ensure(ctx, testProject("project-1", "stack"))
 
 	service.ForgetTemplateState("project-1")
 	if _, ok := service.state("project-1"); ok {

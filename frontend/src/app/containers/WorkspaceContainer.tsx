@@ -48,6 +48,7 @@ export function WorkspaceContainer() {
         state={workspace.newProject}
         onNameChange={workspace.setNewProjectName}
         onSelectTemplate={workspace.selectNewProjectTemplate}
+        onInputChange={workspace.setNewProjectInput}
         onSubmit={workspace.submitNewProject}
         onClose={workspace.closeNewProject}
       />

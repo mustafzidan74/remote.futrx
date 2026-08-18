@@ -43,6 +43,18 @@ const (
 	InstructionsPath = "/workspace/AGENTS.md"
 )
 
+// EnvPrefix namespaces the environment variables a template's inputs are
+// exposed under inside the provisioning program. Prefixing keeps the template
+// contract obvious in a script and cannot collide with the project secrets
+// LXD already injects as plain environment.* config.
+const EnvPrefix = "TPL_"
+
+// PreviewURLEnv carries the project's public preview origin into the
+// provisioning program. It is supplied by the runner rather than declared as
+// an input: the slug and the public hostname are platform facts, not values an
+// operator types into the new-project dialog.
+const PreviewURLEnv = EnvPrefix + "PREVIEW_URL"
+
 // imageAliasPrefix and imageAliasSuffix bracket the dedicated pre-built image
 // alias of a template that declares one.
 const (
@@ -80,6 +92,119 @@ type SeedFile struct {
 	Mode string `json:"mode,omitempty"`
 }
 
+// InputType is the declared form control (and coercion rule) of one template
+// input. The set is deliberately small: every type must be renderable by the
+// new-project dialog and coercible from JSON without ambiguity.
+type InputType string
+
+const (
+	InputText     InputType = "text"
+	InputEmail    InputType = "email"
+	InputPassword InputType = "password"
+	InputSelect   InputType = "select"
+	InputCheckbox InputType = "checkbox"
+)
+
+// InputOption is one choice of a select input.
+type InputOption struct {
+	Value string `json:"value"`
+	Label string `json:"label"`
+}
+
+// DefaultSource names a server-side value used as an input's default when the
+// template cannot know it (the project name, the creating user's email). The
+// dialog prefills the same values client-side; the server applies them again
+// so an API caller that omits the field lands on the same result.
+type DefaultSource string
+
+const (
+	// DefaultFromProjectName prefills the name of the project being created.
+	DefaultFromProjectName DefaultSource = "projectName"
+	// DefaultFromUserEmail prefills the creating user's email address.
+	DefaultFromUserEmail DefaultSource = "userEmail"
+)
+
+// Input is one operator-supplied value a template collects in the new-project
+// dialog and receives as an environment variable during provisioning.
+//
+// The env var name is derived from Key, never declared: EnvName turns
+// "adminPassword" into TPL_ADMIN_PASSWORD. One key therefore has exactly one
+// spelling on the wire, in metadata, and in the script.
+type Input struct {
+	Key      string        `json:"key"`
+	Label    string        `json:"label"`
+	Type     InputType     `json:"type"`
+	Required bool          `json:"required,omitempty"`
+	Default  string        `json:"default,omitempty"`
+	Options  []InputOption `json:"options,omitempty"`
+	Help     string        `json:"help,omitempty"`
+	// DefaultFrom names a server-supplied default (see DefaultSource). It is
+	// consulted only when Default is empty and the caller sent nothing.
+	DefaultFrom DefaultSource `json:"defaultFrom,omitempty"`
+	// Secret marks a value that must never be persisted in project metadata.
+	// It is written to the project secrets store under SecretName instead, so
+	// it appears in the Secrets tab and nowhere else.
+	Secret bool `json:"secret,omitempty"`
+	// SecretName is the project-secret key a secret input is stored under.
+	// Required when Secret is set.
+	SecretName string `json:"secretName,omitempty"`
+	// Generate makes the server mint a strong random value when a secret
+	// input is left empty, instead of rejecting it or provisioning without one.
+	Generate bool `json:"generate,omitempty"`
+}
+
+// EnvName is the environment variable this input is passed as.
+func (i Input) EnvName() string { return EnvName(i.Key) }
+
+// EnvName converts a camelCase input key to its TPL_ environment variable. A
+// capital starts a new word unless it follows another capital, so "siteTitle"
+// becomes TPL_SITE_TITLE and "installWooCommerce" becomes
+// TPL_INSTALL_WOOCOMMERCE.
+func EnvName(key string) string {
+	var out strings.Builder
+	out.WriteString(EnvPrefix)
+	runes := []rune(key)
+	for index, r := range runes {
+		switch {
+		case r >= 'A' && r <= 'Z':
+			previous := rune(0)
+			if index > 0 {
+				previous = runes[index-1]
+			}
+			lower := previous >= 'a' && previous <= 'z'
+			digit := previous >= '0' && previous <= '9'
+			if lower || digit {
+				out.WriteByte('_')
+			}
+			out.WriteRune(r)
+		case r >= 'a' && r <= 'z':
+			out.WriteRune(r - 32)
+		case r >= '0' && r <= '9':
+			out.WriteRune(r)
+		default:
+			out.WriteByte('_')
+		}
+	}
+	return out.String()
+}
+
+// AdminAccess describes the credentialed entry point a template installs, so
+// the project page can show "here is your admin URL, user, and password"
+// without hard-coding any one stack.
+type AdminAccess struct {
+	// Label names the destination, e.g. "WordPress admin".
+	Label string `json:"label"`
+	// Port is the in-container port the admin UI is served on. It selects the
+	// <slug>--<port>.dev.<host> preview origin.
+	Port int `json:"port"`
+	// Path is appended to that origin, e.g. "/wp-admin".
+	Path string `json:"path,omitempty"`
+	// UserInput is the input key holding the admin user name.
+	UserInput string `json:"userInput,omitempty"`
+	// PasswordSecret is the project-secret key holding the admin password.
+	PasswordSecret string `json:"passwordSecret,omitempty"`
+}
+
 // Definition is the on-disk shape of a template's template.json.
 type Definition struct {
 	Name        string `json:"name"`
@@ -102,6 +227,22 @@ type Definition struct {
 	// PrebuiltImage declares that this template has a dedicated image alias
 	// that `build-template-image` can publish.
 	PrebuiltImage bool `json:"prebuiltImage,omitempty"`
+	// WorkspaceMarker is an absolute path under /workspace whose absence
+	// forces a provisioning run even when the rootfs marker says a previous
+	// run succeeded.
+	//
+	// It exists because the rootfs marker cannot speak for /workspace: a
+	// container launched from a pre-built template image carries the marker,
+	// but its durable workspace is mounted over whatever the image baked, so
+	// without this the stack would report "done" over an empty site.
+	WorkspaceMarker string `json:"workspaceMarker,omitempty"`
+	// Inputs are the operator-supplied values collected in the new-project
+	// dialog and passed to the provision script as TPL_* environment
+	// variables. Empty for templates that collect nothing.
+	Inputs []Input `json:"inputs,omitempty"`
+	// AdminAccess describes the credentialed entry point the template
+	// installs, surfaced on the project page once provisioning is done.
+	AdminAccess *AdminAccess `json:"adminAccess,omitempty"`
 }
 
 // Template is a validated definition with its referenced files resolved.
@@ -138,6 +279,20 @@ func ImageAlias(name string) string {
 	return imageAliasPrefix + name + imageAliasSuffix
 }
 
+// AdminPort is the container port a template's preview URL should point at:
+// the admin entry point's port when one is declared, otherwise the first
+// declared default port. Zero means the template has no obvious front door,
+// and no preview URL is derived.
+func (t Template) AdminPort() int {
+	if t.AdminAccess != nil && t.AdminAccess.Port > 0 {
+		return t.AdminAccess.Port
+	}
+	if len(t.DefaultPorts) > 0 {
+		return t.DefaultPorts[0]
+	}
+	return 0
+}
+
 // Provisions reports whether this template has any post-launch work at all.
 // A template without work never issues a single runtime call.
 func (t Template) Provisions() bool {
@@ -172,6 +327,9 @@ type Descriptor struct {
 	Provisions             bool   `json:"provisions"`
 	PrebuiltImage          string `json:"prebuiltImage,omitempty"`
 	PrebuiltImageAvailable bool   `json:"prebuiltImageAvailable"`
+	// Inputs is the template's input declaration, rendered as a form under
+	// the picker card. Omitted for templates that collect nothing.
+	Inputs []Input `json:"inputs,omitempty"`
 }
 
 // State is one container's template provisioning state.

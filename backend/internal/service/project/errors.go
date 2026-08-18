@@ -10,4 +10,8 @@ var (
 	ErrInvalidLimits      = errors.New("invalid container resource limits")
 	ErrSecretsUnavailable = errors.New("secrets store is not configured")
 	ErrUnknownTemplate    = errors.New("unknown project template")
+	// ErrInvalidTemplateInput is the class every template-input rejection
+	// belongs to. Rejections carry their own message (which input, and why),
+	// so handlers match the class and forward the message.
+	ErrInvalidTemplateInput = errors.New("invalid template input")
 )

@@ -94,8 +94,18 @@ type ContainerTemplates interface {
 	Has(name string) bool
 	// DefaultName is the template assigned when a caller requests none.
 	DefaultName() string
-	// TemplateStatus reports the provisioning state of one container.
-	TemplateStatus(ctx context.Context, containerName, template string) TemplateStatus
+	// TemplateStatus reports the provisioning state of one project's
+	// container, including where to sign in to what the template installed.
+	TemplateStatus(ctx context.Context, project Meta) TemplateStatus
+	// ResolveTemplateInputs validates raw create-request inputs against a
+	// template's declaration and splits them into persistable values and
+	// project secrets. It returns an error wrapping ErrInvalidTemplateInput
+	// for anything the declaration refuses.
+	ResolveTemplateInputs(
+		template string,
+		raw map[string]any,
+		context TemplateInputContext,
+	) (TemplateInputValues, error)
 	// ForgetTemplateState drops any cached state for a deleted container.
 	ForgetTemplateState(containerName string)
 }

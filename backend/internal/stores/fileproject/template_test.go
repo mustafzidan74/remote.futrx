@@ -119,3 +119,73 @@ func TestTemplateSurvivesUpdatesAndIsOmittedWhenEmpty(t *testing.T) {
 		t.Fatalf("meta.json for a default-template project carries %q: %s", "template", raw)
 	}
 }
+
+func TestTemplateInputsRoundTripAndAreOmittedWhenEmpty(t *testing.T) {
+	dataDir := t.TempDir()
+	store, err := NewWithWorkspaceRoot(dataDir, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+
+	shop, err := store.Create(ctx, serviceproject.Meta{
+		Name:     "Shop",
+		Slug:     serviceproject.Slugify("Shop"),
+		Status:   serviceproject.StatusProvisioning,
+		Template: "wordpress",
+		TemplateInputs: map[string]string{
+			"siteTitle":          "متجر",
+			"language":           "ar",
+			"installWoocommerce": "true",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain, err := store.Create(ctx, serviceproject.Meta{
+		Name:   "Plain",
+		Slug:   serviceproject.Slugify("Plain"),
+		Status: serviceproject.StatusProvisioning,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Provisioning re-reads the inputs on every convergence, so they have to
+	// survive a reopen of the store, not just the create call.
+	reopened, err := NewWithWorkspaceRoot(dataDir, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	read, err := reopened.Get(ctx, shop.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if read.TemplateInputs["siteTitle"] != "متجر" ||
+		read.TemplateInputs["language"] != "ar" ||
+		read.TemplateInputs["installWoocommerce"] != "true" {
+		t.Fatalf("TemplateInputs = %v", read.TemplateInputs)
+	}
+
+	renamed, err := reopened.Update(ctx, shop.ID, func(m *serviceproject.Meta) {
+		m.Name = "Shop v2"
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(renamed.TemplateInputs) != 3 {
+		t.Fatalf("TemplateInputs = %v, want them preserved across an update", renamed.TemplateInputs)
+	}
+
+	raw, err := os.ReadFile(filepath.Join(dataDir, "projects", string(plain.ID), "meta.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if _, present := decoded["templateInputs"]; present {
+		t.Fatalf("meta.json for a project without inputs carries templateInputs: %s", raw)
+	}
+}

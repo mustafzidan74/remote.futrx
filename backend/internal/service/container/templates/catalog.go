@@ -22,6 +22,10 @@ var templateFiles embed.FS
 
 var namePattern = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
 
+// shellHostileChars are the characters a path interpolated into the
+// provisioning preamble's single-quoted shell literal must never contain.
+const shellHostileChars = "'\"`$\\ \t\r\n"
+
 // order pins the presentation order of the shipped templates; anything not
 // listed sorts alphabetically after them. Keeping "blank" first makes the
 // default the first card in the picker.
@@ -161,6 +165,23 @@ func validateDefinition(dir string, definition Definition) error {
 		if port < 1 || port > 65535 {
 			return fmt.Errorf("template %q: default port %d is out of range", dir, port)
 		}
+	}
+	if definition.WorkspaceMarker != "" {
+		if err := validateSeedTarget(definition.WorkspaceMarker); err != nil {
+			return fmt.Errorf("template %q: workspaceMarker: %w", dir, err)
+		}
+		// Unlike a seed target, this path is interpolated into the shell
+		// preamble, so nothing that could end the single-quoted literal is
+		// allowed through.
+		if strings.ContainsAny(definition.WorkspaceMarker, shellHostileChars) {
+			return fmt.Errorf(
+				"template %q: workspaceMarker %q must not contain quotes, spaces or shell metacharacters",
+				dir, definition.WorkspaceMarker,
+			)
+		}
+	}
+	if err := ValidateInputDeclaration(definition.Inputs, definition.AdminAccess); err != nil {
+		return fmt.Errorf("template %q: %w", dir, err)
 	}
 	targets := make(map[string]bool, len(definition.SeedFiles))
 	for _, seed := range definition.SeedFiles {
