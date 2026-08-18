@@ -17,6 +17,7 @@ import (
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
+	servicedashboard "github.com/futrx-com/remote.futrx.com/internal/service/dashboard"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	servicehealth "github.com/futrx-com/remote.futrx.com/internal/service/health"
 	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
@@ -110,7 +111,11 @@ type Dependencies struct {
 	ResourceSettings serviceresources.Repository
 	ResourceFleet    serviceresources.Fleet
 	HostCollector    serviceserverinfo.Collector
-	ProjectPortals   serviceportal.Repository
+	// Backups probes the host's backup marker directory for the home
+	// dashboard's "no recent backup" finding. Nil leaves that alert off, which
+	// is the right answer for a host that never installed the backup timer.
+	Backups        servicedashboard.Backups
+	ProjectPortals serviceportal.Repository
 	// GitHistory backs the client portal's changelog. It is the same service
 	// the project page uses; the composition root builds it once and hands it
 	// to both.
@@ -213,6 +218,7 @@ type Services struct {
 	Screenshots   *servicescreenshot.Service
 	PostRun       *servicepostrun.Driver
 	Team          *serviceteam.Driver
+	Dashboard     *servicedashboard.Service
 }
 
 func New(ctx context.Context, deps Dependencies) (Services, error) {
@@ -606,6 +612,22 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	chatSearchIndex.attach(searchService)
 	searchService.Start(ctx)
 
+	// The home dashboard is assembled last: it reads every service above and
+	// owns no store of its own.
+	dashboardService := newDashboardService(
+		projectService,
+		chatAccessService,
+		usageService,
+		healthService,
+		scheduleService,
+		snapshotService,
+		notifications,
+		monitoringService,
+		resourceService,
+		deps.Backups,
+		deps.TrashRetention,
+	)
+
 	return Services{
 		Chats:         chatService,
 		ChatAccess:    chatAccessService,
@@ -641,6 +663,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Screenshots:   screenshotService,
 		PostRun:       postRunDriver,
 		Team:          teamDriver,
+		Dashboard:     dashboardService,
 	}, nil
 }
 

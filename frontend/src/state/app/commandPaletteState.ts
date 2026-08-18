@@ -163,6 +163,7 @@ export interface CommandPaletteSources {
 
 export interface CommandPaletteHandlers {
   openChat: (chatId: string) => void;
+  openHome: () => void;
   newProject: () => void;
   newChat: (projectId: string) => void;
   openProject: (projectId: string) => void;
@@ -207,6 +208,18 @@ export function buildCommandItems(
       run: () => handlers.openChat(chat.id),
     });
   }
+
+  // Home leads the actions: it is the one destination that answers "what is
+  // happening?" rather than taking the user somewhere specific.
+  items.push({
+    id: "action:home",
+    title: "Home",
+    subtitle: "Projects, alerts, recent runs and usage",
+    keywords: "dashboard overview start landing status",
+    group: ACTIONS_GROUP,
+    kind: "action",
+    run: handlers.openHome,
+  });
 
   items.push({
     id: "action:new-project",

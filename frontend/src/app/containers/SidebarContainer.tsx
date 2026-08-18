@@ -68,6 +68,8 @@ export function SidebarContainer() {
       onReorderProjects={commands.reorderProjects}
       onOpenProjectContainers={workspace.showProjectContainers}
       onOpenSettings={workspace.showSettings}
+      onOpenHome={workspace.showHome}
+      homeActive={workspace.ui.view === "home"}
     />
   );
 }

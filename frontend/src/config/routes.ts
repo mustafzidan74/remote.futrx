@@ -13,6 +13,7 @@ export const API_ROUTES = {
     export: (query: string) =>
       `/api/admin/audit/export${query ? `?${query}` : ""}`,
   },
+  dashboard: "/api/dashboard",
   chats: {
     collection: "/api/chats",
     item: (id: string) => `/api/chats/${encodeURIComponent(id)}`,

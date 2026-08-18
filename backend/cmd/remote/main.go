@@ -21,6 +21,7 @@ import (
 	containerscreenshot "github.com/futrx-com/remote.futrx.com/internal/integration/containers/screenshot"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/gitcli"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/hostarchive"
+	"github.com/futrx-com/remote.futrx.com/internal/integration/hostbackup"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/hostfs"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/hostinfo"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/lxc"
@@ -72,6 +73,10 @@ func main() {
 	// One host collector serves both the server-info page and the resource
 	// policy, so displayed capacity and enforced capacity never disagree.
 	hostCollector := hostinfo.New()
+	// The host backup marker is read, never written: the nightly snapshots are
+	// the operator's `remote-backup` timer's job. Both the server-info page and
+	// the home dashboard's "no recent backup" alert read this one prober.
+	backupProber := hostbackup.New(hostbackup.DefaultRoot)
 	// Built before the service set because the client portal's changelog
 	// reads through it; the chat history routes take the same instance.
 	gitHistoryService := servicegithistory.New(gitcli.NewHistoryClient())
@@ -112,6 +117,7 @@ func main() {
 		ResourceSettings:  storeSet.Resources,
 		ResourceFleet:     containerStack.Resources,
 		HostCollector:     hostCollector,
+		Backups:           backupProber,
 		GitHistory:        gitHistoryService,
 		Audit:             storeSet.Audit,
 		AuditRetention:    cfg.Audit.RetentionMonths,
@@ -157,7 +163,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	serverInfoService := serviceserverinfo.New(hostCollector, version.Version, cfg.DataDir, fileproject.WorkspaceRoot)
+	serverInfoService := serviceserverinfo.New(
+		hostCollector,
+		version.Version,
+		cfg.DataDir,
+		fileproject.WorkspaceRoot,
+		serviceserverinfo.WithBackupProbe(backupProber),
+	)
 	selfUpdateService := serviceselfupdate.New(
 		version.Version,
 		cfg.InstallDir,

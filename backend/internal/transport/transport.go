@@ -12,6 +12,7 @@ import (
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicetemplates "github.com/futrx-com/remote.futrx.com/internal/service/container/templates"
+	servicedashboard "github.com/futrx-com/remote.futrx.com/internal/service/dashboard"
 	servicegithistory "github.com/futrx-com/remote.futrx.com/internal/service/githistory"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
@@ -138,6 +139,12 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			deps.Services.Health,
 			deps.Services.Auth,
 		),
+		// The home screen's single aggregating read. A deployment without the
+		// aggregator answers 503 here rather than losing the route.
+		Dashboard: httphandlers.NewDashboardHandler(
+			dashboardService(deps.Services.Dashboard),
+			deps.Services.Auth,
+		),
 		Users: httphandlers.NewUsersHandler(deps.Services.Users, deps.Services.Auth),
 		AgentAuth: httphandlers.NewAgentAuthHandler(
 			agentAuthBindings,
@@ -217,6 +224,16 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		Middleware:       middleware,
 		Static:           httptransport.NewStaticHandler(deps.Static),
 	}), nil
+}
+
+// dashboardService narrows the concrete home-dashboard aggregator to the
+// transport's interface while keeping a nil service nil, so the route answers
+// 503 instead of panicking on a deployment without one.
+func dashboardService(service *servicedashboard.Service) httphandlers.DashboardService {
+	if service == nil {
+		return nil
+	}
+	return service
 }
 
 // screenshotLinkHandler keeps a nil screenshot service nil, so a deployment

@@ -85,6 +85,14 @@ var platformPorts = map[int]struct{}{
 	serviceshare.CDPPort:          {},
 }
 
+// FirstAppPort is firstAppPort for callers outside this package. The home
+// dashboard shows a "preview is listening" chip for exactly the port the
+// monitor probes, and one definition of "the project's own port" is the only
+// way those two can never disagree.
+func FirstAppPort(ports []int) (int, bool) {
+	return firstAppPort(ports)
+}
+
 // firstAppPort returns the lowest listener that belongs to the project rather
 // than to the platform, and whether there was one at all.
 func firstAppPort(ports []int) (int, bool) {

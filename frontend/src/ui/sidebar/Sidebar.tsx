@@ -10,7 +10,7 @@ import { SidebarEmptyState, SidebarNoMatches } from "./SidebarEmptyState";
 import { WorkspaceSearch } from "./WorkspaceSearch";
 import { MessageSearchResults } from "./MessageSearchResults";
 import { AccountFooter } from "./AccountFooter";
-import { ChevronLeft, ChevronRight, Plus, Settings, X } from "../primitives/icons";
+import { ChevronLeft, ChevronRight, Home, Plus, Settings, X } from "../primitives/icons";
 import { useState } from "preact/hooks";
 
 export function Sidebar({
@@ -41,6 +41,8 @@ export function Sidebar({
   onReorderProjects,
   onOpenProjectContainers,
   onOpenSettings,
+  onOpenHome,
+  homeActive,
 }: {
   open: boolean;
   model: WorkspaceSidebarModel;
@@ -69,6 +71,9 @@ export function Sidebar({
   onReorderProjects: (projectIds: string[]) => void;
   onOpenProjectContainers: (projectId: string) => void;
   onOpenSettings?: () => void;
+  onOpenHome: () => void;
+  /** Highlights the Home row while the dashboard is the current view. */
+  homeActive: boolean;
 }) {
   const sidebarWidth = sidebarCollapsed ? "md:w-[64px]" : "md:w-[300px]";
   const expandedOnly = sidebarCollapsed ? "md:hidden" : "";
@@ -105,10 +110,17 @@ export function Sidebar({
       >
         <header class={`px-3 pt-3 pb-2 border-b border-white/10 ${sidebarCollapsed ? "md:px-2" : ""}`}>
           <div class={`flex items-center gap-2 min-h-11 ${sidebarCollapsed ? "md:justify-center" : ""}`}>
-            <div class={`flex-1 min-w-0 ${expandedOnly}`}>
+            {/* The app title is the way back to the dashboard, the way a
+                logo is on every other web application. */}
+            <button
+              type="button"
+              onClick={onOpenHome}
+              class={`flex-1 min-w-0 text-left rounded-md px-1 -mx-1 py-0.5 transition hover:bg-white/[0.06] ${expandedOnly}`}
+              title="Go to Home"
+            >
               <div class="text-[11px] text-ink-300">Workspace</div>
-              <div class="text-[15px] font-semibold text-ink-50 truncate">Projects</div>
-            </div>
+              <div class="text-[15px] font-semibold text-ink-50 truncate">Remote</div>
+            </button>
             <button
               type="button"
               onClick={onNewProject}
@@ -158,6 +170,20 @@ export function Sidebar({
           <div class="hidden md:flex flex-col items-center gap-2 px-2 py-3 border-b border-white/10">
             <button
               type="button"
+              onClick={onOpenHome}
+              aria-current={homeActive ? "page" : undefined}
+              class={`h-10 w-10 rounded-md grid place-items-center transition ${
+                homeActive
+                  ? "bg-white/[0.10] text-ink-50"
+                  : "bg-white/5 text-ink-300 hover:bg-white/[0.09] hover:text-ink-50"
+              }`}
+              aria-label="Home"
+              title="Home"
+            >
+              <Home class="w-5 h-5" />
+            </button>
+            <button
+              type="button"
               onClick={onNewProject}
               class="h-10 w-10 rounded-md bg-accent-blue text-ink-900 grid place-items-center hover:bg-accent-blue/85 active:scale-[0.98] transition"
               aria-label="New project"
@@ -178,6 +204,22 @@ export function Sidebar({
             )}
           </div>
         )}
+
+        <div class={`px-2 pt-2 ${expandedOnly}`}>
+          <button
+            type="button"
+            onClick={onOpenHome}
+            aria-current={homeActive ? "page" : undefined}
+            class={`w-full flex items-center gap-2.5 rounded-md px-2.5 h-9 text-[13px] font-medium transition ${
+              homeActive
+                ? "bg-white/[0.10] text-ink-50"
+                : "text-ink-200 hover:bg-white/[0.06] hover:text-ink-50"
+            }`}
+          >
+            <Home class="w-4 h-4 flex-none" />
+            Home
+          </button>
+        </div>
 
         <div class={`px-3 py-2 flex items-center justify-between gap-2 text-[12px] text-ink-300 ${expandedOnly}`}>
           <span>
