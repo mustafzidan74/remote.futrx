@@ -37,9 +37,12 @@ const (
 	ActionProjectBrowserStart    = "project.browser.start"
 	ActionProjectBrowserStop     = "project.browser.stop"
 	ActionProjectBrowserNavigate = "project.browser.navigate"
-	ActionSnapshotCreate         = "snapshot.create"
-	ActionSnapshotRestore        = "snapshot.restore"
-	ActionSnapshotDelete         = "snapshot.delete"
+	// ActionProjectScreenshot records a headless capture of one preview port,
+	// including whether it was pushed out through a notification sink.
+	ActionProjectScreenshot = "project.screenshot"
+	ActionSnapshotCreate    = "snapshot.create"
+	ActionSnapshotRestore   = "snapshot.restore"
+	ActionSnapshotDelete    = "snapshot.delete"
 
 	ActionPortalEnable  = "portal.enable"
 	ActionPortalRotate  = "portal.rotate"

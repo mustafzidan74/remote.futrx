@@ -19,6 +19,7 @@ import { useChatPolicies } from "../../state/hooks/chat/useChatPolicies";
 import { useChatPreferences } from "../../state/hooks/chat/useChatPreferences";
 import { useChatReadMarker } from "../../state/hooks/chat/useChatReadMarker";
 import { usePlaybooks } from "../../state/hooks/chat/usePlaybooks";
+import { useSlashCommands } from "../../state/hooks/chat/useSlashCommands";
 import { useTerminalOverlayController } from "../../state/hooks/chat/useTerminalOverlayController";
 import { useWorkspaceGitRepos } from "../../state/hooks/chat/useWorkspaceGitRepos";
 
@@ -116,6 +117,28 @@ export function ChatContainer({
     applyMeta,
     sendPrompt: (text) => composer.submitTest(text),
   });
+  // Slash commands reuse the very handlers the composer's buttons already
+  // call, so `/autopilot on` and the autopilot popover cannot drift apart.
+  const slash = useSlashCommands({
+    project: chatProject,
+    provider: displayMeta.provider || "codex",
+    text: composer.text,
+    setText: composer.setText,
+    textareaRef: composer.textareaRef,
+    insertText: composer.insertText,
+    submitTest: composer.submitTest,
+    playbooks,
+    policies,
+    changeMode: preferences.changeMode,
+    selectSkill: preferences.selectSkill,
+    onAgentBrowserOpened: browser.openAgentBrowserPane,
+  });
+  // One send path: a message that parses as a command runs it, anything else
+  // goes to the agent exactly as before.
+  const handleSend = useCallback(() => {
+    if (slash.interceptSend()) return;
+    composer.handleSend();
+  }, [slash, composer]);
   const drawers = useChatDrawerController({
     chatId: chat.id,
     showBrowser: browser.openBrowserDrawer,
@@ -198,6 +221,7 @@ export function ChatContainer({
     selectedSkills,
     playbooks,
     policies,
+    slash,
     attachments: composer.upload.attachments,
     uploading: composer.upload.uploading,
     dragging: composer.drag.dragging,
@@ -207,7 +231,7 @@ export function ChatContainer({
     onTextChange: composer.setText,
     onFilesSelected: composer.upload.doUpload,
     onPaste: composer.handlePaste,
-    onSend: composer.handleSend,
+    onSend: handleSend,
     onCancel: cancel,
     onRemoveQueued: composer.queue.removeQueuedPrompt,
     onRemoveAttachment: composer.upload.removeAttachment,

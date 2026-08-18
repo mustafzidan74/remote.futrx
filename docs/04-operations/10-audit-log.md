@@ -77,6 +77,7 @@ every project action, `project.secret.` only the secret ones.
 | `project.secret.` | `read`, `set`, `delete` |
 | `project.container.` | `start`, `stop`, `restart`, `recycle`, `repair-network`, `limits` |
 | `project.browser.` | `start`, `stop`, `navigate` |
+| `project.` | `screenshot` — one headless capture of a preview port; `meta` carries the port, path, size in bytes, and whether it was pushed to a notification sink ([Previews](../02-user-guide/06-previews-and-inspector.md#share-a-screenshot)) |
 | `portal.` | `enable`, `rotate`, `disable` — client portal lifecycle, target is the project ([Client portal](../02-workspaces/14-client-portal.md)) |
 | `chat.` | `create`, `delete`, `transcribe` — `transcribe` records one server-side voice dictation, and its `meta` carries the clip duration only ([Voice input](../02-workspaces/17-voice-input.md)) |
 | `agent.run.` | `start`, `cancel` — `meta` carries `provider`, `chatId`, `projectId`, and the scheduled task/run ids for unattended turns |

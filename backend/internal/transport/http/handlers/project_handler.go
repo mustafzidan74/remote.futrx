@@ -17,6 +17,7 @@ import (
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
+	servicescreenshot "github.com/futrx-com/remote.futrx.com/internal/service/screenshot"
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
 	servicesnapshot "github.com/futrx-com/remote.futrx.com/internal/service/snapshot"
 	serviceuser "github.com/futrx-com/remote.futrx.com/internal/service/user"
@@ -29,6 +30,7 @@ type ProjectHandler struct {
 	auth               *serviceauth.Service
 	shares             *serviceshare.Service
 	snapshots          *servicesnapshot.Service
+	screenshots        *servicescreenshot.Service
 	trashRetention     time.Duration
 	portal             PortalService
 	publicHostname     string
@@ -74,6 +76,14 @@ func (h *ProjectHandler) WithSnapshots(
 ) *ProjectHandler {
 	h.snapshots = snapshots
 	h.trashRetention = trashRetention
+	return h
+}
+
+// WithScreenshots enables the preview-screenshot routes under
+// /api/projects/{id}/screenshot and /screenshots. Without it those routes
+// report 503.
+func (h *ProjectHandler) WithScreenshots(screenshots *servicescreenshot.Service) *ProjectHandler {
+	h.screenshots = screenshots
 	return h
 }
 
@@ -234,6 +244,16 @@ func (h *ProjectHandler) HandleResource(w http.ResponseWriter, r *http.Request) 
 
 	if len(parts) >= 2 && parts[1] == "snapshots" {
 		h.handleSnapshots(w, r, id, parts, email, isAdmin)
+		return
+	}
+
+	if len(parts) >= 2 && parts[1] == "screenshot" {
+		h.handleScreenshot(w, r, id, email)
+		return
+	}
+
+	if len(parts) >= 2 && parts[1] == "screenshots" {
+		h.handleScreenshots(w, r, id, parts)
 		return
 	}
 

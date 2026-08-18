@@ -13,6 +13,7 @@ import (
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
+	servicescreenshot "github.com/futrx-com/remote.futrx.com/internal/service/screenshot"
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
 	serviceskills "github.com/futrx-com/remote.futrx.com/internal/service/skills"
 	servicesnapshot "github.com/futrx-com/remote.futrx.com/internal/service/snapshot"
@@ -33,6 +34,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectshares"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileresources"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileschedule"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filescreenshot"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileskillsglobal"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filesnapshot"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filetranscribe"
@@ -45,6 +47,13 @@ type AuthStore interface {
 	serviceauth.Store
 }
 
+// ScreenshotStore is the pair of ports the preview-screenshot service needs:
+// the per-project record index and the PNG blobs beside it.
+type ScreenshotStore interface {
+	servicescreenshot.Repository
+	servicescreenshot.Blobs
+}
+
 type Stores struct {
 	Chats          servicechat.Repository
 	Projects       serviceproject.Repository
@@ -52,6 +61,9 @@ type Stores struct {
 	ProjectAccess  serviceproject.AccessRepository
 	ProjectShares  serviceshare.Repository
 	Snapshots      servicesnapshot.Repository
+	// Screenshots is both the per-project capture index and the PNG blob
+	// store; one file-backed type satisfies both ports.
+	Screenshots    ScreenshotStore
 	ProjectPortals serviceportal.Repository
 	Schedules      serviceschedule.Repository
 	Resources      serviceresources.Repository
@@ -96,6 +108,11 @@ func New(dataDir string) (Stores, error) {
 	snapshots, err := filesnapshot.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init snapshot store: %w", err)
+	}
+
+	screenshots, err := filescreenshot.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init screenshot store: %w", err)
 	}
 
 	projectPortals, err := fileportal.New(dataDir)
@@ -165,6 +182,7 @@ func New(dataDir string) (Stores, error) {
 		ProjectAccess:  projectAccess,
 		ProjectShares:  projectShares,
 		Snapshots:      snapshots,
+		Screenshots:    screenshots,
 		ProjectPortals: projectPortals,
 		Schedules:      schedules,
 		Resources:      resources,

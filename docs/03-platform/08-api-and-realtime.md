@@ -97,6 +97,10 @@ because users authenticate `agy` inside each project.
 | GET | `/api/projects/{id}/container` | Detailed container inspection, including `template` provisioning status |
 | POST | `/api/projects/{id}/repair-network` | Reconfigure container networking and reinspect |
 | GET | `/api/projects/{id}/apps` | List externally reachable container listeners |
+| POST | `/api/projects/{id}/screenshot` | Capture one preview port headlessly inside the container: `{port, path?, width?, height?, fullPage?, notify?}`. `409` for a stopped container or an image without Playwright ([Previews](../02-user-guide/06-previews-and-inspector.md#share-a-screenshot)) |
+| GET | `/api/projects/{id}/screenshots` | List a project's stored captures, newest first, plus whether a notification sink is configured |
+| GET | `/api/projects/{id}/screenshots/{sid}.png` | Read one stored capture; session and project membership required |
+| POST | `/api/projects/{id}/screenshots/{sid}/send` | Push a stored capture through the notification sinks; `409` when none is configured |
 | GET | `/api/projects/{id}/agent-browser` | Get Agent Browser core/view status and record activity |
 | POST | `/api/projects/{id}/agent-browser/start` | Ensure Agent Browser is starting or ready |
 | POST | `/api/projects/{id}/agent-browser/navigate` | Open `{url}` in the running Agent Browser; loopback or this project's own preview host only, `409` while the core is not ready |
@@ -111,6 +115,12 @@ because users authenticate `agy` inside each project.
 
 Every `{id}` project route first requires admin status or project membership. Resource changes, forced starts, project deletion, and purging add an admin-only check; restoring a trashed project deliberately does not, so a member can undo their own accidental delete. A start refused by the aggregate resource guard answers `409`; an override above the fleet ceiling answers `400`. See [Resource limits](../02-workspaces/11-resource-limits.md).
 The one project-scoped page served **without** a session is
+`GET /s/screenshot/{token}.png`: one stored preview screenshot, no session
+required. The token is minted on demand — only when a configured notification
+sink cannot carry a picture — carries 24 hours of validity, and is stored as a
+SHA-256 digest. It grants exactly one image: no listing, no project, no other
+capture. See [Previews](../02-user-guide/06-previews-and-inspector.md#share-a-screenshot).
+
 `GET /portal/{projectId}?t=<token>`: a read-only HTML summary gated by the
 portal token and a per-address rate limit, never by a cookie. See
 [Client portal](../02-workspaces/14-client-portal.md).

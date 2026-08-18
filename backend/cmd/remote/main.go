@@ -18,6 +18,7 @@ import (
 	remote "github.com/futrx-com/remote.futrx.com"
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
 	"github.com/futrx-com/remote.futrx.com/internal/config"
+	containerscreenshot "github.com/futrx-com/remote.futrx.com/internal/integration/containers/screenshot"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/gitcli"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/hostarchive"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/hostfs"
@@ -119,6 +120,13 @@ func main() {
 			MinInterval:        cfg.Schedule.MinInterval,
 			MaxConcurrentRuns:  cfg.Schedule.MaxConcurrentRuns,
 			MaxTasksPerProject: cfg.Schedule.MaxTasksPerProject,
+		},
+		// One file-backed store answers both screenshot ports; the capture
+		// itself runs Playwright inside the project's own container.
+		Screenshots: service.ScreenshotDependencies{
+			Records:  storeSet.Screenshots,
+			Blobs:    storeSet.Screenshots,
+			Capturer: containerscreenshot.NewAdapter(lxcClient),
 		},
 	})
 	if err != nil {

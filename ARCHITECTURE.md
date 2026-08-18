@@ -155,6 +155,7 @@ A chat with **no project** ("loose chat") runs the CLI directly on the host inst
 | Platform secrets vault | `DATA_DIR/globalsecrets.json` | JSON | **plaintext**, mode 0600, env/file/SSH entries injected into every scoped project container ([deep dive](docs/02-workspaces/16-secrets-vault.md)) |
 | Public preview links | `DATA_DIR/projectshares/<id>.json` | JSON | SHA-256 token digests only, mode 0600 |
 | Client portals | `DATA_DIR/portals/<id>.json` | JSON | SHA-256 token digest plus display toggles, mode 0600 ([deep dive](docs/02-workspaces/14-client-portal.md)) |
+| Preview screenshots | `DATA_DIR/screenshots/<id>/` | PNG files + `index.json` | headless captures of a project's preview ports, newest 20 per project, mode 0600; the index stores a SHA-256 digest of any 24h public link ([deep dive](docs/02-user-guide/06-previews-and-inspector.md#share-a-screenshot)) |
 | Chat events | `DATA_DIR/chats/<id>/events.jsonl` | JSONL | append-only, monotonic `seq`, no rotation |
 | Scheduled tasks | `DATA_DIR/scheduled-tasks/tasks.json` | JSON | definitions, deadlines, durable claims, pending state, and last outcomes |
 | Notification settings | `DATA_DIR/notifications.json` | JSON | Telegram bot token, WhatsApp credential, webhook secret, and the weekly digest schedule, **plaintext**, mode 0600 |

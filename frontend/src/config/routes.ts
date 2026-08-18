@@ -87,6 +87,10 @@ export const API_ROUTES = {
     repairNetwork: (id: string) =>
       `/api/projects/${encodeURIComponent(id)}/repair-network`,
     apps: (id: string) => `/api/projects/${encodeURIComponent(id)}/apps`,
+    screenshot: (id: string) => `/api/projects/${encodeURIComponent(id)}/screenshot`,
+    screenshots: (id: string) => `/api/projects/${encodeURIComponent(id)}/screenshots`,
+    screenshotSend: (id: string, screenshotId: string) =>
+      `/api/projects/${encodeURIComponent(id)}/screenshots/${encodeURIComponent(screenshotId)}/send`,
     agentBrowser: (id: string, scope?: string) =>
       `/api/projects/${encodeURIComponent(id)}/agent-browser${scope ? `?scope=${encodeURIComponent(scope)}` : ""}`,
     startAgentBrowser: (id: string) =>
