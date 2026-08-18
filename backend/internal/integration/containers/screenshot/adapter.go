@@ -26,6 +26,18 @@ const probeTimeout = 10 * time.Second
 // cleanupTimeout bounds the best-effort unlink of the throwaway file.
 const cleanupTimeout = 10 * time.Second
 
+// browsersPath and nodePath mirror the two variables the base image recipe
+// exports, verbatim, from playwrightInstallScript in
+// backend/internal/service/container/image/recipe.go. They have to be passed
+// explicitly: the recipe publishes them through /etc/profile.d and
+// /etc/environment, and `lxc exec` sources neither — without them Playwright
+// looks for Chromium in ~/.cache and reports it missing on an image that has
+// it. Change both together.
+const (
+	browsersPath = "/opt/pw-browsers"
+	nodePath     = "/usr/lib/node_modules"
+)
+
 // missingToolingMarkers are the strings Playwright and npx print when the
 // package or the browser binary is absent. They are matched case-insensitively
 // so the caller gets the actionable 409 hint instead of a raw exec failure.
@@ -104,7 +116,11 @@ func (a *Adapter) Capture(ctx context.Context, req servicescreenshot.CaptureRequ
 // parses.
 func screenshotArgs(req servicescreenshot.CaptureRequest) []string {
 	args := []string{
-		"exec", req.ContainerName, "--",
+		"exec", req.ContainerName,
+		"--env", "HOME=/root",
+		"--env", "PLAYWRIGHT_BROWSERS_PATH=" + browsersPath,
+		"--env", "NODE_PATH=" + nodePath,
+		"--",
 		"npx", "--no-install", "playwright", "screenshot",
 		"--browser", "chromium",
 		"--viewport-size", strconv.Itoa(req.Width) + "," + strconv.Itoa(req.Height),

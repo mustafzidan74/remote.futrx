@@ -23,7 +23,8 @@ func TestScreenshotArgs(t *testing.T) {
 				ContainerName: "demo", URL: "http://127.0.0.1:3000/",
 				Width: 1280, Height: 800, RemotePath: "/tmp/remote-shot-abc.png",
 			},
-			want: "exec demo -- npx --no-install playwright screenshot " +
+			want: "exec demo --env HOME=/root --env PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers " +
+				"--env NODE_PATH=/usr/lib/node_modules -- npx --no-install playwright screenshot " +
 				"--browser chromium --viewport-size 1280,800 " +
 				"http://127.0.0.1:3000/ /tmp/remote-shot-abc.png",
 		},
@@ -33,7 +34,8 @@ func TestScreenshotArgs(t *testing.T) {
 				ContainerName: "demo", URL: "http://127.0.0.1:5173/pricing",
 				Width: 390, Height: 844, FullPage: true, RemotePath: "/tmp/remote-shot-def.png",
 			},
-			want: "exec demo -- npx --no-install playwright screenshot " +
+			want: "exec demo --env HOME=/root --env PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers " +
+				"--env NODE_PATH=/usr/lib/node_modules -- npx --no-install playwright screenshot " +
 				"--browser chromium --viewport-size 390,844 --full-page " +
 				"http://127.0.0.1:5173/pricing /tmp/remote-shot-def.png",
 		},
@@ -84,11 +86,13 @@ func TestCaptureReportsMissingTooling(t *testing.T) {
 			name: "playwright package absent",
 			responses: map[string]string{
 				"exec demo -- sh -c command -v npx": "/usr/bin/npx\n",
-				"exec demo -- npx --no-install playwright screenshot --browser chromium " +
+				"exec demo --env HOME=/root --env PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers " +
+					"--env NODE_PATH=/usr/lib/node_modules -- npx --no-install playwright screenshot --browser chromium " +
 					"--viewport-size 1280,800 http://127.0.0.1:3000/ /tmp/remote-shot-abc.png": "npm error could not determine executable to run",
 			},
 			failures: map[string]bool{
-				"exec demo -- npx --no-install playwright screenshot --browser chromium " +
+				"exec demo --env HOME=/root --env PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers " +
+					"--env NODE_PATH=/usr/lib/node_modules -- npx --no-install playwright screenshot --browser chromium " +
 					"--viewport-size 1280,800 http://127.0.0.1:3000/ /tmp/remote-shot-abc.png": true,
 			},
 		},
@@ -96,7 +100,8 @@ func TestCaptureReportsMissingTooling(t *testing.T) {
 			name: "chromium binary absent",
 			responses: map[string]string{
 				"exec demo -- sh -c command -v npx": "/usr/bin/npx\n",
-				"exec demo -- npx --no-install playwright screenshot --browser chromium " +
+				"exec demo --env HOME=/root --env PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers " +
+					"--env NODE_PATH=/usr/lib/node_modules -- npx --no-install playwright screenshot --browser chromium " +
 					"--viewport-size 1280,800 http://127.0.0.1:3000/ /tmp/remote-shot-abc.png": "Executable doesn't exist at /root/.cache/ms-playwright/chromium/headless_shell",
 			},
 		},
