@@ -23,8 +23,13 @@ func (r recordingTemplates) ImageFor(_ context.Context, template string) string 
 	return r.image
 }
 
-func (r recordingTemplates) Ensure(_ context.Context, container, template string) <-chan struct{} {
-	*r.events = append(*r.events, "template ensure "+container+" "+template)
+func (r recordingTemplates) Ensure(
+	_ context.Context,
+	project serviceproject.Meta,
+) <-chan struct{} {
+	*r.events = append(
+		*r.events, "template ensure "+project.ContainerName+" "+project.TemplateName(),
+	)
 	done := make(chan struct{})
 	close(done)
 	return done

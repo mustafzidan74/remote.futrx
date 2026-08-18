@@ -57,7 +57,7 @@ All `/api/*` and `/ws*` requests require a signed session for a registered user.
 | GET, POST | `/api/admin/skills-global` | List the global skills library, or publish a skill (JSON files map or zip body); admin only |
 | GET, PUT, DELETE | `/api/admin/skills-global/{name}` | Read, replace (files and/or the always-on flag), or delete one global skill; admin only |
 | POST | `/api/admin/skills-global/import` | Copy an existing project skill into the global library; admin only |
-| GET | `/api/templates` | List project templates and whether each has a pre-built image on this host |
+| GET | `/api/templates` | List project templates, their declared `inputs`, and whether each has a pre-built image on this host |
 
 `{provider}` can also be `antigravity` for the generic status binding, but
 Antigravity has no host login route. Its status is unavailable by design
@@ -67,7 +67,7 @@ because users authenticate `agy` inside each project.
 
 | Method | Route | Purpose |
 | --- | --- | --- |
-| GET, POST | `/api/projects` | List visible projects or create a project (`{"name","template"}`; an unknown template is a 400) |
+| GET, POST | `/api/projects` | List visible projects or create a project (`{"name","template","templateInputs"}`; an unknown template, an undeclared input, or a value the declaration refuses is a 400) |
 | POST | `/api/projects/reorder` | Update project ordering |
 | GET | `/api/projects/health` | Health verdicts for every visible project in one call, plus whether the monitor is running |
 | GET, PATCH, DELETE | `/api/projects/{id}` | Read, rename, or admin-delete a project |

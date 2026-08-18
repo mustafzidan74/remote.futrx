@@ -9,10 +9,15 @@ import { API_ROUTES } from "../config/routes";
 
 export const projectApi = {
   list: () => requestJson<ProjectMeta[]>("GET", API_ROUTES.projects.collection),
-  create: (name: string, template?: string) =>
+  create: (name: string, template?: string, templateInputs?: Record<string, string>) =>
     requestJson<ProjectMeta>("POST", API_ROUTES.projects.collection, {
       name,
       ...(template ? { template } : {}),
+      // Omitted entirely for templates that declare no inputs: the server
+      // rejects any input a template does not declare.
+      ...(templateInputs && Object.keys(templateInputs).length > 0
+        ? { templateInputs }
+        : {}),
     }),
   fetch: (id: string) =>
     requestJson<ProjectMeta>("GET", API_ROUTES.projects.item(id)),

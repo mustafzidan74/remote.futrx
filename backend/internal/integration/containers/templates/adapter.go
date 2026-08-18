@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -96,8 +97,56 @@ func (a *Adapter) PushFile(
 
 // RunScript executes a bash program inside the container. The caller owns the
 // deadline: a stack install runs for minutes.
-func (a *Adapter) RunScript(ctx context.Context, containerName, script string) (string, error) {
-	return a.runner.Run(ctx, "exec", containerName, "--", "bash", "-c", script)
+//
+// env is handed to LXD as repeated `--env KEY=VALUE` arguments. Those become
+// argv elements of the `lxc` process — no shell ever parses them — so a value
+// containing quotes, spaces or `$(...)` is inert. Values are not logged here;
+// a template input may be an admin password.
+func (a *Adapter) RunScript(
+	ctx context.Context,
+	containerName, script string,
+	env map[string]string,
+) (string, error) {
+	args := make([]string, 0, 6+2*len(env))
+	args = append(args, "exec", containerName)
+	for _, key := range sortedKeys(env) {
+		args = append(args, "--env", key+"="+env[key])
+	}
+	args = append(args, "--", "bash", "-c", script)
+	return a.runner.Run(ctx, args...)
+}
+
+// sortedKeys keeps the argument order deterministic, which makes the command a
+// test can assert on and a log line a human can compare across runs.
+func sortedKeys(env map[string]string) []string {
+	keys := make([]string, 0, len(env))
+	for key := range env {
+		if validEnvKey(key) {
+			keys = append(keys, key)
+		}
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// validEnvKey drops anything that is not a POSIX environment variable name.
+// The caller derives keys from template declarations, so a rejection is a
+// build defect; dropping beats handing LXD an argument it would misparse.
+func validEnvKey(key string) bool {
+	if key == "" {
+		return false
+	}
+	for index, r := range key {
+		switch {
+		case r >= 'A' && r <= 'Z':
+		case r >= 'a' && r <= 'z':
+		case r == '_':
+		case index > 0 && r >= '0' && r <= '9':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // ImageExists reports whether an image alias is published on this host.

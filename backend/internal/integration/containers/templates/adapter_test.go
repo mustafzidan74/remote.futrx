@@ -120,7 +120,7 @@ func TestRunScriptAndEnsureDirectoryTranslateToCommands(t *testing.T) {
 		{
 			name: "run script",
 			invoke: func(a *Adapter) error {
-				_, err := a.RunScript(context.Background(), "project-1", "echo hi")
+				_, err := a.RunScript(context.Background(), "project-1", "echo hi", nil)
 				return err
 			},
 			wantArgs: []string{"exec", "project-1", "--", "bash", "-c", "echo hi"},
@@ -144,6 +144,36 @@ func TestRunScriptAndEnsureDirectoryTranslateToCommands(t *testing.T) {
 				t.Fatalf("calls = %q, want [%q]", runner.calls, tt.wantArgs)
 			}
 		})
+	}
+}
+
+func TestRunScriptPassesInputsAsSeparateEnvArguments(t *testing.T) {
+	// Every value below would be a shell injection if it were interpolated
+	// into the program text. As `--env` arguments they are inert: no shell
+	// ever sees them, LXD hands them to execve as-is.
+	runner := &recordingRunner{available: true}
+	env := map[string]string{
+		"TPL_SITE_TITLE":     "Ali's shop; rm -rf /",
+		"TPL_ADMIN_PASSWORD": "p$(whoami)`id`\"'",
+		"TPL_LANGUAGE":       "ar",
+		"not a var":          "dropped",
+	}
+
+	if _, err := NewAdapter(runner).RunScript(
+		context.Background(), "project-1", "echo hi", env,
+	); err != nil {
+		t.Fatalf("RunScript() = %v", err)
+	}
+
+	want := []string{
+		"exec", "project-1",
+		"--env", "TPL_ADMIN_PASSWORD=p$(whoami)`id`\"'",
+		"--env", "TPL_LANGUAGE=ar",
+		"--env", "TPL_SITE_TITLE=Ali's shop; rm -rf /",
+		"--", "bash", "-c", "echo hi",
+	}
+	if len(runner.calls) != 1 || !slices.Equal(runner.calls[0], want) {
+		t.Fatalf("calls = %q, want [%q]", runner.calls, want)
 	}
 }
 

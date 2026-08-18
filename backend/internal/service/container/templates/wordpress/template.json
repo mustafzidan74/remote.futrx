@@ -1,10 +1,75 @@
 {
   "name": "wordpress",
   "title": "WordPress",
-  "description": "PHP 8.3 with the WordPress extension set, a local MariaDB (root over the unix socket, no password), WP-CLI, Composer, and WordPress core downloaded into /workspace/public and served on port 8080.",
+  "description": "A fully installed WordPress: PHP 8.3 with the WordPress extension set, a local MariaDB, WP-CLI, Composer, and core installed into /workspace/public on port 8080. Arabic/RTL and WooCommerce are options, not follow-up work.",
   "icon": "wordpress",
   "provisionScript": "provision.sh",
   "agentInstructions": "AGENTS.md",
   "defaultPorts": [8080],
-  "prebuiltImage": true
+  "prebuiltImage": true,
+  "workspaceMarker": "/workspace/public/wp-config.php",
+  "adminAccess": {
+    "label": "WordPress admin",
+    "port": 8080,
+    "path": "/wp-admin",
+    "userInput": "adminUser",
+    "passwordSecret": "WP_ADMIN_PASSWORD"
+  },
+  "inputs": [
+    {
+      "key": "siteTitle",
+      "label": "Site title",
+      "type": "text",
+      "required": true,
+      "defaultFrom": "projectName",
+      "help": "Shown in the browser tab and the admin bar. Change it later in Settings → General."
+    },
+    {
+      "key": "adminEmail",
+      "label": "Admin email",
+      "type": "email",
+      "required": true,
+      "defaultFrom": "userEmail",
+      "help": "The administrator account's address. No mail is sent during setup."
+    },
+    {
+      "key": "adminUser",
+      "label": "Admin username",
+      "type": "text",
+      "required": true,
+      "default": "admin"
+    },
+    {
+      "key": "adminPassword",
+      "label": "Admin password",
+      "type": "password",
+      "secret": true,
+      "secretName": "WP_ADMIN_PASSWORD",
+      "generate": true,
+      "help": "Leave empty and a strong one is generated. Either way it is stored as the WP_ADMIN_PASSWORD project secret."
+    },
+    {
+      "key": "language",
+      "label": "Site language",
+      "type": "select",
+      "default": "ar",
+      "options": [
+        { "value": "ar", "label": "العربية (RTL)" },
+        { "value": "en_US", "label": "English (US)" }
+      ],
+      "help": "Arabic installs the translation and switches the admin to RTL; the timezone is set to Africa/Cairo."
+    },
+    {
+      "key": "installWoocommerce",
+      "label": "Install WooCommerce",
+      "type": "checkbox",
+      "help": "Installs and activates the plugin. Store currency, country and pages stay at WooCommerce's defaults."
+    },
+    {
+      "key": "demoContent",
+      "label": "Keep the sample posts",
+      "type": "checkbox",
+      "help": "Off replaces Hello world! and the sample page with a single staging-notice page."
+    }
+  ]
 }

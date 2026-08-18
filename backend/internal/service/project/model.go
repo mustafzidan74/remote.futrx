@@ -49,12 +49,20 @@ type Meta struct {
 	//
 	// Empty means "written before templates existed"; read it through
 	// TemplateName, which maps that to DefaultTemplate.
-	Template       string           `json:"template,omitempty"`
-	ResourceLimits *ContainerLimits `json:"resourceLimits,omitempty"`
-	Order          int64            `json:"order,omitempty"`
-	ErrorMsg       string           `json:"errorMsg,omitempty"`
-	CreatedAt      int64            `json:"createdAt"`
-	UpdatedAt      int64            `json:"updatedAt"`
+	Template string `json:"template,omitempty"`
+	// TemplateInputs are the non-secret answers the creator gave to the
+	// template's declared inputs (site title, language, feature toggles...).
+	// They are replayed into every later provisioning run, which is why they
+	// are persisted rather than kept for the create call only.
+	//
+	// Secret inputs are deliberately absent: they live in the project secrets
+	// store, so this file never holds a password.
+	TemplateInputs map[string]string `json:"templateInputs,omitempty"`
+	ResourceLimits *ContainerLimits  `json:"resourceLimits,omitempty"`
+	Order          int64             `json:"order,omitempty"`
+	ErrorMsg       string            `json:"errorMsg,omitempty"`
+	CreatedAt      int64             `json:"createdAt"`
+	UpdatedAt      int64             `json:"updatedAt"`
 }
 
 // TemplateName is the backward-compatible accessor for Meta.Template: project
@@ -71,6 +79,11 @@ type CreateInput struct {
 	Name string `json:"name"`
 	// Template selects the stack preset. Empty means the default.
 	Template string `json:"template,omitempty"`
+	// TemplateInputs are the raw answers to the selected template's declared
+	// inputs, straight off the JSON body: values arrive as string, bool or
+	// number and are validated and coerced against the declaration. Unknown
+	// keys are rejected rather than ignored.
+	TemplateInputs map[string]any `json:"templateInputs,omitempty"`
 }
 
 // UpdateInput deliberately has no Template field: the template is immutable
@@ -135,6 +148,37 @@ type TemplateStatus struct {
 	LogPath    string `json:"logPath,omitempty"`
 	StartedAt  int64  `json:"startedAt,omitempty"`
 	FinishedAt int64  `json:"finishedAt,omitempty"`
+	// Admin points at the credentialed entry point the template installed. It
+	// appears only once provisioning is done, because before that the URL
+	// leads to a half-built site.
+	Admin *TemplateAdmin `json:"admin,omitempty"`
+}
+
+// TemplateAdmin is where the operator signs in to what a template installed.
+// It carries the name of the project secret holding the password, never the
+// password: revealing it is a separate, audited secrets read.
+type TemplateAdmin struct {
+	Label          string `json:"label"`
+	URL            string `json:"url"`
+	User           string `json:"user,omitempty"`
+	PasswordSecret string `json:"passwordSecret,omitempty"`
+}
+
+// TemplateInputContext carries the server-side defaults a template can ask
+// for when the caller leaves an input empty.
+type TemplateInputContext struct {
+	ProjectName string
+	UserEmail   string
+}
+
+// TemplateInputValues is one create request's validated template inputs,
+// split by where each half is allowed to be stored.
+type TemplateInputValues struct {
+	// Values are non-secret and are persisted in Meta.TemplateInputs.
+	Values map[string]string
+	// Secrets maps a project-secret key to its value and is written to the
+	// project secrets store, never to metadata.
+	Secrets map[string]string
 }
 
 type WorkspaceInfo struct {

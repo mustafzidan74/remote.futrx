@@ -14,8 +14,10 @@ type Runtime interface {
 	// PushFile writes content to an absolute container path with fileMode.
 	PushFile(ctx context.Context, containerName string, content []byte, target, fileMode string) error
 	// RunScript executes a bash program inside the container and returns its
-	// combined output.
-	RunScript(ctx context.Context, containerName, script string) (string, error)
+	// combined output. env is exported into the program's environment; the
+	// implementation must pass it out of band (argv, not shell text), because
+	// the values are operator-supplied and may include secrets.
+	RunScript(ctx context.Context, containerName, script string, env map[string]string) (string, error)
 	// ImageExists reports whether an image alias is published on this host.
 	ImageExists(ctx context.Context, alias string) (bool, error)
 }

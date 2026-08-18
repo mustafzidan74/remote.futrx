@@ -59,9 +59,11 @@ type TemplateProvisioner interface {
 	// provision the stack in-container instead.
 	ImageFor(ctx context.Context, template string) string
 	// Ensure runs the template's one-time provisioning unless the container's
-	// marker file says it already ran. The returned channel closes once any
-	// background work has settled.
-	Ensure(ctx context.Context, containerName, template string) <-chan struct{}
+	// marker file says it already ran. It takes the whole project because the
+	// template's operator-supplied inputs live in project metadata and its
+	// secret inputs are looked up by project id. The returned channel closes
+	// once any background work has settled.
+	Ensure(ctx context.Context, project serviceproject.Meta) <-chan struct{}
 }
 
 type Service struct {
@@ -119,7 +121,7 @@ func (s *Service) provisionTemplate(ctx context.Context, project serviceproject.
 	if s.templates == nil {
 		return
 	}
-	s.templates.Ensure(ctx, project.ContainerName, project.TemplateName())
+	s.templates.Ensure(ctx, project)
 }
 
 func (s *Service) Available() bool {

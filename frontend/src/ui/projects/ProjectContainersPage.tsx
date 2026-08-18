@@ -232,6 +232,7 @@ export function ProjectContainersPage({
                     <ProjectInfoSection
                       project={project}
                       record={infoRecord}
+                      secretsRecord={secretsRecord}
                       onRepairNetwork={onRepairNetwork}
                     />
                   </div>

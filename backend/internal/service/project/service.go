@@ -3,8 +3,10 @@ package project
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -249,15 +251,30 @@ func (s *Service) create(ctx context.Context, in CreateInput, callerEmail string
 	if err != nil {
 		return Meta{}, err
 	}
-
-	m, err := s.repo.Create(ctx, Meta{
-		Name:     name,
-		Slug:     Slugify(name),
-		Status:   StatusProvisioning,
-		Template: template,
+	inputs, err := s.resolveTemplateInputs(template, in.TemplateInputs, TemplateInputContext{
+		ProjectName: name,
+		UserEmail:   strings.ToLower(strings.TrimSpace(callerEmail)),
 	})
 	if err != nil {
 		return Meta{}, err
+	}
+
+	m, err := s.repo.Create(ctx, Meta{
+		Name:           name,
+		Slug:           Slugify(name),
+		Status:         StatusProvisioning,
+		Template:       template,
+		TemplateInputs: inputs.Values,
+	})
+	if err != nil {
+		return Meta{}, err
+	}
+
+	// Secret inputs (a generated admin password, say) are stored before the
+	// container is launched, because provisioning reads them back out of this
+	// store — and storing them here is also what puts them in the Secrets tab.
+	if err := s.storeTemplateSecrets(ctx, m.ID, inputs.Secrets); err != nil {
+		return s.repo.SetStatus(ctx, m.ID, StatusError, err.Error())
 	}
 
 	if s.access != nil {
@@ -306,6 +323,57 @@ func (s *Service) resolveTemplate(requested string) (string, error) {
 		return "", ErrUnknownTemplate
 	}
 	return requested, nil
+}
+
+// resolveTemplateInputs validates the create request's template inputs. With
+// no catalog wired (tests, and any build without container support) only the
+// default template exists and it declares nothing, so any input is a client
+// error rather than something to silently drop.
+func (s *Service) resolveTemplateInputs(
+	template string,
+	raw map[string]any,
+	inputContext TemplateInputContext,
+) (TemplateInputValues, error) {
+	if s.containerTemplates == nil {
+		if len(raw) > 0 {
+			return TemplateInputValues{}, fmt.Errorf(
+				"%w: template %q takes no inputs", ErrInvalidTemplateInput, template,
+			)
+		}
+		return TemplateInputValues{}, nil
+	}
+	return s.containerTemplates.ResolveTemplateInputs(template, raw, inputContext)
+}
+
+// storeTemplateSecrets writes a template's secret inputs into the project
+// secrets store. It talks to the repository directly: these are not an
+// operator's deliberate secret writes, and the container does not exist yet,
+// so neither the audit trail nor the env push applies. The launch below
+// syncs them into the container's environment.
+func (s *Service) storeTemplateSecrets(ctx context.Context, id ID, secrets map[string]string) error {
+	if len(secrets) == 0 {
+		return nil
+	}
+	if s.secrets == nil {
+		return ErrSecretsUnavailable
+	}
+	for _, key := range sortedSecretKeys(secrets) {
+		if _, err := s.secrets.Set(ctx, id, key, secrets[key]); err != nil {
+			return fmt.Errorf("store template secret %s: %w", key, err)
+		}
+	}
+	return nil
+}
+
+// sortedSecretKeys keeps the write order deterministic so a partial failure
+// leaves the same state on every retry.
+func sortedSecretKeys(secrets map[string]string) []string {
+	keys := make([]string, 0, len(secrets))
+	for key := range secrets {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func (s *Service) Update(ctx context.Context, id ID, in UpdateInput) (Meta, error) {
@@ -686,7 +754,7 @@ func (s *Service) describeTemplate(ctx context.Context, m Meta, info *ContainerI
 		}
 		return
 	}
-	status := s.containerTemplates.TemplateStatus(ctx, m.ContainerName, m.TemplateName())
+	status := s.containerTemplates.TemplateStatus(ctx, m)
 	info.Template = &status
 }
 

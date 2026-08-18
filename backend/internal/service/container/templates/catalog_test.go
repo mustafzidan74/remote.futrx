@@ -70,6 +70,57 @@ func TestShippedTemplateProperties(t *testing.T) {
 	}
 }
 
+func TestShippedWordPressTemplateCollectsItsInputs(t *testing.T) {
+	// The env-var contract the provision script reads is derived from these
+	// keys, so a rename here is a breaking change to wordpress/provision.sh.
+	template, ok := MustLoad().Get("wordpress")
+	if !ok {
+		t.Fatal("the wordpress template is missing")
+	}
+
+	wantEnv := map[string]string{
+		"siteTitle":          "TPL_SITE_TITLE",
+		"adminEmail":         "TPL_ADMIN_EMAIL",
+		"adminUser":          "TPL_ADMIN_USER",
+		"adminPassword":      "TPL_ADMIN_PASSWORD",
+		"language":           "TPL_LANGUAGE",
+		"installWoocommerce": "TPL_INSTALL_WOOCOMMERCE",
+		"demoContent":        "TPL_DEMO_CONTENT",
+	}
+	if len(template.Inputs) != len(wantEnv) {
+		t.Fatalf("wordpress declares %d inputs, want %d", len(template.Inputs), len(wantEnv))
+	}
+	script := string(template.Script)
+	for _, input := range template.Inputs {
+		want, declared := wantEnv[input.Key]
+		if !declared {
+			t.Fatalf("unexpected input %q", input.Key)
+		}
+		if input.EnvName() != want {
+			t.Fatalf("input %q maps to %q, want %q", input.Key, input.EnvName(), want)
+		}
+		if !strings.Contains(script, want) {
+			t.Fatalf("provision.sh never reads %s", want)
+		}
+	}
+	if !strings.Contains(script, PreviewURLEnv) {
+		t.Fatalf("provision.sh never reads %s", PreviewURLEnv)
+	}
+	if template.AdminAccess == nil || template.AdminAccess.PasswordSecret != "WP_ADMIN_PASSWORD" {
+		t.Fatalf("AdminAccess = %+v", template.AdminAccess)
+	}
+	if template.WorkspaceMarker != "/workspace/public/wp-config.php" {
+		t.Fatalf("WorkspaceMarker = %q", template.WorkspaceMarker)
+	}
+	// The default language is Arabic, which is what makes RTL the shipped
+	// behaviour rather than an extra step.
+	for _, input := range template.Inputs {
+		if input.Key == "language" && input.Default != "ar" {
+			t.Fatalf("language default = %q, want \"ar\"", input.Default)
+		}
+	}
+}
+
 func TestGetIsCaseInsensitiveAndResolveFallsBackToDefault(t *testing.T) {
 	catalog := MustLoad()
 

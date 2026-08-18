@@ -1,6 +1,9 @@
 package templates
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -187,6 +190,32 @@ func TestShippedProvisionScriptsUseTheHarness(t *testing.T) {
 					template.Name, trimmed)
 			}
 		}
+	}
+}
+
+func TestShippedProvisionProgramsParse(t *testing.T) {
+	// `bash -n` is the only cheap way to catch an unbalanced quote or a stray
+	// `fi` in a payload we cannot run here. It checks the assembled program,
+	// harness included, because that is what the container executes.
+	bash, err := exec.LookPath("bash")
+	if err != nil {
+		t.Skip("bash is not on PATH")
+	}
+	for _, template := range MustLoad().List() {
+		program := ProvisionProgram(template)
+		if program == "" {
+			continue
+		}
+		t.Run(template.Name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), template.Name+".sh")
+			if err := os.WriteFile(path, []byte(program), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			out, err := exec.Command(bash, "-n", path).CombinedOutput()
+			if err != nil {
+				t.Fatalf("bash -n = %v; output: %s", err, out)
+			}
+		})
 	}
 }
 

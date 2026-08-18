@@ -11,7 +11,10 @@ import type {
   ResourceInfo,
   WorkspaceInfo,
 } from "../../../models/project";
-import type { ProjectContainerRecord } from "../../../state/projects/projectContainerRecords";
+import type {
+  ProjectContainerRecord,
+  SecretsRecord,
+} from "../../../state/projects/projectContainerRecords";
 import { AlertCircle } from "../../primitives/icons";
 import { Field, Grid, Loading, Panel } from "./ProjectContainerPrimitives";
 import { TemplatePanel } from "./ProjectTemplateSection";
@@ -25,10 +28,14 @@ import {
 export function ProjectInfoSection({
   project,
   record,
+  secretsRecord,
   onRepairNetwork,
 }: {
   project: ProjectMeta;
   record: ProjectContainerRecord;
+  // The Template panel reveals the admin password a template generated, and
+  // that value only exists in the project secrets.
+  secretsRecord: SecretsRecord;
   onRepairNetwork: () => Promise<void>;
 }) {
   if (record.error) {
@@ -65,7 +72,9 @@ export function ProjectInfoSection({
           <Field label="Last used" value={formatDate(info.lastUsedAt)} mono />
         </Grid>
       </Panel>
-      {info.template && <TemplatePanel template={info.template} />}
+      {info.template && (
+        <TemplatePanel template={info.template} secrets={secretsRecord} />
+      )}
       {info.os && <OSPanel os={info.os} />}
       {info.resources && <ResourcesPanel res={info.resources} />}
       {info.disks && info.disks.length > 0 && <DisksPanel disks={info.disks} />}

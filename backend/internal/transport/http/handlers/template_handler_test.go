@@ -31,7 +31,9 @@ func (s templateRuntimeStub) PushFile(context.Context, string, []byte, string, s
 	return nil
 }
 
-func (s templateRuntimeStub) RunScript(context.Context, string, string) (string, error) {
+func (s templateRuntimeStub) RunScript(
+	context.Context, string, string, map[string]string,
+) (string, error) {
 	return "", nil
 }
 

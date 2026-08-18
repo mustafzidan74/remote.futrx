@@ -56,6 +56,8 @@ func main() {
 		config.ContainerStackOptions{
 			AgentInstructions: provisioning.InstructionsTemplate(publicHostname),
 			GlobalSkillsDir:   fileskillsglobal.Dir(cfg.DataDir),
+			PublicHostname:    publicHostname,
+			ProjectSecrets:    storeSet.ProjectSecrets,
 		},
 	)
 	tmuxClient := tmuxcli.New()

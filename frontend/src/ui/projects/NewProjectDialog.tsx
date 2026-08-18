@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "preact/hooks";
-import type { ProjectTemplate } from "../../models/template";
+import type { ProjectTemplate, TemplateInput } from "../../models/template";
 import {
   newProjectState,
   type NewProjectState,
@@ -11,12 +11,14 @@ export function NewProjectDialog({
   state,
   onNameChange,
   onSelectTemplate,
+  onInputChange,
   onSubmit,
   onClose,
 }: {
   state: NewProjectState;
   onNameChange: (name: string) => void;
   onSelectTemplate: (template: string) => void;
+  onInputChange: (key: string, value: string) => void;
   onSubmit: () => void;
   onClose: () => void;
 }) {
@@ -109,6 +111,8 @@ export function NewProjectDialog({
               )}
             </div>
 
+            <TemplateInputs state={state} onChange={onInputChange} />
+
             {state.error && (
               <div class="flex items-start gap-2.5 rounded-md border border-accent-red/30
                           bg-accent-red/[0.08] px-3 py-2 text-[12.5px]">
@@ -141,6 +145,140 @@ export function NewProjectDialog({
       </div>
     </div>
   );
+}
+
+/**
+ * The selected template's own form. Most templates declare no inputs and this
+ * renders nothing, which is why it is not a titled panel of its own.
+ */
+function TemplateInputs({
+  state,
+  onChange,
+}: {
+  state: NewProjectState;
+  onChange: (key: string, value: string) => void;
+}) {
+  const inputs = newProjectState.inputs(state);
+  if (inputs.length === 0) return null;
+  const template = newProjectState.selectedTemplate(state);
+
+  return (
+    <fieldset class="rounded-lg border border-white/10 bg-white/[0.02] p-3 space-y-3">
+      <legend class="px-1 text-[12.5px] font-medium text-ink-200">
+        {template?.title ?? "Template"} setup
+      </legend>
+      {inputs.map((input) => (
+        <TemplateInputField
+          key={input.key}
+          input={input}
+          value={newProjectState.inputValue(state, input)}
+          error={newProjectState.visibleInputError(state, input)}
+          onChange={(value) => onChange(input.key, value)}
+        />
+      ))}
+    </fieldset>
+  );
+}
+
+function TemplateInputField({
+  input,
+  value,
+  error,
+  onChange,
+}: {
+  input: TemplateInput;
+  value: string;
+  error: string;
+  onChange: (value: string) => void;
+}) {
+  const fieldId = `template-input-${input.key}`;
+  const describedBy = error ? `${fieldId}-error` : input.help ? `${fieldId}-help` : undefined;
+  const control =
+    "w-full h-10 px-3 rounded-md bg-white/[0.04] border text-[14px] text-ink-50 " +
+    "placeholder:text-ink-400 focus:outline-none " +
+    (error ? "border-accent-red/60" : "border-white/10 focus:border-accent-blue/60");
+
+  if (input.type === "checkbox") {
+    return (
+      <div>
+        <label class="flex items-start gap-2.5 cursor-pointer">
+          <input
+            id={fieldId}
+            type="checkbox"
+            checked={value === "true"}
+            onChange={(event) =>
+              onChange((event.target as HTMLInputElement).checked ? "true" : "false")
+            }
+            class="mt-0.5 h-4 w-4 flex-none rounded border-white/20 bg-white/[0.04] accent-[#3b82f6]"
+          />
+          <span class="text-[13px] text-ink-100 leading-snug">{input.label}</span>
+        </label>
+        {input.help && (
+          <p id={`${fieldId}-help`} class="mt-1 ml-[26px] text-[11.5px] text-ink-400 leading-snug">
+            {input.help}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <label class="block" for={fieldId}>
+        <span class="text-[12.5px] font-medium text-ink-200">
+          {input.label}
+          {!input.required && (
+            <span class="ml-1.5 text-[11px] font-normal text-ink-400">optional</span>
+          )}
+        </span>
+      </label>
+      {input.type === "select" ? (
+        <select
+          id={fieldId}
+          value={value}
+          aria-describedby={describedBy}
+          onChange={(event) => onChange((event.target as HTMLSelectElement).value)}
+          class={`mt-1.5 ${control}`}
+        >
+          {input.options?.map((option) => (
+            <option key={option.value} value={option.value} class="bg-[#101318]">
+              {option.label}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          id={fieldId}
+          type={input.type === "password" ? "password" : input.type === "email" ? "email" : "text"}
+          value={value}
+          autocomplete={input.type === "password" ? "new-password" : "off"}
+          placeholder={placeholderFor(input)}
+          aria-describedby={describedBy}
+          aria-invalid={error ? "true" : undefined}
+          onInput={(event) => onChange((event.target as HTMLInputElement).value)}
+          class={`mt-1.5 ${control}`}
+        />
+      )}
+      {error ? (
+        <p id={`${fieldId}-error`} class="mt-1 text-[11.5px] text-accent-red leading-snug">
+          {error}
+        </p>
+      ) : (
+        input.help && (
+          <p id={`${fieldId}-help`} class="mt-1 text-[11.5px] text-ink-400 leading-snug">
+            {input.help}
+          </p>
+        )
+      )}
+    </div>
+  );
+}
+
+/** Says what happens when the field is left empty, rather than repeating the label. */
+function placeholderFor(input: TemplateInput): string {
+  if (input.generate) return "generated automatically";
+  if (input.defaultFrom === "userEmail") return "your account email";
+  return "";
 }
 
 function TemplatePicker({
