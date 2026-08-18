@@ -126,6 +126,10 @@ export const API_ROUTES = {
     test: "/api/admin/notifications/test",
     digestSendNow: "/api/admin/notifications/digest/send-now",
   },
+  monitoring: {
+    settings: "/api/admin/monitoring",
+    ping: "/api/admin/monitoring/ping",
+  },
   transcription: {
     transcribe: "/api/transcribe",
     clientConfig: "/api/transcribe/config",

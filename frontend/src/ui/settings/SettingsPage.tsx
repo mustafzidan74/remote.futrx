@@ -11,13 +11,14 @@ import type { ServerInfo } from "../../models/serverInfo";
 import type { FleetResourcesView, FleetSettings } from "../../models/resources";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import type { ComponentType } from "preact";
-import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Info, Key, Menu, Mic, Monitor, Trash, Users, Zap } from "../primitives/icons";
+import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Info, Key, Menu, Mic, Monitor, Server, Trash, Users, Zap } from "../primitives/icons";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { AuditLogSettings } from "./AuditLogSettings";
 import { ClaudeAuthSettings } from "./ClaudeAuthSettings";
 import { CodexAuthSettings } from "./CodexAuthSettings";
 import { KimiAuthSettings } from "./KimiAuthSettings";
 import { GoogleOAuthSettings } from "./GoogleOAuthSettings";
+import { MonitoringSettings } from "./MonitoringSettings";
 import { NotificationsSettings } from "./NotificationsSettings";
 import { ResourcesSettings } from "./ResourcesSettings";
 import { SecretsVaultSettings } from "./SecretsVaultSettings";
@@ -45,6 +46,7 @@ export type SettingsTab =
   | "trash"
   | "audit"
   | "updates"
+  | "monitoring"
   | "info";
 
 type SettingsTabGroup = "personal" | "agents" | "insights" | "platform" | "system";
@@ -159,6 +161,14 @@ const tabs: Array<{
     label: "Updates",
     description: "Check for new releases and install them.",
     Icon: Download,
+  },
+  {
+    id: "monitoring",
+    group: "system",
+    label: "Monitoring",
+    description:
+      "Let an external service watch this server, and push a heartbeat while it is healthy.",
+    Icon: Server,
   },
   {
     id: "info",
@@ -508,6 +518,15 @@ export function SettingsPage({
               ) : (
                 <SettingsNotice>
                   Application updates are managed by server administrators.
+                </SettingsNotice>
+              ))}
+
+            {activeTab === "monitoring" &&
+              (isAdmin ? (
+                <MonitoringSettings />
+              ) : (
+                <SettingsNotice>
+                  External uptime monitoring is configured by server administrators.
                 </SettingsNotice>
               ))}
 

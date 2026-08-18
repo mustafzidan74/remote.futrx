@@ -29,6 +29,11 @@ ${HOSTNAME} {
     handle @internal {
         respond 403
     }
+    # /healthz is deliberately public and reaches the backend through the
+    # catch-all below: it is what an external uptime monitor polls, and the
+    # box cannot alert about its own death from inside. It reveals the app
+    # version and nothing else, and the backend rate-limits it per client IP.
+    # See docs/04-operations/11-uptime-monitoring.md.
     reverse_proxy 127.0.0.1:${SERVICE_PORT}
 }
 

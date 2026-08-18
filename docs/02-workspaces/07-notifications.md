@@ -18,6 +18,7 @@ routing yet.
 | `needsAttention` | The agent called a tool that hands control back to a human | `waiting` |
 | `scheduledRun` | A scheduled task run settled | `succeeded`, `failed` |
 | `projectHealth` | A running project crossed a health threshold, or recovered | `warn`, `crit`, `ok` |
+| `system` | The backend process started (a deploy, a reboot, or a crash-restart) | `started` |
 | `digest` | The weekly cost-and-usage schedule came due | `finished` |
 
 Two details worth knowing:
@@ -88,6 +89,28 @@ The monitor is controlled by `HEALTH_MONITOR_INTERVAL`; setting it to `0`
 switches it off entirely, which also silences this event no matter how the
 toggle is set. See
 [Project health monitor](../04-operations/09-deployment-and-operations.md#project-health-monitor).
+
+## System events
+
+The `system` event reports the platform's own lifecycle. Today it fires exactly
+once, when the backend process comes up:
+
+```
+Remote system event
+Remote started (version v1.4.0, uptime reset).
+```
+
+Expect one on every deploy and every host reboot. Its real value is the third
+case: a backend killed by the OOM killer and restarted by systemd is otherwise
+invisible, because the box is answering again long before anyone looks. If
+these arrive when you did not deploy anything, something is killing the
+process.
+
+The **System events** toggle is on by default. Turn it off if you deploy often
+enough that the restart ping is noise — but see
+[Uptime monitoring](../04-operations/11-uptime-monitoring.md) first, because
+this event covers a failure neither an external HTTP monitor nor a heartbeat
+can see.
 
 ## Delivery guarantees (or the lack of them)
 
@@ -333,14 +356,14 @@ body:
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `event` | string | `runFinished`, `runFailed`, `needsAttention`, `scheduledRun`, `projectHealth`, or `test` |
+| `event` | string | `runFinished`, `runFailed`, `needsAttention`, `scheduledRun`, `projectHealth`, `system`, or `test` |
 | `event` | string | `runFinished`, `runFailed`, `needsAttention`, `scheduledRun`, `digest`, or `test` |
 | `projectId`, `projectSlug`, `projectName` | string | Omitted for loose (project-less) chats |
-| `chatId`, `chatTitle` | string | `chatTitle` omitted if the chat has no title yet; both are absent on `projectHealth` |
-| `provider` | string | `claude`, `codex`, `kimi`, or `antigravity`; absent on `projectHealth` |
+| `chatId`, `chatTitle` | string | `chatTitle` omitted if the chat has no title yet; both are absent on `projectHealth` and `system` |
+| `provider` | string | `claude`, `codex`, `kimi`, or `antigravity`; absent on `projectHealth` and `system` |
 | `status` | string | See the trigger table above |
 | `summary` | string | Agent output or failure reason, trimmed to 600 characters |
-| `url` | string | Deep link to the chat, or to the project for `projectHealth` |
+| `url` | string | Deep link to the chat, to the project for `projectHealth`, or to the application root for `system` |
 | `at` | number | Unix milliseconds |
 
 Any `2xx` response counts as delivered. Anything else is retried up to the
@@ -417,7 +440,8 @@ All three routes are admin-only; a registered non-admin gets `403`.
     "runFailed": true,
     "needsAttention": true,
     "scheduledRun": true,
-    "projectHealth": true
+    "projectHealth": true,
+    "system": true
   }
   "whatsapp": {
     "provider": "callmebot",
@@ -469,5 +493,6 @@ can always debug a sink.
 - [Chat and agents](04-chat-and-agents.md) — where run events come from
 - [Scheduled tasks](06-scheduled-tasks.md) — the `scheduledRun` source
 - [Deployment and operations](../04-operations/09-deployment-and-operations.md#project-health-monitor) — the `projectHealth` source and its kill switch
+- [Uptime monitoring](../04-operations/11-uptime-monitoring.md) — the `system` source, and the two external checks that survive the box itself dying
 - [Usage and cost](10-usage-and-cost.md) — the ledger behind the weekly digest
 - [API and realtime](../03-platform/08-api-and-realtime.md) — the rest of the HTTP surface

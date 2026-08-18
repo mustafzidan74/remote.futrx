@@ -17,6 +17,9 @@ const (
 	StatusHealthWarn = "warn"
 	StatusHealthCrit = "crit"
 	StatusHealthOK   = "ok"
+	// StatusStarted marks the platform lifecycle event published when the
+	// backend process comes up.
+	StatusStarted = "started"
 )
 
 // summaryLimit keeps agent output short enough to read on a phone.
@@ -45,6 +48,8 @@ func EventHeadline(event Event) string {
 		default:
 			return "Project health warning"
 		}
+	case KindSystem:
+		return "Remote system event"
 	case KindDigest:
 		return "Weekly usage report"
 	case KindTest:

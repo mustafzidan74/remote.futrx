@@ -22,6 +22,11 @@ const (
 	// KindProjectHealth reports a project container crossing a health
 	// threshold, or recovering from one.
 	KindProjectHealth Kind = "projectHealth"
+	// KindSystem reports the platform's own lifecycle — today only that the
+	// backend process came up. A crash-restart is otherwise invisible from a
+	// phone, because the box is answering again before anyone notices it
+	// stopped.
+	KindSystem Kind = "system"
 	// KindDigest is the scheduled weekly cost-and-usage roll-up. It is gated
 	// by its own schedule rather than by the per-event toggles.
 	KindDigest Kind = "digest"
@@ -81,6 +86,7 @@ type EventToggles struct {
 	NeedsAttention bool `json:"needsAttention"`
 	ScheduledRun   bool `json:"scheduledRun"`
 	ProjectHealth  bool `json:"projectHealth"`
+	System         bool `json:"system"`
 }
 
 // DefaultConfig is the configuration a server starts with: off, no sinks, all
@@ -94,6 +100,7 @@ func DefaultConfig() Config {
 			NeedsAttention: true,
 			ScheduledRun:   true,
 			ProjectHealth:  true,
+			System:         true,
 		},
 		Digest: DefaultDigestConfig(),
 	}
@@ -144,6 +151,8 @@ func (c Config) WantsEvent(kind Kind) bool {
 		return c.Events.ScheduledRun
 	case KindProjectHealth:
 		return c.Events.ProjectHealth
+	case KindSystem:
+		return c.Events.System
 	default:
 		return false
 	}

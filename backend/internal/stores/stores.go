@@ -7,6 +7,7 @@ import (
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
+	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
 	serviceplaybooks "github.com/futrx-com/remote.futrx.com/internal/service/playbooks"
 	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
@@ -24,6 +25,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileauth"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filechat"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileglobalsecrets"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filemonitoring"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filenotify"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileplaybooks"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileportal"
@@ -59,6 +61,7 @@ type Stores struct {
 	Users          serviceuser.Repository
 	UserSettings   serviceusersettings.Repository
 	Notifications  servicenotify.Store
+	Monitoring     servicemonitoring.Store
 	Playbooks      serviceplaybooks.Repository
 	GlobalSkills   serviceskills.GlobalRepository
 	GlobalSecrets  serviceglobalsecrets.Store
@@ -128,6 +131,11 @@ func New(dataDir string) (Stores, error) {
 		return Stores{}, fmt.Errorf("init notification settings store: %w", err)
 	}
 
+	monitoring, err := filemonitoring.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init monitoring settings store: %w", err)
+	}
+
 	playbooks, err := fileplaybooks.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init playbooks store: %w", err)
@@ -172,6 +180,7 @@ func New(dataDir string) (Stores, error) {
 		Users:          users,
 		UserSettings:   userSettings,
 		Notifications:  notifications,
+		Monitoring:     monitoring,
 		Playbooks:      playbooks,
 		GlobalSkills:   globalSkills,
 		GlobalSecrets:  globalSecrets,

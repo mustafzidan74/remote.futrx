@@ -77,6 +77,7 @@ func (enabledStore) Load(context.Context) (servicenotify.Config, error) {
 			RunFailed:      true,
 			NeedsAttention: true,
 			ScheduledRun:   true,
+			System:         true,
 		},
 	}, nil
 }
@@ -288,5 +289,54 @@ func TestObserverSurvivesChatLookupFailures(t *testing.T) {
 	events := sink.waitFor(t, 1)
 	if events[0].ChatID != "abc123" || events[0].ChatTitle != "" {
 		t.Fatalf("event = %+v, want the id without enrichment", events[0])
+	}
+}
+
+func TestPlatformStartedAnnouncesTheRestartWithItsVersion(t *testing.T) {
+	observer, sink := newObserver(t, servicechat.Meta{})
+
+	observer.PlatformStarted(context.Background(), "v1.4.0")
+	events := sink.waitFor(t, 1)
+
+	if len(events) != 1 {
+		t.Fatalf("delivered %d events, want 1", len(events))
+	}
+	event := events[0]
+	if event.Event != servicenotify.KindSystem {
+		t.Fatalf("kind = %q, want %q", event.Event, servicenotify.KindSystem)
+	}
+	if event.Status != servicenotify.StatusStarted {
+		t.Fatalf("status = %q, want %q", event.Status, servicenotify.StatusStarted)
+	}
+	if event.Summary != "Remote started (version v1.4.0, uptime reset)." {
+		t.Fatalf("summary = %q", event.Summary)
+	}
+	// The message is only useful if it lands somewhere the operator can tap.
+	if event.URL != "https://remote.example.com/" {
+		t.Fatalf("url = %q, want the application root", event.URL)
+	}
+	if event.At == 0 {
+		t.Fatal("event carried no timestamp")
+	}
+}
+
+func TestPlatformStartedIsSilentWhenSystemEventsAreOff(t *testing.T) {
+	observer, sink := newObserver(t, servicechat.Meta{})
+	// The toggle set is the operator's kill switch; an unsolicited boot ping
+	// after every deploy is exactly what it exists to stop.
+	if _, err := observer.notifications.Save(context.Background(), servicenotify.UpdateInput{
+		Enabled:  true,
+		Telegram: servicenotify.TelegramInput{BotToken: "123:abc", ChatID: "-100"},
+		Events:   servicenotify.EventToggles{RunFinished: true},
+	}); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	observer.PlatformStarted(context.Background(), "v1.4.0")
+
+	select {
+	case <-sink.arrived:
+		t.Fatal("a boot event was delivered with system events switched off")
+	case <-time.After(200 * time.Millisecond):
 	}
 }

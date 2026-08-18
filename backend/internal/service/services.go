@@ -17,6 +17,7 @@ import (
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	servicehealth "github.com/futrx-com/remote.futrx.com/internal/service/health"
+	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
 	serviceplaybooks "github.com/futrx-com/remote.futrx.com/internal/service/playbooks"
 	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
@@ -63,9 +64,18 @@ type Dependencies struct {
 	Users             serviceuser.Repository
 	UserSettings      serviceusersettings.Repository
 	Notifications     servicenotify.Store
-	Transcription     servicetranscribe.Store
-	Playbooks         serviceplaybooks.Repository
-	GlobalSkills      serviceskills.GlobalRepository
+	// Monitoring backs the public /healthz endpoint and the outbound
+	// heartbeat. Nil leaves both unavailable.
+	Monitoring servicemonitoring.Store
+	// MonitoringLXD is the container daemon probe behind the "lxd" check of
+	// /healthz. Nil reports that check as skipped rather than degraded.
+	MonitoringLXD servicemonitoring.LXD
+	// Version is stamped into /healthz and the "Remote started" event. It is
+	// the only fact the public health endpoint reveals about this host.
+	Version       string
+	Transcription servicetranscribe.Store
+	Playbooks     serviceplaybooks.Repository
+	GlobalSkills  serviceskills.GlobalRepository
 	// GlobalSecrets backs the platform secrets vault. Nil leaves the vault
 	// unavailable: projects keep their own secrets and nothing is inherited.
 	GlobalSecrets serviceglobalsecrets.Store
@@ -136,6 +146,7 @@ type Services struct {
 	Users         *serviceuser.Service
 	UserSettings  *serviceusersettings.Service
 	Notifications *servicenotify.Service
+	Monitoring    *servicemonitoring.Service
 	Transcription *servicetranscribe.Service
 	Playbooks     *serviceplaybooks.Service
 	GlobalSecrets *serviceglobalsecrets.Service
@@ -445,6 +456,18 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	})
 	healthService.Start(ctx)
 
+	// External uptime monitoring is built after the notification observer
+	// because starting it announces the restart through that observer. A box
+	// cannot alert about its own death from inside, so this is the half that
+	// makes the outside world able to.
+	monitoringService := servicemonitoring.New(ctx, servicemonitoring.Dependencies{
+		Store:     deps.Monitoring,
+		LXD:       deps.MonitoringLXD,
+		Announcer: runNotifications,
+		Version:   deps.Version,
+	})
+	monitoringService.Start(ctx)
+
 	return Services{
 		Chats:         chatService,
 		ChatAccess:    chatAccessService,
@@ -461,6 +484,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Users:         userService,
 		UserSettings:  userSettingsService,
 		Notifications: notifications,
+		Monitoring:    monitoringService,
 		Transcription: transcription,
 		Playbooks:     playbookService,
 		GlobalSecrets: globalSecrets,
