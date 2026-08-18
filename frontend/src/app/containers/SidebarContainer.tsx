@@ -3,6 +3,7 @@ import { Sidebar } from "../../ui/sidebar/Sidebar";
 import { useAuthContext } from "../../state/context/AuthContext";
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
 import { useSidebarState } from "../../state/hooks/workspace/useSidebarState";
+import { useMessageSearch } from "../../state/hooks/workspace/useMessageSearch";
 import { useWorkspaceCommands } from "../../state/hooks/workspace/useWorkspaceCommands";
 import { workspaceSidebarState } from "../../state/workspace/workspaceSidebarState";
 
@@ -16,6 +17,7 @@ export function SidebarContainer() {
     workspace.chats
   );
   const commands = useWorkspaceCommands();
+  const messageSearch = useMessageSearch(sidebar.query);
   const model = useMemo(
     () => workspaceSidebarState.model(workspace.chats, workspace.projects, sidebar.query),
     [workspace.chats, workspace.projects, sidebar.query]
@@ -27,6 +29,7 @@ export function SidebarContainer() {
       model={model}
       health={workspace.health}
       query={sidebar.query}
+      messageSearch={messageSearch}
       collapsed={sidebar.collapsed}
       sidebarCollapsed={sidebar.sidebarCollapsed}
       activeChatId={workspace.ui.activeChatId}
@@ -37,6 +40,10 @@ export function SidebarContainer() {
       onClose={workspace.closeSidebar}
       onQueryChange={sidebar.setQuery}
       onClearQuery={() => sidebar.setQuery("")}
+      onOpenSearchResult={(result) => {
+        workspace.selectChatAt(result.chatId, result.at);
+        workspace.closeSidebar();
+      }}
       onToggleSidebar={sidebar.toggleSidebarCollapsed}
       onNewProject={commands.newProject}
       onNewChatInProject={commands.newChatInProject}

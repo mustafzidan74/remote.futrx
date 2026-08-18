@@ -13,6 +13,7 @@ const LOAD_MORE_BLOCKS = 80;
 export function MessageList({
   status,
   blocks,
+  highlightAt,
   hasOlder,
   loadingOlder,
   error,
@@ -28,6 +29,8 @@ export function MessageList({
 }: {
   status: ChatStatus;
   blocks: ChatMessageBlock[];
+  /** A message instant to scroll to and flash, or null. */
+  highlightAt: number | null;
   hasOlder: boolean;
   loadingOlder: boolean;
   error: string | null;
@@ -52,6 +55,30 @@ export function MessageList({
   useEffect(() => {
     setVisibleBlockCount(INITIAL_VISIBLE_BLOCKS);
   }, [chatId]);
+
+  // A search hit points at one event's timestamp, but the thread renders
+  // coalesced blocks whose `t` is the first event in them — so the target is
+  // the nearest block rather than an exact match. Revealing it may need older
+  // blocks unhidden first, which is why this widens the window before looking.
+  const highlightBlockIndex = useMemo(
+    () => nearestBlockIndex(blocks, highlightAt),
+    [blocks, highlightAt],
+  );
+
+  useEffect(() => {
+    if (highlightBlockIndex < 0) return;
+    if (highlightBlockIndex < firstVisibleIndex) {
+      setVisibleBlockCount(blocks.length - highlightBlockIndex + LOAD_MORE_BLOCKS);
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      const element = contentRef.current?.querySelector<HTMLElement>(
+        `[data-block-index="${highlightBlockIndex}"]`,
+      );
+      element?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [highlightBlockIndex, firstVisibleIndex, blocks.length, contentRef]);
 
   async function showOlder() {
     if (hiddenCount > 0) {
@@ -108,6 +135,8 @@ export function MessageList({
             <MessageBlock
               key={`${block.type}-${block.t}-${blockIndex}`}
               block={block}
+              blockIndex={blockIndex}
+              highlighted={blockIndex === highlightBlockIndex}
               streaming={status === "streaming" && blockIndex === blocks.length - 1}
               chatId={chatId}
               cwd={cwd}
@@ -123,4 +152,23 @@ export function MessageList({
       </div>
     </div>
   );
+}
+
+/**
+ * The block closest to a timestamp, or -1 when there is nothing to reveal.
+ * "Closest" rather than "equal" because a search hit carries the timestamp of
+ * one event while a rendered block spans several.
+ */
+function nearestBlockIndex(blocks: ChatMessageBlock[], at: number | null): number {
+  if (!at || blocks.length === 0) return -1;
+  let best = -1;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (let index = 0; index < blocks.length; index++) {
+    const distance = Math.abs(blocks[index].t - at);
+    if (distance < bestDistance) {
+      best = index;
+      bestDistance = distance;
+    }
+  }
+  return best;
 }

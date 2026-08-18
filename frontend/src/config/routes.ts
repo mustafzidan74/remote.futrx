@@ -156,6 +156,8 @@ export const API_ROUTES = {
     collection: "/api/playbooks",
     admin: "/api/admin/playbooks",
   },
+  agentPreferences: "/api/admin/agent-preferences",
+  search: (query: string) => `/api/search?${query}`,
   templates: "/api/templates",
   uploads: "/api/uploads",
   users: {

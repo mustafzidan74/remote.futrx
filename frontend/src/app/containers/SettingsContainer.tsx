@@ -8,6 +8,7 @@ import { useUserSettingsContext } from "../../state/context/UserSettingsContext"
 import { useUserDirectory } from "../../state/hooks/users/useUserDirectory";
 import { useGlobalSkills } from "../../state/hooks/settings/useGlobalSkills";
 import { usePlaybookLibrary } from "../../state/hooks/settings/usePlaybookLibrary";
+import { useAgentPreferences } from "../../state/hooks/settings/useAgentPreferences";
 import { useSecretsVault } from "../../state/hooks/settings/useSecretsVault";
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
 import { useAuditLog } from "../../state/hooks/admin/useAuditLog";
@@ -32,6 +33,9 @@ export function SettingsContainer({
   const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
   const globalSkills = useGlobalSkills(activeTab === "skills" && auth.isAdmin);
   const playbooks = usePlaybookLibrary(activeTab === "playbooks" && auth.isAdmin);
+  const agentPreferences = useAgentPreferences(
+    activeTab === "reply-preferences" && auth.isAdmin
+  );
   const secretsVault = useSecretsVault(activeTab === "secrets" && auth.isAdmin);
   const serverInfo = useServerInfo(activeTab === "info");
   const selfUpdate = useSelfUpdate(activeTab === "updates" && auth.isAdmin);
@@ -86,6 +90,7 @@ export function SettingsContainer({
       userDirectory={userDirectory}
       globalSkills={globalSkills}
       playbooks={playbooks}
+      agentPreferences={agentPreferences}
       secretsVault={secretsVault}
       projects={projects}
       usageDashboard={usageDashboard}
@@ -95,6 +100,7 @@ export function SettingsContainer({
       auditLog={auditLog}
       projectTrash={projectTrash}
       appearanceTheme={userSettings.settings.appearance.theme}
+      appearanceReplyLanguage={userSettings.settings.agent.replyLanguage}
       appearanceLoading={userSettings.loading}
       appearanceSaving={userSettings.saving}
       appearanceError={userSettings.error}
@@ -111,6 +117,7 @@ export function SettingsContainer({
       onCheckForUpdates={selfUpdate.check}
       onApplyUpdate={selfUpdate.apply}
       onAppearanceThemeChange={(theme) => void userSettings.setTheme(theme)}
+      onReplyLanguageChange={(language) => void userSettings.setReplyLanguage(language)}
       onStartCodexDeviceLogin={codexAuth.startDeviceLogin}
       kimiAuthenticated={kimiAuth.authenticated}
       kimiDeviceLogin={kimiAuth.deviceLogin}

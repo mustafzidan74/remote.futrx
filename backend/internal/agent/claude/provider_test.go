@@ -239,6 +239,9 @@ type fakeClaudeWorkspace struct{}
 func (fakeClaudeWorkspace) EnsureAgentInstructions(context.Context, string) error { return nil }
 
 func (fakeClaudeWorkspace) EnsureSkillLinks(context.Context, string) error { return nil }
+func (fakeClaudeWorkspace) EnsureReplyPreferences(context.Context, string, string) error {
+	return nil
+}
 
 type fakeClaudeBrowser struct {
 	agentBrowserMCPCalls  int

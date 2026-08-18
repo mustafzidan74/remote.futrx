@@ -1,10 +1,13 @@
 import type { ChatMeta } from "../../models/chat";
+import type { SearchResult } from "../../models/search";
+import type { MessageSearch } from "../../state/hooks/workspace/useMessageSearch";
 import type { ProjectHealthMap } from "../../state/workspace/projectHealthState";
 import type { WorkspaceSidebarModel } from "../../state/workspace/workspaceSidebarState";
 import { ChatRow } from "./ChatRow";
 import { ProjectGroup } from "./ProjectGroup";
 import { SidebarEmptyState, SidebarNoMatches } from "./SidebarEmptyState";
 import { WorkspaceSearch } from "./WorkspaceSearch";
+import { MessageSearchResults } from "./MessageSearchResults";
 import { AccountFooter } from "./AccountFooter";
 import { ChevronLeft, ChevronRight, Plus, Settings, X } from "../primitives/icons";
 import { useState } from "preact/hooks";
@@ -14,6 +17,7 @@ export function Sidebar({
   model,
   health,
   query,
+  messageSearch,
   collapsed,
   sidebarCollapsed,
   activeChatId,
@@ -21,6 +25,7 @@ export function Sidebar({
   onClose,
   onQueryChange,
   onClearQuery,
+  onOpenSearchResult,
   onToggleSidebar,
   onNewProject,
   onNewChatInProject,
@@ -37,6 +42,7 @@ export function Sidebar({
   model: WorkspaceSidebarModel;
   health: ProjectHealthMap;
   query: string;
+  messageSearch: MessageSearch;
   collapsed: Record<string, boolean>;
   sidebarCollapsed: boolean;
   activeChatId: string | null;
@@ -44,6 +50,7 @@ export function Sidebar({
   onClose: () => void;
   onQueryChange: (query: string) => void;
   onClearQuery: () => void;
+  onOpenSearchResult: (result: SearchResult) => void;
   onToggleSidebar: () => void;
   onNewProject: () => void;
   onNewChatInProject: (projectId?: string) => void;
@@ -125,7 +132,18 @@ export function Sidebar({
           </div>
 
           <div class={expandedOnly}>
-            <WorkspaceSearch query={query} onQueryChange={onQueryChange} onClear={onClearQuery} />
+            <WorkspaceSearch
+              query={query}
+              onQueryChange={onQueryChange}
+              onClear={onClearQuery}
+              onNavigate={messageSearch.moveActive}
+              onSubmit={() => {
+                const result = messageSearch.activeResult();
+                if (!result) return false;
+                onOpenSearchResult(result);
+                return true;
+              }}
+            />
           </div>
         </header>
 
@@ -167,7 +185,7 @@ export function Sidebar({
             <SidebarEmptyState onNewProject={onNewProject} />
           )}
 
-          {model.query && !model.hasMatches && <SidebarNoMatches />}
+          {model.query && !model.hasMatches && !messageSearch.active && <SidebarNoMatches />}
 
           {model.visibleProjects.map((node) => (
             <ProjectGroup
@@ -234,6 +252,8 @@ export function Sidebar({
               </div>
             </div>
           )}
+
+          <MessageSearchResults search={messageSearch} onOpenResult={onOpenSearchResult} />
         </div>
 
         {account?.authenticated && (

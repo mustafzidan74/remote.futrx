@@ -12,6 +12,7 @@ export function ChatThread({
   chat,
   project,
   blocks,
+  highlightAt,
   hasOlder,
   loadingOlder,
   status,
@@ -34,6 +35,8 @@ export function ChatThread({
   chat: ChatMeta;
   project: ProjectMeta | null;
   blocks: ChatMessageBlock[];
+  /** A message instant to scroll to and flash, or null. */
+  highlightAt: number | null;
   hasOlder: boolean;
   loadingOlder: boolean;
   status: ChatStatus;
@@ -70,6 +73,7 @@ export function ChatThread({
           <MessageList
             status={status}
             blocks={blocks}
+            highlightAt={highlightAt}
             hasOlder={hasOlder}
             loadingOlder={loadingOlder}
             error={error}

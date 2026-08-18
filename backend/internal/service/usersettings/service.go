@@ -92,6 +92,14 @@ func (s *Service) Update(ctx context.Context, key Key, input UpdateInput) (Setti
 		}
 	}
 
+	if input.Agent != nil && input.Agent.ReplyLanguage != nil {
+		language := strings.TrimSpace(*input.Agent.ReplyLanguage)
+		if !ValidReplyLanguage(language) {
+			return Settings{}, ErrInvalidReplyLanguage
+		}
+		settings.Agent.ReplyLanguage = language
+	}
+
 	settings.UpdatedAt = time.Now().UnixMilli()
 	return s.repo.Save(ctx, key, settings)
 }
@@ -117,6 +125,10 @@ func normalize(settings Settings) Settings {
 	settings.Chat.ServiceTier = normalizeServiceTier(settings.Chat.ServiceTier)
 	if !ValidServiceTier(settings.Chat.ServiceTier) {
 		settings.Chat.ServiceTier = defaults.Chat.ServiceTier
+	}
+	settings.Agent.ReplyLanguage = strings.TrimSpace(settings.Agent.ReplyLanguage)
+	if !ValidReplyLanguage(settings.Agent.ReplyLanguage) {
+		settings.Agent.ReplyLanguage = defaults.Agent.ReplyLanguage
 	}
 	return settings
 }

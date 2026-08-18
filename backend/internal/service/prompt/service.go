@@ -37,7 +37,11 @@ type agentBrowserActivityRecorder interface {
 var ErrPromptAlreadyRunning = errors.New("a previous prompt is still running")
 
 type Actor struct {
-	Email   string
+	Email string
+	// Sub is the OAuth subject of the session that started the run, when it
+	// had one. User settings are keyed by subject first and email second, so
+	// resolving a personal preference needs both halves of the identity.
+	Sub     string
 	IsAdmin bool
 }
 
@@ -137,6 +141,24 @@ func WithRunObserver(observer RunObserver) Option {
 	}
 }
 
+// ReplyPreferenceResolver renders the platform's reply-preference preamble
+// for one run. It is the second of the two injection channels — the first is
+// the managed block in the project's workspace instructions file — and exists
+// because a provider reads its system prompt before it reads any file.
+//
+// An empty result means "inject nothing", which is the default deployment.
+type ReplyPreferenceResolver interface {
+	RunPreamble(ctx context.Context, email, sub, projectID string) string
+}
+
+// WithReplyPreferences installs the reply-preference resolver. Without it runs
+// carry no preference preamble.
+func WithReplyPreferences(resolver ReplyPreferenceResolver) Option {
+	return func(service *Service) {
+		service.replyPrefs = resolver
+	}
+}
+
 func WithUsageRecorder(recorder UsageRecorder) Option {
 	return func(service *Service) {
 		service.usage = recorder
@@ -160,6 +182,7 @@ type Service struct {
 	observers     []RunObserver
 	usage         UsageRecorder
 	audit         audit.Recorder
+	replyPrefs    ReplyPreferenceResolver
 }
 
 func New(
@@ -387,7 +410,8 @@ func (rnr *Service) runPromptAs(
 		)
 	}
 	resumeID := sessionIDForProvider(meta, providerID)
-	effectivePrompt := promptForMode(meta.Mode, prompt)
+	replyPreference := rnr.replyPreference(ctx, input.Actor, string(meta.ProjectID))
+	effectivePrompt := promptWithReplyPreference(replyPreference, promptForMode(meta.Mode, prompt))
 	enableBrowser := hasBrowserSkill(meta.SelectedSkills)
 	if enableBrowser && meta.ProjectID != "" {
 		stopBrowserKeepalive := rnr.keepAgentBrowserActivity(ctx, serviceproject.ID(meta.ProjectID))
@@ -479,7 +503,7 @@ func (rnr *Service) runPromptAs(
 			m.ForkPending = false
 		})
 		emit(ChatEvent{T: time.Now().UnixMilli(), Type: "system", Subtype: "session_recovered"})
-		freshPrompt := promptForMode(meta.Mode, prompt)
+		freshPrompt := promptWithReplyPreference(replyPreference, promptForMode(meta.Mode, prompt))
 		freshPrompt = promptWithVisibleHistory(priorEvents, freshPrompt)
 		freshPrompt = promptWithSelectedSkills(providerID, promptSkills, freshPrompt)
 		err = run(freshPrompt, "")
@@ -566,6 +590,26 @@ func promptForMode(mode, prompt string) string {
 	default:
 		return prompt
 	}
+}
+
+// replyPreference resolves the platform reply preference for this run. A nil
+// resolver, an unconfigured document, or a preference scoped away from this
+// project all produce "".
+func (rnr *Service) replyPreference(ctx context.Context, actor Actor, projectID string) string {
+	if rnr.replyPrefs == nil {
+		return ""
+	}
+	return strings.TrimSpace(rnr.replyPrefs.RunPreamble(ctx, actor.Email, actor.Sub, projectID))
+}
+
+// promptWithReplyPreference prepends the preference line ahead of the mode
+// policy, so a mode preamble reads as an instruction issued under the house
+// style rather than the other way round.
+func promptWithReplyPreference(preference, prompt string) string {
+	if preference == "" {
+		return prompt
+	}
+	return preference + "\n\n" + prompt
 }
 
 func promptWithVisibleHistory(events []ChatEvent, prompt string) string {

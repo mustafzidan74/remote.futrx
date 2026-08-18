@@ -68,6 +68,9 @@ const (
 	ActionSettingsAgentConnect    = "settings.agent.connect"
 	ActionSettingsAgentDisconnect = "settings.agent.disconnect"
 	ActionSettingsTranscription   = "settings.transcription.configure"
+	// ActionSettingsAgentPreferences records an edit to the platform-wide
+	// agent reply preferences (language, tone, house rules).
+	ActionSettingsAgentPreferences = "settings.agent-preferences.update"
 
 	ActionSettingsSecretCreate = "settings.secret.create"
 	ActionSettingsSecretUpdate = "settings.secret.update"

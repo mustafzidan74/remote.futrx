@@ -82,7 +82,7 @@ every project action, `project.secret.` only the secret ones.
 | `chat.` | `create`, `delete`, `transcribe` — `transcribe` records one server-side voice dictation, and its `meta` carries the clip duration only ([Voice input](../02-workspaces/17-voice-input.md)) |
 | `agent.run.` | `start`, `cancel` — `meta` carries `provider`, `chatId`, `projectId`, and the scheduled task/run ids for unattended turns |
 | `schedule.` | `create`, `update`, `arm`, `delete`, `run-now` |
-| `settings.` | `google-oauth.configure`, `playbooks.update`, `agent.connect`, `agent.disconnect`, `secret.create`, `secret.update`, `secret.delete`, `secret.test` |
+| `settings.` | `google-oauth.configure`, `playbooks.update`, `agent-preferences.update` ([Reply preferences](../02-workspaces/18-reply-preferences-and-search.md)), `agent.connect`, `agent.disconnect`, `secret.create`, `secret.update`, `secret.delete`, `secret.test` |
 | `settings.` | `google-oauth.configure`, `playbooks.update`, `agent.connect`, `agent.disconnect`, `transcription.configure` |
 | `self-update.` | `trigger` |
 | `workspace.file.` | `upload`, `download`, `archive-download` |
