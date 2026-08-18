@@ -26,6 +26,7 @@ type ProjectHandler struct {
 	users              *serviceuser.Service
 	auth               *serviceauth.Service
 	shares             *serviceshare.Service
+	portal             PortalService
 	publicHostname     string
 	usage              *UsageHandler
 	projectHostPattern *regexp.Regexp
@@ -58,6 +59,13 @@ func NewProjectHandler(
 // /api/projects/{id}/shares. Without it those routes report 503.
 func (h *ProjectHandler) WithShares(shares *serviceshare.Service) *ProjectHandler {
 	h.shares = shares
+	return h
+}
+
+// WithPortal enables the client-portal settings routes under
+// /api/projects/{id}/portal. Without it those routes report 503.
+func (h *ProjectHandler) WithPortal(portal PortalService) *ProjectHandler {
+	h.portal = portal
 	return h
 }
 
@@ -205,6 +213,11 @@ func (h *ProjectHandler) HandleResource(w http.ResponseWriter, r *http.Request) 
 
 	if len(parts) >= 2 && parts[1] == "shares" {
 		h.handleShares(w, r, id, parts)
+		return
+	}
+
+	if len(parts) >= 2 && parts[1] == "portal" {
+		h.handleProjectPortal(w, r, id)
 		return
 	}
 

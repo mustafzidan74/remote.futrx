@@ -77,6 +77,7 @@ every project action, `project.secret.` only the secret ones.
 | `project.secret.` | `read`, `set`, `delete` |
 | `project.container.` | `start`, `stop`, `restart`, `recycle`, `repair-network`, `limits` |
 | `project.browser.` | `start`, `stop` |
+| `portal.` | `enable`, `rotate`, `disable` — client portal lifecycle, target is the project ([Client portal](../02-workspaces/14-client-portal.md)) |
 | `chat.` | `create`, `delete` |
 | `agent.run.` | `start`, `cancel` — `meta` carries `provider`, `chatId`, `projectId`, and the scheduled task/run ids for unattended turns |
 | `schedule.` | `create`, `update`, `arm`, `delete`, `run-now` |
@@ -84,6 +85,10 @@ every project action, `project.secret.` only the secret ones.
 | `self-update.` | `trigger` |
 | `workspace.file.` | `upload`, `download`, `archive-download` |
 | `workspace.` | `git.checkout`, `ide.open`, `terminal.open`, `terminal.close` |
+
+`portal.` records only lifecycle transitions: editing the note or the display
+toggles on an already-open portal is not one, and a public page view has no
+identity to record.
 
 `project.container.start` is only recorded when the container was not already
 running. Every agent run calls start for convergence, so recording the no-op

@@ -60,7 +60,7 @@ Caddy ([`infra/templates/Caddyfile.tmpl`](infra/templates/Caddyfile.tmpl)) termi
 
 | Host pattern | Routes to | Auth at the edge |
 | --- | --- | --- |
-| `remote.example.com` (main) | Go backend on loopback | App session middleware; `/internal/*` blocked externally |
+| `remote.example.com` (main) | Go backend on loopback | App session middleware; `/internal/*` blocked externally; `/portal/*` is token-gated instead ([client portal](docs/02-workspaces/14-client-portal.md)) |
 | `code.<host>` and `<slug>.code.<host>` | code-server IDE in container on `:8842` | `forward_auth` → `/auth/verify` (**registered user only — no project membership check**) |
 | `<slug>--<port>.dev.<host>` | Project dev server on `<slug>.lxd:<port>` | `forward_auth` → `/auth/verify` (**project membership enforced**, or a valid public share link for that exact slug+port) |
 | `<slug>--6080.dev.<host>` | Agent Browser noVNC on `:6080` | `forward_auth` → `/auth/verify` (project membership, via the dev pattern) |
@@ -153,9 +153,10 @@ A chat with **no project** ("loose chat") runs the CLI directly on the host inst
 | Project membership | `DATA_DIR/projectaccess/<id>.json` | JSON | flat email list |
 | Project secrets | `DATA_DIR/projectsecrets/<id>.json` | JSON | **plaintext**, mode 0600, not encrypted at rest |
 | Public preview links | `DATA_DIR/projectshares/<id>.json` | JSON | SHA-256 token digests only, mode 0600 |
+| Client portals | `DATA_DIR/portals/<id>.json` | JSON | SHA-256 token digest plus display toggles, mode 0600 ([deep dive](docs/02-workspaces/14-client-portal.md)) |
 | Chat events | `DATA_DIR/chats/<id>/events.jsonl` | JSONL | append-only, monotonic `seq`, no rotation |
 | Scheduled tasks | `DATA_DIR/scheduled-tasks/tasks.json` | JSON | definitions, deadlines, durable claims, pending state, and last outcomes |
-| Notification settings | `DATA_DIR/notifications.json` | JSON | Telegram bot token + webhook secret, **plaintext**, mode 0600 |
+| Notification settings | `DATA_DIR/notifications.json` | JSON | Telegram bot token, WhatsApp credential, webhook secret, and the weekly digest schedule, **plaintext**, mode 0600 |
 | Global skills library | `DATA_DIR/skills-global/<name>/` | SKILL.md dirs + `_index.json` | admin-published skills pushed into every project container ([deep dive](docs/02-workspaces/09-global-skills.md)) |
 | Fleet resource policy | `DATA_DIR/resources.json` | JSON | container defaults, host reserve, per-project ceiling, running-container cap |
 | Audit log | `DATA_DIR/audit/audit-YYYY-MM.jsonl` | JSONL | append-only, one file per month, mode 0600, pruned by retention |

@@ -160,6 +160,33 @@ export interface ProjectShare {
   url?: string;
 }
 
+/**
+ * Client portal settings for one project. The token is never returned; `url`
+ * appears only in the response that minted it (enable or rotate).
+ */
+export interface ProjectPortal {
+  enabled: boolean;
+  showPreview: boolean;
+  showChangelog: boolean;
+  showUsage: boolean;
+  brandTitle?: string;
+  note?: string;
+  createdAt?: number;
+  updatedAt?: number;
+  url?: string;
+}
+
+export interface UpdateProjectPortalInput {
+  enabled: boolean;
+  /** Mints a fresh token, invalidating the link the client currently holds. */
+  rotate?: boolean;
+  showPreview: boolean;
+  showChangelog: boolean;
+  showUsage: boolean;
+  brandTitle: string;
+  note: string;
+}
+
 export interface ContainerApp {
   port: number;
   address?: string;

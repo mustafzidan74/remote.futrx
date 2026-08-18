@@ -34,6 +34,10 @@ const (
 	ActionProjectBrowserStart = "project.browser.start"
 	ActionProjectBrowserStop  = "project.browser.stop"
 
+	ActionPortalEnable  = "portal.enable"
+	ActionPortalRotate  = "portal.rotate"
+	ActionPortalDisable = "portal.disable"
+
 	ActionChatCreate = "chat.create"
 	ActionChatDelete = "chat.delete"
 

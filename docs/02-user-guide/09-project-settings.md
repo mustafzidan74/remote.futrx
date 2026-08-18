@@ -145,6 +145,25 @@ The member can now use the project's chats, uploads, terminal, files, preview, A
 
 Any current project member can add or remove registered members. A non-admin cannot remove the final project member. Administrators bypass the membership list and can recover access.
 
+### Client portal
+
+The **Client portal** panel publishes a public, read-only status page for this
+project — project name or brand title, running/stopped, the preview ports that
+already have a live public link, the last 15 commits grouped by day, and a note
+you write. It is for the person paying for the work, not for a teammate.
+
+1. Tick what the client should see. *Show activity* (run counts, never costs) is
+   off by default.
+2. Optionally set a brand title and a note. The note keeps line breaks and
+   nothing else; Arabic text flips the whole page to right-to-left.
+3. Choose **Enable client portal** and copy the link — it is shown **once**.
+
+**Rotate link** issues a new link and stops the old one immediately.
+**Disable** closes the portal; re-enabling later always produces a fresh link.
+Anyone holding the link can open the page, so treat it like a password. The
+portal never exposes the workspace, the IDE, the Agent Browser, chats, or
+secrets. See [Client portal](../02-workspaces/14-client-portal.md).
+
 ## Project-settings permissions
 
 | Action | Admin | Project member |
@@ -154,6 +173,7 @@ Any current project member can add or remove registered members. A non-admin can
 | Start, stop, or force-restart | Yes | Yes |
 | Read or change secrets | Yes | Yes |
 | Add or remove project members | Yes | Yes |
+| Enable, rotate, or disable the client portal | Yes | Yes |
 | Save or reset resource limits | Yes | No |
 | Delete project | Yes | No |
 

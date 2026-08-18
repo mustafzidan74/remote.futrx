@@ -86,6 +86,7 @@ export const API_ROUTES = {
       `/api/projects/${encodeURIComponent(id)}/secrets`,
     secret: (id: string, key: string) =>
       `/api/projects/${encodeURIComponent(id)}/secrets/${encodeURIComponent(key)}`,
+    portal: (id: string) => `/api/projects/${encodeURIComponent(id)}/portal`,
     shares: (id: string) => `/api/projects/${encodeURIComponent(id)}/shares`,
     share: (id: string, shareId: string) =>
       `/api/projects/${encodeURIComponent(id)}/shares/${encodeURIComponent(shareId)}`,
@@ -112,6 +113,7 @@ export const API_ROUTES = {
   notifications: {
     settings: "/api/admin/notifications",
     test: "/api/admin/notifications/test",
+    digestSendNow: "/api/admin/notifications/digest/send-now",
   },
   skills: (query: string) => `/api/skills?${query}`,
   globalSkills: {

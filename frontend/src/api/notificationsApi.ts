@@ -12,4 +12,9 @@ export const notificationsApi = {
     requestJson<NotificationSettings>("PUT", API_ROUTES.notifications.settings, input),
   test: () =>
     requestJson<{ results: NotificationTestResult[] }>("POST", API_ROUTES.notifications.test),
+  sendDigestNow: () =>
+    requestJson<{ results: NotificationTestResult[] }>(
+      "POST",
+      API_ROUTES.notifications.digestSendNow,
+    ),
 };

@@ -3,6 +3,7 @@ package httphandlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,10 +13,12 @@ import (
 )
 
 type notificationsServiceStub struct {
-	config    servicenotify.PublicConfig
-	saveInput servicenotify.UpdateInput
-	saveErr   error
-	tested    bool
+	config     servicenotify.PublicConfig
+	saveInput  servicenotify.UpdateInput
+	saveErr    error
+	tested     bool
+	digestSent bool
+	digestErr  error
 }
 
 func (s *notificationsServiceStub) PublicConfig() servicenotify.PublicConfig {
@@ -39,6 +42,18 @@ func (s *notificationsServiceStub) Test(context.Context) []servicenotify.SinkRes
 		{Sink: servicenotify.SinkTelegram, Configured: true, Delivered: true},
 		{Sink: servicenotify.SinkWebhook, Configured: false, Error: "not configured"},
 	}
+}
+
+func (s *notificationsServiceStub) SendDigestNow(
+	context.Context,
+) ([]servicenotify.SinkResult, error) {
+	s.digestSent = true
+	if s.digestErr != nil {
+		return nil, s.digestErr
+	}
+	return []servicenotify.SinkResult{
+		{Sink: servicenotify.SinkWhatsApp, Configured: true, Delivered: true},
+	}, nil
 }
 
 type callerStub struct {
@@ -95,6 +110,13 @@ func TestNotificationsHandlerRejectsNonAdmins(t *testing.T) {
 			wantStatus: http.StatusForbidden,
 		},
 		{
+			name:       "member digest send-now",
+			method:     http.MethodPost,
+			target:     "/api/admin/notifications/digest/send-now",
+			caller:     callerStub{email: "member@example.com"},
+			wantStatus: http.StatusForbidden,
+		},
+		{
 			name:       "admin DELETE is not a supported method",
 			method:     http.MethodDelete,
 			target:     "/api/admin/notifications",
@@ -114,7 +136,7 @@ func TestNotificationsHandlerRejectsNonAdmins(t *testing.T) {
 			if recorder.Code != test.wantStatus {
 				t.Fatalf("status = %d, want %d (body %s)", recorder.Code, test.wantStatus, recorder.Body)
 			}
-			if service.tested {
+			if service.tested || service.digestSent {
 				t.Fatal("an unauthorized caller reached the test sink")
 			}
 		})
@@ -218,5 +240,53 @@ func TestNotificationsHandlerTestReturnsPerSinkResults(t *testing.T) {
 	}
 	if !service.tested {
 		t.Fatal("the handler did not reach the service")
+	}
+}
+
+func TestNotificationsDigestSendNowReportsPerSinkResults(t *testing.T) {
+	service := &notificationsServiceStub{}
+	mux := http.NewServeMux()
+	newNotificationsHandler(
+		service,
+		callerStub{email: "admin@example.com", isAdmin: true},
+	).RegisterRoutes(mux)
+
+	recorder := httptest.NewRecorder()
+	mux.ServeHTTP(recorder, httptest.NewRequest(
+		http.MethodPost, "/api/admin/notifications/digest/send-now", nil,
+	))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d (body %s)", recorder.Code, recorder.Body)
+	}
+	if !service.digestSent {
+		t.Fatal("the handler did not reach the digest")
+	}
+	var body struct {
+		Results []servicenotify.SinkResult `json:"results"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(body.Results) != 1 || body.Results[0].Sink != servicenotify.SinkWhatsApp {
+		t.Fatalf("results = %+v", body.Results)
+	}
+}
+
+func TestNotificationsDigestSendNowSurfacesAnUnavailableLedger(t *testing.T) {
+	service := &notificationsServiceStub{digestErr: errors.New("the usage ledger is unavailable")}
+	mux := http.NewServeMux()
+	newNotificationsHandler(
+		service,
+		callerStub{email: "admin@example.com", isAdmin: true},
+	).RegisterRoutes(mux)
+
+	recorder := httptest.NewRecorder()
+	mux.ServeHTTP(recorder, httptest.NewRequest(
+		http.MethodPost, "/api/admin/notifications/digest/send-now", nil,
+	))
+
+	if recorder.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503 (body %s)", recorder.Code, recorder.Body)
 	}
 }

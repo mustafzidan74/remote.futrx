@@ -3,6 +3,7 @@ import { projectAccessApi } from "./project/projectAccessApi";
 import { projectAppsApi } from "./project/projectAppsApi";
 import { projectContainerApi } from "./project/projectContainerApi";
 import { projectSecretsApi } from "./project/projectSecretsApi";
+import { projectPortalApi } from "./project/projectPortalApi";
 import { projectSharesApi } from "./project/projectSharesApi";
 import type { ProjectMeta } from "../models/project";
 import { API_ROUTES } from "../config/routes";
@@ -26,5 +27,6 @@ export const projectApi = {
   ...projectAppsApi,
   ...projectSecretsApi,
   ...projectSharesApi,
+  ...projectPortalApi,
   ...projectAccessApi,
 };

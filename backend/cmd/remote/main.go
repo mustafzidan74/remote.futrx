@@ -62,12 +62,16 @@ func main() {
 	// One host collector serves both the server-info page and the resource
 	// policy, so displayed capacity and enforced capacity never disagree.
 	hostCollector := hostinfo.New()
+	// Built before the service set because the client portal's changelog
+	// reads through it; the chat history routes take the same instance.
+	gitHistoryService := servicegithistory.New(gitcli.NewHistoryClient())
 	serviceSet, err := service.New(ctx, service.Dependencies{
 		Chats:             storeSet.Chats,
 		Projects:          storeSet.Projects,
 		ProjectSecrets:    storeSet.ProjectSecrets,
 		ProjectAccess:     storeSet.ProjectAccess,
 		ProjectShares:     storeSet.ProjectShares,
+		ProjectPortals:    storeSet.ProjectPortals,
 		Schedules:         storeSet.Schedules,
 		Auth:              storeSet.Auth,
 		Users:             storeSet.Users,
@@ -78,6 +82,7 @@ func main() {
 		ResourceSettings:  storeSet.Resources,
 		ResourceFleet:     containerStack.Resources,
 		HostCollector:     hostCollector,
+		GitHistory:        gitHistoryService,
 		Audit:             storeSet.Audit,
 		AuditRetention:    cfg.Audit.RetentionMonths,
 		AuthBaseURL:       cfg.BaseURL,
@@ -121,7 +126,6 @@ func main() {
 		serviceselfupdate.WithAudit(serviceSet.Audit),
 	)
 	workspaceFileService := serviceworkspacefiles.New(hostfs.NewWorkspaceFileStore())
-	gitHistoryService := servicegithistory.New(gitcli.NewHistoryClient())
 	codeServerBaseURL, err := config.CodeServerBaseURL(cfg.BaseURL)
 	if err != nil {
 		log.Fatalf("configure IDE URL: %v", err)

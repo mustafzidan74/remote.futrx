@@ -31,6 +31,8 @@ func EventHeadline(event Event) string {
 			return "Scheduled task failed"
 		}
 		return "Scheduled task ran"
+	case KindDigest:
+		return "Weekly usage report"
 	case KindTest:
 		return "Test notification"
 	default:
@@ -79,6 +81,17 @@ func ChatURL(baseURL, chatID string) string {
 		return baseURL + "/"
 	}
 	return baseURL + "/?chat=" + url.QueryEscape(chatID)
+}
+
+// UsageURL is the deep link a digest points at. The SPA has no path router
+// and no settings deep link, so it lands on the application root; the message
+// body names the page to open (Settings -> Usage).
+func UsageURL(baseURL string) string {
+	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	if baseURL == "" {
+		return ""
+	}
+	return baseURL + "/"
 }
 
 // attentionTools are the agent tool calls that hand control back to the human:

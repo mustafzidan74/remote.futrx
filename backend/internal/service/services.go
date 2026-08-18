@@ -16,6 +16,7 @@ import (
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
+	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	"github.com/futrx-com/remote.futrx.com/internal/service/prompt"
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
@@ -41,21 +42,26 @@ type TmuxClient interface {
 }
 
 type Dependencies struct {
-	Chats             servicechat.Repository
-	Projects          serviceproject.Repository
-	ProjectSecrets    serviceproject.SecretsRepository
-	ProjectAccess     serviceproject.AccessRepository
-	ProjectShares     serviceshare.Repository
-	Schedules         serviceschedule.Repository
-	Auth              AuthStore
-	Users             serviceuser.Repository
-	UserSettings      serviceusersettings.Repository
-	Notifications     servicenotify.Store
-	GlobalSkills      serviceskills.GlobalRepository
-	Usage             serviceusage.Repository
-	ResourceSettings  serviceresources.Repository
-	ResourceFleet     serviceresources.Fleet
-	HostCollector     serviceserverinfo.Collector
+	Chats            servicechat.Repository
+	Projects         serviceproject.Repository
+	ProjectSecrets   serviceproject.SecretsRepository
+	ProjectAccess    serviceproject.AccessRepository
+	ProjectShares    serviceshare.Repository
+	ProjectPortals   serviceportal.Repository
+	Schedules        serviceschedule.Repository
+	Auth             AuthStore
+	Users            serviceuser.Repository
+	UserSettings     serviceusersettings.Repository
+	Notifications    servicenotify.Store
+	GlobalSkills     serviceskills.GlobalRepository
+	Usage            serviceusage.Repository
+	ResourceSettings serviceresources.Repository
+	ResourceFleet    serviceresources.Fleet
+	HostCollector    serviceserverinfo.Collector
+	// GitHistory backs the client portal's changelog. It is the same service
+	// the project page uses; the composition root builds it once and hands it
+	// to both.
+	GitHistory        serviceportal.History
 	Audit             serviceaudit.Store
 	AuditRetention    int
 	AuthBaseURL       string
@@ -80,6 +86,7 @@ type Services struct {
 	ChatAccess    *servicechat.AccessService
 	Projects      *serviceproject.Service
 	Shares        *serviceshare.Service
+	Portals       *serviceportal.Service
 	Prompt        *prompt.Service
 	Schedules     *serviceschedule.Service
 	ScheduleCaps  *schedulecapability.Registry
@@ -209,20 +216,30 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		return Services{}, err
 	}
 	scheduleCaps := schedulecapability.New(deps.AuthBaseURL)
-	notifications := servicenotify.New(ctx, deps.Notifications, deps.AuthBaseURL)
+	// The usage ledger is built before the notification service so the weekly
+	// cost digest has a source to aggregate; without a ledger the digest loop
+	// simply never starts.
+	var usageService *serviceusage.Service
+	notifyOptions := []servicenotify.Option{}
+	if deps.Usage != nil {
+		usageService = serviceusage.New(deps.Usage, projectService, chats)
+		notifyOptions = append(
+			notifyOptions,
+			servicenotify.WithDigestSource(usageDigestSource{usage: usageService}),
+		)
+	}
+	notifications := servicenotify.New(ctx, deps.Notifications, deps.AuthBaseURL, notifyOptions...)
 	runNotifications := &notifyObserver{
 		notifications: notifications,
 		chats:         chats,
 		projects:      projectService,
 	}
-	var usageService *serviceusage.Service
 	promptOptions := []prompt.Option{
 		prompt.WithScheduleToolIssuer(scheduleCaps),
 		prompt.WithRunObserver(runNotifications),
 		prompt.WithAudit(auditLog),
 	}
-	if deps.Usage != nil {
-		usageService = serviceusage.New(deps.Usage, projectService, chats)
+	if usageService != nil {
 		promptOptions = append(promptOptions, prompt.WithUsageRecorder(usageService))
 	}
 	promptService := prompt.New(
@@ -260,6 +277,25 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	if deps.ProjectShares != nil {
 		shareService = serviceshare.New(deps.ProjectShares, projectService)
 	}
+	var portalService *serviceportal.Service
+	if deps.ProjectPortals != nil {
+		portalOptions := []serviceportal.Option{serviceportal.WithAudit(auditLog)}
+		if shareService != nil {
+			portalOptions = append(portalOptions, serviceportal.WithShares(shareService))
+		}
+		if deps.GitHistory != nil {
+			portalOptions = append(portalOptions, serviceportal.WithHistory(deps.GitHistory))
+		}
+		if usageService != nil {
+			portalOptions = append(portalOptions, serviceportal.WithUsage(usageService))
+		}
+		portalService = serviceportal.New(
+			deps.ProjectPortals,
+			projectService,
+			deps.AuthBaseURL,
+			portalOptions...,
+		)
+	}
 	var tmuxService *servicetmux.Service
 	if deps.TmuxClient != nil {
 		tmuxService = servicetmux.NewSessions(deps.TmuxClient)
@@ -270,6 +306,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		ChatAccess:    chatAccessService,
 		Projects:      projectService,
 		Shares:        shareService,
+		Portals:       portalService,
 		Prompt:        promptService,
 		Schedules:     scheduleService,
 		ScheduleCaps:  scheduleCaps,

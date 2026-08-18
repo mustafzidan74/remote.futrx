@@ -1,6 +1,29 @@
-import type { NotificationEventToggles } from "../../models/notifications";
+import type {
+  NotificationEventToggles,
+  WhatsAppProvider,
+} from "../../models/notifications";
 import { useNotificationsSettingsController } from "../../state/hooks/notifications/useNotificationsSettingsController";
 import { Bell, Check, ExternalLink, Loader, Send, X } from "../primitives/icons";
+
+const WEEKDAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+const WHATSAPP_PROVIDERS: Array<{ value: WhatsAppProvider; label: string }> = [
+  { value: "", label: "Off" },
+  { value: "cloud", label: "Meta WhatsApp Cloud API" },
+  { value: "callmebot", label: "CallMeBot (free, personal)" },
+];
+
+const inputClass =
+  "w-full h-10 rounded-md bg-black/30 border border-white/10 px-3 text-sm text-ink-100 " +
+  "placeholder:text-ink-400 focus:outline-none focus:border-accent-blue";
 
 const EVENT_ROWS: Array<{ key: keyof NotificationEventToggles; label: string; hint: string }> = [
   { key: "runFinished", label: "Run finished", hint: "An agent turn completed successfully." },
@@ -17,8 +40,11 @@ export function NotificationsSettings() {
   const {
     botToken,
     chatId,
+    clearCallMeBotApiKey,
     clearTelegramToken,
     clearWebhookSecret,
+    clearWhatsAppAccessToken,
+    digest,
     error,
     events,
     loading,
@@ -26,6 +52,8 @@ export function NotificationsSettings() {
     save,
     saved,
     saving,
+    sendDigestNow,
+    sendingDigest,
     sendTest,
     setBotToken,
     setChatId,
@@ -36,8 +64,11 @@ export function NotificationsSettings() {
     testing,
     testResults,
     toggleEvent,
+    updateDigest,
+    updateWhatsApp,
     webhookSecret,
     webhookUrl,
+    whatsapp,
   } = useNotificationsSettingsController();
 
   return (
@@ -148,6 +179,199 @@ export function NotificationsSettings() {
         </fieldset>
 
         <fieldset class="space-y-3">
+          <legend class="text-xs font-semibold text-ink-200 uppercase tracking-wide">WhatsApp</legend>
+          <label class="block space-y-1.5">
+            <span class="text-xs text-ink-300">Provider</span>
+            <select
+              value={whatsapp.provider}
+              onChange={(event) =>
+                updateWhatsApp({
+                  provider: (event.currentTarget as HTMLSelectElement).value as WhatsAppProvider,
+                })
+              }
+              class={inputClass}
+            >
+              {WHATSAPP_PROVIDERS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {whatsapp.provider === "cloud" && (
+            <>
+              <div class="rounded-md border border-white/10 bg-white/[0.03] p-2.5 text-[12px] text-ink-300 leading-relaxed">
+                Meta only delivers free-form text inside the 24-hour window that opens when the
+                recipient messages your business number. Outside it a pre-approved template is
+                required — name one below and Remote sends the message as that template, with the
+                summary as its first body parameter.
+                <a
+                  href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started"
+                  target="_blank"
+                  rel="noreferrer"
+                  class="inline-flex items-center gap-1 mt-2 text-accent-blue hover:underline"
+                >
+                  WhatsApp Cloud API setup <ExternalLink class="w-3.5 h-3.5" />
+                </a>
+              </div>
+              <label class="block space-y-1.5">
+                <span class="text-xs text-ink-300">Phone number ID</span>
+                <input
+                  type="text"
+                  value={whatsapp.phoneNumberId}
+                  onInput={(event) =>
+                    updateWhatsApp({
+                      phoneNumberId: (event.currentTarget as HTMLInputElement).value,
+                    })
+                  }
+                  placeholder="123456789012345"
+                  autocomplete="off"
+                  spellcheck={false}
+                  class={inputClass}
+                />
+              </label>
+              <label class="block space-y-1.5">
+                <span class="text-xs text-ink-300">Access token</span>
+                <input
+                  type="password"
+                  value={whatsapp.accessToken}
+                  onInput={(event) =>
+                    updateWhatsApp({ accessToken: (event.currentTarget as HTMLInputElement).value })
+                  }
+                  placeholder={
+                    settings?.whatsapp?.cloud.configured
+                      ? `Stored (${settings.whatsapp.cloud.accessTokenMasked}) — enter a new token to replace it`
+                      : "EAAG..."
+                  }
+                  autocomplete="new-password"
+                  spellcheck={false}
+                  class={inputClass}
+                />
+              </label>
+              <label class="block space-y-1.5">
+                <span class="text-xs text-ink-300">Recipient (E.164)</span>
+                <input
+                  type="text"
+                  value={whatsapp.recipient}
+                  onInput={(event) =>
+                    updateWhatsApp({ recipient: (event.currentTarget as HTMLInputElement).value })
+                  }
+                  placeholder="2010xxxxxxxx"
+                  autocomplete="off"
+                  spellcheck={false}
+                  class={inputClass}
+                />
+              </label>
+              <label class="block space-y-1.5">
+                <span class="text-xs text-ink-300">Template name (optional)</span>
+                <input
+                  type="text"
+                  value={whatsapp.templateName}
+                  onInput={(event) =>
+                    updateWhatsApp({ templateName: (event.currentTarget as HTMLInputElement).value })
+                  }
+                  placeholder="Leave empty to send plain text inside the 24-hour window"
+                  autocomplete="off"
+                  spellcheck={false}
+                  class={inputClass}
+                />
+              </label>
+              <label class="block space-y-1.5">
+                <span class="text-xs text-ink-300">Template language (optional)</span>
+                <input
+                  type="text"
+                  value={whatsapp.templateLanguage}
+                  onInput={(event) =>
+                    updateWhatsApp({
+                      templateLanguage: (event.currentTarget as HTMLInputElement).value,
+                    })
+                  }
+                  placeholder="en_US"
+                  autocomplete="off"
+                  spellcheck={false}
+                  class={inputClass}
+                />
+              </label>
+              {settings?.whatsapp?.cloud.accessTokenMasked && (
+                <button
+                  type="button"
+                  onClick={() => void clearWhatsAppAccessToken()}
+                  disabled={saving}
+                  class="h-8 px-2.5 rounded-md border border-white/10 text-ink-300 hover:text-ink-100 hover:bg-white/[0.06] text-[12px] disabled:opacity-50"
+                >
+                  Remove stored access token
+                </button>
+              )}
+            </>
+          )}
+
+          {whatsapp.provider === "callmebot" && (
+            <>
+              <div class="rounded-md border border-white/10 bg-white/[0.03] p-2.5 text-[12px] text-ink-300 leading-relaxed">
+                Message the CallMeBot number on WhatsApp with the activation phrase from its
+                instructions; the bot replies with a personal API key. Messages then arrive from
+                that number as short plain text, one line plus the link.
+                <a
+                  href="https://www.callmebot.com/blog/free-api-whatsapp-messages/"
+                  target="_blank"
+                  rel="noreferrer"
+                  class="inline-flex items-center gap-1 mt-2 text-accent-blue hover:underline"
+                >
+                  CallMeBot instructions <ExternalLink class="w-3.5 h-3.5" />
+                </a>
+              </div>
+              <label class="block space-y-1.5">
+                <span class="text-xs text-ink-300">Your WhatsApp number (E.164)</span>
+                <input
+                  type="text"
+                  value={whatsapp.callMeBotPhone}
+                  onInput={(event) =>
+                    updateWhatsApp({
+                      callMeBotPhone: (event.currentTarget as HTMLInputElement).value,
+                    })
+                  }
+                  placeholder="+2010xxxxxxxx"
+                  autocomplete="off"
+                  spellcheck={false}
+                  class={inputClass}
+                />
+              </label>
+              <label class="block space-y-1.5">
+                <span class="text-xs text-ink-300">API key</span>
+                <input
+                  type="password"
+                  value={whatsapp.callMeBotApiKey}
+                  onInput={(event) =>
+                    updateWhatsApp({
+                      callMeBotApiKey: (event.currentTarget as HTMLInputElement).value,
+                    })
+                  }
+                  placeholder={
+                    settings?.whatsapp?.callmebot.configured
+                      ? `Stored (${settings.whatsapp.callmebot.apikeyMasked}) — enter a new key to replace it`
+                      : "123456"
+                  }
+                  autocomplete="new-password"
+                  spellcheck={false}
+                  class={inputClass}
+                />
+              </label>
+              {settings?.whatsapp?.callmebot.apikeyMasked && (
+                <button
+                  type="button"
+                  onClick={() => void clearCallMeBotApiKey()}
+                  disabled={saving}
+                  class="h-8 px-2.5 rounded-md border border-white/10 text-ink-300 hover:text-ink-100 hover:bg-white/[0.06] text-[12px] disabled:opacity-50"
+                >
+                  Remove stored API key
+                </button>
+              )}
+            </>
+          )}
+        </fieldset>
+
+        <fieldset class="space-y-3">
           <legend class="text-xs font-semibold text-ink-200 uppercase tracking-wide">Webhook</legend>
           <div class="rounded-md border border-white/10 bg-white/[0.03] p-2.5 text-[12px] text-ink-300 leading-relaxed">
             Remote POSTs a JSON body to this URL. With a shared secret set, each request carries{" "}
@@ -218,7 +442,86 @@ export function NotificationsSettings() {
           ))}
         </fieldset>
 
+        <fieldset class="space-y-3">
+          <legend class="text-xs font-semibold text-ink-200 uppercase tracking-wide">
+            Weekly cost report
+          </legend>
+          <label class="flex items-start gap-2.5 rounded-md border border-white/10 bg-white/[0.03] p-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={digest.enabled}
+              onChange={(event) =>
+                updateDigest({ enabled: (event.currentTarget as HTMLInputElement).checked })
+              }
+              class="mt-0.5 h-4 w-4 flex-none accent-accent-blue"
+            />
+            <span class="min-w-0">
+              <span class="block text-[13px] text-ink-100">Send a weekly usage digest</span>
+              <span class="block text-[12px] text-ink-300 leading-relaxed">
+                One message covering the last 7 days: total cost, run count, a per-project
+                breakdown, and the busiest model.
+              </span>
+            </span>
+          </label>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <label class="block space-y-1.5">
+              <span class="text-xs text-ink-300">Day</span>
+              <select
+                value={String(digest.weekday)}
+                onChange={(event) =>
+                  updateDigest({
+                    weekday: Number((event.currentTarget as HTMLSelectElement).value),
+                  })
+                }
+                class={inputClass}
+              >
+                {WEEKDAYS.map((label, index) => (
+                  <option key={label} value={String(index)}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label class="block space-y-1.5">
+              <span class="text-xs text-ink-300">Hour</span>
+              <select
+                value={String(digest.hour)}
+                onChange={(event) =>
+                  updateDigest({ hour: Number((event.currentTarget as HTMLSelectElement).value) })
+                }
+                class={inputClass}
+              >
+                {Array.from({ length: 24 }, (_unused, hour) => (
+                  <option key={hour} value={String(hour)}>
+                    {String(hour).padStart(2, "0")}:00
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label class="block space-y-1.5">
+              <span class="text-xs text-ink-300">Time zone</span>
+              <input
+                type="text"
+                value={digest.timezone}
+                onInput={(event) =>
+                  updateDigest({ timezone: (event.currentTarget as HTMLInputElement).value })
+                }
+                placeholder="Africa/Cairo"
+                autocomplete="off"
+                spellcheck={false}
+                class={inputClass}
+              />
+            </label>
+          </div>
+          {digest.lastDigestSentAt ? (
+            <div class="text-[11.5px] text-ink-400">
+              Last digest covered {new Date(digest.lastDigestSentAt).toLocaleString()}.
+            </div>
+          ) : null}
+        </fieldset>
+
         {error && <div class="text-xs text-accent-red">{error}</div>}
+
         {saved && !error && <div class="text-xs text-accent-green">Notification settings saved.</div>}
 
         <div class="flex flex-wrap items-center gap-2">
@@ -238,6 +541,19 @@ export function NotificationsSettings() {
           >
             {testing ? <Loader class="w-3.5 h-3.5 animate-spin" /> : <Send class="w-3.5 h-3.5" />}
             Send test
+          </button>
+          <button
+            type="button"
+            onClick={() => void sendDigestNow()}
+            disabled={sendingDigest || testing || saving || loading}
+            class="h-10 px-3 rounded-md border border-white/10 text-ink-100 hover:bg-white/[0.06] text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+          >
+            {sendingDigest ? (
+              <Loader class="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Send class="w-3.5 h-3.5" />
+            )}
+            Send digest now
           </button>
         </div>
 

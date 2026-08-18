@@ -38,6 +38,9 @@ All `/api/*` and `/ws*` requests require a signed session for a registered user.
 | DELETE | `/api/admin/users/{email}` | Remove a user; admin only |
 | PUT | `/api/admin/users/{email}/role` | Promote or demote a user; admin only |
 | GET, PUT | `/api/admin/resources` | Read or change the fleet resource policy; admin only |
+| GET, PUT | `/api/admin/notifications` | Read or write the global notification settings, secrets masked; admin only |
+| POST | `/api/admin/notifications/test` | Deliver a synthetic event to every configured sink and report each outcome; admin only |
+| POST | `/api/admin/notifications/digest/send-now` | Build and deliver the weekly usage digest immediately without advancing the schedule; admin only |
 | GET | `/api/admin/audit` | Newest-first page of audit entries, filtered by `actor`, `action` prefix, `target`, `from`, `to`, `limit`, `cursor`; admin only |
 | GET | `/api/admin/audit/export` | Stream the stored audit JSONL for a `from`/`to` range as a download; admin only |
 | GET, PATCH | `/api/me/settings` | Read or update current user's appearance and chat defaults |
@@ -87,7 +90,13 @@ because users authenticate `agy` inside each project.
 | PUT, DELETE | `/api/projects/{id}/secrets/{key}` | Set or delete one secret |
 | GET, POST | `/api/projects/{id}/access` | List members or add a registered email |
 | DELETE | `/api/projects/{id}/access/{email}` | Remove a member |
+| GET, PUT | `/api/projects/{id}/portal` | Read or write the client portal; the link is returned once, on enable or rotate |
 | GET | `/internal/tls-ask?domain=...` | Caddy allow-check for on-demand project certificates |
+
+The one project-scoped page served **without** a session is
+`GET /portal/{projectId}?t=<token>`: a read-only HTML summary gated by the
+portal token and a per-address rate limit, never by a cookie. See
+[Client portal](../02-workspaces/14-client-portal.md).
 
 Every `{id}` project route first requires admin status or project membership. Resource changes, forced starts, and project deletion add an admin-only check. A start refused by the aggregate resource guard answers `409`; an override above the fleet ceiling answers `400`. See [Resource limits](../02-workspaces/11-resource-limits.md).
 

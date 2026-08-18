@@ -1,10 +1,13 @@
 import type { ComponentChildren, ComponentType } from "preact";
 import type {
   AccessRecord,
+  PortalRecord,
   ProjectContainerRecord,
   SecretsRecord,
   SharesRecord,
 } from "../../state/projects/projectContainerRecords";
+import { describePortal } from "../../state/projects/projectPortalState";
+import type { PortalFormState } from "../../state/projects/projectPortalState";
 import { describeShareCount, liveShares } from "../../state/projects/projectShareState";
 import { Empty } from "./project-containers/ProjectContainerPrimitives";
 import { ProjectActions } from "./project-containers/ProjectActions";
@@ -13,6 +16,7 @@ import {
   ProjectInfoSection,
 } from "./project-containers/ProjectInfoSection";
 import { ProjectSecretsSection } from "./project-containers/ProjectSecretsSection";
+import { ProjectClientPortalSection } from "./project-containers/ProjectClientPortalSection";
 import { ProjectPreviewSharesSection } from "./project-containers/ProjectPreviewSharesSection";
 import { ProjectSharingSection } from "./project-containers/ProjectSharingSection";
 import { ProjectResourceLimits } from "./project-containers/ProjectResourceLimits";
@@ -26,6 +30,7 @@ import type {
   ContainerLimits,
   ProjectContainerInfo,
   ProjectMeta,
+  ProjectPortal,
   ProjectShare,
 } from "../../models/project";
 import {
@@ -34,6 +39,7 @@ import {
   Info,
   Key,
   Loader,
+  Globe,
   Menu,
   RotateCcw,
   Settings,
@@ -73,7 +79,8 @@ const tabs: Array<{
     id: "sharing",
     label: "Sharing",
     description:
-      "Control which registered users can access this project, and hand out public preview links.",
+      "Control which registered users can access this project, hand out public preview links, " +
+      "and publish a read-only client portal.",
     Icon: Users,
   },
 ];
@@ -85,6 +92,8 @@ export function ProjectContainersPage({
   secretsRecord,
   accessRecord,
   sharesRecord,
+  portalRecord,
+  portalIssuedUrl,
   refreshing,
   usageSummary,
   usageLoading,
@@ -103,6 +112,8 @@ export function ProjectContainersPage({
   onRemoveMember,
   onCreateShare,
   onRevokeShare,
+  onSavePortal,
+  onDismissPortalUrl,
   onRepairNetwork,
   onSetResourceLimits,
   onStartProject,
@@ -116,6 +127,8 @@ export function ProjectContainersPage({
   secretsRecord: SecretsRecord;
   accessRecord: AccessRecord;
   sharesRecord: SharesRecord;
+  portalRecord: PortalRecord;
+  portalIssuedUrl: string | null;
   refreshing: boolean;
   usageSummary: UsageSummary | null;
   usageLoading: boolean;
@@ -134,6 +147,11 @@ export function ProjectContainersPage({
   onRemoveMember: (email: string) => Promise<void>;
   onCreateShare: (port: number, ttlHours: number, label?: string) => Promise<ProjectShare>;
   onRevokeShare: (shareId: string) => Promise<void>;
+  onSavePortal: (
+    form: PortalFormState,
+    overrides?: { enabled?: boolean; rotate?: boolean },
+  ) => Promise<ProjectPortal>;
+  onDismissPortalUrl: () => void;
   onRepairNetwork: () => Promise<void>;
   onSetResourceLimits: (limits: ContainerLimits) => Promise<void>;
   onStartProject: (force?: boolean) => Promise<void>;
@@ -290,6 +308,18 @@ export function ProjectContainersPage({
                         record={sharesRecord}
                         onCreate={onCreateShare}
                         onRevoke={onRevokeShare}
+                      />
+                    </ProjectSettingsPanel>
+                    <ProjectSettingsPanel
+                      title="Client portal"
+                      description={describePortal(portalRecord.data, portalRecord.loading)}
+                      Icon={Globe}
+                    >
+                      <ProjectClientPortalSection
+                        record={portalRecord}
+                        issuedUrl={portalIssuedUrl}
+                        onDismissIssuedUrl={onDismissPortalUrl}
+                        onSave={onSavePortal}
                       />
                     </ProjectSettingsPanel>
                   </div>

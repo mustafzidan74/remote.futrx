@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" dir="{{ .Direction }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>{{ .Title }}</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --border: #e3e6ea;
+  --text: #16191d;
+  --muted: #5d646d;
+  --accent: #2f6feb;
+  --ok-bg: #e7f6ec;
+  --ok-text: #1a7f3c;
+  --off-bg: #eeeff1;
+  --off-text: #5d646d;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1216;
+    --surface: #161a20;
+    --border: #262c34;
+    --text: #e8eaed;
+    --muted: #98a0aa;
+    --accent: #6ea1ff;
+    --ok-bg: #123021;
+    --ok-text: #6ede98;
+    --off-bg: #21262d;
+    --off-text: #98a0aa;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 56px;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Arabic", sans-serif;
+}
+main { max-width: 720px; margin: 0 auto; }
+header { margin-bottom: 20px; }
+h1 { font-size: 22px; line-height: 1.3; margin: 0 0 8px; }
+h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 10px; }
+section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: var(--off-bg);
+  color: var(--off-text);
+}
+.pill.on { background: var(--ok-bg); color: var(--ok-text); }
+ul { margin: 0; padding: 0; list-style: none; }
+li { margin: 0 0 8px; }
+li:last-child { margin-bottom: 0; }
+a { color: var(--accent); }
+.link {
+  display: inline-block;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+}
+.day { font-weight: 600; margin: 14px 0 6px; font-size: 13.5px; }
+.day:first-of-type { margin-top: 0; }
+.commit { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.sha { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--muted); }
+.meta { color: var(--muted); font-size: 12.5px; }
+.note p { margin: 0 0 6px; white-space: pre-wrap; }
+.note p:last-child { margin-bottom: 0; }
+footer { color: var(--muted); font-size: 12.5px; text-align: center; margin-top: 22px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>{{ .Title }}</h1>
+    <span class="pill{{ if .Running }} on{{ end }}">{{ .StatusLabel }}</span>
+  </header>
+
+  {{ if .Note }}
+  <section class="note">
+    <h2>Note</h2>
+    {{ range .Note }}<p>{{ . }}</p>{{ end }}
+  </section>
+  {{ end }}
+
+  {{ if or .Previews .PreviewsNote }}
+  <section>
+    <h2>Latest preview</h2>
+    {{ if .Previews }}
+    <ul>
+      {{ range .Previews }}
+      <li><a class="link" href="{{ .URL }}" rel="noreferrer noopener">Open preview · port {{ .Port }}</a></li>
+      {{ end }}
+    </ul>
+    {{ else }}
+    <p class="meta">{{ .PreviewsNote }}</p>
+    {{ end }}
+  </section>
+  {{ end }}
+
+  {{ if .ShowUsage }}
+  <section>
+    <h2>Activity</h2>
+    <p class="meta">{{ .UsageRuns }} agent run{{ if ne .UsageRuns 1 }}s{{ end }} in the last 7 days.</p>
+  </section>
+  {{ end }}
+
+  {{ if or .Changelog .ChangelogNote }}
+  <section>
+    <h2>Recent changes</h2>
+    {{ if .Changelog }}
+      {{ range .Changelog }}
+      <div class="day">{{ .Label }}</div>
+      <ul>
+        {{ range .Commits }}
+        <li class="commit">
+          <span class="sha">{{ .ShortSHA }}</span>
+          <span>{{ .Subject }}</span>
+          <span class="meta">{{ .Author }} · {{ .Time }}</span>
+        </li>
+        {{ end }}
+      </ul>
+      {{ end }}
+    {{ else }}
+    <p class="meta">{{ .ChangelogNote }}</p>
+    {{ end }}
+  </section>
+  {{ end }}
+
+  <footer>Last updated {{ .UpdatedAtLabel }}</footer>
+</main>
+</body>
+</html>

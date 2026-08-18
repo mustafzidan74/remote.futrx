@@ -25,10 +25,11 @@ This documentation maps the complete `remote.futrx` application: how to use ever
 | [04-chat-and-agents.md](../02-workspaces/04-chat-and-agents.md) | Chats, prompt execution, providers, modes, skills, streaming, fork, and rewind |
 | [05-workspace-tools.md](../02-workspaces/05-workspace-tools.md) | Attachments, files, terminal, Git history, and browser IDE |
 | [06-scheduled-tasks.md](../02-workspaces/06-scheduled-tasks.md) | Host scheduler, task state, capability-scoped agent tools, overlap, guardrails, and recovery |
-| [07-notifications.md](../02-workspaces/07-notifications.md) | Outbound Telegram and webhook alerts for run, attention, and scheduled-task events |
+| [07-notifications.md](../02-workspaces/07-notifications.md) | Outbound Telegram, WhatsApp, and webhook alerts for run, attention, and scheduled-task events, plus the weekly cost digest |
 | [09-global-skills.md](../02-workspaces/09-global-skills.md) | Platform-wide skills library: storage, shadowing, container sync, always-on policy, and the admin API |
 | [10-usage-and-cost.md](../02-workspaces/10-usage-and-cost.md) | Token and cost ledger, per-provider accuracy, price table, aggregation API, and rebuild |
 | [11-resource-limits.md](../02-workspaces/11-resource-limits.md) | Fleet defaults, host-aware derivation, per-project overrides, disk quotas, and the aggregate start guard |
+| [14-client-portal.md](../02-workspaces/14-client-portal.md) | Public read-only status page per project: token gate, what it shows, storage, API, and audit |
 | [08-project-templates.md](../02-workspaces/08-project-templates.md) | Stack presets, in-container provisioning, pre-built template images, and adding a template |
 | [06-previews-and-browser.md](../03-platform/06-previews-and-browser.md) | App discovery, HTTPS preview URLs, element inspection, and Agent Browser |
 | [07-data-and-frontend-state.md](../03-platform/07-data-and-frontend-state.md) | File-backed persistence, workspace files, entities, and UI state |

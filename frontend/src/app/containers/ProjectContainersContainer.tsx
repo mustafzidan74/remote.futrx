@@ -22,7 +22,7 @@ export function ProjectContainersContainer({
   onDeleteProject: (projectId: string) => Promise<void>;
 }) {
   const controller = useProjectContainersController(projects, selectedProjectId);
-  const { selectedProject, info, secrets, access, shares } = controller;
+  const { selectedProject, info, secrets, access, shares, portal } = controller;
   const [activeTab, setActiveTab] = useState<ProjectSettingsTab>("info");
   const usage = useProjectUsage(selectedProject?.id);
   const resources = useProjectResources(selectedProject, activeTab === "settings");
@@ -41,6 +41,8 @@ export function ProjectContainersContainer({
       secretsRecord={secrets.record}
       accessRecord={access.record}
       sharesRecord={shares.record}
+      portalRecord={portal.record}
+      portalIssuedUrl={portal.issuedUrl}
       refreshing={controller.refreshing}
       usageSummary={usage.summary}
       usageLoading={usage.loading}
@@ -59,6 +61,8 @@ export function ProjectContainersContainer({
       onRemoveMember={access.remove}
       onCreateShare={shares.create}
       onRevokeShare={shares.revoke}
+      onSavePortal={portal.save}
+      onDismissPortalUrl={portal.dismissIssuedUrl}
       onRepairNetwork={info.repairNetwork}
       onSetResourceLimits={resources.save}
       onStartProject={info.start}
