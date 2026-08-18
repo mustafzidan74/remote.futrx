@@ -12,6 +12,7 @@ import (
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicetemplates "github.com/futrx-com/remote.futrx.com/internal/service/container/templates"
 	servicegithistory "github.com/futrx-com/remote.futrx.com/internal/service/githistory"
+	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	serviceselfupdate "github.com/futrx-com/remote.futrx.com/internal/service/selfupdate"
 	serviceserverinfo "github.com/futrx-com/remote.futrx.com/internal/service/serverinfo"
@@ -121,6 +122,7 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			deps.PublicHostname,
 		).WithShares(deps.Services.Shares).
 			WithSnapshots(deps.Services.Snapshots, deps.TrashRetention).
+			WithPortal(portalService(deps.Services.Portals)).
 			WithUsage(usageHandler),
 		ProjectHealth: httphandlers.NewProjectHealthHandler(
 			deps.Services.Projects,
@@ -140,6 +142,10 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			deps.Services.Notifications,
 			deps.Services.Auth,
 		),
+		// The client portal is the one public, session-less page the
+		// application serves; the auth middleware only gates /api and /ws, so
+		// this route reaches its own token check.
+		Portal:     httphandlers.NewPortalHandler(portalService(deps.Services.Portals)),
 		ServerInfo: httphandlers.NewServerInfoHandler(deps.ServerInfo),
 		SelfUpdate: httphandlers.NewSelfUpdateHandler(deps.SelfUpdate, deps.Services.Auth),
 		Skills:     httphandlers.NewSkillHandler(deps.Services.Skills),
@@ -170,6 +176,16 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		Middleware:       middleware,
 		Static:           httptransport.NewStaticHandler(deps.Static),
 	}), nil
+}
+
+// portalService narrows the concrete portal service to the transport's
+// interface while keeping a nil service nil, so handlers can report 503
+// instead of panicking on a deployment without a portal store.
+func portalService(service *serviceportal.Service) httphandlers.PortalService {
+	if service == nil {
+		return nil
+	}
+	return service
 }
 
 func NewHTTPServer(addr string, handler http.Handler) *http.Server {

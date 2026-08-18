@@ -30,6 +30,7 @@ type ProjectHandler struct {
 	shares             *serviceshare.Service
 	snapshots          *servicesnapshot.Service
 	trashRetention     time.Duration
+	portal             PortalService
 	publicHostname     string
 	usage              *UsageHandler
 	projectHostPattern *regexp.Regexp
@@ -73,6 +74,13 @@ func (h *ProjectHandler) WithSnapshots(
 ) *ProjectHandler {
 	h.snapshots = snapshots
 	h.trashRetention = trashRetention
+	return h
+}
+
+// WithPortal enables the client-portal settings routes under
+// /api/projects/{id}/portal. Without it those routes report 503.
+func (h *ProjectHandler) WithPortal(portal PortalService) *ProjectHandler {
+	h.portal = portal
 	return h
 }
 
@@ -226,6 +234,11 @@ func (h *ProjectHandler) HandleResource(w http.ResponseWriter, r *http.Request) 
 
 	if len(parts) >= 2 && parts[1] == "snapshots" {
 		h.handleSnapshots(w, r, id, parts, email, isAdmin)
+		return
+	}
+
+	if len(parts) >= 2 && parts[1] == "portal" {
+		h.handleProjectPortal(w, r, id)
 		return
 	}
 

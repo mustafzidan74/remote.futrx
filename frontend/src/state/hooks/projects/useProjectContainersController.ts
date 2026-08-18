@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import type { ProjectMeta } from "../../../models/project";
 import { useProjectAccess } from "./useProjectAccess";
 import { useProjectContainerInfo } from "./useProjectContainerInfo";
+import { useProjectPortal } from "./useProjectPortal";
 import { useProjectSecrets } from "./useProjectSecrets";
 import { useProjectShares } from "./useProjectShares";
 import { useProjectSnapshots } from "./useProjectSnapshots";
@@ -22,6 +23,7 @@ export function useProjectContainersController(
   const access = useProjectAccess(selectedProject);
   const shares = useProjectShares(selectedProject);
   const snapshots = useProjectSnapshots(selectedProject, snapshotsEnabled);
+  const portal = useProjectPortal(selectedProject);
   const [refreshing, setRefreshing] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -35,10 +37,18 @@ export function useProjectContainersController(
         shares.load(),
         snapshots.load(),
       ]);
+      await Promise.all([
+        info.load(),
+        secrets.load(),
+        access.load(),
+        shares.load(),
+        snapshots.load(),
+        portal.load(),
+      ]);
     } finally {
       setRefreshing(false);
     }
-  }, [selectedProject, info.load, secrets.load, access.load, shares.load, snapshots.load]);
+  }, [selectedProject, info.load, secrets.load, access.load, shares.load, snapshots.load, portal.load]);
 
   useEffect(() => {
     const signal = { cancelled: false };
@@ -46,10 +56,11 @@ export function useProjectContainersController(
     void secrets.load(signal);
     void access.load(signal);
     void shares.load(signal);
+    void portal.load(signal);
     return () => {
       signal.cancelled = true;
     };
-  }, [info.load, secrets.load, access.load, shares.load]);
+  }, [info.load, secrets.load, access.load, shares.load, portal.load]);
 
   return {
     selectedProject,
@@ -58,6 +69,7 @@ export function useProjectContainersController(
     access,
     shares,
     snapshots,
+    portal,
     refreshing,
     refresh,
   };

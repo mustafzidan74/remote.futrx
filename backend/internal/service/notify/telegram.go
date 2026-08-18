@@ -129,6 +129,8 @@ func telegramIcon(event Event) string {
 		return "❌"
 	case KindNeedsAttention:
 		return "❗"
+	case KindDigest:
+		return "📊"
 	case KindScheduledRun:
 		if event.Status == StatusFailed {
 			return "❌"

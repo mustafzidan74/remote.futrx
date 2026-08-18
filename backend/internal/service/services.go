@@ -18,6 +18,7 @@ import (
 	servicehealth "github.com/futrx-com/remote.futrx.com/internal/service/health"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
 	serviceplaybooks "github.com/futrx-com/remote.futrx.com/internal/service/playbooks"
+	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	"github.com/futrx-com/remote.futrx.com/internal/service/prompt"
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
@@ -65,8 +66,13 @@ type Dependencies struct {
 	ResourceSettings  serviceresources.Repository
 	ResourceFleet     serviceresources.Fleet
 	HostCollector     serviceserverinfo.Collector
-	Audit             serviceaudit.Store
-	AuditRetention    int
+	ProjectPortals    serviceportal.Repository
+	// GitHistory backs the client portal's changelog. It is the same service
+	// the project page uses; the composition root builds it once and hands it
+	// to both.
+	GitHistory     serviceportal.History
+	Audit          serviceaudit.Store
+	AuditRetention int
 	// TrashRetention is how long a soft-deleted project survives before the
 	// janitor purges it. Zero disables the sweep.
 	TrashRetention    time.Duration
@@ -98,6 +104,7 @@ type Services struct {
 	ChatAccess    *servicechat.AccessService
 	Projects      *serviceproject.Service
 	Shares        *serviceshare.Service
+	Portals       *serviceportal.Service
 	Prompt        *prompt.Service
 	Schedules     *serviceschedule.Service
 	ScheduleCaps  *schedulecapability.Registry
@@ -252,21 +259,31 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		return Services{}, err
 	}
 	scheduleCaps := schedulecapability.New(deps.AuthBaseURL)
-	notifications := servicenotify.New(ctx, deps.Notifications, deps.AuthBaseURL)
+	// The usage ledger is built before the notification service so the weekly
+	// cost digest has a source to aggregate; without a ledger the digest loop
+	// simply never starts.
+	var usageService *serviceusage.Service
+	notifyOptions := []servicenotify.Option{}
+	if deps.Usage != nil {
+		usageService = serviceusage.New(deps.Usage, projectService, chats)
+		notifyOptions = append(
+			notifyOptions,
+			servicenotify.WithDigestSource(usageDigestSource{usage: usageService}),
+		)
+	}
+	notifications := servicenotify.New(ctx, deps.Notifications, deps.AuthBaseURL, notifyOptions...)
 	runNotifications := &notifyObserver{
 		notifications: notifications,
 		chats:         chats,
 		projects:      projectService,
 		baseURL:       deps.AuthBaseURL,
 	}
-	var usageService *serviceusage.Service
 	promptOptions := []prompt.Option{
 		prompt.WithScheduleToolIssuer(scheduleCaps),
 		prompt.WithRunObserver(runNotifications),
 		prompt.WithAudit(auditLog),
 	}
-	if deps.Usage != nil {
-		usageService = serviceusage.New(deps.Usage, projectService, chats)
+	if usageService != nil {
 		promptOptions = append(promptOptions, prompt.WithUsageRecorder(usageService))
 	}
 	promptService := prompt.New(
@@ -317,6 +334,25 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	if deps.ProjectShares != nil {
 		shareService = serviceshare.New(deps.ProjectShares, projectService)
 	}
+	var portalService *serviceportal.Service
+	if deps.ProjectPortals != nil {
+		portalOptions := []serviceportal.Option{serviceportal.WithAudit(auditLog)}
+		if shareService != nil {
+			portalOptions = append(portalOptions, serviceportal.WithShares(shareService))
+		}
+		if deps.GitHistory != nil {
+			portalOptions = append(portalOptions, serviceportal.WithHistory(deps.GitHistory))
+		}
+		if usageService != nil {
+			portalOptions = append(portalOptions, serviceportal.WithUsage(usageService))
+		}
+		portalService = serviceportal.New(
+			deps.ProjectPortals,
+			projectService,
+			deps.AuthBaseURL,
+			portalOptions...,
+		)
+	}
 	var tmuxService *servicetmux.Service
 	if deps.TmuxClient != nil {
 		tmuxService = servicetmux.NewSessions(deps.TmuxClient)
@@ -340,6 +376,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		ChatAccess:    chatAccessService,
 		Projects:      projectService,
 		Shares:        shareService,
+		Portals:       portalService,
 		Prompt:        promptService,
 		Schedules:     scheduleService,
 		ScheduleCaps:  scheduleCaps,

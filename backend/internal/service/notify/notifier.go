@@ -68,7 +68,8 @@ func WithBackoff(delays ...time.Duration) NotifierOption {
 	}
 }
 
-// WithSinks replaces the default Telegram + webhook sinks. Used by tests.
+// WithSinks replaces the default Telegram + WhatsApp + webhook sinks. Used by
+// tests.
 func WithSinks(sinks ...Sink) NotifierOption {
 	return func(n *Notifier) {
 		n.sinks = sinks
@@ -81,7 +82,7 @@ func NewNotifier(config ConfigSource, options ...NotifierOption) *Notifier {
 	client := &http.Client{Timeout: requestTimeout}
 	notifier := &Notifier{
 		config:  config,
-		sinks:   []Sink{NewTelegramSink(client), NewWebhookSink(client)},
+		sinks:   []Sink{NewTelegramSink(client), NewWhatsAppSink(client), NewWebhookSink(client)},
 		queue:   make(chan Event, queueCapacity),
 		backoff: defaultBackoff,
 		seen:    map[string]struct{}{},

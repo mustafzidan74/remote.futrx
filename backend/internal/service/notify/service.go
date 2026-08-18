@@ -31,6 +31,12 @@ type Service struct {
 	baseURL  string
 	now      func() time.Time
 
+	digestSource   DigestSource
+	digestInterval time.Duration
+	digestOnce     sync.Once
+	digestStopped  chan struct{}
+	digestStopOnce sync.Once
+
 	mu     sync.RWMutex
 	config Config
 }
@@ -42,6 +48,27 @@ func WithNotifier(notifier *Notifier) Option {
 	return func(s *Service) {
 		if notifier != nil {
 			s.notifier = notifier
+		}
+	}
+}
+
+// WithDigestSource attaches the usage ledger the weekly digest aggregates.
+// Without it the digest loop never starts and "send digest now" reports that
+// the ledger is unavailable.
+func WithDigestSource(source DigestSource) Option {
+	return func(s *Service) {
+		if source != nil {
+			s.digestSource = source
+		}
+	}
+}
+
+// WithDigestInterval replaces how often the digest loop wakes up. Tests use it
+// to avoid waiting for the production tick.
+func WithDigestInterval(interval time.Duration) Option {
+	return func(s *Service) {
+		if interval > 0 {
+			s.digestInterval = interval
 		}
 	}
 }
@@ -60,10 +87,12 @@ func WithClock(now func() time.Time) Option {
 // never keep the server from booting.
 func New(ctx context.Context, store Store, baseURL string, options ...Option) *Service {
 	service := &Service{
-		store:   store,
-		baseURL: strings.TrimRight(strings.TrimSpace(baseURL), "/"),
-		now:     time.Now,
-		config:  DefaultConfig(),
+		store:          store,
+		baseURL:        strings.TrimRight(strings.TrimSpace(baseURL), "/"),
+		now:            time.Now,
+		config:         DefaultConfig(),
+		digestInterval: defaultDigestInterval,
+		digestStopped:  make(chan struct{}),
 	}
 	if store != nil {
 		loaded, err := store.Load(ctx)
@@ -84,6 +113,7 @@ func New(ctx context.Context, store Store, baseURL string, options ...Option) *S
 		service.notifier.config = service.Config
 	}
 	service.notifier.Start(ctx)
+	service.StartDigest(ctx)
 	return service
 }
 
@@ -92,6 +122,7 @@ func (s *Service) Stop() {
 	if s == nil {
 		return
 	}
+	s.digestStopOnce.Do(func() { close(s.digestStopped) })
 	s.notifier.Stop()
 }
 
@@ -185,8 +216,190 @@ func validate(cfg Config) error {
 	if cfg.Webhook.Secret != "" && cfg.Webhook.URL == "" {
 		return fmt.Errorf("%w: a webhook URL is required alongside the shared secret", ErrInvalidConfig)
 	}
-	if cfg.Enabled && !cfg.TelegramConfigured() && !cfg.WebhookConfigured() {
-		return fmt.Errorf("%w: configure Telegram or a webhook before enabling notifications", ErrInvalidConfig)
+	if err := validateWhatsApp(cfg.WhatsApp); err != nil {
+		return err
+	}
+	if cfg.Enabled && !cfg.TelegramConfigured() && !cfg.WebhookConfigured() && !cfg.WhatsAppConfigured() {
+		return fmt.Errorf(
+			"%w: configure Telegram, WhatsApp, or a webhook before enabling notifications",
+			ErrInvalidConfig,
+		)
+	}
+	if cfg.Digest.Enabled && !cfg.Enabled {
+		return fmt.Errorf("%w: turn notifications on before scheduling the weekly digest", ErrInvalidConfig)
 	}
 	return nil
+}
+
+// validateWhatsApp rejects the half-filled combinations that would otherwise
+// fail silently at delivery time, once per event, in the server log.
+func validateWhatsApp(cfg WhatsAppConfig) error {
+	cfg = cfg.normalize()
+	if cfg.Cloud.AccessToken != "" && (cfg.Cloud.PhoneNumberID == "" || cfg.Cloud.Recipient == "") {
+		return fmt.Errorf(
+			"%w: the WhatsApp Cloud API needs a phone number ID and a recipient alongside the access token",
+			ErrInvalidConfig,
+		)
+	}
+	if cfg.Cloud.TemplateName != "" && !validTemplateName(cfg.Cloud.TemplateName) {
+		return fmt.Errorf(
+			"%w: a WhatsApp template name may only contain lowercase letters, digits, and underscores",
+			ErrInvalidConfig,
+		)
+	}
+	if cfg.CallMeBot.APIKey != "" && cfg.CallMeBot.Phone == "" {
+		return fmt.Errorf("%w: CallMeBot needs your WhatsApp number alongside the API key", ErrInvalidConfig)
+	}
+	switch cfg.Provider {
+	case WhatsAppProviderCloud:
+		if !cfg.Cloud.configured() {
+			return fmt.Errorf(
+				"%w: fill in the phone number ID, access token, and recipient for the WhatsApp Cloud API",
+				ErrInvalidConfig,
+			)
+		}
+	case WhatsAppProviderCallMeBot:
+		if !cfg.CallMeBot.configured() {
+			return fmt.Errorf("%w: fill in your WhatsApp number and API key for CallMeBot", ErrInvalidConfig)
+		}
+	}
+	return nil
+}
+
+// validTemplateName mirrors Meta's own naming rule for message templates.
+func validTemplateName(name string) bool {
+	if len(name) > maxTemplateNameLength {
+		return false
+	}
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '_':
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+// defaultDigestInterval is how often the weekly-digest loop wakes up. The
+// schedule has hour granularity, so a coarse tick is plenty and keeps an idle
+// server quiet.
+const defaultDigestInterval = 5 * time.Minute
+
+// maxTemplateNameLength bounds the WhatsApp template name an operator may
+// store, matching Meta's own limit.
+const maxTemplateNameLength = 512
+
+// StartDigest launches the weekly-digest loop. It is idempotent, and a nil
+// digest source (no usage ledger on this deployment) makes it a no-op.
+func (s *Service) StartDigest(ctx context.Context) {
+	if s == nil || s.digestSource == nil {
+		return
+	}
+	s.digestOnce.Do(func() {
+		go s.runDigestLoop(ctx)
+	})
+}
+
+func (s *Service) runDigestLoop(ctx context.Context) {
+	ticker := time.NewTicker(s.digestInterval)
+	defer ticker.Stop()
+	// Run one pass immediately so a server that was down over the scheduled
+	// hour still reports as soon as it is back.
+	s.digestTick(ctx)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-s.digestStopped:
+			return
+		case <-ticker.C:
+			s.digestTick(ctx)
+		}
+	}
+}
+
+// digestTick sends at most one digest. The occurrence it fires for is written
+// back to the store before anything else can tick, so a restart, a second
+// worker pass, or a slow sink cannot produce two reports for one week.
+func (s *Service) digestTick(ctx context.Context) {
+	cfg := s.Config()
+	occurrence, due := cfg.Digest.DueAt(s.now())
+	if !due {
+		// A schedule that has never sent is armed here rather than fired, so
+		// enabling the digest does not immediately deliver last week's report.
+		if cfg.Digest.Enabled && cfg.Digest.LastSentAt <= 0 {
+			s.markDigestSent(ctx, occurrence.UnixMilli())
+		}
+		return
+	}
+	if !s.markDigestSent(ctx, occurrence.UnixMilli()) {
+		return
+	}
+	event, err := s.digestEvent(ctx, occurrence)
+	if err != nil {
+		log.Printf("notify: weekly digest aggregation failed: %v", err)
+		return
+	}
+	s.Publish(event)
+}
+
+// markDigestSent claims an occurrence. It reports false when another pass
+// already claimed this one, which is what keeps the digest idempotent.
+func (s *Service) markDigestSent(ctx context.Context, occurrenceMilli int64) bool {
+	s.mu.Lock()
+	if s.config.Digest.LastSentAt >= occurrenceMilli {
+		s.mu.Unlock()
+		return false
+	}
+	next := s.config
+	next.Digest.LastSentAt = occurrenceMilli
+	s.config = next
+	s.mu.Unlock()
+
+	if s.store == nil {
+		return true
+	}
+	if err := s.store.Save(ctx, next); err != nil {
+		log.Printf("notify: recording the weekly digest delivery failed: %v", err)
+	}
+	return true
+}
+
+// digestEvent aggregates the seven days before occurrence into one event.
+func (s *Service) digestEvent(ctx context.Context, occurrence time.Time) (Event, error) {
+	if s.digestSource == nil {
+		return Event{}, errors.New("the usage ledger is unavailable")
+	}
+	from, to := DigestWindow(occurrence)
+	digest, err := s.digestSource.WeeklyDigest(ctx, from, to)
+	if err != nil {
+		return Event{}, err
+	}
+	digest.From, digest.To = from, to
+	return Event{
+		Event:     KindDigest,
+		Status:    StatusFinished,
+		Summary:   DigestSummary(digest, s.Config().Digest.Location()) + "\nOpen Settings → Usage in Remote for the full breakdown.",
+		URL:       UsageURL(s.baseURL),
+		At:        occurrence.UnixMilli(),
+		DedupeKey: fmt.Sprintf("digest:%d", occurrence.UnixMilli()),
+	}, nil
+}
+
+// SendDigestNow builds the current week's digest and delivers it synchronously
+// to every configured sink, reporting each outcome. It is the debugging twin
+// of Test: it bypasses the schedule and never moves LastSentAt, so using it
+// cannot make the operator miss the real report.
+func (s *Service) SendDigestNow(ctx context.Context) ([]SinkResult, error) {
+	if s == nil {
+		return nil, errors.New("notifications are unavailable")
+	}
+	ctx, cancel := context.WithTimeout(ctx, testTimeout)
+	defer cancel()
+	event, err := s.digestEvent(ctx, s.now())
+	if err != nil {
+		return nil, err
+	}
+	return s.notifier.SendTest(ctx, event), nil
 }

@@ -22,6 +22,9 @@ const (
 	// KindProjectHealth reports a project container crossing a health
 	// threshold, or recovering from one.
 	KindProjectHealth Kind = "projectHealth"
+	// KindDigest is the scheduled weekly cost-and-usage roll-up. It is gated
+	// by its own schedule rather than by the per-event toggles.
+	KindDigest Kind = "digest"
 	// KindTest is only produced by the admin "send test" action. It ignores
 	// the per-event toggles and the global enable switch.
 	KindTest Kind = "test"
@@ -54,7 +57,9 @@ type Config struct {
 	Enabled   bool           `json:"enabled"`
 	Telegram  TelegramConfig `json:"telegram"`
 	Webhook   WebhookConfig  `json:"webhook"`
+	WhatsApp  WhatsAppConfig `json:"whatsapp"`
 	Events    EventToggles   `json:"events"`
+	Digest    DigestConfig   `json:"digest"`
 	UpdatedAt int64          `json:"updatedAt,omitempty"`
 }
 
@@ -90,6 +95,7 @@ func DefaultConfig() Config {
 			ScheduledRun:   true,
 			ProjectHealth:  true,
 		},
+		Digest: DefaultDigestConfig(),
 	}
 }
 
@@ -100,6 +106,8 @@ func (c Config) Normalize() Config {
 	c.Telegram.ChatID = strings.TrimSpace(c.Telegram.ChatID)
 	c.Webhook.URL = strings.TrimSpace(c.Webhook.URL)
 	c.Webhook.Secret = strings.TrimSpace(c.Webhook.Secret)
+	c.WhatsApp = c.WhatsApp.normalize()
+	c.Digest = c.Digest.normalize()
 	return c
 }
 
@@ -124,6 +132,8 @@ func (c Config) WantsEvent(kind Kind) bool {
 		return false
 	}
 	switch kind {
+	case KindDigest:
+		return c.Digest.Enabled
 	case KindRunFinished:
 		return c.Events.RunFinished
 	case KindRunFailed:
@@ -145,7 +155,9 @@ type PublicConfig struct {
 	Enabled   bool           `json:"enabled"`
 	Telegram  PublicTelegram `json:"telegram"`
 	Webhook   PublicWebhook  `json:"webhook"`
+	WhatsApp  PublicWhatsApp `json:"whatsapp"`
 	Events    EventToggles   `json:"events"`
+	Digest    PublicDigest   `json:"digest"`
 	UpdatedAt int64          `json:"updatedAt,omitempty"`
 }
 
@@ -176,7 +188,9 @@ func (c Config) Public() PublicConfig {
 			URL:          c.Webhook.URL,
 			SecretMasked: MaskSecret(c.Webhook.Secret),
 		},
+		WhatsApp:  c.WhatsApp.public(),
 		Events:    c.Events,
+		Digest:    c.Digest.public(),
 		UpdatedAt: c.UpdatedAt,
 	}
 }
@@ -205,7 +219,9 @@ type UpdateInput struct {
 	Enabled  bool          `json:"enabled"`
 	Telegram TelegramInput `json:"telegram"`
 	Webhook  WebhookInput  `json:"webhook"`
+	WhatsApp WhatsAppInput `json:"whatsapp"`
 	Events   EventToggles  `json:"events"`
+	Digest   DigestInput   `json:"digest"`
 }
 
 type TelegramInput struct {
@@ -225,8 +241,10 @@ type WebhookInput struct {
 func (c Config) Apply(input UpdateInput) Config {
 	current := c.Normalize()
 	next := Config{
-		Enabled: input.Enabled,
-		Events:  input.Events,
+		Enabled:  input.Enabled,
+		Events:   input.Events,
+		WhatsApp: current.WhatsApp.apply(input.WhatsApp),
+		Digest:   current.Digest.apply(input.Digest),
 		Telegram: TelegramConfig{
 			BotToken: current.Telegram.BotToken,
 			ChatID:   strings.TrimSpace(input.Telegram.ChatID),

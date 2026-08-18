@@ -20,11 +20,49 @@ export interface NotificationWebhookSettings {
   secretMasked?: string;
 }
 
+/** The gateway a WhatsApp message goes through. "" means WhatsApp is off. */
+export type WhatsAppProvider = "" | "cloud" | "callmebot";
+
+/** Meta Cloud API credentials as the server reports them. */
+export interface NotificationWhatsAppCloudSettings {
+  configured: boolean;
+  phoneNumberId?: string;
+  accessTokenMasked?: string;
+  recipient?: string;
+  templateName?: string;
+  templateLanguage?: string;
+}
+
+/** CallMeBot credentials as the server reports them. */
+export interface NotificationWhatsAppCallMeBotSettings {
+  configured: boolean;
+  phone?: string;
+  apikeyMasked?: string;
+}
+
+export interface NotificationWhatsAppSettings {
+  configured: boolean;
+  provider?: WhatsAppProvider;
+  cloud: NotificationWhatsAppCloudSettings;
+  callmebot: NotificationWhatsAppCallMeBotSettings;
+}
+
+/** The weekly cost-and-usage digest schedule. 0 = Sunday. */
+export interface NotificationDigestSettings {
+  enabled: boolean;
+  weekday: number;
+  hour: number;
+  timezone: string;
+  lastDigestSentAt?: number;
+}
+
 export interface NotificationSettings {
   enabled: boolean;
   telegram: NotificationTelegramSettings;
   webhook: NotificationWebhookSettings;
+  whatsapp: NotificationWhatsAppSettings;
   events: NotificationEventToggles;
+  digest: NotificationDigestSettings;
   updatedAt?: number;
 }
 
@@ -45,7 +83,29 @@ export interface UpdateNotificationSettingsInput {
     secret: string;
     clearSecret?: boolean;
   };
+  whatsapp: {
+    provider: WhatsAppProvider;
+    cloud: {
+      phoneNumberId: string;
+      accessToken: string;
+      clearAccessToken?: boolean;
+      recipient: string;
+      templateName: string;
+      templateLanguage: string;
+    };
+    callmebot: {
+      phone: string;
+      apikey: string;
+      clearApikey?: boolean;
+    };
+  };
   events: NotificationEventToggles;
+  digest: {
+    enabled: boolean;
+    weekday: number;
+    hour: number;
+    timezone: string;
+  };
 }
 
 export interface NotificationTestResult {

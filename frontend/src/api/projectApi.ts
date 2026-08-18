@@ -3,6 +3,7 @@ import { projectAccessApi } from "./project/projectAccessApi";
 import { projectAppsApi } from "./project/projectAppsApi";
 import { projectContainerApi } from "./project/projectContainerApi";
 import { projectSecretsApi } from "./project/projectSecretsApi";
+import { projectPortalApi } from "./project/projectPortalApi";
 import { projectSharesApi } from "./project/projectSharesApi";
 import { projectSnapshotsApi } from "./project/projectSnapshotsApi";
 import { projectTrashApi } from "./project/projectTrashApi";
@@ -34,6 +35,7 @@ export const projectApi = {
   ...projectAppsApi,
   ...projectSecretsApi,
   ...projectSharesApi,
+  ...projectPortalApi,
   ...projectAccessApi,
   ...projectSnapshotsApi,
   ...projectTrashApi,

@@ -30,7 +30,7 @@ export function ProjectContainersContainer({
     selectedProjectId,
     activeTab === "snapshots"
   );
-  const { selectedProject, info, secrets, access, shares, snapshots } = controller;
+  const { selectedProject, info, secrets, access, shares, snapshots, portal } = controller;
   const usage = useProjectUsage(selectedProject?.id);
   const resources = useProjectResources(selectedProject, activeTab === "settings");
 
@@ -51,6 +51,8 @@ export function ProjectContainersContainer({
       sharesRecord={shares.record}
       snapshotsRecord={snapshots.record}
       snapshotsRunning={snapshots.running}
+      portalRecord={portal.record}
+      portalIssuedUrl={portal.issuedUrl}
       refreshing={controller.refreshing}
       usageSummary={usage.summary}
       usageLoading={usage.loading}
@@ -72,6 +74,8 @@ export function ProjectContainersContainer({
       onCreateSnapshot={snapshots.create}
       onRestoreSnapshot={snapshots.restore}
       onDeleteSnapshot={snapshots.remove}
+      onSavePortal={portal.save}
+      onDismissPortalUrl={portal.dismissIssuedUrl}
       onRepairNetwork={info.repairNetwork}
       onSetResourceLimits={resources.save}
       onStartProject={info.start}

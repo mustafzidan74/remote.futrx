@@ -41,6 +41,10 @@ const (
 	ActionSnapshotRestore        = "snapshot.restore"
 	ActionSnapshotDelete         = "snapshot.delete"
 
+	ActionPortalEnable  = "portal.enable"
+	ActionPortalRotate  = "portal.rotate"
+	ActionPortalDisable = "portal.disable"
+
 	ActionChatCreate = "chat.create"
 	ActionChatDelete = "chat.delete"
 

@@ -1,6 +1,7 @@
 import type {
   ContainerApp,
   ProjectContainerInfo,
+  ProjectPortal,
   ProjectSecret,
   ProjectShare,
 } from "../../models/project";
@@ -27,6 +28,13 @@ export interface SharesRecord {
   data?: ProjectShare[];
   /** Listening ports discovered in the container, used to offer share targets. */
   apps?: ContainerApp[];
+  error?: string;
+}
+
+/** The client portal record. It never carries the plaintext link. */
+export interface PortalRecord {
+  loading: boolean;
+  data?: ProjectPortal;
   error?: string;
 }
 

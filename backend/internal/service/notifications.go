@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -11,6 +12,7 @@ import (
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	"github.com/futrx-com/remote.futrx.com/internal/service/prompt"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
+	serviceusage "github.com/futrx-com/remote.futrx.com/internal/service/usage"
 )
 
 // notifyObserver translates run and schedule lifecycle signals into outbound
@@ -179,4 +181,67 @@ func scheduleSummary(taskName, detail string) string {
 	default:
 		return "Task: " + taskName + "\n" + detail
 	}
+}
+
+// usageDigestSource adapts the usage ledger to the notify service's digest
+// port. It lives here for the same reason notifyObserver does: it is the only
+// place allowed to hold both services at once.
+type usageDigestSource struct {
+	usage *serviceusage.Service
+}
+
+var _ servicenotify.DigestSource = usageDigestSource{}
+
+// digestProjectLimit bounds how many project rows the aggregation carries into
+// the message builder, which trims further.
+const digestProjectLimit = 10
+
+// WeeklyDigest aggregates every project's runs in the window. The digest is an
+// operator-wide report, so it reads with admin scope rather than a caller's.
+func (s usageDigestSource) WeeklyDigest(
+	ctx context.Context,
+	from, to int64,
+) (servicenotify.Digest, error) {
+	if s.usage == nil {
+		return servicenotify.Digest{}, errors.New("the usage ledger is unavailable")
+	}
+	byProject, err := s.usage.Summary(ctx, serviceusage.Query{
+		From:    from,
+		To:      to,
+		GroupBy: serviceusage.GroupByProject,
+	}, "", true)
+	if err != nil {
+		return servicenotify.Digest{}, err
+	}
+
+	digest := servicenotify.Digest{
+		From:         from,
+		To:           to,
+		TotalCostUSD: byProject.Totals.CostUSD,
+		Runs:         byProject.Totals.Runs,
+	}
+	// Groups arrive sorted by cost, so the head is already the interesting end.
+	for index, group := range byProject.Groups {
+		if index >= digestProjectLimit {
+			break
+		}
+		digest.Projects = append(digest.Projects, servicenotify.DigestProject{
+			Name:    group.Label,
+			CostUSD: group.CostUSD,
+			Runs:    group.Runs,
+		})
+	}
+
+	byModel, err := s.usage.Summary(ctx, serviceusage.Query{
+		From:    from,
+		To:      to,
+		GroupBy: serviceusage.GroupByModel,
+	}, "", true)
+	if err != nil {
+		return servicenotify.Digest{}, err
+	}
+	if len(byModel.Groups) > 0 {
+		digest.TopModel = byModel.Groups[0].Label
+	}
+	return digest, nil
 }

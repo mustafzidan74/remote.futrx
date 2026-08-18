@@ -16,6 +16,7 @@ type NotificationsService interface {
 	PublicConfig() servicenotify.PublicConfig
 	Save(ctx context.Context, input servicenotify.UpdateInput) (servicenotify.PublicConfig, error)
 	Test(ctx context.Context) []servicenotify.SinkResult
+	SendDigestNow(ctx context.Context) ([]servicenotify.SinkResult, error)
 }
 
 // notificationsCaller resolves the authenticated principal. It exists so the
@@ -42,6 +43,7 @@ func NewNotificationsHandler(
 func (h *NotificationsHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/admin/notifications", h.handleSettings)
 	mux.HandleFunc("/api/admin/notifications/test", h.handleTest)
+	mux.HandleFunc("/api/admin/notifications/digest/send-now", h.handleDigestSendNow)
 }
 
 func (h *NotificationsHandler) handleSettings(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +83,28 @@ func (h *NotificationsHandler) handleTest(w http.ResponseWriter, r *http.Request
 		return
 	}
 	results := h.notifications.Test(r.Context())
+	if results == nil {
+		results = []servicenotify.SinkResult{}
+	}
+	httptransport.SendJSON(w, http.StatusOK, map[string]any{"results": results})
+}
+
+// handleDigestSendNow builds this moment's weekly digest and delivers it
+// straight away. It never advances the schedule, so an operator can use it to
+// check the wiring without losing the real Sunday report.
+func (h *NotificationsHandler) handleDigestSendNow(w http.ResponseWriter, r *http.Request) {
+	if !h.authorize(w, r) {
+		return
+	}
+	if r.Method != http.MethodPost {
+		httptransport.SendErr(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	results, err := h.notifications.SendDigestNow(r.Context())
+	if err != nil {
+		httptransport.SendErr(w, http.StatusServiceUnavailable, err.Error())
+		return
+	}
 	if results == nil {
 		results = []servicenotify.SinkResult{}
 	}
