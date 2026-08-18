@@ -51,7 +51,8 @@ All `/api/*` and `/ws*` requests require a signed session for a registered user.
 | GET | `/api/admin/audit` | Newest-first page of audit entries, filtered by `actor`, `action` prefix, `target`, `from`, `to`, `limit`, `cursor`; admin only |
 | GET | `/api/admin/audit/export` | Stream the stored audit JSONL for a `from`/`to` range as a download; admin only |
 | GET, PATCH | `/api/me/settings` | Read or update current user's appearance, chat defaults, and personal agent reply language ([Reply preferences](../02-workspaces/18-reply-preferences-and-search.md)) |
-| GET | `/api/server/info` | Host, CPU, memory, storage, network, and process snapshot |
+| GET | `/api/server/info` | Host, CPU, memory, storage, network, and process snapshot, plus the host backup marker |
+| GET | `/api/dashboard` | The whole home screen in one call: KPI tiles, project cards, alerts, the last 10 runs, the next 5 scheduled tasks, a 7-day usage series against the 7 before it, and platform health with host capacity. Every section is scoped to the caller the same way its own endpoint is ([Home dashboard](../02-user-guide/02-projects-and-sidebar.md#the-home-dashboard)) |
 
 ## Agent authentication and skills
 

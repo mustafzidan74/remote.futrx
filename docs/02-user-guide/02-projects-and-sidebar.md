@@ -26,7 +26,9 @@ Open **Container info** to inspect the failure or retry lifecycle actions.
 
 ## Understand the sidebar
 
-The expanded sidebar is headed **Workspace** → **Projects**. Each project row
+The expanded sidebar is headed **Workspace** → **Remote**, followed by a
+**Home** row and then the project list. Selecting the heading or the **Home**
+row opens the [Home dashboard](#the-home-dashboard). Each project row
 contains:
 
 - an **Expand** or **Collapse** control;
@@ -46,6 +48,56 @@ compact project rail on desktop; use **Open chats** or **Toggle sidebar** on a
 small screen.
 
 ![Projects, chats, and concurrent agent activity in the sidebar](/assets/docs/screenshots/parallel-agents.webp)
+
+## The Home dashboard
+
+Home is the screen that answers "what is happening on this server?" without
+opening anything. It is what you land on when no chat is selected, and you can
+return to it at any time by selecting **Home** in the sidebar, selecting the
+**Workspace** heading above it, or pressing <kbd>Ctrl</kbd>+<kbd>K</kbd>
+(<kbd>Cmd</kbd>+<kbd>K</kbd> on macOS) and choosing **Home**.
+
+A workspace with no projects yet keeps the three-step welcome card instead —
+there is nothing for a dashboard to describe until the first project exists.
+
+Home shows the following, all scoped to what you are allowed to see. A project
+member's Home never names a project, chat, run, or scheduled task they could
+not already open themselves.
+
+| Panel | What it answers |
+| --- | --- |
+| The four tiles | How many projects are running, how many runs and how much estimated spend in the last seven days (with the change against the seven before), and how many things need attention |
+| Platform strip | Whether the platform reports itself healthy, the state of the store, LXD, and Caddy checks, how much of the host container-memory budget is already committed, and when the host was last backed up |
+| **Projects** | One card per project: health dot, status, a port chip when its app is listening, when it was last active, and quick actions for the latest chat, the preview, and a snapshot |
+| **Attention** | Everything worth a decision, worst first, each with the one control that resolves it |
+| **Recent activity** | Turns in flight, then the last completed runs with their token count and cost. Selecting a row opens the chat |
+| **Upcoming** | The next armed scheduled tasks with a live countdown, how the previous run went, and **Run now** |
+| **Usage** | Seven daily bars of cost or tokens. Selecting the arrow opens the full [Usage and cost](../02-workspaces/10-usage-and-cost.md) report |
+
+Home refreshes itself every 60 seconds while the tab is visible, and once
+immediately when you switch back to it. **Refresh** forces one now.
+
+### What Attention reports
+
+| Finding | Fix offered |
+| --- | --- |
+| A project the health monitor rates degraded or critical | **Open project** |
+| The platform's own `/healthz` roll-up is degraded | **Open monitoring** |
+| A trashed project within two days of being purged | **Restore from trash** |
+| A running project never snapshotted, or not snapshotted in seven days | **Snapshot now** |
+| An autopilot loop still running in a chat | **Open chat** |
+| 90% or more of the host container-memory budget already committed | **Open resources** |
+| Notifications switched off, so nothing announces a finished run or a degraded project | **Enable notifications** |
+| No completed host backup in two days, or none ever | None — check `remote-backup.timer` on the host |
+
+Two cases are deliberately silent rather than noisy. A host that never
+installed the backup step has no backup directory, so it is never accused of
+missing backups; and a project whose snapshot list could not be read is left
+alone rather than reported as never snapshotted.
+
+Panels degrade one at a time. A server with no usage ledger shows an
+unavailable Usage card — which is not the same claim as zero spend — while
+every other panel still works.
 
 ## Start work in a project
 

@@ -8,6 +8,29 @@ type Info struct {
 	Storage     StorageInfo `json:"storage"`
 	Network     NetworkInfo `json:"network"`
 	Process     ProcessInfo `json:"process"`
+	Backup      BackupInfo  `json:"backup"`
+}
+
+// BackupInfo reports what the host-level `remote-backup` timer has left on
+// disk. It is deliberately shallow: the platform does not own that timer, it
+// only reads the marker directory so the dashboard can say "nothing has been
+// backed up since Tuesday" instead of staying silent about it.
+//
+// Readable is the load-bearing field. A host that never installed the backup
+// step has no marker directory at all, and reporting "no backup" there would
+// be a false alarm rather than a finding — so an unreadable root produces no
+// alert anywhere downstream.
+type BackupInfo struct {
+	// Root is the directory that was probed, echoed so an operator can tell
+	// which path answered.
+	Root string `json:"root,omitempty"`
+	// Readable is true when the marker directory exists and could be listed.
+	Readable bool `json:"readable"`
+	// LastAt is the unix-ms instant of the newest completed snapshot, or zero
+	// when the directory holds none.
+	LastAt int64 `json:"lastAt,omitempty"`
+	// Snapshots counts the completed snapshot directories found.
+	Snapshots int `json:"snapshots,omitempty"`
 }
 
 type Snapshot struct {

@@ -30,6 +30,7 @@ const sources: CommandPaletteSources = {
 function recordingHandlers(log: string[]): CommandPaletteHandlers {
   return {
     openChat: (id) => log.push(`chat:${id}`),
+    openHome: () => log.push("home"),
     newProject: () => log.push("new-project"),
     newChat: (id) => log.push(`new-chat:${id}`),
     openProject: (id) => log.push(`project:${id}`),
@@ -54,6 +55,7 @@ test("lists chats newest first, then actions, projects, and settings", () => {
 
   const actions = items.filter((item) => item.kind === "action").map((item) => item.title);
   assert.deepEqual(actions, [
+    "Home",
     "New project",
     "New chat in Shop",
     "New chat in Blog",

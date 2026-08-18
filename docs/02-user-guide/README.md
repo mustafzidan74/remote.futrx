@@ -31,6 +31,7 @@ If this is your first session:
 | Claim a new server or sign in | [First run and sign-in](01-first-run-and-sign-in.md) |
 | Connect Claude, Codex, or Kimi | [Global settings, users, and providers](10-global-settings-users-providers.md) |
 | Sign in to Antigravity for one project | [Global settings, users, and providers](10-global-settings-users-providers.md#use-antigravity) |
+| See what is happening across every project at once | [Home dashboard](02-projects-and-sidebar.md#the-home-dashboard) |
 | Create, search, reorder, start, or stop projects | [Projects and sidebar](02-projects-and-sidebar.md) |
 | Pick a provider, model, thinking level, speed, mode, or skill | [Chat and agent controls](03-chat-and-agent-controls.md) |
 | Attach files, queue work, cancel a run, fork, rewind, or mark unread | [Prompts, context, and conversation](04-prompts-context-and-conversation.md) |

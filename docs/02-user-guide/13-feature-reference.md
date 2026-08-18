@@ -6,6 +6,7 @@ This is the compact inventory of current Remote behavior. “Page” means the l
 
 | Feature | How to use it | Availability and persistence |
 | --- | --- | --- |
+| Home dashboard | Select **Home** in the sidebar, the **Workspace** heading, or **Home** in the command palette; it is also the landing view when no chat is selected | Any registered user; membership-scoped, refreshes every 60 s while visible |
 | Expand or collapse sidebar | Use the chevron in the sidebar header | Persists in browser local storage |
 | Mobile sidebar | Use the menu button; tap outside or close to dismiss | Responsive UI |
 | Search projects and chats | Type in **Search projects and chats**; clear with **×** | Filters names and visible groups |
