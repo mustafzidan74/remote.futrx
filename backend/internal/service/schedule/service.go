@@ -95,6 +95,32 @@ func WithRunObserver(observer RunObserver) Option {
 	}
 }
 
+// WithHistory installs the bounded per-task run log. Nil leaves the History
+// and diff endpoints answering empty rather than failing.
+func WithHistory(history HistoryRepository) Option {
+	return func(s *Service) { s.history = history }
+}
+
+// WithWorkspace installs the in-container probe used by the commandExitCode
+// gate and by the before/after git capture of run history.
+func WithWorkspace(workspace Workspace) Option {
+	return func(s *Service) { s.workspace = workspace }
+}
+
+// WithHTTPProbe replaces the default httpStatus gate transport.
+func WithHTTPProbe(probe HTTPProbe) Option {
+	return func(s *Service) {
+		if probe != nil {
+			s.httpProbe = probe
+		}
+	}
+}
+
+// WithUsageLookup installs the token/cost source for run history.
+func WithUsageLookup(usage UsageLookup) Option {
+	return func(s *Service) { s.usage = usage }
+}
+
 type Service struct {
 	repo       Repository
 	chats      ChatLookup
@@ -103,6 +129,10 @@ type Service struct {
 	executor   Executor
 	cron       CronParser
 	observer   RunObserver
+	history    HistoryRepository
+	workspace  Workspace
+	httpProbe  HTTPProbe
+	usage      UsageLookup
 	now        func() time.Time
 	busyRetry  time.Duration
 	audit      audit.Recorder
@@ -142,6 +172,7 @@ func New(
 		identities: identities,
 		executor:   executor,
 		cron:       FiveFieldCronParser{},
+		httpProbe:  newHTTPStatusProbe(),
 		now:        time.Now,
 		audit:      audit.Nop{},
 		busyRetry:  defaultBusyRetry,
@@ -302,11 +333,16 @@ func (s *Service) create(
 		Status:     StatusActive,
 		MaxRuns:    input.MaxRuns,
 		Overlap:    input.Overlap,
+		Next:       input.Next,
+		Condition:  input.Condition,
 		CreatedAt:  now.UnixMilli(),
 		UpdatedAt:  now.UnixMilli(),
 	}
 	normalizeTaskDefaults(&task)
 	if err := s.validateDefinition(task, now, true); err != nil {
+		return Task{}, err
+	}
+	if err := s.validateGraph(ctx, task); err != nil {
 		return Task{}, err
 	}
 	if err := s.validateCreationAccess(ctx, task, isAdmin); err != nil {
@@ -399,6 +435,22 @@ func (s *Service) update(
 		return Task{}, err
 	}
 	now := s.now()
+	// A chain edit is validated against the whole catalog, which means
+	// reading it. That read happens here, before the write transaction opens:
+	// listing from inside a repository Update callback deadlocks a store that
+	// guards its document with one lock.
+	if input.Next != nil {
+		current, err := s.repo.Get(ctx, id)
+		if err != nil {
+			return Task{}, err
+		}
+		proposed := current
+		applyUpdate(&proposed, input)
+		normalizeTaskDefaults(&proposed)
+		if err := s.validateGraph(ctx, proposed); err != nil {
+			return Task{}, err
+		}
+	}
 	updated, err := s.repo.Update(ctx, id, func(task *Task) error {
 		scheduleChanged := applyUpdate(task, input)
 		normalizeTaskDefaults(task)
@@ -472,6 +524,14 @@ func (s *Service) delete(
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return err
+	}
+	if s.history != nil {
+		// History is a subordinate of the definition: a deleted task must not
+		// leave a readable log behind. A failure here is logged, not fatal —
+		// the definition is already gone.
+		if err := s.history.Delete(ctx, id); err != nil {
+			log.Printf("schedules: delete history %s: %v", id, err)
+		}
 	}
 	s.notify()
 	return nil
@@ -616,6 +676,18 @@ func (s *Service) RunDue(ctx context.Context) error {
 			continue
 		}
 
+		// The gate runs before the claim: a closed gate must cost no agent
+		// tokens, no container boot, and no run slot. A forced occurrence is
+		// a human decision and bypasses it, like the interval floor does.
+		if !snapshot.PendingRunForced && snapshot.Condition != nil {
+			if outcome := s.evaluateGate(ctx, snapshot, now); !outcome.Passed {
+				if skipErr := s.skipForGate(ctx, snapshot, now, outcome); skipErr != nil {
+					runErrors = append(runErrors, skipErr)
+				}
+				continue
+			}
+		}
+
 		claimed, ok, err := s.claim(ctx, snapshot.ID, now, false)
 		if err != nil {
 			runErrors = append(runErrors, err)
@@ -735,6 +807,8 @@ func (s *Service) claim(
 		current.PendingRunForced = false
 		current.PendingSince = 0
 		current.RetryAt = 0
+		current.ActiveChain = current.PendingChain
+		current.PendingChain = nil
 		current.ActiveRunID = runID
 		current.ActiveRunStarted = nowMS
 		current.ActiveRunForced = force
@@ -808,6 +882,7 @@ func (s *Service) consumeOverlap(
 		current.LastRunEnd = nowMS
 		current.LastStatus = RunStatusSkipped
 		current.LastError = reason
+		current.PendingChain = nil
 		if current.Kind == KindOnce ||
 			(current.MaxRuns > 0 && current.RunCount >= current.MaxRuns) {
 			current.Enabled = false
@@ -822,9 +897,10 @@ func (s *Service) consumeOverlap(
 
 func (s *Service) dispatch(_ context.Context, task Task) error {
 	ctx := s.executionContext()
+	trace := s.beginTrace(ctx, task)
 	if s.executor == nil {
 		err := errors.New("scheduled prompt executor is not configured")
-		_ = s.finish(ctx, task, RunResult{Err: err})
+		_ = s.finish(ctx, task, RunResult{Err: err}, trace)
 		return err
 	}
 	handle, err := s.executor.StartScheduledPrompt(ctx, task, ScheduledPrompt(task))
@@ -838,13 +914,13 @@ func (s *Service) dispatch(_ context.Context, task Task) error {
 			// lost.
 			return nil
 		} else {
-			_ = s.finish(ctx, task, RunResult{Err: err})
+			_ = s.finish(ctx, task, RunResult{Err: err}, trace)
 		}
 		return err
 	}
 	if handle == nil || handle.Done() == nil {
 		err := errors.New("scheduled prompt executor returned an invalid run handle")
-		_ = s.finish(ctx, task, RunResult{Err: err})
+		_ = s.finish(ctx, task, RunResult{Err: err}, trace)
 		return err
 	}
 
@@ -857,7 +933,7 @@ func (s *Service) dispatch(_ context.Context, task Task) error {
 			if !ok {
 				result.Err = errors.New("scheduled prompt completion channel closed without a result")
 			}
-			if err := s.finish(context.Background(), task, result); err != nil &&
+			if err := s.finish(context.Background(), task, result, trace); err != nil &&
 				!errors.Is(err, ErrNotFound) {
 				log.Printf("schedules: finish %s: %v", task.ID, err)
 			}
@@ -878,9 +954,19 @@ func (s *Service) executionContext() context.Context {
 	return s.baseCtx
 }
 
-func (s *Service) finish(ctx context.Context, claimed Task, result RunResult) error {
+func (s *Service) finish(
+	ctx context.Context,
+	claimed Task,
+	result RunResult,
+	trace runTrace,
+) error {
 	nowMS := s.now().UnixMilli()
 	settled := false
+	// The verdict marker is read once, here, so the stored task and the
+	// history record can never disagree about what the run declared.
+	verdict := ExtractResult(result.Output)
+	result.Result = verdict
+	result.Chain = nil
 	updated, err := s.repo.Update(ctx, claimed.ID, func(task *Task) error {
 		if task.ActiveRunID != claimed.ActiveRunID {
 			return nil
@@ -889,7 +975,9 @@ func (s *Service) finish(ctx context.Context, claimed Task, result RunResult) er
 		task.ActiveRunID = ""
 		task.ActiveRunStarted = 0
 		task.ActiveRunForced = false
+		task.ActiveChain = nil
 		task.LastRunEnd = nowMS
+		task.LastResult = verdict
 		task.UpdatedAt = nowMS
 		if result.Err != nil {
 			task.LastStatus = RunStatusFailed
@@ -948,13 +1036,20 @@ func (s *Service) finish(ctx context.Context, claimed Task, result RunResult) er
 		}
 		return nil
 	})
-	if err == nil {
-		s.notify()
-		if settled && s.observer != nil {
-			s.observer.ScheduledRunFinished(ctx, updated, result)
+	if err != nil || !settled {
+		if err == nil {
+			s.notify()
 		}
+		return err
 	}
-	return err
+	s.notify()
+	// Everything below is reporting, not scheduling: a failure here must not
+	// undo a settled run, so each step logs and continues.
+	result.Chain = s.settleReporting(ctx, claimed, updated, result, trace, nowMS)
+	if s.observer != nil {
+		s.observer.ScheduledRunFinished(ctx, updated, result)
+	}
+	return nil
 }
 
 func (s *Service) requeueRejected(ctx context.Context, claimed Task, cause error) error {
@@ -972,6 +1067,8 @@ func (s *Service) requeueRejected(ctx context.Context, claimed Task, cause error
 		}
 		task.PendingRun = true
 		task.PendingRunForced = task.PendingRunForced || forced
+		task.PendingChain = task.ActiveChain
+		task.ActiveChain = nil
 		if task.PendingSince == 0 {
 			task.PendingSince = nowMS
 		}
@@ -1174,6 +1271,9 @@ func (s *Service) validateDefinition(task Task, now time.Time, requireFuture boo
 	if task.Overlap != OverlapQueueOne && task.Overlap != OverlapSkip {
 		return ErrInvalidOverlap
 	}
+	if err := validateCondition(task); err != nil {
+		return err
+	}
 	location, err := time.LoadLocation(task.Timezone)
 	if err != nil || location.String() != task.Timezone {
 		return ErrInvalidTimezone
@@ -1270,6 +1370,7 @@ func (s *Service) recoverClaims(ctx context.Context) error {
 			current.ActiveRunID = ""
 			current.ActiveRunStarted = 0
 			current.ActiveRunForced = false
+			current.ActiveChain = nil
 			current.LastRunEnd = nowMS
 			current.LastStatus = RunStatusAbandoned
 			current.LastError = "scheduler stopped before the run reported completion"
@@ -1414,14 +1515,27 @@ func ScheduledPrompt(task Task) string {
 	)
 }
 
+// HasCompletionMarker reports whether the turn ended by declaring the standing
+// task complete. A trailing verdict marker is stepped over, so one turn can
+// both declare its verdict and end the task.
 func HasCompletionMarker(output string) bool {
-	output = strings.TrimSpace(strings.ReplaceAll(output, "\r\n", "\n"))
-	if output == "" {
-		return false
+	for _, line := range reverseTrimmedLines(output) {
+		if line == "" || verdictPattern.MatchString(line) {
+			continue
+		}
+		return isCompletionMarkerLine(line)
 	}
-	lines := strings.Split(output, "\n")
-	last := strings.TrimSpace(lines[len(lines)-1])
-	return last == "SCHEDULE_STATUS=COMPLETE" || last == "TASK_COMPLETE"
+	return false
+}
+
+// reverseTrimmedLines yields the trimmed lines of output from last to first.
+func reverseTrimmedLines(output string) []string {
+	lines := strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n")
+	reversed := make([]string, 0, len(lines))
+	for index := len(lines) - 1; index >= 0; index-- {
+		reversed = append(reversed, strings.TrimSpace(lines[index]))
+	}
+	return reversed
 }
 
 func applyUpdate(task *Task, input UpdateInput) bool {
@@ -1460,6 +1574,12 @@ func applyUpdate(task *Task, input UpdateInput) bool {
 	if input.Overlap != nil {
 		task.Overlap = *input.Overlap
 	}
+	if input.Next != nil {
+		task.Next = *input.Next
+	}
+	if input.Condition != nil {
+		task.Condition = input.Condition
+	}
 	return changed
 }
 
@@ -1478,6 +1598,8 @@ func normalizeTaskDefaults(task *Task) {
 	if task.Kind == KindOnce {
 		task.MaxRuns = 1
 	}
+	task.Next = normalizeChain(task.Next)
+	task.Condition = normalizeCondition(task.Condition)
 }
 
 func normalizeEmail(email string) string {

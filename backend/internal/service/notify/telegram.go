@@ -134,8 +134,11 @@ func telegramIcon(event Event) string {
 	case KindClientMessage:
 		return "💬"
 	case KindScheduledRun:
-		if event.Status == StatusFailed {
+		switch event.Status {
+		case StatusFailed:
 			return "❌"
+		case StatusSkipped:
+			return "⏭️"
 		}
 		return "⏰"
 	default:

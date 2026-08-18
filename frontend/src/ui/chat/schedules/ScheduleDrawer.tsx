@@ -1,17 +1,27 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { chatApi } from "../../../api/chatApi";
-import type { ScheduledTask, UpdateScheduledTaskInput } from "../../../models/schedule";
+import type {
+  ChainLink,
+  CreateScheduledTaskInput,
+  ScheduleCondition,
+  ScheduledTask,
+  UpdateScheduledTaskInput,
+} from "../../../models/schedule";
 import {
   AlertCircle,
   CalendarClock,
+  Clock,
   Edit,
+  GitFork,
   Loader,
   Pause,
   Play,
+  Plus,
   RotateCcw,
   Trash,
   X,
+  Zap,
 } from "../../primitives/icons";
 import {
   canResumeScheduledTask,
@@ -22,6 +32,14 @@ import {
   sortScheduledTasks,
   toggleActionLabel,
 } from "./scheduledTaskView";
+import { describeChain, describeCondition } from "./scheduleHistoryView";
+import { ScheduleHistoryPanel } from "./ScheduleHistoryPanel";
+import { ChainEditor, ConditionEditor, RuleField } from "./ScheduleRuleFields";
+import {
+  SCHEDULE_TEMPLATES,
+  browserTimezone,
+  templateToCreateInput,
+} from "./scheduleTemplates";
 
 type TaskAction = "toggle" | "run" | "delete" | "save";
 
@@ -40,6 +58,8 @@ export function ScheduleDrawer({
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState<{ id: string; action: TaskAction } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [historyId, setHistoryId] = useState<string | null>(null);
+  const [creating, setCreating] = useState<CreateScheduledTaskInput | null>(null);
   const requestSequence = useRef(0);
   const sortedTasks = useMemo(() => sortScheduledTasks(tasks), [tasks]);
   const enabledCount = tasks.filter((task) => task.enabled).length;
@@ -51,6 +71,8 @@ export function ScheduleDrawer({
     setNotice(null);
     setBusy(null);
     setEditingId(null);
+    setHistoryId(null);
+    setCreating(null);
   }, [chatId]);
 
   useEffect(() => {
@@ -88,6 +110,23 @@ export function ScheduleDrawer({
         setNotice(`Armed “${task.name}” — it is now on the clock.`);
       }
     });
+  }
+
+  async function createTask(input: CreateScheduledTaskInput) {
+    if (busy) return;
+    setBusy({ id: "new", action: "save" });
+    setError(null);
+    setNotice(null);
+    try {
+      await chatApi.createSchedule(chatId, input);
+      setCreating(null);
+      setNotice(`Created “${input.name}”.`);
+      await load();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function saveEdit(task: ScheduledTask, changes: UpdateScheduledTaskInput) {
@@ -162,6 +201,24 @@ export function ScheduleDrawer({
           </div>
           <button
             type="button"
+            onClick={() =>
+              setCreating((current) =>
+                current
+                  ? null
+                  : { name: "", prompt: "", kind: "cron", cron: "0 6 * * 1", timezone: browserTimezone(), maxRuns: 0 })}
+            disabled={!!busy}
+            aria-pressed={!!creating}
+            class={`h-9 rounded-md border px-2.5 text-[12px] inline-flex items-center gap-1.5 disabled:opacity-50
+                    ${creating
+                      ? "border-accent-blue/35 bg-accent-blue/[0.14] text-accent-blue"
+                      : "border-white/10 bg-white/5 text-ink-200 hover:bg-white/[0.09]"}`}
+            title="Create a scheduled task"
+          >
+            <Plus class="w-3.5 h-3.5" />
+            New
+          </button>
+          <button
+            type="button"
             onClick={() => void load()}
             disabled={loading || !!busy}
             class="h-9 w-9 rounded-md bg-white/5 hover:bg-white/[0.09] border border-white/10 text-ink-200 grid place-items-center disabled:opacity-50"
@@ -202,6 +259,17 @@ export function ScheduleDrawer({
             </div>
           )}
 
+          {creating && (
+            <NewTaskPanel
+              draft={creating}
+              tasks={tasks}
+              saving={busy?.id === "new"}
+              onDraft={setCreating}
+              onCancel={() => setCreating(null)}
+              onSubmit={(input) => void createTask(input)}
+            />
+          )}
+
           {loading && tasks.length === 0 ? (
             <div class="h-36 grid place-items-center text-[13px] text-ink-300">
               <div class="flex items-center gap-2">
@@ -217,14 +285,18 @@ export function ScheduleDrawer({
                 <ScheduledTaskCard
                   key={task.id}
                   task={task}
+                  allTasks={tasks}
                   busyAction={busy?.id === task.id ? busy.action : null}
                   actionsDisabled={!!busy}
                   editing={editingId === task.id}
+                  historyOpen={historyId === task.id}
                   onToggle={() => void toggle(task)}
                   onRun={() => void runNow(task)}
                   onDelete={() => void remove(task)}
                   onEditToggle={() =>
                     setEditingId((current) => (current === task.id ? null : task.id))}
+                  onHistoryToggle={() =>
+                    setHistoryId((current) => (current === task.id ? null : task.id))}
                   onSave={(changes) => void saveEdit(task, changes)}
                 />
               ))}
@@ -255,29 +327,37 @@ function EmptyScheduleState() {
 
 function ScheduledTaskCard({
   task,
+  allTasks,
   busyAction,
   actionsDisabled,
   editing,
+  historyOpen,
   onToggle,
   onRun,
   onDelete,
   onEditToggle,
+  onHistoryToggle,
   onSave,
 }: {
   task: ScheduledTask;
+  allTasks: ScheduledTask[];
   busyAction: TaskAction | null;
   actionsDisabled: boolean;
   editing: boolean;
+  historyOpen: boolean;
   onToggle: () => void;
   onRun: () => void;
   onDelete: () => void;
   onEditToggle: () => void;
+  onHistoryToggle: () => void;
   onSave: (changes: UpdateScheduledTaskInput) => void;
 }) {
   const resumeAllowed = canResumeScheduledTask(task);
   const toggleDisabled = actionsDisabled || (!task.enabled && !resumeAllowed);
   const awaitingArm = isAwaitingArm(task);
   const toggleLabel = toggleActionLabel(task);
+  const chainSummary = describeChain(task.next, allTasks);
+  const conditionSummary = describeCondition(task.condition);
 
   return (
     <article class={`rounded-lg border px-3 py-3 ${task.enabled ? "border-white/10 bg-white/[0.035]" : "border-white/[0.07] bg-white/[0.018]"}`}>
@@ -294,6 +374,29 @@ function ScheduledTaskCard({
         <span class="flex-none text-[11px] text-ink-400">{scheduleRunCount(task)}</span>
       </div>
 
+      {(chainSummary || conditionSummary) && (
+        <div class="mt-1.5 flex flex-wrap gap-1.5">
+          {conditionSummary && (
+            <span
+              class="inline-flex max-w-full items-center gap-1 rounded-full border border-amber-400/25 bg-amber-400/[0.07] px-1.5 py-0.5 text-[10.5px] text-amber-300/90"
+              title={conditionSummary}
+            >
+              <Zap class="w-3 h-3 flex-none" />
+              <span class="truncate">{conditionSummary}</span>
+            </span>
+          )}
+          {chainSummary && (
+            <span
+              class="inline-flex max-w-full items-center gap-1 rounded-full border border-accent-blue/25 bg-accent-blue/[0.07] px-1.5 py-0.5 text-[10.5px] text-accent-blue/90"
+              title={chainSummary}
+            >
+              <GitFork class="w-3 h-3 flex-none" />
+              <span class="truncate">{chainSummary}</span>
+            </span>
+          )}
+        </div>
+      )}
+
       <p class="mt-2 line-clamp-3 whitespace-pre-wrap break-words text-[12.5px] leading-[1.55] text-ink-300" title={task.prompt}>
         {task.prompt}
       </p>
@@ -307,7 +410,7 @@ function ScheduledTaskCard({
         />
         <TaskDetail label="Last run" value={formatTimestamp(task.lastRunAt)} />
         <TaskDetail label="Last result" value={task.lastRunStatus ? humanize(task.lastRunStatus) : "None"} tone={lastRunTone(task.lastRunStatus)} />
-        <TaskDetail label="Owner" value={task.ownerEmail || "Unknown"} />
+        <TaskDetail label="Verdict" value={task.lastRunResult || "None"} />
       </dl>
 
       {task.lastError && (
@@ -358,6 +461,20 @@ function ScheduledTaskCard({
         </button>
         <button
           type="button"
+          onClick={onHistoryToggle}
+          disabled={actionsDisabled}
+          aria-pressed={historyOpen}
+          class={`h-8 inline-flex items-center gap-1.5 rounded-md border px-2.5 text-[12px] disabled:opacity-45
+                  ${historyOpen
+                    ? "border-accent-blue/35 bg-accent-blue/[0.14] text-accent-blue"
+                    : "border-white/10 bg-white/[0.04] text-ink-200 hover:bg-white/[0.08]"}`}
+          title="Show this task's run history"
+        >
+          <Clock class="w-3.5 h-3.5" />
+          History
+        </button>
+        <button
+          type="button"
           onClick={onEditToggle}
           disabled={actionsDisabled}
           aria-pressed={editing}
@@ -382,9 +499,12 @@ function ScheduledTaskCard({
         </button>
       </div>
 
+      {historyOpen && <ScheduleHistoryPanel task={task} onClose={onHistoryToggle} />}
+
       {editing && (
         <EditTaskForm
           task={task}
+          allTasks={allTasks}
           saving={busyAction === "save"}
           onCancel={onEditToggle}
           onSave={onSave}
@@ -398,11 +518,13 @@ function ScheduledTaskCard({
 // untouched schedule field never resets scheduler state.
 function EditTaskForm({
   task,
+  allTasks,
   saving,
   onCancel,
   onSave,
 }: {
   task: ScheduledTask;
+  allTasks: ScheduledTask[];
   saving: boolean;
   onCancel: () => void;
   onSave: (changes: UpdateScheduledTaskInput) => void;
@@ -413,6 +535,8 @@ function EditTaskForm({
   const [at, setAt] = useState(task.at ? toLocalDateTimeInput(task.at) : "");
   const [timezone, setTimezone] = useState(task.timezone);
   const [maxRuns, setMaxRuns] = useState(task.maxRuns ? String(task.maxRuns) : "");
+  const [next, setNext] = useState<ChainLink[]>(task.next ?? []);
+  const [condition, setCondition] = useState<ScheduleCondition | undefined>(task.condition);
   const [formError, setFormError] = useState<string | null>(null);
 
   function submit(event: Event) {
@@ -438,6 +562,18 @@ function EditTaskForm({
       return;
     }
     if (parsedMaxRuns !== (task.maxRuns ?? 0)) changes.maxRuns = parsedMaxRuns;
+
+    // Chain and condition are replace-whole-value edits, so they are only sent
+    // when they actually differ — an untouched gate is never re-validated.
+    const cleanedNext = next.filter((link) => link.taskId);
+    if (JSON.stringify(cleanedNext) !== JSON.stringify(task.next ?? [])) {
+      changes.next = cleanedNext;
+    }
+    if (JSON.stringify(condition ?? null) !== JSON.stringify(task.condition ?? null)) {
+      // A cleared gate is sent as an empty kind, which the backend reads as
+      // "remove the condition".
+      changes.condition = condition ?? ({ kind: "" } as unknown as ScheduleCondition);
+    }
 
     if (Object.keys(changes).length === 0) {
       onCancel();
@@ -506,6 +642,18 @@ function EditTaskForm({
           />
         </EditField>
       </div>
+      <ConditionEditor
+        condition={condition}
+        tasks={allTasks}
+        editingId={task.id}
+        onChange={setCondition}
+      />
+      <ChainEditor
+        links={next}
+        tasks={allTasks}
+        editingId={task.id}
+        onChange={setNext}
+      />
       {formError && (
         <div class="text-[11.5px] text-accent-red">{formError}</div>
       )}
@@ -589,4 +737,161 @@ function humanize(value: string): string {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+// NewTaskPanel is the "New task from template" flow: pick a ready-made job,
+// then adjust its name, prompt, cron, condition and chain before saving. The
+// draft lives in the drawer so switching templates never loses an edit that
+// was already made on purpose.
+function NewTaskPanel({
+  draft,
+  tasks,
+  saving,
+  onDraft,
+  onCancel,
+  onSubmit,
+}: {
+  draft: CreateScheduledTaskInput;
+  tasks: ScheduledTask[];
+  saving: boolean;
+  onDraft: (draft: CreateScheduledTaskInput) => void;
+  onCancel: () => void;
+  onSubmit: (input: CreateScheduledTaskInput) => void;
+}) {
+  const [formError, setFormError] = useState<string | null>(null);
+
+  function patch(changes: Partial<CreateScheduledTaskInput>) {
+    onDraft({ ...draft, ...changes });
+  }
+
+  function submit(event: Event) {
+    event.preventDefault();
+    if (!draft.name.trim()) {
+      setFormError("Give the task a name.");
+      return;
+    }
+    if (!draft.prompt.trim()) {
+      setFormError("Give the task a prompt — it is what the agent will run.");
+      return;
+    }
+    if (!(draft.cron ?? "").trim()) {
+      setFormError("Enter a five-field cron expression.");
+      return;
+    }
+    setFormError(null);
+    onSubmit({
+      ...draft,
+      name: draft.name.trim(),
+      prompt: draft.prompt.trim(),
+      cron: (draft.cron ?? "").trim(),
+      timezone: (draft.timezone || "UTC").trim(),
+      next: (draft.next ?? []).filter((link) => link.taskId),
+    });
+  }
+
+  return (
+    <form
+      onSubmit={submit}
+      class="mb-3 space-y-2 rounded-lg border border-accent-blue/25 bg-accent-blue/[0.04] p-3"
+    >
+      <div>
+        <span class="mb-1.5 block text-[10px] uppercase tracking-wide text-ink-300">
+          Start from a template
+        </span>
+        <div class="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+          {SCHEDULE_TEMPLATES.map((template) => (
+            <button
+              key={template.id}
+              type="button"
+              onClick={() => {
+                onDraft(templateToCreateInput(template, draft.timezone || browserTimezone()));
+                setFormError(null);
+              }}
+              class="rounded-md border border-white/10 bg-black/25 px-2.5 py-2 text-left hover:border-accent-blue/35 hover:bg-accent-blue/[0.08]"
+            >
+              <span class="block text-[12px] font-medium text-ink-100">{template.name}</span>
+              <span class="mt-0.5 block text-[10.5px] leading-4 text-ink-400">
+                {template.blurb}
+              </span>
+              <span class="mt-1 block font-mono text-[10px] text-accent-blue/80">
+                {template.cron} · skills: {template.skills.join(", ")}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <RuleField label="Name">
+        <input
+          type="text"
+          value={draft.name}
+          onInput={(event) => patch({ name: (event.currentTarget as HTMLInputElement).value })}
+          class="h-8 w-full rounded-md border border-white/10 bg-[#0b0d11] px-2 text-[12.5px] text-ink-100 focus:outline-none focus:border-accent-blue/60"
+        />
+      </RuleField>
+      <RuleField label="Prompt">
+        <textarea
+          value={draft.prompt}
+          onInput={(event) =>
+            patch({ prompt: (event.currentTarget as HTMLTextAreaElement).value })}
+          rows={6}
+          class="w-full rounded-md border border-white/10 bg-[#0b0d11] px-2 py-1.5 text-[12.5px] leading-5 text-ink-100 focus:outline-none focus:border-accent-blue/60"
+        />
+      </RuleField>
+      <div class="grid grid-cols-2 gap-2">
+        <RuleField label="Cron (five fields)">
+          <input
+            type="text"
+            value={draft.cron ?? ""}
+            onInput={(event) => patch({ cron: (event.currentTarget as HTMLInputElement).value })}
+            placeholder="0 6 * * 1"
+            class="h-8 w-full rounded-md border border-white/10 bg-[#0b0d11] px-2 font-mono text-[12px] text-ink-100 focus:outline-none focus:border-accent-blue/60"
+          />
+        </RuleField>
+        <RuleField label="Timezone">
+          <input
+            type="text"
+            value={draft.timezone}
+            onInput={(event) =>
+              patch({ timezone: (event.currentTarget as HTMLInputElement).value })}
+            placeholder="UTC"
+            class="h-8 w-full rounded-md border border-white/10 bg-[#0b0d11] px-2 text-[12px] text-ink-100 focus:outline-none focus:border-accent-blue/60"
+          />
+        </RuleField>
+      </div>
+
+      <ConditionEditor
+        condition={draft.condition}
+        tasks={tasks}
+        editingId=""
+        onChange={(condition) => patch({ condition })}
+      />
+      <ChainEditor
+        links={draft.next ?? []}
+        tasks={tasks}
+        editingId=""
+        onChange={(next) => patch({ next })}
+      />
+
+      {formError && <div class="text-[11.5px] text-accent-red">{formError}</div>}
+      <div class="flex items-center justify-end gap-2 pt-0.5">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          class="h-8 rounded-md border border-white/10 bg-white/[0.03] px-2.5 text-[12px] text-ink-300 hover:bg-white/[0.07] disabled:opacity-45"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={saving}
+          class="h-8 inline-flex items-center gap-1.5 rounded-md border border-accent-blue/35 bg-accent-blue/[0.14] px-3 text-[12px] font-medium text-accent-blue hover:bg-accent-blue/[0.2] disabled:opacity-45"
+        >
+          {saving && <Loader class="w-3.5 h-3.5 animate-spin" />}
+          Create task
+        </button>
+      </div>
+    </form>
+  );
 }

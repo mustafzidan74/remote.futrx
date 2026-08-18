@@ -12,6 +12,9 @@ const (
 	StatusCancelled = "cancelled"
 	StatusWaiting   = "waiting"
 	StatusSucceeded = "succeeded"
+	// StatusSkipped marks work that deliberately did not happen — a scheduled
+	// occurrence whose condition (gate) was not met.
+	StatusSkipped = "skipped"
 	// The health statuses mirror the health service's own traffic light, so a
 	// webhook consumer can switch on the same three words the UI shows.
 	StatusHealthWarn = "warn"
@@ -35,8 +38,11 @@ func EventHeadline(event Event) string {
 	case KindNeedsAttention:
 		return "Agent needs your attention"
 	case KindScheduledRun:
-		if event.Status == StatusFailed {
+		switch event.Status {
+		case StatusFailed:
 			return "Scheduled task failed"
+		case StatusSkipped:
+			return "Scheduled task skipped"
 		}
 		return "Scheduled task ran"
 	case KindProjectHealth:

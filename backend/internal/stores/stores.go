@@ -85,6 +85,9 @@ type Stores struct {
 	Usage          serviceusage.Repository
 	Transcription  servicetranscribe.Store
 	Audit          serviceaudit.Store
+	// ScheduleHistory is the per-task run log; it lives beside the task
+	// catalog but is written append-only in its own files.
+	ScheduleHistory serviceschedule.HistoryRepository
 	// AgentPreferences backs the platform-wide agent reply preferences.
 	AgentPreferences serviceagentprefs.Repository
 }
@@ -94,136 +97,118 @@ func New(dataDir string) (Stores, error) {
 	if err != nil {
 		return Stores{}, fmt.Errorf("init chat store: %w", err)
 	}
-
 	projects, err := fileproject.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init project store: %w", err)
 	}
-
 	projectSecrets, err := fileprojectsecrets.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init project secrets store: %w", err)
 	}
-
 	projectAccess, err := fileprojectaccess.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init project access store: %w", err)
 	}
-
 	projectShares, err := fileprojectshares.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init project shares store: %w", err)
 	}
-
 	snapshots, err := filesnapshot.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init snapshot store: %w", err)
 	}
-
 	screenshots, err := filescreenshot.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init screenshot store: %w", err)
 	}
-
 	projectPortals, err := fileportal.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init client portal store: %w", err)
 	}
-
 	schedules, err := fileschedule.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init scheduled tasks store: %w", err)
 	}
-
+	scheduleHistory, err := fileschedule.NewHistory(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init scheduled task history store: %w", err)
+	}
 	resources, err := fileresources.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init resource settings store: %w", err)
 	}
-
 	users, err := fileusers.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init users store: %w", err)
 	}
-
 	userSettings, err := fileusersettings.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init user settings store: %w", err)
 	}
-
 	notifications, err := filenotify.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init notification settings store: %w", err)
 	}
-
 	monitoring, err := filemonitoring.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init monitoring settings store: %w", err)
 	}
-
 	playbooks, err := fileplaybooks.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init playbooks store: %w", err)
 	}
-
 	snippets, err := filesnippets.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init snippets store: %w", err)
 	}
-
 	globalSkills, err := fileskillsglobal.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init global skills store: %w", err)
 	}
-
 	globalSecrets, err := fileglobalsecrets.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init secrets vault store: %w", err)
 	}
-
 	usage, err := fileusage.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init usage store: %w", err)
 	}
-
 	transcription, err := filetranscribe.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init transcription settings store: %w", err)
 	}
-
 	auditLog, err := fileaudit.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init audit store: %w", err)
 	}
-
 	agentPreferences, err := fileagentprefs.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init agent preferences store: %w", err)
 	}
-
 	return Stores{
-		Chats:          chats,
-		Projects:       projects,
-		ProjectSecrets: projectSecrets,
-		ProjectAccess:  projectAccess,
-		ProjectShares:  projectShares,
-		Snapshots:      snapshots,
-		Screenshots:    screenshots,
-		ProjectPortals: projectPortals,
-		Schedules:      schedules,
-		Resources:      resources,
-		Auth:           fileauth.New(dataDir),
-		Users:          users,
-		UserSettings:   userSettings,
-		Notifications:  notifications,
-		Monitoring:     monitoring,
-		Playbooks:      playbooks,
-		Snippets:       snippets,
-		GlobalSkills:   globalSkills,
-		GlobalSecrets:  globalSecrets,
-		Usage:          usage,
-		Transcription:  transcription,
-		Audit:          auditLog,
-
+		Chats:            chats,
+		Projects:         projects,
+		ProjectSecrets:   projectSecrets,
+		ProjectAccess:    projectAccess,
+		ProjectShares:    projectShares,
+		Snapshots:        snapshots,
+		Screenshots:      screenshots,
+		ProjectPortals:   projectPortals,
+		Schedules:        schedules,
+		Resources:        resources,
+		Auth:             fileauth.New(dataDir),
+		Users:            users,
+		UserSettings:     userSettings,
+		Notifications:    notifications,
+		Monitoring:       monitoring,
+		Playbooks:        playbooks,
+		Snippets:         snippets,
+		GlobalSkills:     globalSkills,
+		GlobalSecrets:    globalSecrets,
+		Usage:            usage,
+		Transcription:    transcription,
+		Audit:            auditLog,
+		ScheduleHistory:  scheduleHistory,
 		AgentPreferences: agentPreferences,
 	}, nil
 }

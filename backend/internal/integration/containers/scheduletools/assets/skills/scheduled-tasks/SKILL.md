@@ -83,6 +83,26 @@ press Resume to arm it. Do not treat the task as running until they do.
 The backend also enforces a minimum recurrence interval; if `create` is
 rejected for firing too often, widen the cron step instead of retrying.
 
+## Report a verdict
+
+End a scheduled run with a **verdict marker** whenever the task feeds a chain
+or a condition. The marker must be the **last non-empty line** of your reply
+and nothing else may share that line:
+
+```text
+<<RESULT: DRIFT>>
+```
+
+The backend stores the text between the delimiters as the task's `lastRunResult`
+and shows it in the run History drawer. Other tasks match it with an
+`outputContains` condition, and a chained task can be armed only when this
+run's verdict says so, so keep verdicts short, stable, and machine-readable —
+`OK`, `DRIFT`, `FAILED`, `SCORE=94`. A run that omits the marker simply has no
+verdict; never invent one.
+
+A run may print both markers; put the verdict line first and
+`SCHEDULE_STATUS=COMPLETE` last, and the backend reads both.
+
 ## Manage
 
 ```sh

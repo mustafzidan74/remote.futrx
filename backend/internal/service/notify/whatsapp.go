@@ -452,8 +452,11 @@ func whatsAppIcon(event Event) string {
 	case KindDigest:
 		return "📊"
 	case KindScheduledRun:
-		if event.Status == StatusFailed {
+		switch event.Status {
+		case StatusFailed:
 			return "❌"
+		case StatusSkipped:
+			return "⏭️"
 		}
 		return "⏰"
 	default:

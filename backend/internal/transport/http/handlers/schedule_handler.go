@@ -60,6 +60,19 @@ type ScheduleService interface {
 		id serviceschedule.ID,
 		activeRunID string,
 	) (serviceschedule.Task, error)
+	History(
+		ctx context.Context,
+		id serviceschedule.ID,
+		callerEmail string,
+		isAdmin bool,
+	) ([]serviceschedule.RunRecord, error)
+	RunDiff(
+		ctx context.Context,
+		id serviceschedule.ID,
+		runID string,
+		callerEmail string,
+		isAdmin bool,
+	) (serviceschedule.RunDiff, error)
 }
 
 type ScheduleCapabilityResolver interface {
@@ -154,12 +167,54 @@ func (h *ScheduleHandler) HandleUserResource(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	id, action, ok := parseScheduleResourcePath(r.URL.Path, "/api/schedules/")
+	id, action, rest, ok := parseScheduleResourcePath(r.URL.Path, "/api/schedules/")
 	if !ok {
 		httptransport.SendErr(w, http.StatusNotFound, "not found")
 		return
 	}
+	// History is a read-only view of the same task, so it hangs off the user
+	// API only: an agent grant has no business paging a task's past runs.
+	if action == "history" {
+		h.handleHistory(w, r, id, rest, callerEmail, isAdmin)
+		return
+	}
 	h.handleResource(w, r, id, action, callerEmail, isAdmin, callerKindUser)
+}
+
+// handleHistory serves GET /api/schedules/{id}/history and
+// GET /api/schedules/{id}/history/{runId}/diff.
+func (h *ScheduleHandler) handleHistory(
+	w http.ResponseWriter,
+	r *http.Request,
+	id serviceschedule.ID,
+	rest []string,
+	callerEmail string,
+	isAdmin bool,
+) {
+	if r.Method != http.MethodGet {
+		httptransport.SendErr(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	switch {
+	case len(rest) == 0:
+		records, err := h.schedules.History(r.Context(), id, callerEmail, isAdmin)
+		if err != nil {
+			sendScheduleError(w, err)
+			return
+		}
+		httptransport.SendJSON(w, http.StatusOK, scheduleHistoryResponse(records))
+
+	case len(rest) == 2 && rest[1] == "diff":
+		diff, err := h.schedules.RunDiff(r.Context(), id, rest[0], callerEmail, isAdmin)
+		if err != nil {
+			sendScheduleError(w, err)
+			return
+		}
+		httptransport.SendJSON(w, http.StatusOK, diff)
+
+	default:
+		httptransport.SendErr(w, http.StatusNotFound, "not found")
+	}
 }
 
 func (h *ScheduleHandler) HandleAgentCollection(w http.ResponseWriter, r *http.Request) {
@@ -236,11 +291,11 @@ func (h *ScheduleHandler) HandleAgentResource(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	id, action, valid := parseScheduleResourcePath(
+	id, action, tail, valid := parseScheduleResourcePath(
 		r.URL.Path,
 		"/agent-api/schedules/",
 	)
-	if !valid {
+	if !valid || len(tail) > 0 {
 		httptransport.SendErr(w, http.StatusNotFound, "not found")
 		return
 	}
@@ -399,6 +454,9 @@ type scheduleCreateRequest struct {
 	Timezone string                        `json:"timezone"`
 	MaxRuns  int                           `json:"maxRuns"`
 	Overlap  serviceschedule.OverlapPolicy `json:"overlapPolicy"`
+	Next     []serviceschedule.ChainLink   `json:"next"`
+	// Condition is the optional pre-run gate. A kind-less object clears it.
+	Condition *serviceschedule.Condition `json:"condition"`
 }
 
 func decodeScheduleCreate(r *http.Request) (serviceschedule.CreateInput, error) {
@@ -411,27 +469,31 @@ func decodeScheduleCreate(r *http.Request) (serviceschedule.CreateInput, error) 
 		return serviceschedule.CreateInput{}, err
 	}
 	return serviceschedule.CreateInput{
-		Name:     body.Name,
-		Prompt:   body.Prompt,
-		Kind:     body.Kind,
-		At:       at,
-		Cron:     body.Cron,
-		Timezone: body.Timezone,
-		MaxRuns:  body.MaxRuns,
-		Overlap:  body.Overlap,
+		Name:      body.Name,
+		Prompt:    body.Prompt,
+		Kind:      body.Kind,
+		At:        at,
+		Cron:      body.Cron,
+		Timezone:  body.Timezone,
+		MaxRuns:   body.MaxRuns,
+		Overlap:   body.Overlap,
+		Next:      body.Next,
+		Condition: body.Condition,
 	}, nil
 }
 
 type scheduleUpdateRequest struct {
-	Name     *string                        `json:"name"`
-	Prompt   *string                        `json:"prompt"`
-	Kind     *serviceschedule.Kind          `json:"kind"`
-	At       json.RawMessage                `json:"at"`
-	Cron     *string                        `json:"cron"`
-	Timezone *string                        `json:"timezone"`
-	MaxRuns  *int                           `json:"maxRuns"`
-	Overlap  *serviceschedule.OverlapPolicy `json:"overlapPolicy"`
-	Enabled  *bool                          `json:"enabled"`
+	Name      *string                        `json:"name"`
+	Prompt    *string                        `json:"prompt"`
+	Kind      *serviceschedule.Kind          `json:"kind"`
+	At        json.RawMessage                `json:"at"`
+	Cron      *string                        `json:"cron"`
+	Timezone  *string                        `json:"timezone"`
+	MaxRuns   *int                           `json:"maxRuns"`
+	Overlap   *serviceschedule.OverlapPolicy `json:"overlapPolicy"`
+	Enabled   *bool                          `json:"enabled"`
+	Next      *[]serviceschedule.ChainLink   `json:"next"`
+	Condition *serviceschedule.Condition     `json:"condition"`
 }
 
 // decodeScheduleUpdate accepts the full definition for the user API. The
@@ -451,7 +513,8 @@ func decodeScheduleUpdate(
 		}
 		if body.Name != nil || body.Prompt != nil || body.Kind != nil ||
 			len(body.At) > 0 || body.Cron != nil || body.Timezone != nil ||
-			body.MaxRuns != nil || body.Overlap != nil {
+			body.MaxRuns != nil || body.Overlap != nil ||
+			body.Next != nil || body.Condition != nil {
 			return serviceschedule.UpdateInput{}, errors.New(
 				"agent updates may only pause or resume; delete and recreate to redefine",
 			)
@@ -460,14 +523,16 @@ func decodeScheduleUpdate(
 	}
 
 	input := serviceschedule.UpdateInput{
-		Name:     body.Name,
-		Prompt:   body.Prompt,
-		Kind:     body.Kind,
-		Cron:     body.Cron,
-		Timezone: body.Timezone,
-		MaxRuns:  body.MaxRuns,
-		Overlap:  body.Overlap,
-		Enabled:  body.Enabled,
+		Name:      body.Name,
+		Prompt:    body.Prompt,
+		Kind:      body.Kind,
+		Cron:      body.Cron,
+		Timezone:  body.Timezone,
+		MaxRuns:   body.MaxRuns,
+		Overlap:   body.Overlap,
+		Enabled:   body.Enabled,
+		Next:      body.Next,
+		Condition: body.Condition,
 	}
 	if len(body.At) > 0 {
 		at, err := decodeScheduleAt(body.At)
@@ -478,7 +543,8 @@ func decodeScheduleUpdate(
 	}
 	if input.Name == nil && input.Prompt == nil && input.Kind == nil &&
 		input.At == nil && input.Cron == nil && input.Timezone == nil &&
-		input.MaxRuns == nil && input.Overlap == nil && input.Enabled == nil {
+		input.MaxRuns == nil && input.Overlap == nil && input.Enabled == nil &&
+		input.Next == nil && input.Condition == nil {
 		return serviceschedule.UpdateInput{}, errors.New("no fields to update")
 	}
 	return input, nil
@@ -520,20 +586,30 @@ func decodeScheduleAt(raw json.RawMessage) (int64, error) {
 	return parsed.UnixMilli(), nil
 }
 
-func parseScheduleResourcePath(path, prefix string) (serviceschedule.ID, string, bool) {
+// parseScheduleResourcePath splits `{id}`, `{id}/{action}`, and the deeper
+// `{id}/history/{runId}/diff` form. Everything after the action is returned
+// untouched so each action decides what its own tail means.
+func parseScheduleResourcePath(
+	path, prefix string,
+) (serviceschedule.ID, string, []string, bool) {
 	rest := strings.TrimPrefix(path, prefix)
 	if rest == "" || rest == path || strings.HasSuffix(rest, "/") {
-		return "", "", false
+		return "", "", nil, false
 	}
 	parts := strings.Split(rest, "/")
-	if len(parts) > 2 {
-		return "", "", false
+	if len(parts) > 4 {
+		return "", "", nil, false
+	}
+	for _, part := range parts {
+		if part == "" {
+			return "", "", nil, false
+		}
 	}
 	id := serviceschedule.ID(parts[0])
 	if len(parts) == 1 {
-		return id, "", true
+		return id, "", nil, true
 	}
-	return id, parts[1], true
+	return id, parts[1], parts[2:], true
 }
 
 func bearerToken(header string) (string, bool) {
@@ -581,27 +657,31 @@ func taskMatchesGrant(
 }
 
 type scheduleResponse struct {
-	ID             serviceschedule.ID        `json:"id"`
-	Name           string                    `json:"name"`
-	OwnerEmail     string                    `json:"ownerEmail"`
-	ProjectID      serviceproject.ID         `json:"projectId"`
-	ChatID         servicechat.ID            `json:"chatId"`
-	Prompt         string                    `json:"prompt"`
-	Kind           serviceschedule.Kind      `json:"kind"`
-	At             int64                     `json:"at,omitempty"`
-	Cron           string                    `json:"cron,omitempty"`
-	Timezone       string                    `json:"timezone"`
-	Enabled        bool                      `json:"enabled"`
-	Status         serviceschedule.Status    `json:"status"`
-	NextRunAt      int64                     `json:"nextRunAt,omitempty"`
-	RunCount       int                       `json:"runCount"`
-	MaxRuns        int                       `json:"maxRuns,omitempty"`
-	LastRunAt      int64                     `json:"lastRunAt,omitempty"`
-	LastRunStatus  serviceschedule.RunStatus `json:"lastRunStatus,omitempty"`
-	LastError      string                    `json:"lastError,omitempty"`
-	CreatedByAgent bool                      `json:"createdByAgent,omitempty"`
-	CreatedAt      int64                     `json:"createdAt"`
-	UpdatedAt      int64                     `json:"updatedAt"`
+	ID             serviceschedule.ID            `json:"id"`
+	Name           string                        `json:"name"`
+	OwnerEmail     string                        `json:"ownerEmail"`
+	ProjectID      serviceproject.ID             `json:"projectId"`
+	ChatID         servicechat.ID                `json:"chatId"`
+	Prompt         string                        `json:"prompt"`
+	Kind           serviceschedule.Kind          `json:"kind"`
+	At             int64                         `json:"at,omitempty"`
+	Cron           string                        `json:"cron,omitempty"`
+	Timezone       string                        `json:"timezone"`
+	Enabled        bool                          `json:"enabled"`
+	Status         serviceschedule.Status        `json:"status"`
+	NextRunAt      int64                         `json:"nextRunAt,omitempty"`
+	RunCount       int                           `json:"runCount"`
+	MaxRuns        int                           `json:"maxRuns,omitempty"`
+	LastRunAt      int64                         `json:"lastRunAt,omitempty"`
+	LastRunStatus  serviceschedule.RunStatus     `json:"lastRunStatus,omitempty"`
+	LastError      string                        `json:"lastError,omitempty"`
+	LastRunResult  string                        `json:"lastRunResult,omitempty"`
+	OverlapPolicy  serviceschedule.OverlapPolicy `json:"overlapPolicy,omitempty"`
+	Next           []serviceschedule.ChainLink   `json:"next,omitempty"`
+	Condition      *serviceschedule.Condition    `json:"condition,omitempty"`
+	CreatedByAgent bool                          `json:"createdByAgent,omitempty"`
+	CreatedAt      int64                         `json:"createdAt"`
+	UpdatedAt      int64                         `json:"updatedAt"`
 }
 
 func newScheduleResponse(task serviceschedule.Task) scheduleResponse {
@@ -624,6 +704,10 @@ func newScheduleResponse(task serviceschedule.Task) scheduleResponse {
 		LastRunAt:      task.LastRunAt,
 		LastRunStatus:  task.LastStatus,
 		LastError:      task.LastError,
+		LastRunResult:  task.LastResult,
+		OverlapPolicy:  task.Overlap,
+		Next:           task.Next,
+		Condition:      task.Condition,
 		CreatedByAgent: task.CreatedByAgent,
 		CreatedAt:      task.CreatedAt,
 		UpdatedAt:      task.UpdatedAt,
@@ -636,6 +720,24 @@ func scheduleResponses(tasks []serviceschedule.Task) []scheduleResponse {
 		responses = append(responses, newScheduleResponse(task))
 	}
 	return responses
+}
+
+// scheduleHistoryEntry flattens a stored run for the History drawer. Duration
+// is precomputed so every client renders the same number.
+type scheduleHistoryEntry struct {
+	serviceschedule.RunRecord
+	DurationMs int64 `json:"durationMs"`
+}
+
+func scheduleHistoryResponse(records []serviceschedule.RunRecord) []scheduleHistoryEntry {
+	entries := make([]scheduleHistoryEntry, 0, len(records))
+	for _, record := range records {
+		entries = append(entries, scheduleHistoryEntry{
+			RunRecord:  record,
+			DurationMs: record.DurationMs(),
+		})
+	}
+	return entries
 }
 
 func sendScheduleError(w http.ResponseWriter, err error) {
@@ -652,9 +754,26 @@ func sendScheduleError(w http.ResponseWriter, err error) {
 		errors.Is(err, serviceschedule.ErrInvalidOverlap),
 		errors.Is(err, serviceschedule.ErrProjectRequired),
 		errors.Is(err, serviceschedule.ErrProjectMismatch),
-		errors.Is(err, serviceschedule.ErrIntervalTooSmall):
+		errors.Is(err, serviceschedule.ErrIntervalTooSmall),
+		errors.Is(err, serviceschedule.ErrChainCycle),
+		errors.Is(err, serviceschedule.ErrChainTooDeep),
+		errors.Is(err, serviceschedule.ErrChainTooManyLinks),
+		errors.Is(err, serviceschedule.ErrChainCrossProject),
+		errors.Is(err, serviceschedule.ErrInvalidChainWhen),
+		errors.Is(err, serviceschedule.ErrInvalidChainDelay),
+		errors.Is(err, serviceschedule.ErrGateInvalidKind),
+		errors.Is(err, serviceschedule.ErrGatePatternRequired),
+		errors.Is(err, serviceschedule.ErrGateInvalidPattern),
+		errors.Is(err, serviceschedule.ErrGateInvalidReference),
+		errors.Is(err, serviceschedule.ErrGateInvalidURL),
+		errors.Is(err, serviceschedule.ErrGateInvalidExpect),
+		errors.Is(err, serviceschedule.ErrGateCommandRequired),
+		errors.Is(err, serviceschedule.ErrGateWeekdaysRequired),
+		errors.Is(err, serviceschedule.ErrGateInvalidMinutes):
 		httptransport.SendErr(w, http.StatusBadRequest, err.Error())
 	case errors.Is(err, serviceschedule.ErrNotFound),
+		errors.Is(err, serviceschedule.ErrRunNotFound),
+		errors.Is(err, serviceschedule.ErrChainTargetNotFound),
 		errors.Is(err, serviceschedule.ErrChatNotFound):
 		httptransport.SendErr(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, serviceschedule.ErrAccessDenied),
