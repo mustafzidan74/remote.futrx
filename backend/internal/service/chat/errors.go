@@ -9,4 +9,5 @@ var (
 	ErrChatRunning            = errors.New("chat has an active run")
 	ErrNotFound               = errors.New("chat not found")
 	ErrInvalidAutopilot       = errors.New("autopilot limits are out of range")
+	ErrInvalidTeam            = errors.New("team settings are out of range")
 )

@@ -142,6 +142,14 @@ func Decide(meta servicechat.Meta, outcome Outcome, conditions Conditions) Decis
 		return Decision{Action: ActionNone}
 	}
 
+	// Team mode drives the same chat from the other side: while a loop has a
+	// review, test, or fix hop in flight, its next prompt is already decided.
+	// Autopilot stands down until the loop settles rather than racing it, and
+	// picks up again from the phase the team left behind.
+	if servicechat.TeamActive(meta.Team) {
+		return Decision{Action: ActionNone}
+	}
+
 	if meta.AutoTest.Enabled && outcome.Synthetic != servicechat.SyntheticAutoTest {
 		return Decision{
 			Action:    ActionTest,

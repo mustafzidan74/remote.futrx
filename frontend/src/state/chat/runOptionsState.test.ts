@@ -13,6 +13,7 @@ const claudeDefaults: RunOptionsState = {
   serviceTier: "",
   autopilot: false,
   autoTest: false,
+  team: false,
 };
 
 test("prints only the settings that differ from the provider default", () => {
@@ -37,6 +38,7 @@ test("badges the policies that keep working on their own", () => {
     runOptionsSummary({ ...claudeDefaults, autopilot: true, autoTest: true }),
     "Code · 🛫 · 🧪",
   );
+  assert.equal(runOptionsSummary({ ...claudeDefaults, team: true }), "Code · 👥");
 });
 
 test("names the speed tier only where the provider has one", () => {

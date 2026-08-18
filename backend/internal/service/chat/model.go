@@ -45,6 +45,18 @@ type Meta struct {
 	// whether an absent key means "off" or "unknown".
 	Autopilot AutopilotPolicy `json:"autopilot"`
 	AutoTest  AutoTestPolicy  `json:"autoTest"`
+	// Team is the chat's multi-agent workflow: implementer → reviewer →
+	// tester, driven by internal/service/team. Always serialized for the same
+	// reason the two policies above are.
+	Team TeamPolicy `json:"team"`
+	// CompanionOf names the parent chat when this chat is a team companion —
+	// the reviewer's or tester's own thread. Companions are hidden from the
+	// sidebar and opened from the parent's Team panel instead, so a team
+	// session adds one row to the chat list rather than three.
+	CompanionOf ID `json:"companionOf,omitempty"`
+	// CompanionRole is which seat this companion fills (see TeamRoleReviewer
+	// and TeamRoleTester). Empty on an ordinary chat.
+	CompanionRole string `json:"companionRole,omitempty"`
 }
 
 // AutopilotPolicy keeps a chat working while the operator is away: every time
@@ -132,6 +144,13 @@ type CreateInput struct {
 	ServiceTier     string     `json:"serviceTier,omitempty"`
 	ProjectID       ProjectID  `json:"projectId,omitempty"`
 	SelectedSkills  []SkillRef `json:"selectedSkills,omitempty"`
+	// CompanionOf and CompanionRole are set only by the team service when it
+	// creates a reviewer or tester thread. They are decoded from a request
+	// body like every other field, but the chat handler never reaches this
+	// path with them set — a client that sends them just gets a hidden chat
+	// it can still open, which is harmless.
+	CompanionOf   ID     `json:"companionOf,omitempty"`
+	CompanionRole string `json:"companionRole,omitempty"`
 }
 
 type UpdateInput struct {
@@ -147,6 +166,10 @@ type UpdateInput struct {
 	// stored policy alone; present replaces only the fields it names.
 	Autopilot *AutopilotInput `json:"autopilot,omitempty"`
 	AutoTest  *AutoTestInput  `json:"autoTest,omitempty"`
+	// Team patches the multi-agent workflow. Only its configuration half is
+	// reachable from here: the loop counters, phase, and companion chat ids
+	// belong to the team service.
+	Team *TeamInput `json:"team,omitempty"`
 	// ActorEmail is the caller the handler resolved from the session. It is
 	// never decoded from a request body, because it decides who a synthetic
 	// run is attributed to.

@@ -157,6 +157,8 @@ func (s *Service) create(ctx context.Context, in CreateInput) (Meta, error) {
 		ServiceTier:     NormalizeServiceTier(in.ServiceTier),
 		ProjectID:       in.ProjectID,
 		SelectedSkills:  NormalizeSelectedSkills(s.withDefaultSkills(ctx, in, provider), provider),
+		CompanionOf:     in.CompanionOf,
+		CompanionRole:   strings.TrimSpace(in.CompanionRole),
 	})
 	if err != nil {
 		return Meta{}, err
@@ -243,6 +245,9 @@ func (s *Service) Update(ctx context.Context, id ID, in UpdateInput) (Meta, erro
 	if in.Autopilot != nil && !ValidAutopilotInput(*in.Autopilot) {
 		return Meta{}, ErrInvalidAutopilot
 	}
+	if in.Team != nil && !ValidTeamInput(*in.Team) {
+		return Meta{}, ErrInvalidTeam
+	}
 
 	now := s.clock()
 	meta, err := s.repo.Update(ctx, id, func(m *Meta) {
@@ -279,6 +284,9 @@ func (s *Service) Update(ctx context.Context, id ID, in UpdateInput) (Meta, erro
 		}
 		if in.AutoTest != nil {
 			m.AutoTest = ApplyAutoTest(m.AutoTest, *in.AutoTest, in.ActorEmail)
+		}
+		if in.Team != nil {
+			m.Team = ApplyTeam(m.Team, *in.Team, in.ActorEmail, now)
 		}
 	})
 	if err != nil {

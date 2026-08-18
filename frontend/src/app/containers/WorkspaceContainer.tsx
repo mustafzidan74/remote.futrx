@@ -78,6 +78,7 @@ export function WorkspaceContainer() {
             projects={workspace.projects}
             highlightAt={workspace.highlightAt}
             onHamburger={workspace.openSidebar}
+            onSelectChat={workspace.selectChat}
           />
         ) : (
           <NoChatSelected

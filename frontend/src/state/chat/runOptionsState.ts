@@ -25,10 +25,12 @@ export interface RunOptionsState {
   serviceTier: ServiceTier;
   autopilot: boolean;
   autoTest: boolean;
+  team: boolean;
 }
 
 export const AUTOPILOT_BADGE = "🛫";
 export const AUTO_TEST_BADGE = "🧪";
+export const TEAM_BADGE = "👥";
 
 /** "Full auto · XHigh · 🛫" — the label printed on the Run options button. */
 export function runOptionsSummary(state: RunOptionsState): string {
@@ -39,6 +41,7 @@ export function runOptionsSummary(state: RunOptionsState): string {
   if (speed) parts.push(speed);
   if (state.autopilot) parts.push(AUTOPILOT_BADGE);
   if (state.autoTest) parts.push(AUTO_TEST_BADGE);
+  if (state.team) parts.push(TEAM_BADGE);
   return parts.join(" · ");
 }
 
@@ -54,6 +57,7 @@ export function runOptionsAriaLabel(state: RunOptionsState): string {
   if (speed) parts.push(`${speed} speed`);
   if (state.autopilot) parts.push("autopilot on");
   if (state.autoTest) parts.push("auto-test on");
+  if (state.team) parts.push("team mode on");
   return `Run options: ${parts.join(", ")}`;
 }
 

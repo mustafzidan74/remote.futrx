@@ -10,6 +10,7 @@ import type { ChatPolicies } from "../../../state/hooks/chat/useChatPolicies";
 import { Activity, ChevronDown, Cpu, MessageSquare, Settings } from "../../primitives/icons";
 import { AutoTestControl } from "./AutoTestControl";
 import { AutopilotControl } from "./AutopilotControl";
+import { TeamModeControl } from "./TeamModeControl";
 import { ComposerOptionDropdown } from "./ComposerOptionDropdown";
 import type { ComposerPreferenceActions, ComposerPreferences } from "./preferences";
 
@@ -43,8 +44,9 @@ export function RunOptionsPopover({
     serviceTier: preferences.serviceTier,
     autopilot: policies.autopilot.enabled,
     autoTest: policies.autoTest,
+    team: policies.team.enabled,
   };
-  const active = policies.autopilot.enabled || policies.autoTest;
+  const active = policies.autopilot.enabled || policies.autoTest || policies.team.enabled;
 
   useEffect(() => {
     if (!open) return;
@@ -156,6 +158,26 @@ export function RunOptionsPopover({
                 enabled={policies.autoTest}
                 busy={policies.busy}
                 onChange={policies.setAutoTest}
+              />
+            </div>
+          </div>
+
+          <div class="popover-section">
+            <div class="popover-label">Who works on it</div>
+            <p class="mt-1 text-[11px] leading-4 text-ink-400">
+              Turn one chat into a review chain: you brief the implementer, another provider
+              reviews the diff, and a third runs the tests.
+            </p>
+            <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <TeamModeControl
+                view={policies.team}
+                connectedProviders={policies.connectedProviders}
+                busy={policies.busy}
+                onStart={policies.startTeam}
+                onStop={policies.stopTeam}
+                onChangeRole={policies.setTeamRole}
+                onChangeLoops={policies.setTeamLoops}
+                onChangeAutoFix={policies.setTeamAutoFix}
               />
             </div>
           </div>

@@ -367,7 +367,8 @@ func sendChatError(w http.ResponseWriter, err error) {
 	case errors.Is(err, servicechat.ErrInvalidID),
 		errors.Is(err, servicechat.ErrInvalidTmuxSession),
 		errors.Is(err, servicechat.ErrInvalidRewindTimestamp),
-		errors.Is(err, servicechat.ErrInvalidAutopilot):
+		errors.Is(err, servicechat.ErrInvalidAutopilot),
+		errors.Is(err, servicechat.ErrInvalidTeam):
 		httptransport.SendErr(w, http.StatusBadRequest, err.Error())
 	case errors.Is(err, servicechat.ErrNotFound):
 		httptransport.SendErr(w, http.StatusNotFound, "chat not found")

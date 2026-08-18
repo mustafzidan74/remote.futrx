@@ -31,6 +31,7 @@ export function ChatThread({
   onRewind,
   onSaveSnippet,
   onOpenAgentBrowser,
+  onOpenCompanionChat,
   mobileToolbar,
 }: {
   chat: ChatMeta;
@@ -57,6 +58,8 @@ export function ChatThread({
   /** Offers "Save as snippet" on prompts the user wrote. */
   onSaveSnippet?: (text: string) => void;
   onOpenAgentBrowser: () => void;
+  /** Opens a team companion chat in the normal chat view. */
+  onOpenCompanionChat: (chatId: string) => void;
   mobileToolbar: ComponentChildren;
 }) {
   return (
@@ -69,6 +72,7 @@ export function ChatThread({
           policies={policies}
           onHamburger={onHamburger}
           onOpenAgentBrowser={onOpenAgentBrowser}
+          onOpenCompanionChat={onOpenCompanionChat}
         />
         {mobileToolbar}
 

@@ -27,6 +27,48 @@ type metaRecord struct {
 	SelectedSkills  []skillRefRecord `json:"selectedSkills,omitempty"`
 	Autopilot       autopilotRecord  `json:"autopilot,omitempty"`
 	AutoTest        autoTestRecord   `json:"autoTest,omitempty"`
+	Team            teamRecord       `json:"team,omitempty"`
+	CompanionOf     string           `json:"companionOf,omitempty"`
+	CompanionRole   string           `json:"companionRole,omitempty"`
+}
+
+// teamRecord is the persisted shape of a chat's multi-agent workflow. It
+// mirrors servicechat.TeamPolicy field for field so the store stays the only
+// place that knows the on-disk names.
+type teamRecord struct {
+	Enabled   bool            `json:"enabled,omitempty"`
+	Roles     teamRolesRecord `json:"roles,omitempty"`
+	MaxLoops  int             `json:"maxLoops,omitempty"`
+	AutoFix   bool            `json:"autoFix,omitempty"`
+	Phase     string          `json:"phase,omitempty"`
+	LoopsUsed int             `json:"loopsUsed,omitempty"`
+	Verdict   string          `json:"verdict,omitempty"`
+	Hops      []teamHopRecord `json:"hops,omitempty"`
+	EnabledBy string          `json:"enabledBy,omitempty"`
+	UpdatedAt int64           `json:"updatedAt,omitempty"`
+}
+
+type teamRolesRecord struct {
+	Implementer teamRoleRecord `json:"implementer,omitempty"`
+	Reviewer    teamRoleRecord `json:"reviewer,omitempty"`
+	Tester      teamRoleRecord `json:"tester,omitempty"`
+}
+
+type teamRoleRecord struct {
+	Provider string `json:"provider,omitempty"`
+	Model    string `json:"model,omitempty"`
+	Enabled  bool   `json:"enabled,omitempty"`
+	ChatID   string `json:"chatId,omitempty"`
+}
+
+type teamHopRecord struct {
+	Loop     int    `json:"loop,omitempty"`
+	Role     string `json:"role,omitempty"`
+	Kind     string `json:"kind,omitempty"`
+	ChatID   string `json:"chatId,omitempty"`
+	Verdict  string `json:"verdict,omitempty"`
+	Findings string `json:"findings,omitempty"`
+	At       int64  `json:"at,omitempty"`
 }
 
 type autopilotRecord struct {
@@ -82,7 +124,104 @@ func metaRecordFromDomain(m servicechat.Meta) metaRecord {
 			Enabled:   m.AutoTest.Enabled,
 			EnabledBy: m.AutoTest.EnabledBy,
 		},
+		Team:          teamRecordFromDomain(m.Team),
+		CompanionOf:   string(m.CompanionOf),
+		CompanionRole: m.CompanionRole,
 	}
+}
+
+func teamRecordFromDomain(policy servicechat.TeamPolicy) teamRecord {
+	return teamRecord{
+		Enabled: policy.Enabled,
+		Roles: teamRolesRecord{
+			Implementer: teamRoleRecordFromDomain(policy.Roles.Implementer),
+			Reviewer:    teamRoleRecordFromDomain(policy.Roles.Reviewer),
+			Tester:      teamRoleRecordFromDomain(policy.Roles.Tester),
+		},
+		MaxLoops:  policy.MaxLoops,
+		AutoFix:   policy.AutoFix,
+		Phase:     policy.Phase,
+		LoopsUsed: policy.LoopsUsed,
+		Verdict:   policy.Verdict,
+		Hops:      teamHopRecordsFromDomain(policy.Hops),
+		EnabledBy: policy.EnabledBy,
+		UpdatedAt: policy.UpdatedAt,
+	}
+}
+
+func teamRoleRecordFromDomain(role servicechat.TeamRole) teamRoleRecord {
+	return teamRoleRecord{
+		Provider: string(role.Provider),
+		Model:    role.Model,
+		Enabled:  role.Enabled,
+		ChatID:   string(role.ChatID),
+	}
+}
+
+func teamHopRecordsFromDomain(hops []servicechat.TeamHop) []teamHopRecord {
+	if len(hops) == 0 {
+		return nil
+	}
+	records := make([]teamHopRecord, 0, len(hops))
+	for _, hop := range hops {
+		records = append(records, teamHopRecord{
+			Loop:     hop.Loop,
+			Role:     hop.Role,
+			Kind:     hop.Kind,
+			ChatID:   string(hop.ChatID),
+			Verdict:  hop.Verdict,
+			Findings: hop.Findings,
+			At:       hop.At,
+		})
+	}
+	return records
+}
+
+func (r teamRecord) toDomain() servicechat.TeamPolicy {
+	return servicechat.NormalizeTeam(servicechat.TeamPolicy{
+		Enabled: r.Enabled,
+		Roles: servicechat.TeamRoles{
+			Implementer: r.Roles.Implementer.toDomain(),
+			Reviewer:    r.Roles.Reviewer.toDomain(),
+			Tester:      r.Roles.Tester.toDomain(),
+		},
+		MaxLoops:  r.MaxLoops,
+		AutoFix:   r.AutoFix,
+		Phase:     r.Phase,
+		LoopsUsed: r.LoopsUsed,
+		Verdict:   r.Verdict,
+		Hops:      teamHopRecordsToDomain(r.Hops),
+		EnabledBy: r.EnabledBy,
+		UpdatedAt: r.UpdatedAt,
+	})
+}
+
+func (r teamRoleRecord) toDomain() servicechat.TeamRole {
+	return servicechat.TeamRole{
+		Provider: servicechat.Provider(r.Provider),
+		Model:    r.Model,
+		Enabled:  r.Enabled,
+		ChatID:   servicechat.ID(r.ChatID),
+	}
+}
+
+func teamHopRecordsToDomain(records []teamHopRecord) []servicechat.TeamHop {
+	if len(records) == 0 {
+		return nil
+	}
+	hops := make([]servicechat.TeamHop, 0, len(records))
+	for _, record := range records {
+		hops = append(hops, servicechat.TeamHop{
+			Loop:     record.Loop,
+			Role:     record.Role,
+			Kind:     record.Kind,
+			ChatID:   servicechat.ID(record.ChatID),
+			Verdict:  record.Verdict,
+			Findings: record.Findings,
+			At:       record.At,
+		})
+	}
+	return hops
 }
 
 func (r metaRecord) toDomain() servicechat.Meta {
@@ -125,6 +264,9 @@ func (r metaRecord) toDomain() servicechat.Meta {
 			Enabled:   r.AutoTest.Enabled,
 			EnabledBy: r.AutoTest.EnabledBy,
 		}),
+		Team:          r.Team.toDomain(),
+		CompanionOf:   servicechat.ID(r.CompanionOf),
+		CompanionRole: r.CompanionRole,
 	}
 }
 
