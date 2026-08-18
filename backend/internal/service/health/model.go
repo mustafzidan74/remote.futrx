@@ -94,6 +94,12 @@ func firstAppPort(ports []int) (int, bool) {
 		if _, platform := platformPorts[port]; platform {
 			continue
 		}
+		// Privileged ports (sshd on 22, in-container mail/DNS daemons) are
+		// never previews: Caddy only routes ports >= 1024, so an HTTP probe
+		// there would flag a healthy project as broken.
+		if port < serviceshare.MinPort {
+			continue
+		}
 		return port, true
 	}
 	return 0, false
