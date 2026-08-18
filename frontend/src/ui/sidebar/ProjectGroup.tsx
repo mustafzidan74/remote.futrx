@@ -1,11 +1,14 @@
 import type { ChatMeta } from "../../models/chat";
+import type { ProjectHealth } from "../../models/health";
 import type { ProjectMeta } from "../../models/project";
 import { ChevronDown, ChevronRight, Loader, Plus, Settings } from "../primitives/icons";
 import { ProjectPreviewButton } from "../preview/ProjectPreviewButton";
 import { ChatRow } from "./ChatRow";
+import { ProjectStatusDot } from "./ProjectStatusDot";
 
 export function ProjectGroup({
   project,
+  health,
   chats,
   visibleChats,
   activeChatId,
@@ -26,6 +29,7 @@ export function ProjectGroup({
   onDragEnd,
 }: {
   project: ProjectMeta;
+  health?: ProjectHealth;
   chats: ChatMeta[];
   visibleChats: ChatMeta[];
   activeChatId: string | null;
@@ -68,6 +72,7 @@ export function ProjectGroup({
           {collapsed ? <ChevronRight class="w-4 h-4" /> : <ChevronDown class="w-4 h-4" />}
         </button>
         <div class="flex-1 min-w-0 py-2 pr-1 flex items-center gap-2">
+          <ProjectStatusDot project={project} health={health} onOpen={onOpenContainer} />
           {hasUnread && (
             <span class="flex-none w-2 h-2 rounded-full bg-accent-green animate-pulse shadow-[0_0_0_3px_rgba(43,213,118,0.12)]" title="Unread chats" />
           )}

@@ -96,3 +96,30 @@ func (s *Service) Inspect(ctx context.Context, containerName string) (servicepro
 	out.AuthBundles = s.credentials.InspectCredentials(ctx, containerName, state)
 	return out, nil
 }
+
+// Vitals gathers only the cheap half of an inspection: lifecycle state,
+// configured limits, and the live instance counters. It runs no command inside
+// the container, which is what makes it safe for the health monitor to call on
+// a timer for every running project — the agent-version and credential probes
+// of a full Inspect shell into the guest a dozen times.
+func (s *Service) Vitals(
+	ctx context.Context,
+	containerName string,
+) (serviceproject.ContainerInspect, error) {
+	out := serviceproject.ContainerInspect{Name: containerName}
+
+	state, err := s.states.State(ctx, containerName)
+	if err != nil {
+		return out, err
+	}
+	out.State = state
+	if state == serviceproject.ContainerStateMissing {
+		return out, nil
+	}
+
+	s.configuration.InspectConfiguration(ctx, containerName, &out)
+	if state == serviceproject.ContainerStateRunning {
+		s.runtime.InspectRuntime(ctx, containerName, &out)
+	}
+	return out, nil
+}

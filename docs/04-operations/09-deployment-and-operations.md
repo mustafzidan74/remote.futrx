@@ -220,6 +220,60 @@ Use a maintenance window. Before raising the limits, account for the fact that
 each scheduled occurrence can start a project container and consume provider
 quota, CPU, memory, network, and disk without an open browser.
 
+## Project health monitor
+
+A background sweep turns each **running** project into one traffic light, so a
+container quietly running out of memory shows up in the sidebar instead of
+being discovered when an agent turn fails.
+
+| Environment variable | Default | Meaning |
+| --- | ---: | --- |
+| `HEALTH_MONITOR_INTERVAL` | `1m` | How often the monitor sweeps running projects; Go duration syntax. An explicit `0` disables it entirely |
+
+One sweep costs, per running project, three `lxc query` calls (state, limits,
+live counters), one `lxc exec` listener scan, and one `HEAD
+http://<slug>.lxd:<port>/` with a three-second timeout against the lowest
+non-platform listening port. Sweeps are jittered by roughly a tenth of the
+interval so a rebooted host does not fire every check on the same second, and a
+project that hangs every probe is abandoned after 20 seconds so the projects
+behind it are still measured. Nothing here polls per second, and no probe runs
+the per-agent version checks that a full container inspection does.
+
+| Status | Raised when | Sidebar dot |
+| --- | --- | --- |
+| `ok` | Everything measured is inside its threshold | green |
+| `warn` | Memory at or above 80% of the container limit, or the app answered 5xx | amber |
+| `crit` | Memory at or above 92%, the project is in an error state, the container is missing, or a listening port refuses the request | red |
+| `unknown` | Nothing could be measured, usually a brief LXD outage | grey |
+
+A status must hold for **two consecutive sweeps** before it is published, so a
+single allocation spike or one failed `lxc` call changes nothing. Each settled
+transition into `warn` or `crit`, and each recovery to `ok`, publishes one
+`projectHealth` notification. See
+[Notifications](../02-workspaces/07-notifications.md#project-health).
+
+Switching the monitor off stops the sweeps, the dots, and the alerts, and
+leaves every other subsystem untouched:
+
+```bash
+sudo systemctl edit remote.futrx
+```
+
+```ini
+[Service]
+Environment=HEALTH_MONITOR_INTERVAL=0
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart remote.futrx
+```
+
+Read the whole fleet's current verdicts in one call with
+`GET /api/projects/health`. Its `enabled` field reports whether the monitor is
+running at all, and Settings -> Notifications shows the same warning beside the
+**Project health** toggle.
+
 ## Health and recovery
 
 ```mermaid
@@ -231,7 +285,7 @@ flowchart LR
     Reconfigure --> Inspect["Reinspect for IPv4 up to five times"]
 ```
 
-The server-info settings page reports host, CPU, memory, storage, network, and Go-process metrics. The project page reports the corresponding per-container diagnostics, and its Resources panel pairs them with the limits actually enforced.
+The server-info settings page reports host, CPU, memory, storage, network, and Go-process metrics. The project page reports the corresponding per-container diagnostics, and its Resources panel pairs them with the limits actually enforced. The health monitor above turns the same per-container numbers into the status dots beside each project in the sidebar.
 
 ## Backups and restore
 
@@ -289,3 +343,4 @@ sudo bash /opt/remote.futrx/infra/upgrade-workspaces.sh --dry-run
 - Systemd template: [`infra/templates/remote.futrx.service.tmpl`](../../infra/templates/remote.futrx.service.tmpl)
 - Base-image builder: [`backend/internal/service/container/image/builder.go`](../../backend/internal/service/container/image/builder.go)
 - Audit store: [`backend/internal/stores/fileaudit/store.go`](../../backend/internal/stores/fileaudit/store.go)
+- Project health monitor: [`backend/internal/service/health`](../../backend/internal/service/health)

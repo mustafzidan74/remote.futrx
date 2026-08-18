@@ -6,6 +6,7 @@ import (
 	"time"
 
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
+	servicehealth "github.com/futrx-com/remote.futrx.com/internal/service/health"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	"github.com/futrx-com/remote.futrx.com/internal/service/workspacehub"
 	"github.com/gorilla/websocket"
@@ -32,12 +33,17 @@ type WorkspaceSocket struct {
 	projects   ProjectLister
 	hub        *workspacehub.Hub
 	visibility WorkspaceVisibility
+	health     HealthSource
 }
 
 type workspaceSnapshot struct {
 	Type     string                `json:"type"`
 	Chats    []servicechat.Meta    `json:"chats"`
 	Projects []serviceproject.Meta `json:"projects"`
+	// Health carries the monitor's latest verdict for the projects in this
+	// snapshot, so a reconnecting sidebar draws its status dots immediately
+	// instead of waiting up to a full sweep for the first broadcast.
+	Health []servicehealth.ProjectHealth `json:"health,omitempty"`
 }
 
 func NewWorkspaceSocket(chats ChatLister, projects ProjectLister, hub *workspacehub.Hub) *WorkspaceSocket {
@@ -46,6 +52,13 @@ func NewWorkspaceSocket(chats ChatLister, projects ProjectLister, hub *workspace
 
 func (s *WorkspaceSocket) WithVisibility(v WorkspaceVisibility) *WorkspaceSocket {
 	s.visibility = v
+	return s
+}
+
+// WithHealth attaches the project health monitor. Without it the snapshot
+// carries no health rows and project.health events never arrive.
+func (s *WorkspaceSocket) WithHealth(health HealthSource) *WorkspaceSocket {
+	s.health = health
 	return s
 }
 
@@ -101,6 +114,7 @@ func (s *WorkspaceSocket) handle(upgrader websocket.Upgrader, w http.ResponseWri
 		allowed := projectIDSet(projects)
 		chats = s.filterChats(chats, allowed)
 	}
+	visible := newVisibilityCache(s.visibility, email, isAdmin, projects)
 
 	done := make(chan struct{})
 	go func() {
@@ -113,6 +127,7 @@ func (s *WorkspaceSocket) handle(upgrader websocket.Upgrader, w http.ResponseWri
 			Type:     "workspace.snapshot",
 			Chats:    chats,
 			Projects: projects,
+			Health:   s.healthFor(projects),
 		}); err != nil {
 			return
 		}
@@ -122,6 +137,13 @@ func (s *WorkspaceSocket) handle(upgrader websocket.Upgrader, w http.ResponseWri
 			case ev, ok := <-sub.Events():
 				if !ok {
 					return
+				}
+				// Health rows carry per-container consumption, so they are
+				// gated on membership even though the pre-existing project
+				// broadcasts are not.
+				if ev.Type == "project.health" &&
+					!visible.allows(serviceproject.ID(ev.ID)) {
+					continue
 				}
 				_ = conn.SetWriteDeadline(time.Now().Add(15 * time.Second))
 				if err := conn.WriteJSON(ev); err != nil {
@@ -144,6 +166,19 @@ func (s *WorkspaceSocket) handle(upgrader websocket.Upgrader, w http.ResponseWri
 			return
 		}
 	}
+}
+
+// healthFor returns the cached verdicts for the projects in one snapshot, in
+// the same order.
+func (s *WorkspaceSocket) healthFor(projects []serviceproject.Meta) []servicehealth.ProjectHealth {
+	if s.health == nil {
+		return nil
+	}
+	ids := make([]serviceproject.ID, 0, len(projects))
+	for _, project := range projects {
+		ids = append(ids, project.ID)
+	}
+	return s.health.Snapshot(ids)
 }
 
 func (s *WorkspaceSocket) filterProjects(ctx context.Context, in []serviceproject.Meta, email string) []serviceproject.Meta {

@@ -3,6 +3,7 @@ import { createContext } from "preact";
 import { useContext, useEffect, useReducer, useRef } from "preact/hooks";
 import type { ChatMeta, CreateChatInput } from "../../models/chat";
 import type { ProjectMeta } from "../../models/project";
+import type { ProjectHealthMap } from "../workspace/projectHealthState";
 import { chatApi } from "../../api/chatApi";
 import { projectApi } from "../../api/projectApi";
 import { templateApi } from "../../api/templateApi";
@@ -14,6 +15,7 @@ import {
 } from "../workspace/workspaceUiState";
 import { workspaceSidebarState } from "../workspace/workspaceSidebarState";
 import { chatDeepLinkState } from "../workspace/chatDeepLink";
+import { projectDeepLinkState } from "../workspace/projectDeepLink";
 import {
   newProjectState,
   type NewProjectState,
@@ -22,6 +24,8 @@ import {
 interface WorkspaceContextValue {
   chats: ChatMeta[];
   projects: ProjectMeta[];
+  /** Live health verdicts keyed by project id; empty when the monitor is off. */
+  health: ProjectHealthMap;
   activeChat: ChatMeta | null;
   ui: WorkspaceUiState;
   selectChat: (chatId: string | null) => void;
@@ -66,6 +70,9 @@ export function WorkspaceProvider({
   // A notification links to `/?chat=<id>`. Consume that parameter once the chat
   // list has loaded, then fall back to the usual "most recent chat" behaviour.
   const deepLinkChatId = useRef<string | null>(chatDeepLinkState.parse(location.search));
+  // A health notification links to `/?project=<id>`. It opens the project's
+  // settings page, whose Info tab is the same view the sidebar dot opens.
+  const deepLinkProjectId = useRef<string | null>(projectDeepLinkState.parse(location.search));
 
   useEffect(() => {
     if (!enabled || data.chats.length === 0) return;
@@ -91,6 +98,23 @@ export function WorkspaceProvider({
       dispatch({ type: "select-chat", chatId: null });
     }
   }, [data.chats, ui.activeChatId]);
+
+  // Applied after the chat effects above: their "most recent chat" fallback
+  // would otherwise switch the view straight back to the chat.
+  useEffect(() => {
+    if (!enabled || data.projects.length === 0) return;
+    const requested = deepLinkProjectId.current;
+    if (!requested) return;
+    deepLinkProjectId.current = null;
+    history.replaceState(
+      null,
+      "",
+      projectDeepLinkState.withoutProjectParam(location.pathname, location.search, location.hash)
+    );
+    if (data.projects.some((project) => project.id === requested)) {
+      dispatch({ type: "show-project-containers", projectId: requested });
+    }
+  }, [data.projects, enabled]);
 
   // The template catalog is fetched once the dialog is first opened, not on
   // mount: it is a static list only this dialog needs.
@@ -163,6 +187,7 @@ export function WorkspaceProvider({
       value={{
         chats: data.chats,
         projects: data.projects,
+        health: data.health,
         activeChat,
         ui,
         selectChat: (chatId) => dispatch({ type: "select-chat", chatId }),

@@ -11,6 +11,11 @@ const EVENT_ROWS: Array<{ key: keyof NotificationEventToggles; label: string; hi
     hint: "The agent asked a question or is waiting for a plan approval.",
   },
   { key: "scheduledRun", label: "Scheduled task", hint: "A scheduled task finished or failed." },
+  {
+    key: "projectHealth",
+    label: "Project health",
+    hint: "A project container ran short of memory, stopped serving its app, or recovered.",
+  },
 ];
 
 export function NotificationsSettings() {
@@ -21,6 +26,7 @@ export function NotificationsSettings() {
     clearWebhookSecret,
     error,
     events,
+    healthMonitorEnabled,
     loading,
     notificationsEnabled,
     save,
@@ -213,6 +219,12 @@ export function NotificationsSettings() {
               <span class="min-w-0">
                 <span class="block text-[13px] text-ink-100">{row.label}</span>
                 <span class="block text-[12px] text-ink-300 leading-relaxed">{row.hint}</span>
+                {row.key === "projectHealth" && !healthMonitorEnabled && (
+                  <span class="block text-[12px] text-accent-yellow leading-relaxed">
+                    The health monitor is switched off on this server
+                    (HEALTH_MONITOR_INTERVAL=0), so nothing will be sent.
+                  </span>
+                )}
               </span>
             </label>
           ))}

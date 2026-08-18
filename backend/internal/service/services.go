@@ -15,6 +15,7 @@ import (
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
+	servicehealth "github.com/futrx-com/remote.futrx.com/internal/service/health"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	"github.com/futrx-com/remote.futrx.com/internal/service/prompt"
@@ -60,10 +61,16 @@ type Dependencies struct {
 	AuditRetention    int
 	AuthBaseURL       string
 	ProjectContainers serviceproject.ContainerDependencies
-	AgentContainers   provisioning.ContainerDependencies
-	TmuxClient        TmuxClient
-	ValidTmuxName     func(string) bool
-	ScheduleLimits    ScheduleLimits
+	// HealthVitals is the cheap per-container usage probe the health monitor
+	// polls. It is separate from ProjectContainers.Inspector because a full
+	// inspection shells into the guest a dozen times and must never run on a
+	// timer. Nil disables the monitor.
+	HealthVitals    servicehealth.ContainerVitals
+	HealthInterval  time.Duration
+	AgentContainers provisioning.ContainerDependencies
+	TmuxClient      TmuxClient
+	ValidTmuxName   func(string) bool
+	ScheduleLimits  ScheduleLimits
 }
 
 // ScheduleLimits mirrors the deployment's scheduled-task guardrails without
@@ -97,6 +104,7 @@ type Services struct {
 	Usage         *serviceusage.Service
 	Resources     *serviceresources.Service
 	Audit         *serviceaudit.Service
+	Health        *servicehealth.Service
 }
 
 func New(ctx context.Context, deps Dependencies) (Services, error) {
@@ -214,6 +222,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		notifications: notifications,
 		chats:         chats,
 		projects:      projectService,
+		baseURL:       deps.AuthBaseURL,
 	}
 	var usageService *serviceusage.Service
 	promptOptions := []prompt.Option{
@@ -265,6 +274,19 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		tmuxService = servicetmux.NewSessions(deps.TmuxClient)
 	}
 
+	// The health monitor is built last: it needs the project repository, the
+	// workspace hub it broadcasts through, and the notification observer it
+	// alerts through, all of which exist by now.
+	healthService := servicehealth.New(servicehealth.Dependencies{
+		Projects:  projects,
+		Vitals:    deps.HealthVitals,
+		Listeners: deps.ProjectContainers.Listeners,
+		Publisher: workspace,
+		Alerter:   runNotifications,
+		Interval:  deps.HealthInterval,
+	})
+	healthService.Start(ctx)
+
 	return Services{
 		Chats:         chatService,
 		ChatAccess:    chatAccessService,
@@ -287,6 +309,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Usage:         usageService,
 		Resources:     resourceService,
 		Audit:         auditLog,
+		Health:        healthService,
 	}, nil
 }
 

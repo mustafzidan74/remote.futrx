@@ -1,5 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
 import { notificationsApi } from "../../../api/notificationsApi";
+import { projectHealthApi } from "../../../api/projectHealthApi";
 import type {
   NotificationEventToggles,
   NotificationSettings,
@@ -11,6 +12,7 @@ const DEFAULT_EVENTS: NotificationEventToggles = {
   runFailed: true,
   needsAttention: true,
   scheduledRun: true,
+  projectHealth: true,
 };
 
 export function useNotificationsSettingsController() {
@@ -27,6 +29,10 @@ export function useNotificationsSettingsController() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [testResults, setTestResults] = useState<NotificationTestResult[] | null>(null);
+  // Whether the health monitor is sweeping at all. A ticked "Project health"
+  // box over a disabled monitor is silent, and the operator deserves to be
+  // told which of the two switches is off.
+  const [healthMonitorEnabled, setHealthMonitorEnabled] = useState(true);
 
   function adopt(value: NotificationSettings) {
     setSettings(value);
@@ -50,6 +56,19 @@ export function useNotificationsSettingsController() {
       })
       .catch((cause) => !cancelled && setError((cause as Error).message))
       .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    projectHealthApi
+      .report()
+      .then((report) => !cancelled && setHealthMonitorEnabled(report.enabled))
+      // A failed probe must not colour the settings page red: the toggles are
+      // still editable without knowing the monitor's state.
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -139,6 +158,7 @@ export function useNotificationsSettingsController() {
   return {
     botToken,
     chatId,
+    healthMonitorEnabled,
     clearTelegramToken,
     clearWebhookSecret,
     error,

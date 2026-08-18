@@ -19,6 +19,9 @@ const (
 	KindRunFailed      Kind = "runFailed"
 	KindNeedsAttention Kind = "needsAttention"
 	KindScheduledRun   Kind = "scheduledRun"
+	// KindProjectHealth reports a project container crossing a health
+	// threshold, or recovering from one.
+	KindProjectHealth Kind = "projectHealth"
 	// KindTest is only produced by the admin "send test" action. It ignores
 	// the per-event toggles and the global enable switch.
 	KindTest Kind = "test"
@@ -72,6 +75,7 @@ type EventToggles struct {
 	RunFailed      bool `json:"runFailed"`
 	NeedsAttention bool `json:"needsAttention"`
 	ScheduledRun   bool `json:"scheduledRun"`
+	ProjectHealth  bool `json:"projectHealth"`
 }
 
 // DefaultConfig is the configuration a server starts with: off, no sinks, all
@@ -84,6 +88,7 @@ func DefaultConfig() Config {
 			RunFailed:      true,
 			NeedsAttention: true,
 			ScheduledRun:   true,
+			ProjectHealth:  true,
 		},
 	}
 }
@@ -127,6 +132,8 @@ func (c Config) WantsEvent(kind Kind) bool {
 		return c.Events.NeedsAttention
 	case KindScheduledRun:
 		return c.Events.ScheduledRun
+	case KindProjectHealth:
+		return c.Events.ProjectHealth
 	default:
 		return false
 	}

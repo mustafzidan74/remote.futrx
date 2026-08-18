@@ -101,7 +101,13 @@ func TestConfigApplyPreservesSecretsUnlessResubmittedOrCleared(t *testing.T) {
 }
 
 func TestWantsEvent(t *testing.T) {
-	all := EventToggles{RunFinished: true, RunFailed: true, NeedsAttention: true, ScheduledRun: true}
+	all := EventToggles{
+		RunFinished:    true,
+		RunFailed:      true,
+		NeedsAttention: true,
+		ScheduledRun:   true,
+		ProjectHealth:  true,
+	}
 
 	tests := []struct {
 		name string
@@ -116,6 +122,18 @@ func TestWantsEvent(t *testing.T) {
 			name: "an unselected event is skipped",
 			cfg:  Config{Enabled: true, Events: EventToggles{RunFinished: true}},
 			kind: KindRunFailed,
+			want: false,
+		},
+		{
+			name: "project health honours its own toggle",
+			cfg:  Config{Enabled: true, Events: all},
+			kind: KindProjectHealth,
+			want: true,
+		},
+		{
+			name: "project health can be switched off alone",
+			cfg:  Config{Enabled: true, Events: EventToggles{RunFinished: true}},
+			kind: KindProjectHealth,
 			want: false,
 		},
 		{name: "unknown kinds are skipped", cfg: Config{Enabled: true, Events: all}, kind: Kind("nonsense"), want: false},

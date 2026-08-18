@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
+	servicehealth "github.com/futrx-com/remote.futrx.com/internal/service/health"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 )
 
@@ -11,7 +12,12 @@ type Event struct {
 	Type    string               `json:"type"`
 	Chat    *servicechat.Meta    `json:"chat,omitempty"`
 	Project *serviceproject.Meta `json:"project,omitempty"`
-	ID      string               `json:"id,omitempty"`
+	// Health rides beside the project row rather than inside it: Meta is the
+	// stored document, and a measurement that changes every minute has no
+	// business being written to disk. An absent health on a project.health
+	// event means "stop showing one for this project".
+	Health *servicehealth.ProjectHealth `json:"health,omitempty"`
+	ID     string                       `json:"id,omitempty"`
 }
 
 type Hub struct {
@@ -68,6 +74,12 @@ func (h *Hub) PublishProjectUpsert(project serviceproject.Meta) {
 
 func (h *Hub) PublishProjectDelete(id serviceproject.ID) {
 	h.Publish(Event{Type: "project.delete", ID: string(id)})
+}
+
+// PublishProjectHealth broadcasts one project's health verdict. It satisfies
+// the health monitor's Publisher port; a nil health clears the row.
+func (h *Hub) PublishProjectHealth(id serviceproject.ID, health *servicehealth.ProjectHealth) {
+	h.Publish(Event{Type: "project.health", ID: string(id), Health: health})
 }
 
 func (h *Hub) Publish(ev Event) {

@@ -16,6 +16,7 @@ generic webhook). There is no per-user or per-project routing yet.
 | `runFailed` | An interactive agent turn errored or was cancelled | `failed`, `cancelled` |
 | `needsAttention` | The agent called a tool that hands control back to a human | `waiting` |
 | `scheduledRun` | A scheduled task run settled | `succeeded`, `failed` |
+| `projectHealth` | A running project crossed a health threshold, or recovered | `warn`, `crit`, `ok` |
 
 Two details worth knowing:
 
@@ -30,9 +31,61 @@ Two details worth knowing:
   [`backend/internal/service/notify/events.go`](../../backend/internal/service/notify/events.go)).
   Each such call is its own ping — an agent that asks twice notifies twice.
 
+- **Project health is debounced, not sampled.** The monitor evaluates each
+  running project once a minute, but a status must hold for **two consecutive
+  sweeps** before it is published, so a container that touches 80% for one
+  allocation spike never pings. See [Project health](#project-health).
+
 Every notification carries a deep link back to the chat:
 `https://<your-host>/?chat=<chatId>`. The SPA reads that parameter once on
 boot, selects the chat, and strips it from the address bar.
+
+## Project health
+
+The health monitor is the source of the `projectHealth` event. Once a minute
+(jittered) it sweeps every **running** project and reduces it to one traffic
+light:
+
+| Status | Raised when |
+| --- | --- |
+| `ok` | Every measured signal is inside its threshold |
+| `warn` | Memory at or above **80%** of the container limit, or the project's app answered with a 5xx |
+| `crit` | Memory at or above **92%**, the project is in an error state, the container has gone missing, or a port that is listening refuses the request |
+| `unknown` | Nothing could be measured — usually LXD was briefly unreachable |
+
+What one sweep costs: three `lxc query` calls for state, limits, and live
+counters; one `lxc exec` for the listener scan; and one `HEAD
+http://<slug>.lxd:<port>/` with a 3 second timeout against the **lowest
+non-platform** listening port. The agent browser (`6080`), code-server (`8842`,
+`8081`), and the DevTools endpoint (`9222`) are never probed: they answer
+whether or not the user's application is up.
+
+A message reads like this, and links to the project rather than to a chat:
+
+```
+Project health critical
+wp-project memory 94% (1.41/1.5 GiB) — agent browser + code-server running
+https://remote.example.com/?project=1a2b3c4d
+```
+
+Two behaviours are worth knowing:
+
+- **One message per settled transition.** Every step into `warn` or `crit`
+  sends one, and so does the recovery back to `ok`. A project that sits
+  critical for an hour is reported once, not sixty times.
+- **`unknown` is never announced.** Losing contact with LXD for a sweep is an
+  operational blip, not a project event; the sidebar dot turns grey and the
+  phone stays quiet.
+
+The same verdict drives the coloured dot beside each project in the sidebar
+(click it to open the project's Info tab) and the health pill plus memory bar
+in the project header. Both read the workspace WebSocket, so they update
+without polling.
+
+The monitor is controlled by `HEALTH_MONITOR_INTERVAL`; setting it to `0`
+switches it off entirely, which also silences this event no matter how the
+toggle is set. See
+[Project health monitor](../04-operations/09-deployment-and-operations.md#project-health-monitor).
 
 ## Delivery guarantees (or the lack of them)
 
@@ -122,13 +175,13 @@ body:
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `event` | string | `runFinished`, `runFailed`, `needsAttention`, `scheduledRun`, or `test` |
+| `event` | string | `runFinished`, `runFailed`, `needsAttention`, `scheduledRun`, `projectHealth`, or `test` |
 | `projectId`, `projectSlug`, `projectName` | string | Omitted for loose (project-less) chats |
-| `chatId`, `chatTitle` | string | `chatTitle` omitted if the chat has no title yet |
-| `provider` | string | `claude`, `codex`, `kimi`, or `antigravity` |
+| `chatId`, `chatTitle` | string | `chatTitle` omitted if the chat has no title yet; both are absent on `projectHealth` |
+| `provider` | string | `claude`, `codex`, `kimi`, or `antigravity`; absent on `projectHealth` |
 | `status` | string | See the trigger table above |
 | `summary` | string | Agent output or failure reason, trimmed to 600 characters |
-| `url` | string | Deep link to the chat |
+| `url` | string | Deep link to the chat, or to the project for `projectHealth` |
 | `at` | number | Unix milliseconds |
 
 Any `2xx` response counts as delivered. Anything else is retried up to the
@@ -199,7 +252,13 @@ All three routes are admin-only; a registered non-admin gets `403`.
   "enabled": true,
   "telegram": { "botToken": "", "clearBotToken": false, "chatId": "-1001234567890" },
   "webhook": { "url": "https://hooks.example.com/remote", "secret": "", "clearSecret": false },
-  "events": { "runFinished": true, "runFailed": true, "needsAttention": true, "scheduledRun": true }
+  "events": {
+    "runFinished": true,
+    "runFailed": true,
+    "needsAttention": true,
+    "scheduledRun": true,
+    "projectHealth": true
+  }
 }
 ```
 
@@ -229,4 +288,5 @@ can always debug a sink.
 
 - [Chat and agents](04-chat-and-agents.md) — where run events come from
 - [Scheduled tasks](06-scheduled-tasks.md) — the `scheduledRun` source
+- [Deployment and operations](../04-operations/09-deployment-and-operations.md#project-health-monitor) — the `projectHealth` source and its kill switch
 - [API and realtime](../03-platform/08-api-and-realtime.md) — the rest of the HTTP surface

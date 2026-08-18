@@ -82,6 +82,8 @@ func main() {
 		AuditRetention:    cfg.Audit.RetentionMonths,
 		AuthBaseURL:       cfg.BaseURL,
 		ProjectContainers: containerStack.ProjectDependencies(),
+		HealthVitals:      containerStack.Inspection,
+		HealthInterval:    cfg.Health.Interval,
 		AgentContainers:   containerStack.AgentDependencies(),
 		TmuxClient:        tmuxClient,
 		ValidTmuxName:     tmuxcli.ValidName,

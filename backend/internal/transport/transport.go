@@ -84,6 +84,9 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		deps.Services.Projects,
 		deps.Services.Workspace,
 	)
+	if deps.Services.Health != nil {
+		workspaceSocket = workspaceSocket.WithHealth(deps.Services.Health)
+	}
 	if deps.Services.Auth != nil {
 		chatSocket = chatSocket.WithAccessChecker(gate)
 		terminalSocket = terminalSocket.WithAccessChecker(gate)
@@ -113,6 +116,11 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			deps.Services.Auth,
 			deps.PublicHostname,
 		).WithShares(deps.Services.Shares).WithUsage(usageHandler),
+		ProjectHealth: httphandlers.NewProjectHealthHandler(
+			deps.Services.Projects,
+			deps.Services.Health,
+			deps.Services.Auth,
+		),
 		Users: httphandlers.NewUsersHandler(deps.Services.Users, deps.Services.Auth),
 		AgentAuth: httphandlers.NewAgentAuthHandler(
 			agentAuthBindings,

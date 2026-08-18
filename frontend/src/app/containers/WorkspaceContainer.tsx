@@ -23,6 +23,7 @@ export function WorkspaceContainer() {
         ) : workspace.ui.view === "project-containers" ? (
           <ProjectContainersContainer
             projects={workspace.projects}
+            health={workspace.health}
             selectedProjectId={workspace.ui.containerProjectId}
             onBack={workspace.showChat}
             onHamburger={workspace.openSidebar}

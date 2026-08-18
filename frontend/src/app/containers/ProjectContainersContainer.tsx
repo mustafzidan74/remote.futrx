@@ -7,15 +7,18 @@ import type { ProjectMeta } from "../../models/project";
 import { useProjectContainersController } from "../../state/hooks/projects/useProjectContainersController";
 import { useProjectUsage } from "../../state/hooks/usage/useProjectUsage";
 import { useProjectResources } from "../../state/hooks/projects/useProjectResources";
+import type { ProjectHealthMap } from "../../state/workspace/projectHealthState";
 
 export function ProjectContainersContainer({
   projects,
+  health,
   selectedProjectId,
   onBack,
   onHamburger,
   onDeleteProject,
 }: {
   projects: ProjectMeta[];
+  health: ProjectHealthMap;
   selectedProjectId: string | null;
   onBack: () => void;
   onHamburger: () => void;
@@ -37,6 +40,7 @@ export function ProjectContainersContainer({
     <ProjectContainersPage
       activeTab={activeTab}
       project={selectedProject}
+      health={selectedProject ? health[selectedProject.id] : undefined}
       infoRecord={info.record}
       secretsRecord={secrets.record}
       accessRecord={access.record}

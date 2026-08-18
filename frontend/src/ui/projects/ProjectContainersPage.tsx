@@ -18,6 +18,10 @@ import { ProjectSharingSection } from "./project-containers/ProjectSharingSectio
 import { ProjectResourceLimits } from "./project-containers/ProjectResourceLimits";
 import { ProjectUsageLine } from "./project-containers/ProjectUsageLine";
 import {
+  ProjectHealthBadge,
+  ProjectHealthMeters,
+} from "./project-containers/ProjectHealthSummary";
+import {
   TemplateBadge,
   TemplateStatusBadge,
 } from "./project-containers/ProjectTemplateSection";
@@ -28,6 +32,7 @@ import type {
   ProjectMeta,
   ProjectShare,
 } from "../../models/project";
+import type { ProjectHealth } from "../../models/health";
 import {
   ChevronLeft,
   ExternalLink,
@@ -81,6 +86,7 @@ const tabs: Array<{
 export function ProjectContainersPage({
   activeTab,
   project,
+  health,
   infoRecord,
   secretsRecord,
   accessRecord,
@@ -112,6 +118,7 @@ export function ProjectContainersPage({
 }: {
   activeTab: ProjectSettingsTab;
   project: ProjectMeta | null;
+  health?: ProjectHealth;
   infoRecord: ProjectContainerRecord;
   secretsRecord: SecretsRecord;
   accessRecord: AccessRecord;
@@ -215,6 +222,7 @@ export function ProjectContainersPage({
                   <div class="space-y-3">
                     <ProjectHeader
                       project={project}
+                      health={health}
                       info={infoRecord.data}
                       refreshedAt={infoRecord.refreshedAt}
                       usageSummary={usageSummary}
@@ -397,6 +405,7 @@ function sharesDescription(record: SharesRecord): string {
 
 function ProjectHeader({
   project,
+  health,
   info,
   refreshedAt,
   usageSummary,
@@ -404,6 +413,7 @@ function ProjectHeader({
   usageError,
 }: {
   project: ProjectMeta;
+  health?: ProjectHealth;
   info?: ProjectContainerInfo;
   refreshedAt?: number;
   usageSummary: UsageSummary | null;
@@ -419,6 +429,7 @@ function ProjectHeader({
         <div class="flex items-center gap-2 flex-wrap min-w-0">
           <span class="text-[14.5px] font-semibold text-ink-50 truncate">{project.name}</span>
           {info && <ContainerStateBadge state={info.state ?? "UNKNOWN"} />}
+          <ProjectHealthBadge health={health} />
           {/* The container payload carries the title and provisioning
               status; project metadata alone is enough for the name, so the
               badge appears before the inspection request resolves. */}
@@ -431,6 +442,7 @@ function ProjectHeader({
           {project.containerName || project.slug}
         </div>
         <ProjectUsageLine summary={usageSummary} loading={usageLoading} error={usageError} />
+        <ProjectHealthMeters health={health} />
       </div>
       {refreshedAt && (
         <div class="text-[11px] text-ink-400 mt-1.5">refreshed {fmtRelative(refreshedAt)}</div>

@@ -69,6 +69,7 @@ because users authenticate `agy` inside each project.
 | --- | --- | --- |
 | GET, POST | `/api/projects` | List visible projects or create a project (`{"name","template"}`; an unknown template is a 400) |
 | POST | `/api/projects/reorder` | Update project ordering |
+| GET | `/api/projects/health` | Health verdicts for every visible project in one call, plus whether the monitor is running |
 | GET, PATCH, DELETE | `/api/projects/{id}` | Read, rename, or admin-delete a project |
 | POST | `/api/projects/{id}/start` | Start or relaunch a project; `?force=1` skips the aggregate resource guard (admin only) |
 | POST | `/api/projects/{id}/stop` | Stop a project |
@@ -153,11 +154,19 @@ The upload access check happens when the random upload URL is created. Later chu
 
 | Route | Direction | Messages |
 | --- | --- | --- |
-| `/ws/workspace` | Server to client | Snapshot, chat upsert/delete, project upsert/delete |
+| `/ws/workspace` | Server to client | Snapshot, chat upsert/delete, project upsert/delete, project health |
 | `/ws/chat/{id}?since=<seq>` | Both | Client `prompt` or `cancel`; server chat events and `sync` |
 | `/ws/terminal?chat={id}` | Both | PTY binary data; JSON input and resize control |
 | `/ws/{provider}/auth-status` | Server to client | Provider credential and login-state snapshots |
 | `/ws?session={name}` | Both | Auxiliary tmux PTY binary data and control messages |
+
+The opening `workspace.snapshot` carries a `health` array for the projects it
+lists, and each sweep of the health monitor sends one
+`{"type":"project.health","id":"<projectId>","health":{...}}` per changed
+project; an event with no `health` clears the row. Unlike the project rows,
+health is filtered per connection against project membership, because it
+carries per-container consumption. See
+[Project health](../02-workspaces/07-notifications.md#project-health).
 
 Chat and project-terminal membership is checked before the WebSocket upgrade. Removing a member prevents future checked connections, but the backend does not currently close or reauthorize that member's already-open sockets.
 

@@ -12,6 +12,11 @@ const (
 	StatusCancelled = "cancelled"
 	StatusWaiting   = "waiting"
 	StatusSucceeded = "succeeded"
+	// The health statuses mirror the health service's own traffic light, so a
+	// webhook consumer can switch on the same three words the UI shows.
+	StatusHealthWarn = "warn"
+	StatusHealthCrit = "crit"
+	StatusHealthOK   = "ok"
 )
 
 // summaryLimit keeps agent output short enough to read on a phone.
@@ -31,6 +36,15 @@ func EventHeadline(event Event) string {
 			return "Scheduled task failed"
 		}
 		return "Scheduled task ran"
+	case KindProjectHealth:
+		switch event.Status {
+		case StatusHealthCrit:
+			return "Project health critical"
+		case StatusHealthOK:
+			return "Project health recovered"
+		default:
+			return "Project health warning"
+		}
 	case KindTest:
 		return "Test notification"
 	default:
@@ -79,6 +93,21 @@ func ChatURL(baseURL, chatID string) string {
 		return baseURL + "/"
 	}
 	return baseURL + "/?chat=" + url.QueryEscape(chatID)
+}
+
+// ProjectURL builds the deep link an operator taps to land on a project's
+// settings page. Like ChatURL it goes through a query parameter on the
+// application root, because the SPA has no path router (see
+// frontend/src/state/workspace/projectDeepLink.ts).
+func ProjectURL(baseURL, projectID string) string {
+	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	if baseURL == "" {
+		return ""
+	}
+	if strings.TrimSpace(projectID) == "" {
+		return baseURL + "/"
+	}
+	return baseURL + "/?project=" + url.QueryEscape(projectID)
 }
 
 // attentionTools are the agent tool calls that hand control back to the human:

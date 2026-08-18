@@ -125,3 +125,51 @@ func TestTelegramMessageEscapesAgentOutput(t *testing.T) {
 		}
 	}
 }
+
+func TestEventHeadlineForProjectHealth(t *testing.T) {
+	tests := []struct {
+		name   string
+		status string
+		want   string
+	}{
+		{name: "critical", status: StatusHealthCrit, want: "Project health critical"},
+		{name: "warning", status: StatusHealthWarn, want: "Project health warning"},
+		{name: "recovered", status: StatusHealthOK, want: "Project health recovered"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			event := Event{Event: KindProjectHealth, Status: test.status}
+			if got := EventHeadline(event); got != test.want {
+				t.Fatalf("EventHeadline = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestProjectURL(t *testing.T) {
+	tests := []struct {
+		name      string
+		baseURL   string
+		projectID string
+		want      string
+	}{
+		{
+			name:    "a project link carries the id",
+			baseURL: "https://remote.example.com/", projectID: "abcd1234",
+			want: "https://remote.example.com/?project=abcd1234",
+		},
+		{
+			name:    "no project falls back to the root",
+			baseURL: "https://remote.example.com", projectID: "",
+			want: "https://remote.example.com/",
+		},
+		{name: "no base url means no link", baseURL: "", projectID: "abcd1234", want: ""},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := ProjectURL(test.baseURL, test.projectID); got != test.want {
+				t.Fatalf("ProjectURL = %q, want %q", got, test.want)
+			}
+		})
+	}
+}

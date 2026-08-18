@@ -1,4 +1,5 @@
 import type { ChatMeta } from "../../models/chat";
+import type { ProjectHealthMap } from "../../state/workspace/projectHealthState";
 import type { WorkspaceSidebarModel } from "../../state/workspace/workspaceSidebarState";
 import { ChatRow } from "./ChatRow";
 import { ProjectGroup } from "./ProjectGroup";
@@ -11,6 +12,7 @@ import { useState } from "preact/hooks";
 export function Sidebar({
   open,
   model,
+  health,
   query,
   collapsed,
   sidebarCollapsed,
@@ -33,6 +35,7 @@ export function Sidebar({
 }: {
   open: boolean;
   model: WorkspaceSidebarModel;
+  health: ProjectHealthMap;
   query: string;
   collapsed: Record<string, boolean>;
   sidebarCollapsed: boolean;
@@ -170,6 +173,7 @@ export function Sidebar({
             <ProjectGroup
               key={node.project.id}
               project={node.project}
+              health={health[node.project.id]}
               chats={node.chats}
               visibleChats={node.filteredChats}
               activeChatId={activeChatId}

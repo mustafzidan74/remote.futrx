@@ -3,6 +3,7 @@ export interface NotificationEventToggles {
   runFailed: boolean;
   needsAttention: boolean;
   scheduledRun: boolean;
+  projectHealth: boolean;
 }
 
 /** Telegram credentials as the server reports them: the token is never echoed. */

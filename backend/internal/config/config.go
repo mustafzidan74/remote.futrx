@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/futrx-com/remote.futrx.com/internal/service/audit"
+	"github.com/futrx-com/remote.futrx.com/internal/service/health"
 )
 
 type Config struct {
@@ -19,6 +20,15 @@ type Config struct {
 	BaseURL    string
 	Schedule   ScheduleLimits
 	Audit      AuditLimits
+	Health     HealthLimits
+}
+
+// HealthLimits is the project health monitor's single knob.
+type HealthLimits struct {
+	// Interval is how often the monitor sweeps running projects
+	// (HEALTH_MONITOR_INTERVAL, Go duration, default 1m). An explicit "0"
+	// switches the monitor off: no sweeps, no dots, no health alerts.
+	Interval time.Duration
 }
 
 // AuditLimits are the audit-log housekeeping knobs.
@@ -58,6 +68,9 @@ func Load() Config {
 		},
 		Audit: AuditLimits{
 			RetentionMonths: envInt("AUDIT_RETENTION_MONTHS", audit.DefaultRetentionMonths),
+		},
+		Health: HealthLimits{
+			Interval: envDuration("HEALTH_MONITOR_INTERVAL", health.DefaultInterval),
 		},
 	}
 }

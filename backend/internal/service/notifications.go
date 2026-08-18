@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
+	servicehealth "github.com/futrx-com/remote.futrx.com/internal/service/health"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	"github.com/futrx-com/remote.futrx.com/internal/service/prompt"
@@ -19,11 +20,17 @@ type notifyObserver struct {
 	notifications *servicenotify.Service
 	chats         servicechat.Repository
 	projects      *serviceproject.Service
+	// baseURL is the public origin the project deep link is built from. Run
+	// notifications get theirs from the notify service, which already knows
+	// it; the project link is assembled here because only this observer knows
+	// which project the event is about.
+	baseURL string
 }
 
 var (
 	_ prompt.RunObserver          = (*notifyObserver)(nil)
 	_ serviceschedule.RunObserver = (*notifyObserver)(nil)
+	_ servicehealth.Alerter       = (*notifyObserver)(nil)
 )
 
 // RunSettled reports a finished interactive run. Scheduled runs are skipped:
@@ -81,6 +88,36 @@ func (o *notifyObserver) ScheduledRunFinished(
 	}
 	o.describeChat(ctx, task.ChatID, &event)
 	o.notifications.Publish(event)
+}
+
+// ProjectHealthChanged reports a project container crossing a health
+// threshold, or recovering from one. The health service has already applied
+// its hysteresis, so every call here is a settled transition and deserves
+// exactly one message.
+func (o *notifyObserver) ProjectHealthChanged(
+	_ context.Context,
+	project serviceproject.Meta,
+	health servicehealth.ProjectHealth,
+) {
+	if o == nil {
+		return
+	}
+	name := project.Slug
+	if name == "" {
+		name = project.Name
+	}
+	o.notifications.Publish(servicenotify.Event{
+		Event:       servicenotify.KindProjectHealth,
+		ProjectID:   string(project.ID),
+		ProjectSlug: project.Slug,
+		ProjectName: project.Name,
+		Status:      string(health.Status),
+		Summary:     servicenotify.Summary(servicehealth.AlertSummary(name, health)),
+		URL:         servicenotify.ProjectURL(o.baseURL, string(project.ID)),
+		// One message per settled transition: a project that stays critical
+		// for an hour is reported once, not sixty times.
+		DedupeKey: fmt.Sprintf("health:%s:%s:%d", project.ID, health.Status, health.LastCheckedAt),
+	})
 }
 
 // describeChat fills the chat and project identity fields of an event. Lookup
