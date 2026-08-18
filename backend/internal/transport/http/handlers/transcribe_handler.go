@@ -3,6 +3,8 @@ package httphandlers
 import (
 	"context"
 	"errors"
+	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,10 +16,18 @@ import (
 	httptransport "github.com/futrx-com/remote.futrx.com/internal/transport/http"
 )
 
-// multipartMemory is how much of the upload is parsed in memory before the
-// rest spills to a temp file. The audio part is streamed out again
-// immediately, so this only needs to cover the small text fields.
-const multipartMemory = 1 << 20
+const (
+	// audioFieldName is the multipart field carrying the recording. Every part
+	// before it is treated as a text hint; it is the point of no return for
+	// the streaming reader.
+	audioFieldName = "audio"
+	// maxFormFieldBytes bounds one text field so a client cannot spend the
+	// whole upload budget on a "language" value.
+	maxFormFieldBytes = 4 << 10
+	// oversizedMessage is the one explanation for the byte ceiling, whether it
+	// is caught up front or halfway through the copy.
+	oversizedMessage = "the recording is too large (limit 25 MB)"
+)
 
 // TranscriptionService is the HTTP layer's narrow view of the transcription
 // service. Only masked or client-safe configuration crosses this boundary.
@@ -88,9 +98,18 @@ func (h *TranscribeHandler) handleClientConfig(w http.ResponseWriter, r *http.Re
 	httptransport.SendJSON(w, http.StatusOK, h.transcription.ClientConfig())
 }
 
-// handleTranscribe streams one recorded clip to the provider. The audio never
-// touches the platform's own storage: the multipart part is handed straight to
-// the service, which forwards it.
+// handleTranscribe streams one recorded clip to the provider.
+//
+// It walks the multipart body part by part rather than calling
+// ParseMultipartForm, because that helper spools any part over its memory
+// budget into a temp file — and a recording of someone's voice must not land
+// on this server's disk even briefly. Reading the parts in order keeps the
+// audio in flight from the socket to the provider.
+//
+// The consequence is an ordering contract: the text fields have to arrive
+// before the audio part, because once the audio is being streamed the reader
+// has passed everything before it. The client sends them in that order; a
+// request that does not simply transcribes without the hints.
 func (h *TranscribeHandler) handleTranscribe(w http.ResponseWriter, r *http.Request) {
 	if h.transcription == nil {
 		httptransport.SendErr(w, http.StatusServiceUnavailable, "transcription is unavailable")
@@ -105,46 +124,102 @@ func (h *TranscribeHandler) handleTranscribe(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// The byte ceiling is the real defence; the browser-reported duration
-	// below is advisory and only shapes the error message and the audit line.
+	// The byte ceiling is the real defence; the browser-reported duration is
+	// advisory and only shapes the error message and the audit line.
+	//
+	// A declared length over the cap is refused before a single byte is read,
+	// which is what an honest client gets. MaxBytesReader is the backstop for
+	// one that lies or streams without a length — that failure surfaces mid
+	// copy and is recognized again in transcribeFailure.
+	if r.ContentLength > servicetranscribe.MaxAudioBytes {
+		httptransport.SendErr(w, http.StatusRequestEntityTooLarge, oversizedMessage)
+		return
+	}
 	r.Body = http.MaxBytesReader(w, r.Body, servicetranscribe.MaxAudioBytes)
-	if err := r.ParseMultipartForm(multipartMemory); err != nil {
-		httptransport.SendErr(w, http.StatusRequestEntityTooLarge,
-			"the recording is too large or malformed (limit 25 MB)")
-		return
-	}
-	if r.MultipartForm != nil {
-		defer r.MultipartForm.RemoveAll()
-	}
-
-	file, header, err := r.FormFile("audio")
+	parts, err := r.MultipartReader()
 	if err != nil {
-		httptransport.SendErr(w, http.StatusBadRequest, "no audio in request (field name: audio)")
+		httptransport.SendErr(w, http.StatusBadRequest, "expected a multipart upload")
 		return
 	}
-	defer file.Close()
 
-	duration := parseDurationMS(r.FormValue("durationMs"))
-	result, err := h.transcription.Transcribe(r.Context(), email, servicetranscribe.Request{
-		Audio:    file,
-		Filename: header.Filename,
-		MimeType: header.Header.Get("Content-Type"),
-		Language: r.FormValue("language"),
-		Duration: duration,
-	})
+	var (
+		language string
+		chatID   string
+		duration time.Duration
+	)
+	for {
+		part, err := parts.NextPart()
+		if errors.Is(err, io.EOF) {
+			httptransport.SendErr(w, http.StatusBadRequest, "no audio in request (field name: audio)")
+			return
+		}
+		if err != nil {
+			httptransport.SendErr(w, oversizedStatus(err), oversizedOrMalformed(err))
+			return
+		}
+		if part.FormName() == audioFieldName {
+			defer part.Close()
+			h.transcribePart(w, r, email, part, servicetranscribe.Request{
+				Filename: part.FileName(),
+				MimeType: part.Header.Get("Content-Type"),
+				Language: language,
+				Duration: duration,
+			}, chatID)
+			return
+		}
+		value, err := readFormField(part)
+		part.Close()
+		if err != nil {
+			httptransport.SendErr(w, http.StatusBadRequest, "malformed upload")
+			return
+		}
+		switch part.FormName() {
+		case "language":
+			language = value
+		case "chatId":
+			chatID = value
+		case "durationMs":
+			duration = parseDurationMS(value)
+		}
+	}
+}
+
+// transcribePart runs the transcription for an audio part that is still being
+// uploaded, then audits and answers.
+func (h *TranscribeHandler) transcribePart(
+	w http.ResponseWriter,
+	r *http.Request,
+	email string,
+	audio io.Reader,
+	request servicetranscribe.Request,
+	chatID string,
+) {
+	request.Audio = audio
+	result, err := h.transcription.Transcribe(r.Context(), email, request)
 	h.audit.Record(r.Context(), serviceaudit.Result(
 		serviceaudit.ActionChatTranscribe,
-		serviceaudit.Target{Type: serviceaudit.TargetChat, ID: r.FormValue("chatId")},
+		serviceaudit.Target{Type: serviceaudit.TargetChat, ID: chatID},
 		// Duration only: the clip and its transcript are the user's speech and
 		// have no business in an append-only log.
-		serviceaudit.Meta{"durationMs": duration.Milliseconds()},
+		serviceaudit.Meta{"durationMs": request.Duration.Milliseconds()},
 		err,
 	))
 	if err != nil {
-		httptransport.SendErr(w, transcribeStatus(err), err.Error())
+		status, message := transcribeFailure(err)
+		httptransport.SendErr(w, status, message)
 		return
 	}
 	httptransport.SendJSON(w, http.StatusOK, result)
+}
+
+// readFormField reads one small text part. The bound stops a client from
+// spending the whole 25 MB budget on a "language" field.
+func readFormField(part io.Reader) (string, error) {
+	value, err := io.ReadAll(io.LimitReader(part, maxFormFieldBytes))
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(value)), nil
 }
 
 func (h *TranscribeHandler) handleSettings(w http.ResponseWriter, r *http.Request) {
@@ -222,27 +297,70 @@ func (h *TranscribeHandler) authorizeAdmin(w http.ResponseWriter, r *http.Reques
 	return true
 }
 
-// transcribeStatus maps a service failure onto the status the composer knows
-// how to explain. Anything unrecognized is a provider or network problem,
-// which is a gateway failure rather than the user's fault.
-func transcribeStatus(err error) int {
+// transcribeFailure maps a service failure onto the status and the message the
+// caller is allowed to see.
+//
+// The sentinel errors are the caller's own doing and say so plainly. Anything
+// else came back from the provider, and its prose is not safe to forward: an
+// OpenAI 401 quotes a fragment of the operator's own API key and names the
+// vendor, neither of which an ordinary member should learn from a failed
+// dictation. Those are logged for the operator and flattened for the user,
+// who gets the full detail only through the admin Test probe.
+func transcribeFailure(err error) (int, string) {
 	switch {
 	case errors.Is(err, servicetranscribe.ErrDisabled):
-		return http.StatusServiceUnavailable
+		return http.StatusServiceUnavailable, err.Error()
 	case errors.Is(err, servicetranscribe.ErrRateLimited):
-		return http.StatusTooManyRequests
+		return http.StatusTooManyRequests, err.Error()
 	case errors.Is(err, servicetranscribe.ErrTooLong),
 		errors.Is(err, servicetranscribe.ErrEmptyAudio):
-		return http.StatusBadRequest
+		return http.StatusBadRequest, err.Error()
 	default:
-		return http.StatusBadGateway
+		// A client that lied about its length trips the reader mid copy, and
+		// the failure reaches here wrapped in the provider error. It is still
+		// an oversized upload, not a provider outage.
+		var oversized *http.MaxBytesError
+		if errors.As(err, &oversized) {
+			return http.StatusRequestEntityTooLarge, oversizedMessage
+		}
+		log.Printf("transcribe: provider request failed: %v", err)
+		return http.StatusBadGateway,
+			"the transcription service could not be reached — ask an administrator to check the Voice input settings"
 	}
 }
 
+// oversizedStatus separates "you sent too much" from "this is not a valid
+// multipart body", which are different things for the caller to fix.
+func oversizedStatus(err error) int {
+	var oversized *http.MaxBytesError
+	if errors.As(err, &oversized) {
+		return http.StatusRequestEntityTooLarge
+	}
+	return http.StatusBadRequest
+}
+
+func oversizedOrMalformed(err error) string {
+	var oversized *http.MaxBytesError
+	if errors.As(err, &oversized) {
+		return oversizedMessage
+	}
+	return "the upload is malformed"
+}
+
+// parseDurationMS reads the browser-reported clip length. It clamps rather
+// than trusts: an unbounded value multiplied into a Duration overflows into a
+// negative that would slip past the ceiling check downstream.
 func parseDurationMS(raw string) time.Duration {
 	milliseconds, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
 	if err != nil || milliseconds < 0 {
 		return 0
 	}
+	if milliseconds > maxDurationMS {
+		return servicetranscribe.MaxAudioDuration + time.Second
+	}
 	return time.Duration(milliseconds) * time.Millisecond
 }
+
+// maxDurationMS is the largest value worth converting; anything above it is
+// reported as "over the ceiling" without arithmetic.
+const maxDurationMS = int64(servicetranscribe.MaxAudioDuration / time.Millisecond)

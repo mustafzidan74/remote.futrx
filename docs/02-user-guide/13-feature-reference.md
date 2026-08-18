@@ -51,8 +51,9 @@ This is the compact inventory of current Remote behavior. “Page” means the l
 | Remove queued prompt | Use **×** on a queue chip | Before it auto-sends |
 | Cancel | Use the red square or Escape while running | Cancels active provider context |
 
-Escape has two jobs in the composer: it stops dictation while the microphone
-is live, and cancels the active run otherwise.
+Escape has two jobs in the composer: while the microphone is live it stops
+dictation, and the run-cancel shortcut stands down for that press. A second
+Escape cancels the run as usual.
 
 The placeholder mentions `@` files and `/` commands, but the current source has no implemented mention or slash-command picker. Use the attachment control and skill picker instead.
 

@@ -65,8 +65,9 @@ export const IDLE_VOICE_SESSION: VoiceSession = {
 };
 
 /**
- * Opens a session at the caret. `caret` outside the text clamps to its ends,
- * which is what a textarea that has never been focused reports.
+ * Opens a session at the caret. A caret outside the text is clamped, so a
+ * stale or out-of-range offset splits at an end rather than throwing away
+ * part of the draft.
  */
 export function beginSession(
   text: string,
@@ -115,6 +116,10 @@ export function applyRecognition(
  * final text and clears any interim span left over from a browser session.
  */
 export function applyTranscript(session: VoiceSession, transcript: string): VoiceSession {
+  // Same guard the streaming transitions carry: a transcript that arrives
+  // after the user ended the session must not revive it and overwrite what
+  // they have typed since.
+  if (session.status === "idle") return session;
   return {
     ...session,
     status: "idle",
@@ -139,6 +144,7 @@ export function withElapsed(session: VoiceSession, elapsedMs: number): VoiceSess
 
 /** The clip is uploaded; the provider has not answered yet. */
 export function markTranscribing(session: VoiceSession): VoiceSession {
+  if (session.status === "idle") return session;
   return { ...session, status: "transcribing", interim: "", level: 0 };
 }
 
@@ -324,3 +330,35 @@ function defaultStorage(): StorageLike | null {
 }
 
 export const voicePreferenceStore = new VoicePreferenceStore();
+
+/**
+ * How many composers currently have a live microphone.
+ *
+ * Escape means two things in a chat: stop dictating, and cancel the running
+ * agent turn. Both are window listeners owned by hooks that cannot see each
+ * other, and betting on listener order is how you get a bug that depends on
+ * mount sequence. Rather than have dictation swallow the key — which would
+ * also rob every modal in the app of its Escape — the cancel shortcut asks
+ * this counter and stands down while a microphone is live. One Escape stops
+ * the microphone; the next one cancels the run.
+ *
+ * It is a counter rather than a boolean because nothing guarantees exactly one
+ * composer is mounted.
+ */
+let liveDictations = 0;
+
+/** Registers a live microphone; the returned function retires it. */
+export function beginDictationClaim(): () => void {
+  liveDictations += 1;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    liveDictations = Math.max(0, liveDictations - 1);
+  };
+}
+
+/** Whether any composer is dictating right now. */
+export function isDictating(): boolean {
+  return liveDictations > 0;
+}

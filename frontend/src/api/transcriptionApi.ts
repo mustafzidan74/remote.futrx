@@ -25,13 +25,17 @@ export const transcriptionApi = {
    * Sends one recorded clip. The blob is posted as multipart so the backend
    * can stream it straight through to the provider rather than buffering a
    * base64 copy of it.
+   *
+   * Field order is load bearing: the backend walks the parts in order so the
+   * audio never has to be spooled to its disk, which means the text hints have
+   * to be appended *before* the recording. FormData preserves insertion order.
    */
   transcribe: ({ audio, language, durationMs, chatId }: TranscribeRequest) => {
     const form = new FormData();
-    form.append("audio", audio, audioFilename(audio.type));
     form.append("language", language);
     form.append("durationMs", String(Math.max(0, Math.round(durationMs))));
     if (chatId) form.append("chatId", chatId);
+    form.append("audio", audio, audioFilename(audio.type));
     return requestJson<TranscriptionResult>("POST", API_ROUTES.transcription.transcribe, form);
   },
 

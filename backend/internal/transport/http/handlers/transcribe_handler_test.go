@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -95,26 +96,33 @@ func (h *TranscribeHandler) withDependencies(
 	return h
 }
 
-// audioRequest builds the multipart upload the composer sends.
+// audioRequest builds the multipart upload the composer sends. The text hints
+// come first because the handler streams the audio part rather than buffering
+// the form, so anything after the recording is never read.
 func audioRequest(t *testing.T, audio []byte, language string, durationMS int64) *http.Request {
+	t.Helper()
+	return audioRequestWithFields(t, audio, [][2]string{
+		{"language", language},
+		{"durationMs", strconv.FormatInt(durationMS, 10)},
+		{"chatId", "chat-123"},
+	})
+}
+
+func audioRequestWithFields(t *testing.T, audio []byte, fields [][2]string) *http.Request {
 	t.Helper()
 	body := &bytes.Buffer{}
 	form := multipart.NewWriter(body)
+	for _, field := range fields {
+		if err := form.WriteField(field[0], field[1]); err != nil {
+			t.Fatal(err)
+		}
+	}
 	part, err := form.CreateFormFile("audio", "dictation.webm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := part.Write(audio); err != nil {
 		t.Fatal(err)
-	}
-	for name, value := range map[string]string{
-		"language":   language,
-		"durationMs": strconv.FormatInt(durationMS, 10),
-		"chatId":     "chat-123",
-	} {
-		if err := form.WriteField(name, value); err != nil {
-			t.Fatal(err)
-		}
 	}
 	if err := form.Close(); err != nil {
 		t.Fatal(err)
@@ -281,7 +289,7 @@ func TestTranscribeMapsServiceFailuresOntoStatusCodes(t *testing.T) {
 		{name: "rate limited", err: servicetranscribe.ErrRateLimited, wantStatus: http.StatusTooManyRequests},
 		{name: "too long", err: servicetranscribe.ErrTooLong, wantStatus: http.StatusBadRequest},
 		{name: "no audio", err: servicetranscribe.ErrEmptyAudio, wantStatus: http.StatusBadRequest},
-		{name: "provider unreachable", err: io.ErrUnexpectedEOF, wantStatus: http.StatusBadGateway},
+		{name: "provider unreachable", err: errProviderLeak, wantStatus: http.StatusBadGateway},
 	}
 
 	for _, tt := range tests {
@@ -450,6 +458,117 @@ func TestUnavailableServiceReportsServiceUnavailableRatherThanPanicking(t *testi
 			target.serve(recorder, target.request)
 			if recorder.Code != http.StatusServiceUnavailable {
 				t.Fatalf("status = %d, want 503", recorder.Code)
+			}
+		})
+	}
+}
+
+// errProviderLeak stands in for a provider failure whose prose quotes the
+// operator's key and names the vendor — exactly what OpenAI's 401 body does.
+var errProviderLeak = errors.New(
+	"transcription provider returned 401: Incorrect API key provided: sk-proj-abcd1234. " +
+		"You can find your API key at platform.openai.com/api-keys",
+)
+
+// A member who mistypes nothing and simply hits a bad key must not learn the
+// operator's credentials or which vendor is behind the button. The masked
+// client config would be pointless if the next failed request spelled it out.
+func TestTranscribeNeverForwardsProviderProseToTheCaller(t *testing.T) {
+	service := &transcriptionServiceStub{err: errProviderLeak}
+	handler := newTranscribeHandler(service, callerStub{email: "member@example.com"})
+
+	recorder := httptest.NewRecorder()
+	handler.handleTranscribe(recorder, audioRequest(t, []byte("bytes"), "ar-EG", 1000))
+
+	if recorder.Code != http.StatusBadGateway {
+		t.Fatalf("status = %d, want 502", recorder.Code)
+	}
+	body := recorder.Body.String()
+	for _, forbidden := range []string{"sk-proj", "platform.openai.com", "openai", "API key"} {
+		if strings.Contains(strings.ToLower(body), strings.ToLower(forbidden)) {
+			t.Fatalf("the response leaked %q: %s", forbidden, body)
+		}
+	}
+	if !strings.Contains(body, "could not be reached") {
+		t.Fatalf("the response should still say what went wrong: %s", body)
+	}
+}
+
+// The sentinel failures are the caller's own doing, so those keep their plain
+// explanation rather than being flattened along with the provider errors.
+func TestTranscribeKeepsTheExplanationForFailuresTheCallerCanAddress(t *testing.T) {
+	service := &transcriptionServiceStub{err: servicetranscribe.ErrRateLimited}
+	handler := newTranscribeHandler(service, callerStub{email: "member@example.com"})
+
+	recorder := httptest.NewRecorder()
+	handler.handleTranscribe(recorder, audioRequest(t, []byte("bytes"), "ar-EG", 1000))
+
+	if !strings.Contains(recorder.Body.String(), "too many transcription requests") {
+		t.Fatalf("body = %s, want the rate-limit explanation kept", recorder.Body)
+	}
+}
+
+// The handler streams the audio part instead of buffering the form, so the
+// text hints only count when they arrive first. A client that puts them after
+// the recording still gets a transcription — just without the hints.
+func TestTranscribeReadsOnlyTheHintsThatPrecedeTheAudio(t *testing.T) {
+	service := &transcriptionServiceStub{result: servicetranscribe.Result{Text: "ok"}}
+	handler := newTranscribeHandler(service, callerStub{email: "user@example.com"})
+
+	body := &bytes.Buffer{}
+	form := multipart.NewWriter(body)
+	part, err := form.CreateFormFile("audio", "dictation.webm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := part.Write([]byte("opus")); err != nil {
+		t.Fatal(err)
+	}
+	if err := form.WriteField("language", "ar-EG"); err != nil {
+		t.Fatal(err)
+	}
+	if err := form.Close(); err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodPost, "/api/transcribe", body)
+	request.Header.Set("Content-Type", form.FormDataContentType())
+
+	recorder := httptest.NewRecorder()
+	handler.handleTranscribe(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%s)", recorder.Code, recorder.Body)
+	}
+	if service.request.Language != "" {
+		t.Fatalf("language = %q, want empty: it arrived after the audio", service.request.Language)
+	}
+}
+
+func TestParseDurationClampsInsteadOfOverflowing(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		want time.Duration
+	}{
+		{name: "ordinary", raw: "4200", want: 4200 * time.Millisecond},
+		{name: "empty", raw: "", want: 0},
+		{name: "not a number", raw: "abc", want: 0},
+		{name: "negative", raw: "-5", want: 0},
+		{
+			name: "max int64 would wrap the multiply",
+			raw:  "9223372036854775807",
+			want: servicetranscribe.MaxAudioDuration + time.Second,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseDurationMS(tt.raw)
+			if got != tt.want {
+				t.Fatalf("parseDurationMS(%q) = %s, want %s", tt.raw, got, tt.want)
+			}
+			if got < 0 {
+				t.Fatalf("parseDurationMS(%q) went negative: %s", tt.raw, got)
 			}
 		})
 	}

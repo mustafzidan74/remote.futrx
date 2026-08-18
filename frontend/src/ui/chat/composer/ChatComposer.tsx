@@ -100,14 +100,25 @@ export function ChatComposer({
     if (voice.session.status !== "error") onSend();
   }, [sendAfterDictation, voice.active, voice.session.status, onSend]);
 
-  function submit(event: Event) {
-    event.preventDefault();
+  /**
+   * The one way a prompt leaves this composer. Both the form's submit button
+   * and the textarea's Ctrl/Cmd+Enter shortcut route through here, because
+   * sending straight from the shortcut while the microphone is live would post
+   * the draft as it stood one hypothesis ago and then let the rest of the
+   * dictation land in the composer that was just cleared.
+   */
+  function requestSend() {
     if (!voice.active) {
       onSend();
       return;
     }
     voice.stop();
     setSendAfterDictation(true);
+  }
+
+  function submit(event: Event) {
+    event.preventDefault();
+    requestSend();
   }
   const hasContent = text.trim().length > 0 || attachments.some((attachment) => attachment.serverPath);
   const canSend = !uploading && !disconnected && hasContent;
@@ -164,7 +175,7 @@ export function ChatComposer({
             disconnected={disconnected}
             onTextChange={onTextChange}
             onPaste={onPaste}
-            onSend={onSend}
+            onSend={requestSend}
             lang={voice.languageTag}
           />
           <button

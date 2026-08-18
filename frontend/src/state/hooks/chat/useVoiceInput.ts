@@ -19,6 +19,7 @@ import {
 import {
   IDLE_VOICE_SESSION,
   applyRecognition,
+  beginDictationClaim,
   applyTranscript,
   beginSession,
   composeText,
@@ -99,12 +100,23 @@ export function useVoiceInput({
   const recognition = useRef<SpeechRecognitionLike | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
+  // A separate handle because the browser engine's meter opens its own capture
+  // while the recognizer keeps its own, invisible one.
+  const meterStream = useRef<MediaStream | null>(null);
   const audioContext = useRef<AudioContext | null>(null);
   const meterTimer = useRef<number | null>(null);
+  const ceilingTimer = useRef<number | null>(null);
   const startedAt = useRef(0);
   // The composer text as it was when the session opened. Reading it from a ref
   // keeps the recognizer callbacks off the render loop.
   const sessionRef = useRef<VoiceSession>(IDLE_VOICE_SESSION);
+  // Every session gets a number, and every async continuation captures the
+  // number it started under. `getUserMedia` behind a permission prompt, a
+  // MediaRecorder flush, and an upload round trip all resolve long after the
+  // user may have pressed stop, switched chats, or unmounted the composer —
+  // and a stale continuation that still owns the microphone is how you get a
+  // hot mic and an upload nobody asked for.
+  const generation = useRef(0);
   const changeText = useRef(onTextChange);
   changeText.current = onTextChange;
 
@@ -130,11 +142,26 @@ export function useVoiceInput({
     [textareaRef],
   );
 
+  /**
+   * Runs `action` only if the session that started it is still the current
+   * one. Everything asynchronous goes through this.
+   */
+  const stillOwns = useCallback((token: number) => generation.current === token, []);
+
+  /** Ends the current session for good, so no late callback can revive it. */
+  const retireSession = useCallback(() => {
+    generation.current += 1;
+  }, []);
+
   /** Tears down every live handle. Safe to call more than once. */
   const releaseHardware = useCallback(() => {
     if (meterTimer.current !== null) {
       clearInterval(meterTimer.current);
       meterTimer.current = null;
+    }
+    if (ceilingTimer.current !== null) {
+      clearTimeout(ceilingTimer.current);
+      ceilingTimer.current = null;
     }
     recognition.current?.abort?.();
     recognition.current = null;
@@ -144,6 +171,8 @@ export function useVoiceInput({
     recorder.current = null;
     stream.current?.getTracks().forEach((track) => track.stop());
     stream.current = null;
+    meterStream.current?.getTracks().forEach((track) => track.stop());
+    meterStream.current = null;
     void audioContext.current?.close().catch(() => {});
     audioContext.current = null;
   }, []);
@@ -162,15 +191,40 @@ export function useVoiceInput({
     };
   }, []);
 
-  useEffect(() => releaseHardware, [releaseHardware]);
+  useEffect(
+    () => () => {
+      retireSession();
+      releaseHardware();
+    },
+    [releaseHardware, retireSession],
+  );
 
   /**
-   * Starts the level meter and the timer. The meter is best effort: a browser
-   * that refuses an AudioContext still gets a working recorder, just without
-   * the bar.
+   * Starts the level meter and the elapsed timer.
+   *
+   * The meter is best effort throughout: a browser that refuses an
+   * AudioContext, or a user on a device where a second capture is not
+   * available, still gets working dictation — just a readout without a moving
+   * bar. `source` is the recorder's stream for the server engine; the browser
+   * engine has no stream of its own to share, so one is opened here purely for
+   * the meter and released with everything else.
    */
   const startMeter = useCallback(
-    (source: MediaStream) => {
+    async (token: number, source?: MediaStream) => {
+      let media = source;
+      if (!media) {
+        if (!navigator?.mediaDevices?.getUserMedia) return;
+        try {
+          media = await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch {
+          return;
+        }
+        if (!stillOwns(token)) {
+          media.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        meterStream.current = media;
+      }
       startedAt.current = Date.now();
       let analyser: AnalyserNode | null = null;
       let samples: Uint8Array<ArrayBuffer> | null = null;
@@ -181,7 +235,7 @@ export function useVoiceInput({
           audioContext.current = context;
           analyser = context.createAnalyser();
           analyser.fftSize = 512;
-          context.createMediaStreamSource(source).connect(analyser);
+          context.createMediaStreamSource(media).connect(analyser);
           samples = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
         }
       } catch {
@@ -189,6 +243,7 @@ export function useVoiceInput({
       }
 
       meterTimer.current = window.setInterval(() => {
+        if (!stillOwns(token)) return;
         const elapsed = Date.now() - startedAt.current;
         let level = 0;
         if (analyser && samples) {
@@ -203,25 +258,31 @@ export function useVoiceInput({
         });
       }, METER_INTERVAL_MS);
     },
-    [commit],
+    [commit, stillOwns],
   );
 
   const stop = useCallback(() => {
     const current = sessionRef.current;
     if (current.status === "idle" || current.status === "error") return;
     // The server engine finishes in the recorder's stop handler, which needs
-    // the stream alive long enough to flush its last chunk.
+    // the stream alive long enough to flush its last chunk. That handler is
+    // the one place allowed to carry the session forward past a stop.
     if (current.status === "recording" && recorder.current?.state === "recording") {
       recorder.current.stop();
       return;
     }
+    // Everything else ends here, including a stop pressed while the upload is
+    // in flight: the session is retired so the transcript, when it lands, is
+    // discarded instead of overwriting whatever the user typed since.
+    retireSession();
     releaseHardware();
     commit(finishSession);
-  }, [commit, releaseHardware]);
+  }, [commit, releaseHardware, retireSession]);
 
-  const startBrowser = useCallback(() => {
+  const startBrowser = useCallback((token: number) => {
     const Recognition = speechRecognitionConstructor();
     if (!Recognition) {
+      retireSession();
       commit((current) => failSession(current, "This browser has no speech recognition."));
       return;
     }
@@ -232,8 +293,15 @@ export function useVoiceInput({
     const tag = resolveVoiceLanguage(language, currentBrowserLocale());
     if (tag) engineInstance.lang = tag;
 
-    engineInstance.onstart = () => commit((current) => markRunning(current, "listening"));
+    engineInstance.onstart = () => {
+      if (!stillOwns(token)) return;
+      commit((current) => markRunning(current, "listening"));
+      // The recognizer captures its own audio; this second stream exists only
+      // to drive the level meter, and dictation works fine without it.
+      void startMeter(token);
+    };
     engineInstance.onresult = (event: SpeechRecognitionEvent) => {
+      if (!stillOwns(token)) return;
       // Only the results from resultIndex onward are new; everything before it
       // has already been folded in.
       let finalChunk = "";
@@ -250,103 +318,159 @@ export function useVoiceInput({
       // "no-speech" and "aborted" are how a silent or user-stopped session
       // ends, not failures worth a banner.
       if (event.error === "aborted" || event.error === "no-speech") return;
+      if (!stillOwns(token)) return;
+      retireSession();
       releaseHardware();
       commit((current) => failSession(current, recognitionErrorMessage(event.error)));
     };
     engineInstance.onend = () => {
       recognition.current = null;
-      if (sessionRef.current.status === "listening") {
-        releaseHardware();
-        commit(finishSession);
-      }
+      if (!stillOwns(token) || sessionRef.current.status !== "listening") return;
+      retireSession();
+      releaseHardware();
+      commit(finishSession);
     };
 
     recognition.current = engineInstance;
     try {
       engineInstance.start();
     } catch {
+      retireSession();
       commit((current) => failSession(current, "Voice input could not start."));
     }
-  }, [commit, language, releaseHardware]);
+  }, [commit, language, releaseHardware, retireSession, startMeter, stillOwns]);
 
-  const startServer = useCallback(async () => {
-    const maxSeconds = serverConfig?.maxSeconds ?? 300;
-    let media: MediaStream;
-    try {
-      media = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (cause) {
-      commit((current) => failSession(current, microphoneErrorMessage(cause)));
-      return;
-    }
-    stream.current = media;
-
-    const mimeType = preferredRecorderMimeType();
-    const instance = new MediaRecorder(media, mimeType ? { mimeType } : undefined);
-    const chunks: Blob[] = [];
-    instance.ondataavailable = (event) => {
-      if (event.data.size > 0) chunks.push(event.data);
-    };
-    instance.onstop = () => {
-      const durationMs = Date.now() - startedAt.current;
-      releaseHardware();
-      const blob = new Blob(chunks, { type: instance.mimeType || "audio/webm" });
-      if (blob.size === 0) {
-        commit(finishSession);
+  const startServer = useCallback(
+    async (token: number) => {
+      const maxSeconds = serverConfig?.maxSeconds ?? 300;
+      const maxBytes = serverConfig?.maxBytes ?? 0;
+      let media: MediaStream;
+      try {
+        media = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (cause) {
+        if (!stillOwns(token)) return;
+        retireSession();
+        commit((current) => failSession(current, microphoneErrorMessage(cause)));
         return;
       }
-      commit(markTranscribing, { writeText: false });
-      transcriptionApi
-        .transcribe({ audio: blob, language, durationMs, chatId })
-        .then((result) => commit((current) => applyTranscript(current, result.text)))
-        .catch((cause) => commit((current) => failSession(current, (cause as Error).message)));
-    };
+      // The permission prompt can sit open for a long time. If the user gave
+      // up on it — pressed stop, hit Escape, or navigated to another chat —
+      // the microphone they were granted is handed straight back.
+      if (!stillOwns(token)) {
+        media.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      stream.current = media;
 
-    recorder.current = instance;
-    instance.start();
-    startMeter(media);
-    commit((current) => markRunning(current, "recording"));
+      const mimeType = preferredRecorderMimeType();
+      const instance = new MediaRecorder(media, mimeType ? { mimeType } : undefined);
+      const chunks: Blob[] = [];
+      instance.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+      instance.onstop = () => {
+        const durationMs = Date.now() - startedAt.current;
+        // A second stop press, or an unmount, already retired this session.
+        // Releasing the hardware is still right; resurrecting the UI and
+        // uploading the clip is not.
+        if (!stillOwns(token)) {
+          releaseHardware();
+          return;
+        }
+        retireSession();
+        releaseHardware();
+        const blob = new Blob(chunks, { type: instance.mimeType || "audio/webm" });
+        if (blob.size === 0) {
+          commit(finishSession);
+          return;
+        }
+        if (maxBytes > 0 && blob.size > maxBytes) {
+          commit((current) =>
+            failSession(current, "That recording is too large to transcribe. Try a shorter one."),
+          );
+          return;
+        }
+        // The upload owns the rest of this session, so it gets its own token:
+        // stopping during "Transcribing…" retires that one and the transcript
+        // is dropped rather than pasted over whatever was typed since.
+        generation.current += 1;
+        const uploadToken = generation.current;
+        commit(markTranscribing, { writeText: false });
+        transcriptionApi
+          .transcribe({ audio: blob, language, durationMs, chatId })
+          .then((result) => {
+            if (!stillOwns(uploadToken)) return;
+            retireSession();
+            commit((current) => applyTranscript(current, result.text));
+          })
+          .catch((cause) => {
+            if (!stillOwns(uploadToken)) return;
+            retireSession();
+            commit((current) => failSession(current, (cause as Error).message));
+          });
+      };
 
-    // The server refuses anything past its ceiling, so stop before the upload
-    // is wasted rather than after.
-    window.setTimeout(() => {
-      if (recorder.current === instance && instance.state === "recording") instance.stop();
-    }, maxSeconds * 1000);
-  }, [chatId, commit, language, releaseHardware, serverConfig?.maxSeconds, startMeter]);
+      recorder.current = instance;
+      instance.start();
+      void startMeter(token, media);
+      commit((current) => markRunning(current, "recording"));
+
+      // The server refuses anything past its ceiling, so stop before the
+      // upload is wasted rather than after.
+      ceilingTimer.current = window.setTimeout(() => {
+        if (recorder.current === instance && instance.state === "recording") instance.stop();
+      }, maxSeconds * 1000);
+    },
+    [
+      chatId,
+      commit,
+      language,
+      releaseHardware,
+      retireSession,
+      serverConfig?.maxBytes,
+      serverConfig?.maxSeconds,
+      startMeter,
+      stillOwns,
+    ],
+  );
 
   const toggle = useCallback(() => {
-    if (disabled) return;
+    // `disabled` gates starting, never stopping. An attachment upload that
+    // begins mid-dictation, or a socket that drops, must not leave the only
+    // way off the microphone behind a disabled button.
     if (sessionRef.current.status !== "idle" && sessionRef.current.status !== "error") {
       stop();
       return;
     }
-    if (!engine) return;
+    if (disabled || !engine) return;
     const textarea = textareaRef.current;
     const caret = textarea?.selectionStart ?? text.length;
+    generation.current += 1;
+    const token = generation.current;
     commit(() => beginSession(text, caret), { writeText: false });
-    if (engine === "browser") startBrowser();
-    else void startServer();
+    if (engine === "browser") startBrowser(token);
+    else void startServer(token);
   }, [commit, disabled, engine, startBrowser, startServer, stop, text, textareaRef]);
 
   // Escape stops dictation, matching how every other transient composer state
   // is dismissed.
   //
-  // The chat's own Escape shortcut cancels a running agent turn, and both
-  // listeners sit on `window`. Dictating a queued prompt while the agent works
-  // is an ordinary thing to do, and killing that run because the user wanted
-  // the microphone off would be a nasty surprise — so this claims Escape in
-  // the capture phase and stops it there. Bubble-phase order between two
-  // independent hooks is not something to bet on. A second Escape, with the
-  // microphone now idle, reaches the cancel shortcut as usual.
+  // This is an ordinary bubble listener that consumes nothing. The chat's
+  // cancel shortcut is the one that stands down, by asking the shared claim
+  // registered below — swallowing the key here would also rob every modal in
+  // the app of its Escape, which is worse than the problem it solves.
   useEffect(() => {
     if (session.status === "idle" || session.status === "error") return;
+    const releaseClaim = beginDictationClaim();
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
       stop();
     }
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      releaseClaim();
+    };
   }, [session.status, stop]);
 
   const setLanguage = useCallback((next: VoiceLanguage) => {

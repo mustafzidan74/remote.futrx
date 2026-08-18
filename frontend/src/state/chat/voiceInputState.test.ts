@@ -6,12 +6,14 @@ import {
   VoicePreferenceStore,
   applyRecognition,
   applyTranscript,
+  beginDictationClaim,
   beginSession,
   composeText,
   dismissError,
   failSession,
   finishSession,
   formatElapsed,
+  isDictating,
   joinSpeech,
   markRunning,
   markTranscribing,
@@ -269,4 +271,59 @@ test("preferences degrade to in-memory when storage is unavailable", () => {
   store.setLanguage("en-GB");
 
   assert.equal(store.language(), "ar-EG", "nothing persisted, so the default stands");
+});
+
+// The upload for a server dictation resolves long after the user may have
+// pressed stop. A transcript that lands then must be dropped, not pasted over
+// whatever they typed in the meantime.
+test("a transcript arriving after the session ended is discarded", () => {
+  let session = beginSession("keep this", 9, "recording");
+  session = markTranscribing(session);
+  session = finishSession(session);
+  assert.equal(session.status, "idle");
+
+  const late = applyTranscript(session, "words nobody is waiting for");
+
+  assert.deepEqual(late, session, "the ended session is returned untouched");
+  assert.equal(composeText(late).text, "keep this");
+});
+
+test("markTranscribing cannot revive a session that already ended", () => {
+  const ended = finishSession(beginSession("draft", 5, "recording"));
+
+  assert.deepEqual(markTranscribing(ended), ended);
+  assert.equal(markTranscribing(ended).status, "idle");
+});
+
+// Escape means "stop dictating" and "cancel the run". The cancel shortcut
+// consults this claim so a single Escape does the local thing first.
+test("a dictation claim is visible while held and released exactly once", () => {
+  assert.equal(isDictating(), false);
+
+  const release = beginDictationClaim();
+  assert.equal(isDictating(), true);
+
+  release();
+  assert.equal(isDictating(), false);
+
+  // A cleanup that runs twice must not push the counter below zero, or the
+  // next real claim would read as "nobody is dictating".
+  release();
+  assert.equal(isDictating(), false);
+  const second = beginDictationClaim();
+  assert.equal(isDictating(), true);
+  second();
+  assert.equal(isDictating(), false);
+});
+
+test("two composers dictating both have to let go before the run shortcut returns", () => {
+  const first = beginDictationClaim();
+  const second = beginDictationClaim();
+  assert.equal(isDictating(), true);
+
+  first();
+  assert.equal(isDictating(), true, "one microphone is still live");
+
+  second();
+  assert.equal(isDictating(), false);
 });
