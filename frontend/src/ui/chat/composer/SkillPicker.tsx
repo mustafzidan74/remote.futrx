@@ -59,32 +59,27 @@ export function SkillPicker({
   const providerLabel = provider === "codex" ? "Codex" : "Claude";
 
   return (
-    <div ref={rootRef} class="codex-skill-control-root relative w-[130px] flex-none sm:w-[148px]">
+    <div ref={rootRef} class="codex-skill-control-root relative flex-none">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        class={`codex-skill-control flex h-7 w-full items-center justify-between gap-1.5 rounded-md px-2 text-left transition
-                ${open ? "bg-accent-blue/[0.14] text-accent-blue" : "bg-accent-blue/[0.08] text-ink-100 hover:bg-accent-blue/[0.12]"}`}
+        class={`codex-skill-control composer-pill ${open ? "composer-pill-active" : ""}`}
         aria-haspopup="listbox"
         aria-expanded={open}
         title={`${providerLabel} skills`}
       >
-        <span class="flex min-w-0 items-center gap-1.5">
-          <Code class="h-3 w-3 flex-none" />
-          <span class="truncate text-[11.5px] font-semibold">Skills</span>
+        <Code class="h-4 w-4 flex-none text-ink-400" aria-hidden="true" />
+        <span class="truncate font-semibold text-ink-100">Skills</span>
+        <span class="rounded bg-white/10 px-1 py-0.5 text-[10px] leading-none text-ink-300">
+          {selectedCount > 0 ? selectedCount : loading ? "..." : skills.length}
         </span>
-        <span class="inline-flex flex-none items-center gap-1">
-          <span class="rounded bg-white/10 px-1 py-0.5 text-[10px] leading-none text-ink-300">
-            {selectedCount > 0 ? selectedCount : loading ? "..." : skills.length}
-          </span>
-          <ChevronDown class="h-3 w-3 flex-none" />
-        </span>
+        <ChevronDown class="h-4 w-4 flex-none text-ink-400" aria-hidden="true" />
       </button>
 
       {open && (
         <div
-          class="theme-menu-surface absolute left-0 bottom-full z-40 mb-2 w-[calc(100vw-1.5rem)] sm:left-auto sm:right-0 sm:w-[460px]
-                 rounded-lg border border-white/10 bg-[#14161d] shadow-2xl overflow-hidden"
+          class="popover-surface theme-menu-surface absolute left-0 bottom-full z-40 mb-2
+                 w-[calc(100vw-1.5rem)] sm:left-auto sm:right-0 sm:w-[460px]"
         >
           <div class="p-2 border-b border-white/10 bg-[#191a1f]">
             <div class="h-9 rounded-md bg-[#0b0d11] border border-white/10 px-2.5 flex items-center gap-2">

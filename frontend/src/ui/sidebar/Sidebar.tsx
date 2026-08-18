@@ -5,6 +5,7 @@ import type { ProjectHealthMap } from "../../state/workspace/projectHealthState"
 import type { WorkspaceSidebarModel } from "../../state/workspace/workspaceSidebarState";
 import { ChatRow } from "./ChatRow";
 import { ProjectGroup } from "./ProjectGroup";
+import { RecentChats } from "./RecentChats";
 import { SidebarEmptyState, SidebarNoMatches } from "./SidebarEmptyState";
 import { WorkspaceSearch } from "./WorkspaceSearch";
 import { MessageSearchResults } from "./MessageSearchResults";
@@ -19,6 +20,7 @@ export function Sidebar({
   query,
   messageSearch,
   collapsed,
+  recentOpen,
   sidebarCollapsed,
   activeChatId,
   account,
@@ -27,9 +29,11 @@ export function Sidebar({
   onClearQuery,
   onOpenSearchResult,
   onToggleSidebar,
+  onToggleRecent,
   onNewProject,
   onNewChatInProject,
   onToggleProject,
+  onOpenProject,
   onSelectChat,
   onDeleteChat,
   onToggleChatUnread,
@@ -44,6 +48,7 @@ export function Sidebar({
   query: string;
   messageSearch: MessageSearch;
   collapsed: Record<string, boolean>;
+  recentOpen: boolean;
   sidebarCollapsed: boolean;
   activeChatId: string | null;
   account?: { email: string; authenticated: boolean };
@@ -52,9 +57,11 @@ export function Sidebar({
   onClearQuery: () => void;
   onOpenSearchResult: (result: SearchResult) => void;
   onToggleSidebar: () => void;
+  onToggleRecent: () => void;
   onNewProject: () => void;
   onNewChatInProject: (projectId?: string) => void;
   onToggleProject: (projectId: string) => void;
+  onOpenProject: (projectId: string) => void;
   onSelectChat: (chatId: string) => void;
   onDeleteChat: (chat: ChatMeta, event: Event) => void;
   onToggleChatUnread: (chat: ChatMeta, event: Event) => void;
@@ -187,6 +194,15 @@ export function Sidebar({
 
           {model.query && !model.hasMatches && !messageSearch.active && <SidebarNoMatches />}
 
+          <RecentChats
+            chats={model.recentChats}
+            projects={model.visibleProjects.map((node) => node.project)}
+            activeChatId={activeChatId}
+            open={recentOpen}
+            onToggle={onToggleRecent}
+            onSelectChat={onSelectChat}
+          />
+
           {model.visibleProjects.map((node) => (
             <ProjectGroup
               key={node.project.id}
@@ -197,6 +213,7 @@ export function Sidebar({
               activeChatId={activeChatId}
               collapsed={!model.query && collapsed[node.project.id] === true}
               onToggle={() => onToggleProject(node.project.id)}
+              onOpenProject={() => onOpenProject(node.project.id)}
               onNewChat={() => onNewChatInProject(node.project.id)}
               onOpenContainer={() => onOpenProjectContainers(node.project.id)}
               onSelectChat={onSelectChat}

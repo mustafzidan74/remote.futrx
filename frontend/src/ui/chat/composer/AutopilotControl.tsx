@@ -58,24 +58,20 @@ export function AutopilotControl({
         type="button"
         onClick={() => setOpen((value) => !value)}
         disabled={busy}
-        class={`codex-autopilot-control flex h-7 items-center gap-1.5 rounded-md px-2 transition
-                disabled:cursor-not-allowed disabled:opacity-40
-                ${
-                  view.enabled
-                    ? "bg-accent-blue/[0.18] text-accent-blue"
-                    : "bg-white/[0.045] text-ink-200 hover:bg-white/[0.08]"
-                }`}
+        class={`codex-autopilot-control composer-pill ${
+          view.enabled ? "composer-pill-active" : ""
+        }`}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={`Autopilot — ${view.status}`}
         title="Autopilot — keep the agent working while you are away"
       >
         {busy ? (
-          <Loader class="h-3 w-3 flex-none animate-spin" />
+          <Loader class="h-4 w-4 flex-none animate-spin" />
         ) : (
-          <PlaneTakeoff class="h-3 w-3 flex-none" aria-hidden="true" />
+          <PlaneTakeoff class="h-4 w-4 flex-none" aria-hidden="true" />
         )}
-        <span class="text-[11.5px] font-semibold">Autopilot</span>
+        <span class="font-semibold">Autopilot</span>
         {view.enabled && (
           <span class="rounded bg-accent-blue/25 px-1 py-0.5 text-[10px] leading-none">
             {view.roundsUsed}/{view.maxRounds}
@@ -85,8 +81,8 @@ export function AutopilotControl({
 
       {open && (
         <div
-          class="theme-menu-surface absolute left-0 bottom-full z-40 mb-2 w-[min(20rem,calc(100vw-1.5rem))]
-                 overflow-hidden rounded-lg border border-white/10 bg-[#14161d] shadow-2xl sm:left-auto sm:right-0"
+          class="popover-surface theme-menu-surface absolute left-0 bottom-full z-40 mb-2
+                 w-[min(20rem,calc(100vw-1.5rem))] sm:left-auto sm:right-0"
           role="dialog"
           aria-label="Autopilot settings"
         >

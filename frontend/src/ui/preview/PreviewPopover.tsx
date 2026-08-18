@@ -108,8 +108,7 @@ export function PreviewPopover({
       role="dialog"
       aria-label={title}
       style={style}
-      class="theme-menu-surface fixed z-50 flex flex-col overflow-hidden rounded-lg border border-white/10
-             bg-[#14161d] shadow-2xl"
+      class="popover-surface theme-menu-surface fixed z-50 flex flex-col"
     >
       <div class="flex flex-none items-center gap-2 border-b border-white/[0.07] px-3 py-2">
         <div dir="auto" title={title} class="bidi-auto min-w-0 flex-1 truncate text-[12px] font-semibold text-ink-100">

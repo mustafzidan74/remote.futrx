@@ -2,7 +2,7 @@ import { useState } from "preact/hooks";
 import type { TrashedProject } from "../../models/project";
 import type { ProjectTrash } from "../../state/hooks/admin/useProjectTrash";
 import { snapshotState } from "../../state/projects/snapshotState";
-import { Clock, Loader, RotateCcw, Trash } from "../primitives/icons";
+import { AlertCircle, Clock, Loader, RotateCcw, Trash } from "../primitives/icons";
 import { EmptyState, ErrorBanner } from "../primitives/Feedback";
 import { formatEpochMillis } from "../projects/project-containers/projectContainerFormat";
 
@@ -89,10 +89,8 @@ export function TrashSettings({ trash, isAdmin }: { trash: ProjectTrash; isAdmin
                 key={project.id}
                 project={project}
                 now={now}
-                isAdmin={isAdmin}
                 busy={busy === project.id}
                 onRestore={() => void restore(project)}
-                onPurge={() => void purge(project)}
               />
             ))
           )}
@@ -105,24 +103,83 @@ export function TrashSettings({ trash, isAdmin }: { trash: ProjectTrash; isAdmin
         a trashed project stays reserved: a new project cannot take it until this one is
         restored or purged.
       </p>
+
+      {isAdmin && trash.projects.length > 0 && (
+        <DangerZone
+          projects={trash.projects}
+          busy={busy}
+          onPurge={(project) => void purge(project)}
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * Purge is the one button on this page with no undo, so it does not sit in the
+ * same row as Restore where a mis-click costs a project. It gets its own
+ * section, its own colour, and its own sentence about what it destroys.
+ */
+function DangerZone({
+  projects,
+  busy,
+  onPurge,
+}: {
+  projects: TrashedProject[];
+  busy: string | null;
+  onPurge: (project: TrashedProject) => void;
+}) {
+  return (
+    <section class="rounded-lg border border-accent-red/30 bg-accent-red/[0.05] overflow-hidden">
+      <header class="px-4 py-3 border-b border-accent-red/20 flex items-start gap-3">
+        <div class="mt-0.5 w-9 h-9 rounded-md bg-accent-red/[0.12] border border-accent-red/30 grid place-items-center flex-none">
+          <AlertCircle class="w-4 h-4 text-accent-red" />
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="text-[14.5px] font-semibold text-accent-red">Danger zone</div>
+          <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug">
+            Purging deletes the trashed workspace, the agent homes, every snapshot of the
+            project, its members and its secrets. There is no undo and no restore.
+          </div>
+        </div>
+      </header>
+
+      <div class="p-3 space-y-2">
+        {projects.map((project) => (
+          <div
+            key={project.id}
+            class="rounded-md border border-accent-red/20 bg-[#101318] px-3 py-2.5 flex items-center gap-3"
+          >
+            <div class="flex-1 min-w-0">
+              <div class="text-[13px] font-medium text-ink-50 truncate">{project.name}</div>
+              <div class="mt-0.5 text-[11.5px] text-ink-400 font-mono truncate">{project.slug}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onPurge(project)}
+              disabled={busy === project.id}
+              class="h-8 px-3 rounded-md border border-accent-red/40 bg-accent-red/[0.12] text-[12.5px]
+                     font-semibold text-accent-red hover:bg-accent-red/[0.2] disabled:opacity-45 flex-none"
+            >
+              Purge forever
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
 function TrashedProjectRow({
   project,
   now,
-  isAdmin,
   busy,
   onRestore,
-  onPurge,
 }: {
   project: TrashedProject;
   now: number;
-  isAdmin: boolean;
   busy: boolean;
   onRestore: () => void;
-  onPurge: () => void;
 }) {
   const days = snapshotState.daysLeft(project, now);
   const urgent = days !== null && days <= 1;
@@ -155,17 +212,6 @@ function TrashedProjectRow({
           {busy ? <Loader class="w-3.5 h-3.5 animate-spin" /> : <RotateCcw class="w-3.5 h-3.5" />}
           Restore
         </button>
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={onPurge}
-            disabled={busy}
-            class="h-8 px-2.5 rounded-md border border-accent-red/30 bg-accent-red/[0.08] text-[12.5px]
-                   font-medium text-accent-red hover:bg-accent-red/[0.14] disabled:opacity-45"
-          >
-            Purge
-          </button>
-        )}
       </div>
     </div>
   );

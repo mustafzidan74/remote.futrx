@@ -62,22 +62,20 @@ export function TestMenu({
         type="button"
         onClick={() => setOpen((value) => !value)}
         disabled={disabled}
-        class={`codex-test-menu flex h-7 items-center gap-1.5 rounded-md px-2 transition
-                disabled:cursor-not-allowed disabled:opacity-40
-                ${open ? "bg-white/[0.1] text-ink-50" : "bg-white/[0.045] text-ink-200 hover:bg-white/[0.08]"}`}
+        class={`codex-test-menu composer-pill ${open ? "composer-pill-active" : ""}`}
         aria-haspopup="menu"
         aria-expanded={open}
         title="Run a Playwright check now"
       >
-        <TestTube class="h-3 w-3 flex-none" aria-hidden="true" />
-        <span class="text-[11.5px] font-semibold">Test</span>
-        <ChevronDown class="h-3 w-3 flex-none" aria-hidden="true" />
+        <TestTube class="h-4 w-4 flex-none text-ink-400" aria-hidden="true" />
+        <span class="font-semibold text-ink-100">Test</span>
+        <ChevronDown class="h-4 w-4 flex-none text-ink-400" aria-hidden="true" />
       </button>
 
       {open && (
         <div
-          class="theme-menu-surface absolute left-0 bottom-full z-40 mb-2 w-[min(22rem,calc(100vw-1.5rem))]
-                 overflow-hidden rounded-lg border border-white/10 bg-[#14161d] shadow-2xl sm:left-auto sm:right-0"
+          class="popover-surface theme-menu-surface absolute left-0 bottom-full z-40 mb-2
+                 w-[min(22rem,calc(100vw-1.5rem))] sm:left-auto sm:right-0"
           role="menu"
         >
           <div class="border-b border-white/10 bg-[#191a1f] px-3 py-2 text-[11px] leading-4 text-ink-400">

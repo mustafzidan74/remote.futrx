@@ -252,7 +252,7 @@ function UserRow({
             type="button"
             onClick={toggleRole}
             disabled={busy}
-            class="h-7 px-2 rounded text-[11px] text-ink-300 hover:text-ink-100 hover:bg-white/[0.08] disabled:opacity-50"
+            class="h-8 px-2 rounded text-[11px] text-ink-300 hover:text-ink-100 hover:bg-white/[0.08] disabled:opacity-50"
             title={user.role === "admin" ? "Demote to member" : "Promote to admin"}
           >
             {user.role === "admin" ? "demote" : "promote"}
@@ -261,7 +261,7 @@ function UserRow({
             type="button"
             onClick={remove}
             disabled={busy}
-            class="h-7 w-7 rounded text-ink-300 hover:text-accent-red hover:bg-white/[0.08] grid place-items-center disabled:opacity-50"
+            class="h-8 w-8 rounded text-ink-300 hover:text-accent-red hover:bg-white/[0.08] grid place-items-center disabled:opacity-50"
             aria-label={`Remove ${user.email}`}
             title="Remove user"
           >

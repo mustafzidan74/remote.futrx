@@ -74,3 +74,6 @@ export const PlaneTakeoff = (p: P) => (<svg {...base} {...p}><path d="M2 22h20M3
 export const TestTube = (p: P) => (<svg {...base} {...p}><path d="M14.5 2v14.5a3.5 3.5 0 0 1-7 0V2M6 2h10M8 12h6"/></svg>);
 export const Mic = (p: P) => (<svg {...base} {...p}><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg>);
 export const MicOff = (p: P) => (<svg {...base} {...p}><path d="M9 9v-4a3 3 0 0 1 5.6-1.5M15 9.3V5M5 10a7 7 0 0 0 10.7 6M19 10a7 7 0 0 1-.6 2.8M12 17v4M8 21h8"/><path d="m2 2 20 20"/></svg>);
+export const MoreHorizontal = (p: P) => (<svg {...base} {...p}><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>);
+export const Command = (p: P) => (<svg {...base} {...p}><path d="M15 6a3 3 0 1 1 3 3h-3zM9 6a3 3 0 1 0-3 3h3zM9 18a3 3 0 1 1-3-3h3zM15 18a3 3 0 1 0 3-3h-3zM9 9h6v6H9z"/></svg>);
+export const Keyboard = (p: P) => (<svg {...base} {...p}><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M9 14h6"/></svg>);

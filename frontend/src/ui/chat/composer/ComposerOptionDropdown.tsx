@@ -66,29 +66,22 @@ export function ComposerOptionDropdown<T extends string>({
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        class={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-60
-                ${open ? "bg-accent-blue/[0.14] text-accent-blue" : "bg-white/[0.045] text-ink-200 hover:bg-white/[0.075] hover:text-ink-100"}`}
+        class={`composer-pill ${open ? "composer-pill-active" : ""}`}
         disabled={disabled}
         title={`${label}: ${selected?.label || "Auto"}`}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span
-          class="inline-flex h-4 w-4 flex-none items-center justify-center text-ink-400"
-          title={label}
-          aria-label={label}
-        >
-          <Icon class="h-3 w-3" />
-        </span>
+        <Icon class="h-4 w-4 flex-none text-ink-400" aria-hidden="true" />
         <span class="sr-only">{label}</span>
-        <span class="max-w-[5.5rem] truncate font-semibold text-ink-100">{selected?.label || "Auto"}</span>
-        <ChevronDown class="h-3 w-3 flex-none text-ink-400" />
+        <span class="max-w-[6rem] truncate font-semibold text-ink-100">{selected?.label || "Auto"}</span>
+        <ChevronDown class="h-4 w-4 flex-none text-ink-400" aria-hidden="true" />
       </button>
 
       {open && (
         <div
           ref={menuRef}
-          class={`theme-menu-surface absolute bottom-full z-40 mb-1.5 w-[min(10rem,calc(100vw-1.5rem))] rounded-lg border border-white/10 bg-[#14161d] p-1 shadow-2xl
+          class={`popover-surface theme-menu-surface absolute bottom-full z-40 mb-1.5 w-[min(10rem,calc(100vw-1.5rem))] p-1
                   ${menuAlignment === "end" ? "right-0" : "left-0"}`}
           role="listbox"
         >

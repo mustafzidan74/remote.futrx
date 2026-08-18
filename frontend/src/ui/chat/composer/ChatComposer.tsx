@@ -1,7 +1,6 @@
 import type { RefObject } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { useVoiceInput } from "../../../state/hooks/chat/useVoiceInput";
-import { modelDisplayLabel, providerDisplayLabel } from "../../../config/chat";
 import type { QueuedPrompt, SelectedSkill } from "../../../models/chat";
 import type { RegisteredSkill } from "../../../models/skill";
 import type { Attachment } from "../../../models/upload";
@@ -14,10 +13,10 @@ import { AttachmentTray } from "./AttachmentTray";
 import { AttachButton } from "./AttachButton";
 import { ComposerAgentControls } from "./ComposerAgentControls";
 import { ComposerDropOverlay } from "./ComposerDropOverlay";
-import { ComposerExecutionControls } from "./ComposerExecutionControls";
 import { ComposerStatusNote } from "./ComposerStatusNote";
 import { PromptTextarea } from "./PromptTextarea";
 import { QueuedPromptList } from "./QueuedPromptList";
+import { RunOptionsPopover } from "./RunOptionsPopover";
 import { SelectedSkillChips } from "./SelectedSkillChips";
 import { SendControls } from "./SendControls";
 import { SlashCommandMenu } from "./SlashCommandMenu";
@@ -83,7 +82,9 @@ export function ChatComposer({
   onSelectSkill,
   onRemoveSelectedSkill,
 }: ChatComposerProps) {
-  const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false);
+  // Phones show the agent pill and Run options; skills, playbooks and tests
+  // wait behind the overflow button rather than wrapping the toolbar.
+  const [overflowOpen, setOverflowOpen] = useState(false);
   const disconnected = !canSendPrompt && !streaming;
   // Dictation writes into the same draft the textarea does, so it lives here
   // rather than in the container: everything it needs is already a prop.
@@ -130,10 +131,9 @@ export function ChatComposer({
   }
   const hasContent = text.trim().length > 0 || attachments.some((attachment) => attachment.serverPath);
   const canSend = !uploading && !disconnected && hasContent;
-  const settingsSummary = `${providerDisplayLabel(preferences.provider)} · ${modelDisplayLabel(preferences.model, preferences.provider)}`;
 
-  function toggleMobileSettings() {
-    setMobileSettingsOpen((open) => {
+  function toggleOverflow() {
+    setOverflowOpen((open) => {
       if (!open) textareaRef.current?.blur();
       return !open;
     });
@@ -224,22 +224,6 @@ export function ChatComposer({
             onCaretChange={slash.syncCaret}
             lang={voice.languageTag}
           />
-          <button
-            type="button"
-            onClick={toggleMobileSettings}
-            class={`codex-mobile-settings-trigger min-w-0 items-center gap-1.5 rounded-full border px-3 text-left transition md:hidden
-                    ${mobileSettingsOpen ? "border-accent-blue/40 bg-accent-blue/[0.12] text-accent-blue" : "border-white/10 bg-white/[0.045] text-ink-200"}`}
-            aria-label={`${mobileSettingsOpen ? "Hide" : "Show"} composer settings. ${settingsSummary}`}
-            aria-controls="mobile-composer-settings"
-            aria-expanded={mobileSettingsOpen}
-          >
-            <Settings class="h-3.5 w-3.5 flex-none" aria-hidden="true" />
-            <span class="min-w-0 flex-1 truncate text-[12px] font-semibold">{settingsSummary}</span>
-            <ChevronDown
-              class={`h-3 w-3 flex-none transition-transform ${mobileSettingsOpen ? "rotate-180" : ""}`}
-              aria-hidden="true"
-            />
-          </button>
           <VoiceInputButton voice={voice} disabled={uploading || disconnected} />
           <SendControls
             streaming={streaming}
@@ -249,42 +233,7 @@ export function ChatComposer({
           />
         </form>
 
-        {mobileSettingsOpen && (
-          <div
-            id="mobile-composer-settings"
-            class="codex-mobile-settings-panel border-t border-white/[0.07] px-2.5 pb-2.5 pt-2 md:hidden"
-            role="group"
-            aria-label="Composer settings"
-          >
-            <div class="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-400">
-              Agent and model
-            </div>
-            <ComposerAgentControls
-              projectId={projectId}
-              model={preferences.model}
-              provider={preferences.provider}
-              streaming={streaming}
-              selectedSkills={selectedSkills}
-              playbooks={playbooks}
-              onSelectSkill={onSelectSkill}
-              onProviderChange={preferenceActions.changeProvider}
-              onModelChange={preferenceActions.changeModel}
-            />
-
-            <div class="mb-1.5 mt-2.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-400">
-              Execution
-            </div>
-            <ComposerExecutionControls
-              preferences={preferences}
-              preferenceActions={preferenceActions}
-              policies={policies}
-              canSendPrompt={canSendPrompt}
-              streaming={streaming}
-            />
-          </div>
-        )}
-
-        <div class="codex-composer-control-deck hidden min-w-0 flex-wrap items-center justify-between gap-1.5 border-t border-white/[0.07] px-2 py-1.5 md:flex">
+        <div class="codex-composer-control-deck flex min-w-0 flex-wrap items-center gap-1.5 border-t border-white/[0.07] px-2 py-1.5">
           <ComposerAgentControls
             projectId={projectId}
             model={preferences.model}
@@ -292,16 +241,19 @@ export function ChatComposer({
             streaming={streaming}
             selectedSkills={selectedSkills}
             playbooks={playbooks}
+            testDisabled={!canSendPrompt || streaming}
+            secondaryOpen={overflowOpen}
+            onToggleSecondary={toggleOverflow}
+            onSendTest={policies.sendTest}
             onSelectSkill={onSelectSkill}
             onProviderChange={preferenceActions.changeProvider}
             onModelChange={preferenceActions.changeModel}
           />
 
-          <ComposerExecutionControls
+          <RunOptionsPopover
             preferences={preferences}
             preferenceActions={preferenceActions}
             policies={policies}
-            canSendPrompt={canSendPrompt}
             streaming={streaming}
           />
         </div>

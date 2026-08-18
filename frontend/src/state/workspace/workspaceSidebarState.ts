@@ -3,6 +3,15 @@ import type { ProjectMeta } from "../../models/project";
 
 const SIDEBAR_COLLAPSED_KEY = "remote.futrx.sidebarCollapsed";
 
+/** How many cross-project chats the "Recent" strip offers. */
+export const RECENT_CHAT_LIMIT = 5;
+
+/**
+ * With one project the sidebar already is the recent list, so the strip only
+ * earns its space once chats are spread across several projects.
+ */
+export const RECENT_CHATS_MIN_PROJECTS = 2;
+
 export interface ProjectSidebarNode {
   project: ProjectMeta;
   chats: ChatMeta[];
@@ -12,6 +21,8 @@ export interface ProjectSidebarNode {
 export interface WorkspaceSidebarModel {
   visibleProjects: ProjectSidebarNode[];
   visibleLooseChats: ChatMeta[];
+  /** Newest chats across every project; empty while searching or with one project. */
+  recentChats: ChatMeta[];
   totalChats: number;
   totalProjects: number;
   hasMatches: boolean;
@@ -65,11 +76,35 @@ class WorkspaceSidebarState {
     return {
       visibleProjects,
       visibleLooseChats,
+      // A search already answers "where is that chat"; the strip is for the
+      // other question, "what was I doing", so it steps aside while filtering.
+      recentChats:
+        query || projects.length < RECENT_CHATS_MIN_PROJECTS ? [] : this.recentChats(chats),
       totalChats: chats.length,
       totalProjects: projects.length,
       hasMatches: visibleProjects.length > 0 || visibleLooseChats.length > 0,
       query,
     };
+  }
+
+  /** The newest chats across every project, for the sidebar strip. */
+  recentChats(chats: ChatMeta[], limit = RECENT_CHAT_LIMIT): ChatMeta[] {
+    return [...chats]
+      .sort((left, right) => (right.lastMessageAt || 0) - (left.lastMessageAt || 0))
+      .slice(0, limit);
+  }
+
+  /**
+   * The chat a project row opens: its newest one, or null when the project has
+   * none and the row should start a chat instead.
+   */
+  mostRecentChatId(chats: ChatMeta[], projectId: string): string | null {
+    let newest: ChatMeta | null = null;
+    for (const chat of chats) {
+      if (chat.projectId !== projectId) continue;
+      if (!newest || (chat.lastMessageAt || 0) > (newest.lastMessageAt || 0)) newest = chat;
+    }
+    return newest?.id ?? null;
   }
 
   collapsedProjects(projects: ProjectMeta[], chats: ChatMeta[]): Record<string, boolean> {

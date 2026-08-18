@@ -194,7 +194,7 @@ export function GlobalSkillsSettings({
                       onClick={() => void library.setAlwaysOn(skill.name, !skill.alwaysOn)}
                       disabled={busy}
                       title={skill.alwaysOn ? "Stop auto-selecting in new chats" : "Auto-select in every new chat"}
-                      class={`inline-flex h-7 items-center gap-1 rounded px-2 text-[11.5px] disabled:opacity-50 ${
+                      class={`inline-flex h-8 items-center gap-1 rounded px-2 text-[11.5px] disabled:opacity-50 ${
                         skill.alwaysOn
                           ? "bg-accent-blue/[0.16] text-accent-blue hover:bg-accent-blue/[0.22]"
                           : "text-ink-400 hover:bg-white/[0.08] hover:text-ink-100"
@@ -206,7 +206,7 @@ export function GlobalSkillsSettings({
                       type="button"
                       onClick={() => void startEdit(skill)}
                       disabled={busy}
-                      class="inline-flex h-7 w-7 items-center justify-center rounded text-ink-400 hover:bg-white/[0.08] hover:text-ink-100 disabled:opacity-50"
+                      class="inline-flex h-8 w-8 items-center justify-center rounded text-ink-400 hover:bg-white/[0.08] hover:text-ink-100 disabled:opacity-50"
                       title={`Edit ${skill.name}`}
                       aria-label={`Edit ${skill.name}`}
                     >
@@ -216,7 +216,7 @@ export function GlobalSkillsSettings({
                       type="button"
                       onClick={() => void removeSkill(skill.name)}
                       disabled={busy}
-                      class="inline-flex h-7 w-7 items-center justify-center rounded text-ink-400 hover:bg-red-500/15 hover:text-red-300 disabled:opacity-50"
+                      class="inline-flex h-8 w-8 items-center justify-center rounded text-ink-400 hover:bg-red-500/15 hover:text-red-300 disabled:opacity-50"
                       title={`Delete ${skill.name}`}
                       aria-label={`Delete ${skill.name}`}
                     >

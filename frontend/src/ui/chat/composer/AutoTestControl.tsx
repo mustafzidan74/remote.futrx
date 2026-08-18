@@ -34,30 +34,26 @@ export function AutoTestControl({
         type="button"
         onClick={() => setOpen((value) => !value)}
         disabled={busy}
-        class={`codex-autotest-control flex h-7 items-center gap-1.5 rounded-md px-2 transition
-                disabled:cursor-not-allowed disabled:opacity-40
-                ${
-                  enabled
-                    ? "bg-accent-green/[0.18] text-accent-green"
-                    : "bg-white/[0.045] text-ink-200 hover:bg-white/[0.08]"
-                }`}
+        class={`codex-autotest-control composer-pill ${
+          enabled ? "bg-accent-green/[0.18] text-accent-green hover:bg-accent-green/[0.24]" : ""
+        }`}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={`Auto-test — ${enabled ? "on" : "off"}`}
         title="Auto-test — verify every change with Playwright"
       >
         {busy ? (
-          <Loader class="h-3 w-3 flex-none animate-spin" />
+          <Loader class="h-4 w-4 flex-none animate-spin" />
         ) : (
-          <TestTube class="h-3 w-3 flex-none" aria-hidden="true" />
+          <TestTube class="h-4 w-4 flex-none" aria-hidden="true" />
         )}
-        <span class="text-[11.5px] font-semibold">Auto-test</span>
+        <span class="font-semibold">Auto-test</span>
       </button>
 
       {open && (
         <div
-          class="theme-menu-surface absolute left-0 bottom-full z-40 mb-2 w-[min(20rem,calc(100vw-1.5rem))]
-                 overflow-hidden rounded-lg border border-white/10 bg-[#14161d] shadow-2xl sm:left-auto sm:right-0"
+          class="popover-surface theme-menu-surface absolute left-0 bottom-full z-40 mb-2
+                 w-[min(20rem,calc(100vw-1.5rem))] sm:left-auto sm:right-0"
           role="dialog"
           aria-label="Auto-test settings"
         >

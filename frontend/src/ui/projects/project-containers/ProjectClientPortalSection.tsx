@@ -238,7 +238,7 @@ function IssuedPortalLink({ url, onDismiss }: { url: string; onDismiss: () => vo
         <button
           type="button"
           onClick={onDismiss}
-          class="h-7 w-7 ml-auto rounded text-ink-300 hover:text-ink-50 hover:bg-white/[0.08] grid place-items-center"
+          class="h-8 w-8 ml-auto rounded text-ink-300 hover:text-ink-50 hover:bg-white/[0.08] grid place-items-center"
           aria-label="Hide link"
           title="Hide link"
         >

@@ -39,8 +39,8 @@ interface WorkspaceContextValue {
   openSidebar: () => void;
   closeSidebar: () => void;
   showChat: () => void;
-  showSettings: () => void;
-  showProjectContainers: (projectId: string | null) => void;
+  showSettings: (tab?: string) => void;
+  showProjectContainers: (projectId: string | null, tab?: string) => void;
   newProject: NewProjectState;
   openNewProject: () => void;
   closeNewProject: () => void;
@@ -221,9 +221,9 @@ export function WorkspaceProvider({
         openSidebar: () => dispatch({ type: "open-sidebar" }),
         closeSidebar: () => dispatch({ type: "close-sidebar" }),
         showChat: () => dispatch({ type: "show-chat" }),
-        showSettings: () => dispatch({ type: "show-settings" }),
-        showProjectContainers: (projectId) =>
-          dispatch({ type: "show-project-containers", projectId }),
+        showSettings: (tab) => dispatch({ type: "show-settings", tab }),
+        showProjectContainers: (projectId, tab) =>
+          dispatch({ type: "show-project-containers", projectId, tab }),
         newProject,
         openNewProject,
         closeNewProject: () => dispatchNewProject({ type: "close" }),

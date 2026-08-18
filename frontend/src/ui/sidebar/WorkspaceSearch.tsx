@@ -62,7 +62,7 @@ export function WorkspaceSearch({
         <button
           type="button"
           onClick={onClear}
-          class="w-7 h-7 grid place-items-center rounded text-ink-300 hover:bg-white/10 hover:text-ink-100"
+          class="w-8 h-8 grid place-items-center rounded text-ink-300 hover:bg-white/10 hover:text-ink-100"
           aria-label="Clear search"
         >
           <X class="w-3.5 h-3.5" />

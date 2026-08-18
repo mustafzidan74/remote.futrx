@@ -1,6 +1,7 @@
-import { useCallback, useState } from "preact/hooks";
+import { useCallback, useEffect, useState } from "preact/hooks";
 import {
   ProjectContainersPage,
+  isProjectSettingsTab,
   type ProjectSettingsTab,
 } from "../../ui/projects/ProjectContainersPage";
 import type { ProjectMeta } from "../../models/project";
@@ -13,6 +14,7 @@ export function ProjectContainersContainer({
   projects,
   health,
   selectedProjectId,
+  requestedTab,
   onBack,
   onHamburger,
   onDeleteProject,
@@ -20,11 +22,18 @@ export function ProjectContainersContainer({
   projects: ProjectMeta[];
   health: ProjectHealthMap;
   selectedProjectId: string | null;
+  /** Tab the caller asked for (the command palette does), or null for the last one. */
+  requestedTab: string | null;
   onBack: () => void;
   onHamburger: () => void;
   onDeleteProject: (projectId: string) => Promise<void>;
 }) {
   const [activeTab, setActiveTab] = useState<ProjectSettingsTab>("info");
+
+  useEffect(() => {
+    if (isProjectSettingsTab(requestedTab)) setActiveTab(requestedTab);
+  }, [requestedTab, selectedProjectId]);
+
   const controller = useProjectContainersController(
     projects,
     selectedProjectId,

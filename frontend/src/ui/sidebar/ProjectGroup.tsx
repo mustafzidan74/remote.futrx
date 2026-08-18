@@ -14,6 +14,7 @@ export function ProjectGroup({
   activeChatId,
   collapsed,
   onToggle,
+  onOpenProject,
   onNewChat,
   onOpenContainer,
   onSelectChat,
@@ -35,6 +36,8 @@ export function ProjectGroup({
   activeChatId: string | null;
   collapsed: boolean;
   onToggle: () => void;
+  /** Opens the project's newest chat, or starts one when it has none. */
+  onOpenProject: () => void;
   onNewChat: () => void;
   onOpenContainer: () => void;
   onSelectChat: (chatId: string) => void;
@@ -83,15 +86,28 @@ export function ProjectGroup({
           {hasUnread && (
             <span class="flex-none w-2 h-2 rounded-full bg-accent-green animate-pulse shadow-[0_0_0_3px_rgba(43,213,118,0.12)]" title="Unread chats" />
           )}
-          <div class="flex-1 min-w-0">
+          {/*
+            Clicking the name opens the project's newest chat, which is what
+            "open this project" means in practice; the chevron still expands
+            the group and the gear still opens the settings page.
+          */}
+          <button
+            type="button"
+            onClick={onOpenProject}
+            class="flex-1 min-w-0 text-left"
+            title={
+              chats.length > 0
+                ? `Open the latest chat in ${project.name}`
+                : `Start a chat in ${project.name}`
+            }
+          >
             <div
               dir="auto"
-              title={project.name}
               class="bidi-auto text-[13.5px] leading-tight truncate font-medium text-ink-100"
             >
               {project.name}
             </div>
-            <div class="text-[11px] text-ink-300 truncate font-mono" title={project.slug}>
+            <div class="text-[11px] text-ink-300 truncate font-mono">
               {project.slug}
               {chats.length > 0 && (
                 <span class="ms-1.5 tabular-nums">
@@ -99,7 +115,7 @@ export function ProjectGroup({
                 </span>
               )}
             </div>
-          </div>
+          </button>
         </div>
         <div class="sidebar-project-row-actions hover-actions">
           <button
@@ -145,7 +161,7 @@ export function ProjectGroup({
               type="button"
               onClick={onNewChat}
               disabled={provisioning}
-              class="ml-2 mt-1 mb-2 inline-flex items-center gap-1.5 h-7 px-2 rounded
+              class="ml-2 mt-1 mb-2 inline-flex items-center gap-1.5 h-8 px-2 rounded
                      text-[12px] text-ink-300 hover:text-ink-100 hover:bg-white/[0.06]
                      disabled:opacity-40 disabled:cursor-not-allowed"
             >

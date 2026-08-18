@@ -12,7 +12,12 @@ import type { ServerInfo } from "../../models/serverInfo";
 import type { FleetResourcesView, FleetSettings } from "../../models/resources";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import type { ComponentType } from "preact";
-import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Globe, Info, Key, Menu, Mic, Monitor, Server, Trash, Users, Zap } from "../primitives/icons";
+import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Globe, Info, Key, Menu, Mic, Monitor, Search, Server, Trash, Users, X, Zap } from "../primitives/icons";
+import { useState } from "preact/hooks";
+import {
+  firstSettingsMatch,
+  matchingSettingsTabIds,
+} from "../../state/settings/settingsNavState";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { ReplyLanguagePreference } from "./ReplyLanguagePreference";
 import { ReplyPreferencesSettings } from "./ReplyPreferencesSettings";
@@ -68,13 +73,15 @@ const GROUP_LABELS: Array<{ id: SettingsTabGroup; label: string }> = [
   { id: "system", label: "System" },
 ];
 
-const tabs: Array<{
+export interface SettingsTabDescriptor {
   id: SettingsTab;
   group: SettingsTabGroup;
   label: string;
   description: string;
   Icon: ComponentType<{ class?: string }>;
-}> = [
+}
+
+const tabs: SettingsTabDescriptor[] = [
   {
     id: "appearance",
     group: "personal",
@@ -189,6 +196,16 @@ const tabs: Array<{
     Icon: Info,
   },
 ];
+
+/**
+ * The destinations, in reading order. Exported because the command palette
+ * lists the same pages and must not keep its own copy of their names.
+ */
+export const SETTINGS_TABS: readonly SettingsTabDescriptor[] = orderedTabs();
+
+export function isSettingsTab(id: string | null): id is SettingsTab {
+  return !!id && tabs.some((tab) => tab.id === id);
+}
 
 export function SettingsPage({
   activeTab,
@@ -593,7 +610,19 @@ function SettingsNavigation({
   mobile?: boolean;
   className: string;
 }) {
-  const order = orderedTabs();
+  // Search filters the desktop column only: the phone nav is already a single
+  // swipeable strip, and a text field above it would cost more room than the
+  // whole list it filters.
+  const [query, setQuery] = useState("");
+  const matches = matchingSettingsTabIds(tabs, mobile ? "" : query);
+  const order = orderedTabs().filter((tab) => matches.has(tab.id));
+
+  function jumpToFirstMatch(event: KeyboardEvent) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    const first = firstSettingsMatch(orderedTabs(), query);
+    if (first) onTabChange(first.id);
+  }
 
   // Roving tabindex without arrow keys leaves every tab but the active one
   // unreachable, so the tablist handles the arrows, Home and End itself.
@@ -645,6 +674,34 @@ function SettingsNavigation({
 
   return (
     <aside class={className} aria-label="Settings sections">
+      <label class="mb-3 flex h-9 flex-none items-center gap-2 rounded-md border border-white/10 bg-[#0b0d11] px-2.5 transition-colors focus-within:border-accent-blue/70">
+        <Search class="h-4 w-4 flex-none text-ink-400" aria-hidden="true" />
+        <input
+          value={query}
+          onInput={(event) => setQuery((event.currentTarget as HTMLInputElement).value)}
+          onKeyDown={jumpToFirstMatch}
+          placeholder="Search settings"
+          aria-label="Search settings"
+          class="min-w-0 flex-1 bg-transparent text-[13px] text-ink-100 placeholder:text-ink-400 focus:outline-none"
+          autocomplete="off"
+          spellcheck={false}
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            class="grid h-6 w-6 flex-none place-items-center rounded text-ink-300 hover:bg-white/10 hover:text-ink-100"
+            aria-label="Clear settings search"
+          >
+            <X class="h-3.5 w-3.5" />
+          </button>
+        )}
+      </label>
+
+      {order.length === 0 && (
+        <p class="px-3 py-2 text-[12.5px] text-ink-400">No settings match that.</p>
+      )}
+
       <nav
         class="w-full space-y-3"
         role="tablist"
@@ -652,7 +709,7 @@ function SettingsNavigation({
         onKeyDown={onKeyDown}
       >
         {GROUP_LABELS.map((group) => {
-          const groupTabs = tabsInGroup(group.id);
+          const groupTabs = tabsInGroup(group.id).filter((tab) => matches.has(tab.id));
           if (groupTabs.length === 0) return null;
           // `presentation` keeps the buttons direct children of the tablist in
           // the accessibility tree; the heading is a visual affordance only.
