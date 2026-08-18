@@ -1,3 +1,5 @@
+import type { SyntheticKind } from "./chat";
+
 export type AssistantMessagePart =
   | { kind: "text"; text: string }
   | {
@@ -19,6 +21,6 @@ export type AssistantMessageBlock = {
 };
 
 export type ChatMessageBlock =
-  | { type: "user"; text: string; t: number }
+  | { type: "user"; text: string; t: number; synthetic?: SyntheticKind }
   | AssistantMessageBlock
   | { type: "error"; message: string; t: number };

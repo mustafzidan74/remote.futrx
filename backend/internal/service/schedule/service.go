@@ -218,6 +218,28 @@ func (s *Service) List(ctx context.Context, callerEmail string, isAdmin bool) ([
 	return filtered, nil
 }
 
+// HasTasksForChat reports whether any scheduled task drives this chat. It is
+// an unauthorized, whole-catalog question on purpose: the post-run driver asks
+// it to stay out of a chat the scheduler owns, and a task it could not see
+// would still collide with it.
+func (s *Service) HasTasksForChat(ctx context.Context, chatID servicechat.ID) bool {
+	if s == nil || chatID == "" {
+		return false
+	}
+	tasks, err := s.repo.List(ctx)
+	if err != nil {
+		// An unreadable catalog is treated as "there might be one". Skipping
+		// a follow-up costs a round; racing the scheduler corrupts a chat.
+		return true
+	}
+	for _, task := range tasks {
+		if task.ChatID == chatID {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Service) Get(
 	ctx context.Context,
 	id ID,

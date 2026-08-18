@@ -15,6 +15,7 @@ import { useChatBrowserController } from "../../state/hooks/chat/useChatBrowserC
 import { useChatComposerController } from "../../state/hooks/chat/useChatComposerController";
 import { useChatDrawerController } from "../../state/hooks/chat/useChatDrawerController";
 import { useChatKeyboardShortcuts } from "../../state/hooks/chat/useChatKeyboardShortcuts";
+import { useChatPolicies } from "../../state/hooks/chat/useChatPolicies";
 import { useChatPreferences } from "../../state/hooks/chat/useChatPreferences";
 import { useChatReadMarker } from "../../state/hooks/chat/useChatReadMarker";
 import { usePlaybooks } from "../../state/hooks/chat/usePlaybooks";
@@ -105,6 +106,16 @@ export function ChatContainer({
     insertPrompt: composer.insertText,
     submitPrompt: composer.submitText,
   });
+  // Post-run policies. `displayMeta` is the optimistic merge of the loaded
+  // chat and the local preference edits, which is also what the workspace
+  // socket refreshes when the driver spends a round — so the pill and the
+  // popover follow an unattended loop without polling.
+  const policies = useChatPolicies({
+    chat: displayMeta,
+    streaming: status === "streaming",
+    applyMeta,
+    sendPrompt: (text) => composer.submitTest(text),
+  });
   const drawers = useChatDrawerController({
     chatId: chat.id,
     showBrowser: browser.openBrowserDrawer,
@@ -185,6 +196,7 @@ export function ChatContainer({
     queuedPrompts: composer.queue.queuedPrompts,
     selectedSkills,
     playbooks,
+    policies,
     attachments: composer.upload.attachments,
     uploading: composer.upload.uploading,
     dragging: composer.drag.dragging,
@@ -215,6 +227,7 @@ export function ChatContainer({
             status={status}
             error={error}
             composer={composerView}
+            policies={policies}
             showJump={composer.scroll.showJump}
             scrollRef={composer.scroll.scrollRef}
             contentRef={composer.scroll.contentRef}

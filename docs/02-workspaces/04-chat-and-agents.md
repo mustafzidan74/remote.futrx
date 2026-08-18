@@ -170,6 +170,7 @@ chat. Loose chats have no container and therefore no global skills. See
 | Rewind | Deletes the selected event and everything after it; unavailable while running |
 | Delete | Cancels an active run, then removes chat metadata and history |
 | Load older | Pages backward through the JSONL event log |
+| Autopilot / Auto-test | Per-chat post-run policies: keep prompting until the agent reports `<<DONE>>`, and verify each change with Playwright. Both default off — see [Autopilot and auto-test](15-autopilot-and-auto-test.md) |
 
 Draft text and queued prompts are mirrored into per-tab `sessionStorage` by
 chat ID. They survive switching chats, navigation, and reloads in the same tab,
@@ -189,6 +190,18 @@ Interactive turns receive a short-lived `manage` capability only when the
 start paused and require a human **Arm** action. See
 [Scheduled tasks](06-scheduled-tasks.md).
 
+## Post-run policies
+
+A chat can carry two policies that act after a turn settles: **autopilot**
+sends one more "keep going" prompt while the agent has not declared the goal
+complete, and **auto-test** asks for a Playwright verification pass. Both are
+driven by a `RunObserver` on the prompt service
+([`internal/service/postrun`](../../backend/internal/service/postrun)), both
+respect the one-run-per-chat lock, and neither applies to a chat a scheduled
+task drives. Their synthetic prompts are stored as ordinary `user` events
+carrying a `synthetic` label, which is what the transcript badges. See
+[Autopilot and auto-test](15-autopilot-and-auto-test.md).
+
 ## Rewind and fresh-session context
 
 Rewind clears provider session IDs. On the next run, the backend converts remaining user and assistant text into a bounded visible transcript and prepends it to the current request. This keeps the visible conversation meaningful while avoiding a resume into the discarded provider session.
@@ -198,6 +211,7 @@ Rewind clears provider session IDs. On the next run, the backend converts remain
 - Chat service: [`backend/internal/service/chat/service.go`](../../backend/internal/service/chat/service.go)
 - Prompt service: [`backend/internal/service/prompt/service.go`](../../backend/internal/service/prompt/service.go)
 - Run hub: [`backend/internal/service/runhub/hub.go`](../../backend/internal/service/runhub/hub.go)
+- Post-run driver: [`backend/internal/service/postrun/driver.go`](../../backend/internal/service/postrun/driver.go)
 - Agent model: [`backend/internal/agent/model.go`](../../backend/internal/agent/model.go)
 - Skill catalog: [`backend/internal/service/skills/catalog.go`](../../backend/internal/service/skills/catalog.go)
 - Global skills library: [`backend/internal/service/skills/global.go`](../../backend/internal/service/skills/global.go)

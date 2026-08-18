@@ -9,6 +9,7 @@ import (
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicehealth "github.com/futrx-com/remote.futrx.com/internal/service/health"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
+	servicepostrun "github.com/futrx-com/remote.futrx.com/internal/service/postrun"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	"github.com/futrx-com/remote.futrx.com/internal/service/prompt"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
@@ -33,6 +34,7 @@ var (
 	_ prompt.RunObserver          = (*notifyObserver)(nil)
 	_ serviceschedule.RunObserver = (*notifyObserver)(nil)
 	_ servicehealth.Alerter       = (*notifyObserver)(nil)
+	_ servicepostrun.Notifier     = (*notifyObserver)(nil)
 )
 
 // RunSettled reports a finished interactive run. Scheduled runs are skipped:
@@ -49,6 +51,21 @@ func (o *notifyObserver) RunSettled(ctx context.Context, outcome prompt.RunOutco
 		DedupeKey: fmt.Sprintf("run:%s:%d", outcome.ChatID, outcome.RunID),
 	}
 	o.describeChat(ctx, outcome.ChatID, &event)
+	o.notifications.Publish(event)
+}
+
+// PublishChatEvent delivers an event another service composed, filling in the
+// chat and project identity it cannot see. The post-run driver uses it to
+// report an autopilot loop that stopped.
+func (o *notifyObserver) PublishChatEvent(
+	ctx context.Context,
+	chatID servicechat.ID,
+	event servicenotify.Event,
+) {
+	if o == nil {
+		return
+	}
+	o.describeChat(ctx, chatID, &event)
 	o.notifications.Publish(event)
 }
 

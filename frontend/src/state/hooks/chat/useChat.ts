@@ -7,6 +7,7 @@ import type {
   ChatMeta,
   ChatStatus,
   PromptOutcome,
+  SyntheticKind,
 } from "../../../models/chat";
 import {
   chatEventStateProjector,
@@ -27,7 +28,7 @@ interface UseChatResult {
   status: ChatStatus;
   error: string | null;
   canSendPrompt: boolean;
-  sendPrompt: (text: string, clientId?: string) => boolean;
+  sendPrompt: (text: string, clientId?: string, synthetic?: SyntheticKind) => boolean;
   promptOutcome: PromptOutcome | null;
   cancel: () => void;
   rewind: (beforeT: number) => Promise<ChatEventPage>;
@@ -186,12 +187,12 @@ export function useChat(chatId: string): UseChatResult {
     };
   }, [meta?.id, chatId]);
 
-  const sendPrompt = useCallback((text: string, clientId?: string) => {
+  const sendPrompt = useCallback((text: string, clientId?: string, synthetic?: SyntheticKind) => {
     const stream = streamRef.current;
     if (!wsReady || !synced || !stream?.isOpen) return false;
     if (status !== "ready") return false;
     setStatus("streaming");
-    stream.sendPrompt(text, clientId);
+    stream.sendPrompt(text, clientId, synthetic);
     return true;
   }, [status, wsReady, synced]);
 

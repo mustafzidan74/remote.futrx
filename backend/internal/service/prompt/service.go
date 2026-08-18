@@ -48,6 +48,12 @@ type StartInput struct {
 	ScheduledTaskID string
 	ScheduledRunID  string
 	ParentContext   context.Context
+	// Synthetic labels a prompt the platform issued on the operator's behalf
+	// rather than one a human typed — see servicechat.SyntheticAutopilot and
+	// SyntheticAutoTest. It travels onto the persisted user event, onto the
+	// audit entry, and back out on the run's outcome so the post-run driver
+	// can tell its own follow-ups apart from real work.
+	Synthetic string
 }
 
 type RunResult struct {
@@ -90,6 +96,9 @@ type RunOutcome struct {
 	// ScheduledTaskID is set when the run was injected by the scheduler, so
 	// observers can leave scheduled reporting to the schedule service.
 	ScheduledTaskID string
+	// Synthetic carries the label the run was started with, empty for a
+	// human prompt.
+	Synthetic string
 }
 
 // RunObserver receives out-of-band run signals. Implementations must not block:
@@ -118,9 +127,13 @@ func WithScheduleToolIssuer(issuer ScheduleToolIssuer) Option {
 }
 
 // WithRunObserver installs an out-of-band observer of run lifecycle signals.
+// Observers accumulate: notifications and the post-run driver both watch the
+// same runs, and neither knows about the other.
 func WithRunObserver(observer RunObserver) Option {
 	return func(service *Service) {
-		service.observer = observer
+		if observer != nil {
+			service.observers = append(service.observers, observer)
+		}
 	}
 }
 
@@ -144,7 +157,7 @@ type Service struct {
 	hub           *runhub.Hub
 	agents        *agent.Registry
 	scheduleTools ScheduleToolIssuer
-	observer      RunObserver
+	observers     []RunObserver
 	usage         UsageRecorder
 	audit         audit.Recorder
 }
@@ -226,23 +239,26 @@ func (rnr *Service) Start(input StartInput, emitTransient func(ChatEvent)) (RunH
 			Err:             err,
 			Cancelled:       errors.Is(ctx.Err(), context.Canceled),
 			ScheduledTaskID: input.ScheduledTaskID,
+			Synthetic:       input.Synthetic,
 		})
 		done <- RunResult{Output: output.String(), Err: err}
 	}()
 	return RunHandle{ID: runID, Done: done}, nil
 }
 
-// observeSettled reports a settled run to the observer, if one is installed.
-// The observer's own context governs its work, so a cancelled run still gets
+// observeSettled reports a settled run to every installed observer. The
+// observer's own context governs its work, so a cancelled run still gets
 // reported.
 func (rnr *Service) observeSettled(ctx context.Context, outcome RunOutcome) {
-	if rnr.observer == nil {
+	if len(rnr.observers) == 0 {
 		return
 	}
 	if ctx == nil || ctx.Err() != nil {
 		ctx = context.Background()
 	}
-	rnr.observer.RunSettled(ctx, outcome)
+	for _, observer := range rnr.observers {
+		observer.RunSettled(ctx, outcome)
+	}
 }
 
 func (rnr *Service) CancelPrompt(ctx context.Context, id servicechat.ID) bool {
@@ -275,6 +291,9 @@ func (rnr *Service) recordRun(ctx context.Context, action string, input StartInp
 	if input.ScheduledTaskID != "" {
 		meta["scheduledTaskId"] = input.ScheduledTaskID
 		meta["scheduledRunId"] = input.ScheduledRunID
+	}
+	if synthetic := servicechat.NormalizeSynthetic(input.Synthetic); synthetic != "" {
+		meta["synthetic"] = synthetic
 	}
 	entry := audit.Result(
 		action,
@@ -345,8 +364,14 @@ func (rnr *Service) runPromptAs(
 
 	priorEvents, _ := rnr.store.ReadEvents(ctx, id)
 
-	// Persist the user message before spawning the selected agent.
-	emit(ChatEvent{T: time.Now().UnixMilli(), Type: "user", Text: prompt})
+	// Persist the user message before spawning the selected agent. A
+	// synthetic label rides along so the transcript shows who asked.
+	emit(ChatEvent{
+		T:         time.Now().UnixMilli(),
+		Type:      "user",
+		Text:      prompt,
+		Synthetic: servicechat.NormalizeSynthetic(input.Synthetic),
+	})
 
 	providerID := providerIDFromChatProvider(meta.Provider)
 	promptSkills := meta.SelectedSkills

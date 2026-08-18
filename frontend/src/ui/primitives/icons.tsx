@@ -69,3 +69,5 @@ export const Globe = (p: P) => (<svg {...base} {...p}><circle cx="12" cy="12" r=
 export const Layers = (p: P) => (<svg {...base} {...p}><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 17l9 5 9-5"/></svg>);
 export const Zap = (p: P) => (<svg {...base} {...p}><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg>);
 export const Package = (p: P) => (<svg {...base} {...p}><path d="m12 2 9 5v10l-9 5-9-5V7l9-5Z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg>);
+export const PlaneTakeoff = (p: P) => (<svg {...base} {...p}><path d="M2 22h20M3.8 15.5l-1.3-3.9a1 1 0 0 1 .6-1.3l1.2-.4 2.3 2 3.4-1.2-3.6-5.4 1.9-.7 5.7 4.6 4.3-1.5a2 2 0 1 1 1.3 3.8L4.9 16.2a1 1 0 0 1-1.1-.7Z"/></svg>);
+export const TestTube = (p: P) => (<svg {...base} {...p}><path d="M14.5 2v14.5a3.5 3.5 0 0 1-7 0V2M6 2h10M8 12h6"/></svg>);

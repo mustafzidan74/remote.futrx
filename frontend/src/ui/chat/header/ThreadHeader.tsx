@@ -1,25 +1,29 @@
 import type { ChatMeta } from "../../../models/chat";
 import type { ProjectMeta } from "../../../models/project";
 import { providerDisplayLabel } from "../../../config/chat";
+import type { ChatPolicies } from "../../../state/hooks/chat/useChatPolicies";
 import { Menu, MessageSquare } from "../../primitives/icons";
 import { ChatPreviewChip } from "../../preview/ChatPreviewChip";
+import { AutopilotPill } from "./AutopilotPill";
 
 export function ThreadHeader({
   chat,
   project,
   streaming,
+  policies,
   onHamburger,
   onOpenAgentBrowser,
 }: {
   chat: ChatMeta;
   project: ProjectMeta | null;
   streaming: boolean;
+  policies: ChatPolicies;
   onHamburger: () => void;
   onOpenAgentBrowser?: () => void;
 }) {
   return (
     <header class="codex-header top-chrome z-20 flex flex-none items-center border-b border-white/10 bg-[#101318] px-3 py-2 md:bg-[#101318]/95 md:backdrop-blur">
-      <div class="codex-thread-heading flex min-w-0 flex-1 items-center gap-2 min-h-9">
+      <div class="codex-thread-heading mr-2 flex min-w-0 flex-1 items-center gap-2 min-h-9">
         <button
           type="button"
           onClick={onHamburger}
@@ -49,6 +53,12 @@ export function ThreadHeader({
           </div>
         </div>
       </div>
+
+      <AutopilotPill
+        view={policies.autopilot}
+        busy={policies.busy}
+        onStop={policies.stopAutopilot}
+      />
 
       {project && (
         <ChatPreviewChip

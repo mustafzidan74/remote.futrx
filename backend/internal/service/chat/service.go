@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/futrx-com/remote.futrx.com/internal/service/audit"
 )
@@ -16,6 +17,7 @@ type Service struct {
 	runs          RunController
 	defaultSkills DefaultSkillResolver
 	audit         audit.Recorder
+	now           func() time.Time
 }
 
 // Option configures optional Service collaborators.
@@ -42,6 +44,15 @@ func WithDefaultSkills(resolver DefaultSkillResolver) Option {
 	}
 }
 
+// WithClock replaces the clock that stamps an armed autopilot's start time.
+func WithClock(now func() time.Time) Option {
+	return func(s *Service) {
+		if now != nil {
+			s.now = now
+		}
+	}
+}
+
 func New(
 	repo Repository,
 	projects ProjectResolver,
@@ -55,6 +66,7 @@ func New(
 		tmux:     tmux,
 		runs:     runs,
 		audit:    audit.Nop{},
+		now:      time.Now,
 	}
 	for _, option := range options {
 		if option != nil {
@@ -228,7 +240,11 @@ func (s *Service) Update(ctx context.Context, id ID, in UpdateInput) (Meta, erro
 	if !ValidID(id) {
 		return Meta{}, ErrInvalidID
 	}
+	if in.Autopilot != nil && !ValidAutopilotInput(*in.Autopilot) {
+		return Meta{}, ErrInvalidAutopilot
+	}
 
+	now := s.clock()
 	meta, err := s.repo.Update(ctx, id, func(m *Meta) {
 		if in.Title != nil {
 			m.Title = strings.TrimSpace(*in.Title)
@@ -257,6 +273,12 @@ func (s *Service) Update(ctx context.Context, id ID, in UpdateInput) (Meta, erro
 		}
 		if in.SelectedSkills != nil {
 			m.SelectedSkills = NormalizeSelectedSkills(*in.SelectedSkills, m.Provider)
+		}
+		if in.Autopilot != nil {
+			m.Autopilot = ApplyAutopilot(m.Autopilot, *in.Autopilot, in.ActorEmail, now)
+		}
+		if in.AutoTest != nil {
+			m.AutoTest = ApplyAutoTest(m.AutoTest, *in.AutoTest, in.ActorEmail)
 		}
 	})
 	if err != nil {
@@ -293,6 +315,13 @@ func (s *Service) MarkUnread(ctx context.Context, id ID) (Meta, error) {
 		return Meta{}, err
 	}
 	return s.withRunning(meta), nil
+}
+
+func (s *Service) clock() time.Time {
+	if s == nil || s.now == nil {
+		return time.Now()
+	}
+	return s.now()
 }
 
 func (s *Service) withRunning(meta Meta) Meta {

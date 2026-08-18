@@ -253,3 +253,130 @@ func TestStorePersistsSelectedSkills(t *testing.T) {
 		t.Fatalf("reloaded skills = %#v", loaded.SelectedSkills)
 	}
 }
+
+func TestStorePersistsPostRunPolicies(t *testing.T) {
+	store, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+
+	if _, err := store.Create(ctx, servicechat.Meta{
+		ID: "abcd",
+		Autopilot: servicechat.AutopilotPolicy{
+			Enabled:        true,
+			MaxRounds:      12,
+			MaxDurationMin: 240,
+			RoundsUsed:     3,
+			StartedAt:      1755518400000,
+			EnabledBy:      "operator@example.com",
+		},
+		AutoTest: servicechat.AutoTestPolicy{Enabled: true, EnabledBy: "qa@example.com"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Reopening is what proves the policy reached disk rather than only the
+	// in-process metadata cache.
+	reopened, err := New(store.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := reopened.Get(ctx, "abcd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := servicechat.AutopilotPolicy{
+		Enabled:        true,
+		MaxRounds:      12,
+		MaxDurationMin: 240,
+		RoundsUsed:     3,
+		StartedAt:      1755518400000,
+		EnabledBy:      "operator@example.com",
+	}
+	if loaded.Autopilot != want {
+		t.Errorf("reloaded autopilot = %+v, want %+v", loaded.Autopilot, want)
+	}
+	if !loaded.AutoTest.Enabled || loaded.AutoTest.EnabledBy != "qa@example.com" {
+		t.Errorf("reloaded auto-test = %+v", loaded.AutoTest)
+	}
+}
+
+// A chat written before post-run policies existed must still come back with
+// usable limits, so the driver never reads a zero round budget as "stop".
+func TestStoreDefaultsPoliciesForALegacyChat(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "chats", "abcd")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(dir, "meta.json"),
+		[]byte(`{"id":"abcd","title":"Old chat","createdAt":1,"lastMessageAt":10}`),
+		0o644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	store, err := New(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := store.Get(context.Background(), "abcd")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if loaded.Autopilot.Enabled || loaded.AutoTest.Enabled {
+		t.Errorf("policies default to on: %+v / %+v", loaded.Autopilot, loaded.AutoTest)
+	}
+	if loaded.Autopilot.MaxRounds != servicechat.DefaultAutopilotRounds {
+		t.Errorf("maxRounds = %d, want %d", loaded.Autopilot.MaxRounds, servicechat.DefaultAutopilotRounds)
+	}
+	if loaded.Autopilot.MaxDurationMin != servicechat.DefaultAutopilotDurationMin {
+		t.Errorf(
+			"maxDurationMin = %d, want %d",
+			loaded.Autopilot.MaxDurationMin, servicechat.DefaultAutopilotDurationMin,
+		)
+	}
+}
+
+func TestStorePersistsSyntheticEventLabel(t *testing.T) {
+	store, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if _, err := store.Create(ctx, servicechat.Meta{ID: "abcd"}); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, ev := range []servicechat.Event{
+		{T: 1, Type: "user", Text: "ship it"},
+		{T: 2, Type: "user", Text: "keep going", Synthetic: servicechat.SyntheticAutopilot},
+		{T: 3, Type: "user", Text: "verify", Synthetic: "not-a-kind"},
+	} {
+		if _, err := store.AppendEvent(ctx, "abcd", ev); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	events, err := store.ReadEvents(ctx, "abcd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 3 {
+		t.Fatalf("read %d events, want 3", len(events))
+	}
+	if events[0].Synthetic != "" {
+		t.Errorf("human prompt carries synthetic = %q", events[0].Synthetic)
+	}
+	if events[1].Synthetic != servicechat.SyntheticAutopilot {
+		t.Errorf("synthetic = %q, want %q", events[1].Synthetic, servicechat.SyntheticAutopilot)
+	}
+	// An unrecognized label must not survive: badging a prompt as
+	// platform-issued is a claim about who asked for the work.
+	if events[2].Synthetic != "" {
+		t.Errorf("unknown label survived as %q", events[2].Synthetic)
+	}
+}

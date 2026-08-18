@@ -135,7 +135,18 @@ class ChatEventStateProjector {
     switch (event.type) {
       case "user": {
         const next = this.endTrailingAssistant(blocks);
-        return [...next, { type: "user", text: event.text, t: event.t }];
+        // The label rides through to the bubble so an unattended round is
+        // never mistaken for something the operator typed. It is spread in
+        // only when present, keeping a human prompt's block shape untouched.
+        return [
+          ...next,
+          {
+            type: "user",
+            text: event.text,
+            t: event.t,
+            ...(event.synthetic ? { synthetic: event.synthetic } : {}),
+          },
+        ];
       }
       case "assistant_text": {
         const { blocks: next, assistant } = this.ensureTrailingAssistant(blocks, event.t);

@@ -2,6 +2,7 @@ import type { ComponentChildren, RefObject } from "preact";
 import type { ChatMeta, ChatStatus } from "../../models/chat";
 import type { ProjectMeta } from "../../models/project";
 import type { ChatMessageBlock } from "../../models/chatMessage";
+import type { ChatPolicies } from "../../state/hooks/chat/useChatPolicies";
 import { ChatComposer, type ChatComposerProps } from "./composer/ChatComposer";
 import { JumpToLatestButton } from "./messages/JumpToLatestButton";
 import { MessageList } from "./messages/MessageList";
@@ -16,6 +17,7 @@ export function ChatThread({
   status,
   error,
   composer,
+  policies,
   showJump,
   scrollRef,
   contentRef,
@@ -37,6 +39,7 @@ export function ChatThread({
   status: ChatStatus;
   error: string | null;
   composer: ChatComposerProps;
+  policies: ChatPolicies;
   showJump: boolean;
   scrollRef: RefObject<HTMLDivElement>;
   contentRef: RefObject<HTMLDivElement>;
@@ -57,6 +60,7 @@ export function ChatThread({
           chat={chat}
           project={project}
           streaming={composer.streaming}
+          policies={policies}
           onHamburger={onHamburger}
           onOpenAgentBrowser={onOpenAgentBrowser}
         />

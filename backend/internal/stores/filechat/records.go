@@ -25,6 +25,22 @@ type metaRecord struct {
 	ProjectID       string           `json:"projectId,omitempty"`
 	ForkPending     bool             `json:"forkPending,omitempty"`
 	SelectedSkills  []skillRefRecord `json:"selectedSkills,omitempty"`
+	Autopilot       autopilotRecord  `json:"autopilot,omitempty"`
+	AutoTest        autoTestRecord   `json:"autoTest,omitempty"`
+}
+
+type autopilotRecord struct {
+	Enabled        bool   `json:"enabled,omitempty"`
+	MaxRounds      int    `json:"maxRounds,omitempty"`
+	RoundsUsed     int    `json:"roundsUsed,omitempty"`
+	MaxDurationMin int    `json:"maxDurationMin,omitempty"`
+	StartedAt      int64  `json:"startedAt,omitempty"`
+	EnabledBy      string `json:"enabledBy,omitempty"`
+}
+
+type autoTestRecord struct {
+	Enabled   bool   `json:"enabled,omitempty"`
+	EnabledBy string `json:"enabledBy,omitempty"`
 }
 
 type skillRefRecord struct {
@@ -54,6 +70,18 @@ func metaRecordFromDomain(m servicechat.Meta) metaRecord {
 		ProjectID:       string(m.ProjectID),
 		ForkPending:     m.ForkPending,
 		SelectedSkills:  skillRefRecordsFromDomain(m.SelectedSkills),
+		Autopilot: autopilotRecord{
+			Enabled:        m.Autopilot.Enabled,
+			MaxRounds:      m.Autopilot.MaxRounds,
+			RoundsUsed:     m.Autopilot.RoundsUsed,
+			MaxDurationMin: m.Autopilot.MaxDurationMin,
+			StartedAt:      m.Autopilot.StartedAt,
+			EnabledBy:      m.Autopilot.EnabledBy,
+		},
+		AutoTest: autoTestRecord{
+			Enabled:   m.AutoTest.Enabled,
+			EnabledBy: m.AutoTest.EnabledBy,
+		},
 	}
 }
 
@@ -82,6 +110,21 @@ func (r metaRecord) toDomain() servicechat.Meta {
 		ProjectID:       servicechat.ProjectID(r.ProjectID),
 		ForkPending:     r.ForkPending,
 		SelectedSkills:  servicechat.NormalizeSelectedSkills(skillRefRecordsToDomain(r.SelectedSkills), provider),
+		// Normalizing on read is what lets a chat written before post-run
+		// policies existed answer the driver's questions: it comes back with
+		// the documented defaults rather than a zeroed round budget.
+		Autopilot: servicechat.NormalizeAutopilot(servicechat.AutopilotPolicy{
+			Enabled:        r.Autopilot.Enabled,
+			MaxRounds:      r.Autopilot.MaxRounds,
+			RoundsUsed:     r.Autopilot.RoundsUsed,
+			MaxDurationMin: r.Autopilot.MaxDurationMin,
+			StartedAt:      r.Autopilot.StartedAt,
+			EnabledBy:      r.Autopilot.EnabledBy,
+		}),
+		AutoTest: servicechat.NormalizeAutoTest(servicechat.AutoTestPolicy{
+			Enabled:   r.AutoTest.Enabled,
+			EnabledBy: r.AutoTest.EnabledBy,
+		}),
 	}
 }
 
@@ -138,6 +181,7 @@ type eventRecord struct {
 	Usage           json.RawMessage `json:"usage,omitempty"`
 	Message         string          `json:"message,omitempty"`
 	Running         bool            `json:"running,omitempty"`
+	Synthetic       string          `json:"synthetic,omitempty"`
 }
 
 func eventRecordFromDomain(ev servicechat.Event) eventRecord {
@@ -162,6 +206,7 @@ func eventRecordFromDomain(ev servicechat.Event) eventRecord {
 		Usage:           ev.Usage,
 		Message:         ev.Message,
 		Running:         ev.Running,
+		Synthetic:       servicechat.NormalizeSynthetic(ev.Synthetic),
 	}
 }
 
@@ -187,5 +232,6 @@ func (r eventRecord) toDomain() servicechat.Event {
 		Usage:           r.Usage,
 		Message:         r.Message,
 		Running:         r.Running,
+		Synthetic:       servicechat.NormalizeSynthetic(r.Synthetic),
 	}
 }

@@ -4,6 +4,7 @@ import { modelDisplayLabel, providerDisplayLabel } from "../../../config/chat";
 import type { QueuedPrompt, SelectedSkill } from "../../../models/chat";
 import type { RegisteredSkill } from "../../../models/skill";
 import type { Attachment } from "../../../models/upload";
+import type { ChatPolicies } from "../../../state/hooks/chat/useChatPolicies";
 import type { PlaybookLibrary } from "../../../state/hooks/chat/usePlaybooks";
 import { AlertCircle, ChevronDown, Settings, X } from "../../primitives/icons";
 import { AttachmentTray } from "./AttachmentTray";
@@ -26,6 +27,7 @@ export interface ChatComposerProps {
   queuedPrompts: QueuedPrompt[];
   selectedSkills: SelectedSkill[];
   playbooks: PlaybookLibrary;
+  policies: ChatPolicies;
   attachments: Attachment[];
   uploading: boolean;
   dragging: boolean;
@@ -52,6 +54,7 @@ export function ChatComposer({
   queuedPrompts,
   selectedSkills,
   playbooks,
+  policies,
   attachments,
   uploading,
   dragging,
@@ -182,6 +185,8 @@ export function ChatComposer({
             <ComposerExecutionControls
               preferences={preferences}
               preferenceActions={preferenceActions}
+              policies={policies}
+              canSendPrompt={canSendPrompt}
               streaming={streaming}
             />
           </div>
@@ -203,6 +208,8 @@ export function ChatComposer({
           <ComposerExecutionControls
             preferences={preferences}
             preferenceActions={preferenceActions}
+            policies={policies}
+            canSendPrompt={canSendPrompt}
             streaming={streaming}
           />
         </div>

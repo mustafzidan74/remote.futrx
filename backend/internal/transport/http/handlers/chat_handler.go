@@ -177,6 +177,9 @@ func (h *ChatHandler) HandleResource(w http.ResponseWriter, r *http.Request) {
 			httptransport.SendErr(w, http.StatusBadRequest, "invalid json")
 			return
 		}
+		// The actor comes from the session, never the body: it decides who a
+		// synthetic autopilot run is attributed to and audited as.
+		in.ActorEmail = email
 		updated, err := h.chats.Update(r.Context(), id, in)
 		if err != nil {
 			sendChatError(w, err)
@@ -363,7 +366,8 @@ func sendChatError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, servicechat.ErrInvalidID),
 		errors.Is(err, servicechat.ErrInvalidTmuxSession),
-		errors.Is(err, servicechat.ErrInvalidRewindTimestamp):
+		errors.Is(err, servicechat.ErrInvalidRewindTimestamp),
+		errors.Is(err, servicechat.ErrInvalidAutopilot):
 		httptransport.SendErr(w, http.StatusBadRequest, err.Error())
 	case errors.Is(err, servicechat.ErrNotFound):
 		httptransport.SendErr(w, http.StatusNotFound, "chat not found")

@@ -39,6 +39,38 @@ type Meta struct {
 	ProjectID            ProjectID  `json:"projectId,omitempty"`
 	ForkPending          bool       `json:"forkPending,omitempty"`
 	SelectedSkills       []SkillRef `json:"selectedSkills,omitempty"`
+	// Autopilot and AutoTest are the chat's post-run policies: what the
+	// platform does on its own once an agent turn settles. Both default off,
+	// and both are always serialized so the browser never has to guess
+	// whether an absent key means "off" or "unknown".
+	Autopilot AutopilotPolicy `json:"autopilot"`
+	AutoTest  AutoTestPolicy  `json:"autoTest"`
+}
+
+// AutopilotPolicy keeps a chat working while the operator is away: every time
+// the agent ends its turn without declaring the task done, the post-run driver
+// sends one more "keep going" prompt. The counters are the safety rails — a
+// loop that neither finishes nor errors still has to stop.
+type AutopilotPolicy struct {
+	Enabled bool `json:"enabled"`
+	// MaxRounds caps how many synthetic continue prompts one autopilot
+	// session may send. RoundsUsed counts the ones already spent.
+	MaxRounds  int `json:"maxRounds,omitempty"`
+	RoundsUsed int `json:"roundsUsed,omitempty"`
+	// MaxDurationMin is the wall-clock budget measured from StartedAt, so a
+	// slow agent cannot outlive the round cap by running long turns.
+	MaxDurationMin int   `json:"maxDurationMin,omitempty"`
+	StartedAt      int64 `json:"startedAt,omitempty"`
+	// EnabledBy is the human who armed the loop. Synthetic runs are attributed
+	// to them, because nobody else consented to the work.
+	EnabledBy string `json:"enabledBy,omitempty"`
+}
+
+// AutoTestPolicy asks for a Playwright verification pass after every agent
+// turn that changed something.
+type AutoTestPolicy struct {
+	Enabled   bool   `json:"enabled"`
+	EnabledBy string `json:"enabledBy,omitempty"`
 }
 
 type SkillRef struct {
@@ -70,6 +102,11 @@ type Event struct {
 	Usage                json.RawMessage `json:"usage,omitempty"`
 	Message              string          `json:"message,omitempty"`
 	Running              bool            `json:"running,omitempty"`
+	// Synthetic labels a prompt the platform sent on the operator's behalf
+	// (see SyntheticAutopilot / SyntheticAutoTest). Empty means a human typed
+	// it. The browser badges the bubble so an unattended round is never
+	// mistaken for something the operator asked for.
+	Synthetic string `json:"synthetic,omitempty"`
 }
 
 type EventPageQuery struct {
@@ -106,6 +143,27 @@ type UpdateInput struct {
 	ReasoningEffort *string     `json:"reasoningEffort,omitempty"`
 	ServiceTier     *string     `json:"serviceTier,omitempty"`
 	SelectedSkills  *[]SkillRef `json:"selectedSkills,omitempty"`
+	// Autopilot and AutoTest patch the post-run policies. Absent leaves the
+	// stored policy alone; present replaces only the fields it names.
+	Autopilot *AutopilotInput `json:"autopilot,omitempty"`
+	AutoTest  *AutoTestInput  `json:"autoTest,omitempty"`
+	// ActorEmail is the caller the handler resolved from the session. It is
+	// never decoded from a request body, because it decides who a synthetic
+	// run is attributed to.
+	ActorEmail string `json:"-"`
+}
+
+// AutopilotInput patches the autopilot policy. Every field is optional so the
+// composer can flip the switch without restating the limits.
+type AutopilotInput struct {
+	Enabled        *bool `json:"enabled,omitempty"`
+	MaxRounds      *int  `json:"maxRounds,omitempty"`
+	MaxDurationMin *int  `json:"maxDurationMin,omitempty"`
+}
+
+// AutoTestInput patches the auto-test policy.
+type AutoTestInput struct {
+	Enabled *bool `json:"enabled,omitempty"`
 }
 
 func NormalizeProvider(provider Provider) Provider {

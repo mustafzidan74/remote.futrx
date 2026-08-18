@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import type { ChatStatus, PromptOutcome } from "../../../models/chat";
+import type { ChatStatus, PromptOutcome, SyntheticKind } from "../../../models/chat";
 import { chatComposerSessionStore } from "../../chat/composerSessionStore";
 import { useAttachmentUpload } from "./useAttachmentUpload";
 import { useAutosizeTextarea } from "./useAutosizeTextarea";
@@ -24,7 +24,7 @@ export function useChatComposerController({
   blockCount: number;
   status: ChatStatus;
   canSendPrompt: boolean;
-  sendPrompt: (text: string, clientId?: string) => boolean;
+  sendPrompt: (text: string, clientId?: string, synthetic?: SyntheticKind) => boolean;
   promptOutcome: PromptOutcome | null;
   rewind: (beforeT: number) => Promise<unknown>;
   refreshMeta: () => Promise<void>;
@@ -166,6 +166,20 @@ export function useChatComposerController({
     return true;
   }
 
+  /**
+   * Sends a Playwright check from the Test menu. Unlike submitText it never
+   * queues: the queue replays plain text, which would strip the label and turn
+   * a badged verification pass into what looks like a user's own prompt.
+   */
+  function submitTest(value: string): boolean {
+    const testText = value.trim();
+    if (!testText || upload.uploading || status === "streaming" || !canSendPrompt) return false;
+    if (!sendPrompt(testText, undefined, "autotest")) return false;
+    scroll.unlockAutoScroll();
+    setTimeout(focusInput, 0);
+    return true;
+  }
+
   function handleAnswerQuestion(answer: string) {
     const sent = sendPrompt(answer);
     if (sent) scroll.unlockAutoScroll();
@@ -184,6 +198,7 @@ export function useChatComposerController({
     handleSend,
     insertText,
     submitText,
+    submitTest,
     handleAnswerQuestion,
     handleRewind,
   };

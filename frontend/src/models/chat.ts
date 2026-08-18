@@ -32,6 +32,28 @@ export interface ChatMeta {
   serviceTier?: ServiceTier;
   projectId?: string;
   selectedSkills?: SelectedSkill[];
+  /** Post-run policies: what the platform does on its own once a turn settles. */
+  autopilot?: AutopilotPolicy;
+  autoTest?: AutoTestPolicy;
+}
+
+/**
+ * Keeps a chat working while the operator is away. `roundsUsed` and
+ * `startedAt` are the counters the server spends; the browser only reads them.
+ */
+export interface AutopilotPolicy {
+  enabled: boolean;
+  maxRounds?: number;
+  roundsUsed?: number;
+  maxDurationMin?: number;
+  startedAt?: number;
+  enabledBy?: string;
+}
+
+/** Asks for a Playwright verification pass after every turn that changed something. */
+export interface AutoTestPolicy {
+  enabled: boolean;
+  enabledBy?: string;
 }
 
 export interface SelectedSkill {
@@ -44,7 +66,7 @@ export interface SelectedSkill {
 type ChatEventBase = { seq?: number; t: number };
 
 export type ChatEvent = ChatEventBase & (
-  | { type: "user"; text: string }
+  | { type: "user"; text: string; synthetic?: SyntheticKind }
   | { type: "assistant_text"; text: string; messageId?: string }
   | { type: "thinking"; text: string }
   | { type: "tool_use_start"; id: string; name: string; input: Record<string, unknown> }
@@ -72,8 +94,15 @@ export interface ChatEventPage {
   hasMore: boolean;
 }
 
+/**
+ * Labels a prompt the platform composed rather than one the user typed. The
+ * server normalizes anything it does not recognize away, so these two strings
+ * are the whole vocabulary.
+ */
+export type SyntheticKind = "autopilot" | "autotest";
+
 export type ClientToServer =
-  | { type: "prompt"; text: string; clientId?: string }
+  | { type: "prompt"; text: string; clientId?: string; synthetic?: SyntheticKind }
   | { type: "cancel" }
   | { type: "permission"; id: string; approved: boolean };
 
@@ -113,4 +142,17 @@ export interface UpdateChatInput {
   reasoningEffort?: ReasoningEffort;
   serviceTier?: ServiceTier;
   selectedSkills?: SelectedSkill[];
+  autopilot?: AutopilotPatch;
+  autoTest?: AutoTestPatch;
+}
+
+/** Every field is optional so a toggle need not restate the limits. */
+export interface AutopilotPatch {
+  enabled?: boolean;
+  maxRounds?: number;
+  maxDurationMin?: number;
+}
+
+export interface AutoTestPatch {
+  enabled?: boolean;
 }

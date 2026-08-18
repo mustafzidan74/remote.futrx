@@ -19,6 +19,7 @@ import (
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
 	serviceplaybooks "github.com/futrx-com/remote.futrx.com/internal/service/playbooks"
 	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
+	servicepostrun "github.com/futrx-com/remote.futrx.com/internal/service/postrun"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	"github.com/futrx-com/remote.futrx.com/internal/service/prompt"
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
@@ -125,6 +126,7 @@ type Services struct {
 	Audit         *serviceaudit.Service
 	Health        *servicehealth.Service
 	Snapshots     *servicesnapshot.Service
+	PostRun       *servicepostrun.Driver
 }
 
 func New(ctx context.Context, deps Dependencies) (Services, error) {
@@ -278,15 +280,30 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		projects:      projectService,
 		baseURL:       deps.AuthBaseURL,
 	}
+	// The post-run driver both observes settled runs and starts follow-up runs
+	// through the same prompt service, and it has to keep out of chats the
+	// scheduler owns. Neither collaborator exists yet, so it is built against
+	// indirect handles that the two assignments below fill in — the same
+	// late-binding shape the run hub already uses for its chat repository.
+	var promptService *prompt.Service
+	var scheduleService *serviceschedule.Service
+	postRunDriver := servicepostrun.New(servicepostrun.Dependencies{
+		Chats:     chats,
+		Runs:      runs,
+		Starter:   postRunStarter{prompts: &promptService},
+		Schedules: postRunSchedules{schedules: &scheduleService},
+		Notifier:  runNotifications,
+	})
 	promptOptions := []prompt.Option{
 		prompt.WithScheduleToolIssuer(scheduleCaps),
 		prompt.WithRunObserver(runNotifications),
+		prompt.WithRunObserver(postRunDriver),
 		prompt.WithAudit(auditLog),
 	}
 	if usageService != nil {
 		promptOptions = append(promptOptions, prompt.WithUsageRecorder(usageService))
 	}
-	promptService := prompt.New(
+	promptService = prompt.New(
 		chats,
 		deps.TmuxClient,
 		projectService,
@@ -294,7 +311,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		agents,
 		promptOptions...,
 	)
-	scheduleService := serviceschedule.New(
+	scheduleService = serviceschedule.New(
 		deps.Schedules,
 		chatService,
 		projectService,
@@ -397,6 +414,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Audit:         auditLog,
 		Health:        healthService,
 		Snapshots:     snapshotService,
+		PostRun:       postRunDriver,
 	}, nil
 }
 
@@ -511,6 +529,35 @@ func (d globalSkillDefaults) DefaultSkills(
 		})
 	}
 	return refs, nil
+}
+
+// postRunStarter and postRunSchedules resolve their target at call time. The
+// pointers are filled in during composition, long before an agent run can
+// settle, so a nil dereference here would mean the composition root changed
+// order — hence the explicit guards rather than a silent panic.
+type postRunStarter struct {
+	prompts **prompt.Service
+}
+
+func (s postRunStarter) Start(
+	input prompt.StartInput,
+	emitTransient func(servicechat.Event),
+) (prompt.RunHandle, error) {
+	if s.prompts == nil || *s.prompts == nil {
+		return prompt.RunHandle{}, errors.New("prompt service is unavailable")
+	}
+	return (*s.prompts).Start(input, emitTransient)
+}
+
+type postRunSchedules struct {
+	schedules **serviceschedule.Service
+}
+
+func (s postRunSchedules) HasTasksForChat(ctx context.Context, chatID servicechat.ID) bool {
+	if s.schedules == nil || *s.schedules == nil {
+		return false
+	}
+	return (*s.schedules).HasTasksForChat(ctx, chatID)
 }
 
 type scheduledPromptExecutor struct {
