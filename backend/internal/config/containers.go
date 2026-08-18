@@ -9,6 +9,7 @@ import (
 	containercodeserver "github.com/futrx-com/remote.futrx.com/internal/integration/containers/codeserver"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/containers/command"
 	containercredentials "github.com/futrx-com/remote.futrx.com/internal/integration/containers/credentials"
+	containerdatabase "github.com/futrx-com/remote.futrx.com/internal/integration/containers/database"
 	containerenvironment "github.com/futrx-com/remote.futrx.com/internal/integration/containers/environment"
 	containerinspection "github.com/futrx-com/remote.futrx.com/internal/integration/containers/inspection"
 	containerlifecycle "github.com/futrx-com/remote.futrx.com/internal/integration/containers/lifecycle"
@@ -31,7 +32,10 @@ import (
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 )
 
-const hostMappedUID = 1000000
+// HostMappedUID is the host uid a project container's root maps to under the
+// default LXD idmap. Durable host directories are owned by it, and a restored
+// snapshot is remapped back onto it.
+const HostMappedUID = 1000000
 
 // ContainerStack is the composition root for container application services
 // and their LXD/host-filesystem adapters.
@@ -49,6 +53,11 @@ type ContainerStack struct {
 	Workspace     *containerworkspace.Provisioner
 	Images        *serviceimage.Builder
 	Templates     *servicetemplates.Service
+	Database      *containerdatabase.Adapter
+	// Preparer remaps a host directory into the container idmap. Snapshot
+	// restores reuse the very adapter the launch path uses, so a restored
+	// workspace is owned exactly like a freshly created one.
+	Preparer *hostfs.WorkspacePreparer
 }
 
 // ContainerStackOptions supplies presentation and installation-specific
@@ -73,6 +82,7 @@ func (s ContainerStack) ProjectDependencies() serviceproject.ContainerDependenci
 		Listeners:   s.Listeners,
 		Browser:     s.Browser,
 		Templates:   s.Templates,
+		Database:    s.Database,
 	}
 }
 
@@ -137,10 +147,11 @@ func NewContainerStack(
 		scheduleTools,
 	)
 	resources := containerresources.NewManager(runner)
+	preparer := hostfs.NewWorkspacePreparer(HostMappedUID, HostMappedUID)
 	lifecycle := servicelifecycle.NewService(
 		containerlifecycle.NewClient(runner),
 		serviceimage.Alias,
-		hostfs.NewWorkspacePreparer(hostMappedUID, hostMappedUID),
+		preparer,
 		resources,
 		launchProvisioner,
 		templates,
@@ -173,5 +184,7 @@ func NewContainerStack(
 		Workspace:     workspace,
 		Images:        images,
 		Templates:     templates,
+		Database:      containerdatabase.NewAdapter(runner),
+		Preparer:      preparer,
 	}
 }

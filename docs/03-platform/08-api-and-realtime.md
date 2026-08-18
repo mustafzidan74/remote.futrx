@@ -69,7 +69,13 @@ because users authenticate `agy` inside each project.
 | --- | --- | --- |
 | GET, POST | `/api/projects` | List visible projects or create a project (`{"name","template"}`; an unknown template is a 400) |
 | POST | `/api/projects/reorder` | Update project ordering |
-| GET, PATCH, DELETE | `/api/projects/{id}` | Read, rename, or admin-delete a project |
+| GET, PATCH, DELETE | `/api/projects/{id}` | Read, rename, or admin-delete a project. DELETE is a soft delete: the container is destroyed and the files move to the Trash ([Snapshots and Trash](../02-workspaces/12-snapshots-and-trash.md)) |
+| GET | `/api/projects/trash` | Trashed projects with `deletedAt` and `expiresAt`; admins see all, members see theirs |
+| POST | `/api/projects/{id}/restore` | Move a trashed project back and re-create its container |
+| DELETE | `/api/projects/{id}/purge` | Permanently remove a trashed project and its snapshots; admin only |
+| GET, POST | `/api/projects/{id}/snapshots` | List snapshots and running jobs, or start one (`202`) |
+| POST | `/api/projects/{id}/snapshots/{sid}/restore` | Replace the project files from a snapshot (`202`); members must send `{"confirm":true}` |
+| DELETE | `/api/projects/{id}/snapshots/{sid}` | Delete one snapshot and its archive |
 | POST | `/api/projects/{id}/start` | Start or relaunch a project; `?force=1` skips the aggregate resource guard (admin only) |
 | POST | `/api/projects/{id}/stop` | Stop a project |
 | POST | `/api/projects/{id}/restart` | Force restart or relaunch a project |
@@ -89,7 +95,7 @@ because users authenticate `agy` inside each project.
 | DELETE | `/api/projects/{id}/access/{email}` | Remove a member |
 | GET | `/internal/tls-ask?domain=...` | Caddy allow-check for on-demand project certificates |
 
-Every `{id}` project route first requires admin status or project membership. Resource changes, forced starts, and project deletion add an admin-only check. A start refused by the aggregate resource guard answers `409`; an override above the fleet ceiling answers `400`. See [Resource limits](../02-workspaces/11-resource-limits.md).
+Every `{id}` project route first requires admin status or project membership. Resource changes, forced starts, project deletion, and purging add an admin-only check; restoring a trashed project deliberately does not, so a member can undo their own accidental delete. A start refused by the aggregate resource guard answers `409`; an override above the fleet ceiling answers `400`. See [Resource limits](../02-workspaces/11-resource-limits.md).
 
 ## Chat routes
 

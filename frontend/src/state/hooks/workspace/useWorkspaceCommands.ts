@@ -61,9 +61,17 @@ export function useWorkspaceCommands() {
   async function deleteProject(project: ProjectMeta, event: Event) {
     event.stopPropagation();
     const chatsInProject = workspace.chats.filter((chat) => chat.projectId === project.id).length;
-    const message = chatsInProject > 0
-      ? `Delete project "${project.name}"? This will destroy the container and remove ${chatsInProject} chat${chatsInProject === 1 ? "" : "s"} inside it.`
-      : `Delete project "${project.name}"? This will destroy its container.`;
+    // The files are recoverable; the chats are not, so they stay in the text.
+    const chatNote =
+      chatsInProject > 0
+        ? ` The ${chatsInProject} chat${chatsInProject === 1 ? "" : "s"} inside it are removed for good.`
+        : "";
+    const message =
+      `Delete project "${project.name}"?
+
+` +
+      "The container is destroyed and the project moves to Trash for 7 days, where " +
+      `it can be restored from Settings -> Trash.${chatNote}`;
     if (!confirm(message)) return;
     try {
       await workspace.deleteProject(project.id);

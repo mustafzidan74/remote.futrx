@@ -17,6 +17,9 @@ const (
 	ActionProjectCreate       = "project.create"
 	ActionProjectRename       = "project.rename"
 	ActionProjectDelete       = "project.delete"
+	ActionProjectTrash        = "project.trash"
+	ActionProjectRestore      = "project.restore"
+	ActionProjectPurge        = "project.purge"
 	ActionProjectMemberAdd    = "project.member.add"
 	ActionProjectMemberRemove = "project.member.remove"
 
@@ -30,6 +33,10 @@ const (
 	ActionProjectContainerRecycle = "project.container.recycle"
 	ActionProjectContainerRepair  = "project.container.repair-network"
 	ActionProjectContainerLimits  = "project.container.limits"
+
+	ActionSnapshotCreate  = "snapshot.create"
+	ActionSnapshotRestore = "snapshot.restore"
+	ActionSnapshotDelete  = "snapshot.delete"
 
 	ActionProjectBrowserStart = "project.browser.start"
 	ActionProjectBrowserStop  = "project.browser.stop"
@@ -72,4 +79,5 @@ const (
 	TargetFile     = "file"
 	TargetSession  = "session"
 	TargetServer   = "server"
+	TargetSnapshot = "snapshot"
 )

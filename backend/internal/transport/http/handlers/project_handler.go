@@ -12,11 +12,13 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
+	servicesnapshot "github.com/futrx-com/remote.futrx.com/internal/service/snapshot"
 	serviceuser "github.com/futrx-com/remote.futrx.com/internal/service/user"
 	httptransport "github.com/futrx-com/remote.futrx.com/internal/transport/http"
 )
@@ -26,6 +28,8 @@ type ProjectHandler struct {
 	users              *serviceuser.Service
 	auth               *serviceauth.Service
 	shares             *serviceshare.Service
+	snapshots          *servicesnapshot.Service
+	trashRetention     time.Duration
 	publicHostname     string
 	usage              *UsageHandler
 	projectHostPattern *regexp.Regexp
@@ -61,6 +65,17 @@ func (h *ProjectHandler) WithShares(shares *serviceshare.Service) *ProjectHandle
 	return h
 }
 
+// WithSnapshots enables the per-project snapshot routes and the trash
+// listing's "days left" figure. Without it those routes report 503.
+func (h *ProjectHandler) WithSnapshots(
+	snapshots *servicesnapshot.Service,
+	trashRetention time.Duration,
+) *ProjectHandler {
+	h.snapshots = snapshots
+	h.trashRetention = trashRetention
+	return h
+}
+
 // WithUsage attaches the usage handler so /api/projects/{id}/usage can be
 // served from the existing project route, which already resolves the project
 // and authorizes the caller.
@@ -72,6 +87,7 @@ func (h *ProjectHandler) WithUsage(usage *UsageHandler) *ProjectHandler {
 func (h *ProjectHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/projects", h.HandleCollection)
 	mux.HandleFunc("/api/projects/reorder", h.HandleReorder)
+	mux.HandleFunc("/api/projects/trash", h.HandleTrash)
 	mux.HandleFunc("/api/projects/", h.HandleResource)
 	mux.HandleFunc("/internal/tls-ask", h.HandleTLSAsk)
 }
@@ -208,6 +224,11 @@ func (h *ProjectHandler) HandleResource(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if len(parts) >= 2 && parts[1] == "snapshots" {
+		h.handleSnapshots(w, r, id, parts, email, isAdmin)
+		return
+	}
+
 	if len(parts) >= 2 && parts[1] == "usage" {
 		if h.usage == nil {
 			httptransport.SendErr(w, http.StatusServiceUnavailable, "usage ledger unavailable")
@@ -255,6 +276,33 @@ func (h *ProjectHandler) HandleResource(w http.ResponseWriter, r *http.Request) 
 				return
 			}
 			httptransport.SendJSON(w, http.StatusOK, m)
+		case "restore":
+			// Un-deleting is not admin-only: a member who deleted their own
+			// project by accident must be able to undo it themselves.
+			if r.Method != http.MethodPost {
+				httptransport.SendErr(w, http.StatusMethodNotAllowed, "method not allowed")
+				return
+			}
+			m, err := h.projects.RestoreFromTrash(r.Context(), id)
+			if err != nil {
+				sendProjectError(w, err)
+				return
+			}
+			httptransport.SendJSON(w, http.StatusOK, m)
+		case "purge":
+			if r.Method != http.MethodDelete {
+				httptransport.SendErr(w, http.StatusMethodNotAllowed, "method not allowed")
+				return
+			}
+			if !isAdmin {
+				httptransport.SendErr(w, http.StatusForbidden, "admin only")
+				return
+			}
+			if err := h.projects.Purge(r.Context(), id); err != nil {
+				sendProjectError(w, err)
+				return
+			}
+			httptransport.SendJSON(w, http.StatusOK, map[string]bool{"ok": true})
 		case "repair-network":
 			if r.Method != http.MethodPost {
 				httptransport.SendErr(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -326,11 +374,15 @@ func (h *ProjectHandler) HandleResource(w http.ResponseWriter, r *http.Request) 
 			httptransport.SendErr(w, http.StatusForbidden, "admin only")
 			return
 		}
-		if err := h.projects.Delete(r.Context(), id); err != nil {
+		// Soft delete: the container is destroyed and the files move to the
+		// trash, where they stay recoverable until the retention window
+		// closes or an admin purges them.
+		m, err := h.projects.Trash(r.Context(), id, email)
+		if err != nil {
 			sendProjectError(w, err)
 			return
 		}
-		httptransport.SendJSON(w, http.StatusOK, map[string]bool{"ok": true})
+		httptransport.SendJSON(w, http.StatusOK, trashedProject(m, h.trashRetention))
 
 	default:
 		httptransport.SendErr(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -714,7 +766,11 @@ func sendProjectError(w http.ResponseWriter, err error) {
 	// The aggregate guard refused a start: the request is well formed, the
 	// host simply has no room. 409 tells the UI to offer the force option.
 	case errors.Is(err, serviceresources.ErrHostMemoryExhausted),
-		errors.Is(err, serviceresources.ErrTooManyRunning):
+		errors.Is(err, serviceresources.ErrTooManyRunning),
+		errors.Is(err, serviceproject.ErrSlugInTrash),
+		errors.Is(err, serviceproject.ErrTrashed),
+		errors.Is(err, serviceproject.ErrNotTrashed),
+		errors.Is(err, serviceproject.ErrSnapshotBusy):
 		httptransport.SendErr(w, http.StatusConflict, err.Error())
 	case errors.Is(err, serviceproject.ErrSecretsUnavailable):
 		httptransport.SendErr(w, http.StatusServiceUnavailable, err.Error())

@@ -4,7 +4,9 @@ import { projectAppsApi } from "./project/projectAppsApi";
 import { projectContainerApi } from "./project/projectContainerApi";
 import { projectSecretsApi } from "./project/projectSecretsApi";
 import { projectSharesApi } from "./project/projectSharesApi";
-import type { ProjectMeta } from "../models/project";
+import { projectSnapshotsApi } from "./project/projectSnapshotsApi";
+import { projectTrashApi } from "./project/projectTrashApi";
+import type { ProjectMeta, TrashedProject } from "../models/project";
 import { API_ROUTES } from "../config/routes";
 
 export const projectApi = {
@@ -20,11 +22,14 @@ export const projectApi = {
     requestJson<ProjectMeta>("PATCH", API_ROUTES.projects.item(id), body),
   reorder: (ids: string[]) =>
     requestJson<ProjectMeta[]>("POST", API_ROUTES.projects.reorder, { ids }),
+  /** Soft delete: answers the now-trashed project, not `{ok:true}`. */
   delete: (id: string) =>
-    requestJson<{ ok: boolean }>("DELETE", API_ROUTES.projects.item(id)),
+    requestJson<TrashedProject>("DELETE", API_ROUTES.projects.item(id)),
   ...projectContainerApi,
   ...projectAppsApi,
   ...projectSecretsApi,
   ...projectSharesApi,
   ...projectAccessApi,
+  ...projectSnapshotsApi,
+  ...projectTrashApi,
 };
