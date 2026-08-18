@@ -43,6 +43,33 @@ The UI can prefer a recent preview URL mentioned in the current chat when its
 project and port match a discovered listener. Otherwise it uses the selected
 listener from the picker.
 
+## Open a port in the Agent Browser
+
+The preview panels — the globe button on a sidebar project row, and the caret
+on the chat header's **Preview** chip — list every port the project is
+listening on. Each row offers **Open**, **Copy URL**, **Agent Browser**, and
+**Share 24h**.
+
+**Agent Browser** loads that port in the project's shared headed browser
+instead of your own:
+
+1. Select **Agent Browser** on the port you want.
+2. Remote starts the shared browser if it is not already up. A cold container
+   takes about a minute the first time, while Chromium is installed.
+3. From the chat header chip, the workspace Browser pane switches to the Agent
+   Browser view so you watch it load. From the sidebar, the panel confirms the
+   port was loaded and tells you where to look.
+
+**Outcome:** the page is open in the same browser session the agent drives, so
+a login you complete there is a login the agent has. The browser is pointed at
+`http://127.0.0.1:<port>/` from inside the container, which is why the platform
+sign-in page never appears inside that session.
+
+Platform ports (6080, 8842, 8081, 9222) carry no **Agent Browser** action —
+pointing the Agent Browser at its own view or its own debugging port achieves
+nothing. If the browser cannot start, or the port is refused, the reason is
+shown on that row.
+
 ## Preview request path
 
 ```mermaid

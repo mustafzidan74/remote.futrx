@@ -4,7 +4,8 @@ import { modelDisplayLabel, providerDisplayLabel } from "../../../config/chat";
 import type { QueuedPrompt, SelectedSkill } from "../../../models/chat";
 import type { RegisteredSkill } from "../../../models/skill";
 import type { Attachment } from "../../../models/upload";
-import { ChevronDown, Settings } from "../../primitives/icons";
+import type { PlaybookLibrary } from "../../../state/hooks/chat/usePlaybooks";
+import { AlertCircle, ChevronDown, Settings, X } from "../../primitives/icons";
 import { AttachmentTray } from "./AttachmentTray";
 import { AttachButton } from "./AttachButton";
 import { ComposerAgentControls } from "./ComposerAgentControls";
@@ -24,6 +25,7 @@ export interface ChatComposerProps {
   preferenceActions: ComposerPreferenceActions;
   queuedPrompts: QueuedPrompt[];
   selectedSkills: SelectedSkill[];
+  playbooks: PlaybookLibrary;
   attachments: Attachment[];
   uploading: boolean;
   dragging: boolean;
@@ -49,6 +51,7 @@ export function ChatComposer({
   preferenceActions,
   queuedPrompts,
   selectedSkills,
+  playbooks,
   attachments,
   uploading,
   dragging,
@@ -81,6 +84,23 @@ export function ChatComposer({
   return (
     <div class="codex-composer-shell flex-none z-20 relative bg-[#0b0d11] border-t border-white/10">
       {dragging && <ComposerDropOverlay />}
+
+      {playbooks.notice && (
+        <div class="mx-3 mt-2 flex items-start gap-2 rounded-md border border-accent-blue/30 bg-accent-blue/[0.08] px-2.5 py-2">
+          <AlertCircle class="mt-0.5 h-3.5 w-3.5 flex-none text-accent-blue" aria-hidden="true" />
+          <span class="min-w-0 flex-1 break-words text-[11.5px] leading-4 text-ink-100">
+            {playbooks.notice}
+          </span>
+          <button
+            type="button"
+            onClick={playbooks.dismissNotice}
+            class="grid h-5 w-5 flex-none place-items-center rounded text-ink-300 hover:bg-white/[0.08] hover:text-ink-50"
+            aria-label="Dismiss playbook notice"
+          >
+            <X class="h-3 w-3" />
+          </button>
+        </div>
+      )}
 
       <SelectedSkillChips skills={selectedSkills} onRemove={onRemoveSelectedSkill} />
       <QueuedPromptList queuedPrompts={queuedPrompts} onRemove={onRemoveQueued} />
@@ -150,6 +170,7 @@ export function ChatComposer({
               provider={preferences.provider}
               streaming={streaming}
               selectedSkills={selectedSkills}
+              playbooks={playbooks}
               onSelectSkill={onSelectSkill}
               onProviderChange={preferenceActions.changeProvider}
               onModelChange={preferenceActions.changeModel}
@@ -173,6 +194,7 @@ export function ChatComposer({
             provider={preferences.provider}
             streaming={streaming}
             selectedSkills={selectedSkills}
+            playbooks={playbooks}
             onSelectSkill={onSelectSkill}
             onProviderChange={preferenceActions.changeProvider}
             onModelChange={preferenceActions.changeModel}

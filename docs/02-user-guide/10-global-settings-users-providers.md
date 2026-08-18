@@ -92,6 +92,28 @@ onboarding.
 
 Non-admins can use connected providers but cannot connect or refresh them.
 
+## Playbooks
+
+**Settings → Playbooks** (administrators only) curates the one-click prompt
+templates every chat composer offers behind the ⚡ button.
+
+1. Select **Add playbook**, or edit an existing card.
+2. Set the emoji, title, and a one-line hint — the hint is what users read in
+   the menu.
+3. Write the prompt. It may use `{{project}}`, `{{slug}}`, and
+   `{{previewUrl}}`; any other placeholder is left for the user to fill in, and
+   such a prompt is never sent automatically.
+4. Optionally preselect **Skills**, and pin a **Mode** or **Provider**. Leaving
+   either blank keeps whatever the chat is already set to.
+5. Reorder with the arrows, then select **Save library**.
+
+**Outcome:** the library is stored server-wide in `DATA_DIR/playbooks.json` and
+every member sees the same entries immediately. A fresh install starts with
+seven built-in playbooks; that seeding happens once and never overwrites your
+edits. A skill a playbook names but this server has not published yet is
+flagged on the card and starts working once the skill is installed. See
+[Playbooks](../02-workspaces/13-playbooks.md).
+
 ## Users
 
 Remote has one local password administrator. Additional users sign in through Google OAuth and must be registered before they can enter.
@@ -209,5 +231,7 @@ Use the sign-out control in the account footer. This clears the platform session
 | Configure Google OAuth | Yes | No |
 | Add, remove, promote, or demote users | Yes | No |
 | Read and export the audit log | Yes | No |
+| Edit the playbook library | Yes | No |
+| Run a playbook from the composer | Yes | Yes |
 
 For the full sign-in state machine and proxy checks, see [Authentication, users, and access](../02-workspaces/02-auth-users-and-access.md).

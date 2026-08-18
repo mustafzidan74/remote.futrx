@@ -124,6 +124,48 @@ export function useChatComposerController({
     setTimeout(focusInput, 0);
   }
 
+  // insertText and submitText exist for prompt sources that are not the
+  // textarea — today the Playbooks menu. They deliberately share the queueing
+  // and scroll behaviour of the normal send path instead of reimplementing it.
+
+  /**
+   * Puts a ready-made prompt in the composer without destroying a draft: an
+   * empty composer is replaced, a half-typed one gets the prompt appended
+   * after a blank line. `select` is a range inside `text` to highlight once
+   * it lands, so an unfilled placeholder is the first thing the user types
+   * over.
+   */
+  function insertText(value: string, select?: { start: number; end: number }) {
+    const existing = text.trimEnd();
+    const offset = existing ? existing.length + 2 : 0;
+    const next = existing ? `${existing}\n\n${value}` : value;
+    setText(next);
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      textarea?.focus();
+      const start = select ? offset + select.start : next.length;
+      const end = select ? offset + select.end : next.length;
+      textarea?.setSelectionRange(start, end);
+    }, 0);
+  }
+
+  /** Sends (or queues) a prompt that did not come from the textarea. */
+  function submitText(value: string): boolean {
+    const userText = value.trim();
+    if (!userText) return false;
+    if (upload.uploading || (!chatComposerSessionStore.allowsQueue(status) && !canSendPrompt)) {
+      return false;
+    }
+    if (status === "streaming") {
+      queue.queuePrompt(userText);
+    } else if (!sendPrompt(userText)) {
+      return false;
+    }
+    scroll.unlockAutoScroll();
+    setTimeout(focusInput, 0);
+    return true;
+  }
+
   function handleAnswerQuestion(answer: string) {
     const sent = sendPrompt(answer);
     if (sent) scroll.unlockAutoScroll();
@@ -140,6 +182,8 @@ export function useChatComposerController({
     queue,
     handlePaste,
     handleSend,
+    insertText,
+    submitText,
     handleAnswerQuestion,
     handleRewind,
   };

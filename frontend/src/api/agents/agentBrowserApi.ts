@@ -16,6 +16,16 @@ export const agentBrowserApi = {
       {}
     ),
 
+  // Drives the already-running shared browser to a URL by opening a new tab
+  // through the container's loopback DevTools endpoint. The backend refuses
+  // anything but container loopback or this project's own preview host.
+  navigateAgentBrowser: (id: string, url: string) =>
+    requestJson<{ url: string }>(
+      "POST",
+      API_ROUTES.projects.navigateAgentBrowser(id),
+      { url }
+    ),
+
   stopAgentBrowser: (id: string, scope?: "view") =>
     requestJson<AgentBrowserInfo | { status: "stopped" }>(
       "DELETE",

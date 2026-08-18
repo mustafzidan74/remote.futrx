@@ -2,13 +2,14 @@ import type { AppearanceTheme } from "../../models/settings";
 import type { CodexDeviceLogin, KimiDeviceLogin } from "../../models/auth";
 import type { UserDirectory } from "../../state/hooks/users/useUserDirectory";
 import type { GlobalSkillLibrary } from "../../state/hooks/settings/useGlobalSkills";
+import type { PlaybookLibraryEditor } from "../../state/hooks/settings/usePlaybookLibrary";
 import type { ProjectMeta } from "../../models/project";
 import type { AuditLog } from "../../state/hooks/admin/useAuditLog";
 import type { ServerInfo } from "../../models/serverInfo";
 import type { FleetResourcesView, FleetSettings } from "../../models/resources";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import type { ComponentType } from "preact";
-import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Info, Menu, Monitor, Users } from "../primitives/icons";
+import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Info, Menu, Monitor, Users, Zap } from "../primitives/icons";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { AuditLogSettings } from "./AuditLogSettings";
 import { ClaudeAuthSettings } from "./ClaudeAuthSettings";
@@ -20,6 +21,7 @@ import { ResourcesSettings } from "./ResourcesSettings";
 import { ServerInfoSettings } from "./ServerInfoSettings";
 import { UpdatesSettings } from "./UpdatesSettings";
 import { GlobalSkillsSettings } from "./GlobalSkillsSettings";
+import { PlaybooksSettings } from "./PlaybooksSettings";
 import { UsageSettings } from "./UsageSettings";
 import { UsersPanel } from "../account/UsersPanel";
 import type { UsageDashboard } from "../../state/hooks/usage/useUsageDashboard";
@@ -30,6 +32,7 @@ export type SettingsTab =
   | "users"
   | "notifications"
   | "skills"
+  | "playbooks"
   | "usage"
   | "resources"
   | "audit"
@@ -59,6 +62,12 @@ const tabs: Array<{
     label: "Global skills",
     description: "Publish skills that every project can select.",
     Icon: Code,
+  },
+  {
+    id: "playbooks",
+    label: "Playbooks",
+    description: "Curate the one-click prompt templates every chat composer offers.",
+    Icon: Zap,
   },
   {
     id: "usage",
@@ -126,6 +135,7 @@ export function SettingsPage({
   selfUpdateError,
   userDirectory,
   globalSkills,
+  playbooks,
   projects,
   usageDashboard,
   usageRebuilding,
@@ -178,6 +188,7 @@ export function SettingsPage({
   selfUpdateError: string | null;
   userDirectory: UserDirectory;
   globalSkills: GlobalSkillLibrary;
+  playbooks: PlaybookLibraryEditor;
   projects: ProjectMeta[];
   usageDashboard: UsageDashboard;
   usageRebuilding: boolean;
@@ -316,6 +327,16 @@ export function SettingsPage({
                 projects={projects}
               />
             )}
+
+            {activeTab === "playbooks" &&
+              (isAdmin ? (
+                <PlaybooksSettings editor={playbooks} />
+              ) : (
+                <SettingsNotice>
+                  Playbooks are curated by server administrators. You can run them from the ⚡
+                  button in any chat composer.
+                </SettingsNotice>
+              ))}
 
             {activeTab === "usage" && (
               <UsageSettings

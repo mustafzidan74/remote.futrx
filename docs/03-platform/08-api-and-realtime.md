@@ -57,6 +57,8 @@ All `/api/*` and `/ws*` requests require a signed session for a registered user.
 | GET, POST | `/api/admin/skills-global` | List the global skills library, or publish a skill (JSON files map or zip body); admin only |
 | GET, PUT, DELETE | `/api/admin/skills-global/{name}` | Read, replace (files and/or the always-on flag), or delete one global skill; admin only |
 | POST | `/api/admin/skills-global/import` | Copy an existing project skill into the global library; admin only |
+| GET | `/api/playbooks` | List the composer's playbook library; any signed-in user |
+| GET, PUT | `/api/admin/playbooks` | Read or replace the whole playbook library; admin only |
 | GET | `/api/templates` | List project templates and whether each has a pre-built image on this host |
 
 `{provider}` can also be `antigravity` for the generic status binding, but
@@ -81,6 +83,7 @@ because users authenticate `agy` inside each project.
 | GET | `/api/projects/{id}/apps` | List externally reachable container listeners |
 | GET | `/api/projects/{id}/agent-browser` | Get Agent Browser core/view status and record activity |
 | POST | `/api/projects/{id}/agent-browser/start` | Ensure Agent Browser is starting or ready |
+| POST | `/api/projects/{id}/agent-browser/navigate` | Open `{url}` in the running Agent Browser; loopback or this project's own preview host only, `409` while the core is not ready |
 | DELETE | `/api/projects/{id}/agent-browser` | Stop the complete Agent Browser |
 | DELETE | `/api/projects/{id}/agent-browser?scope=view` | Stop only the noVNC view |
 | GET | `/api/projects/{id}/secrets` | List project secrets |

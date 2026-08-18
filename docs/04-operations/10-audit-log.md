@@ -76,11 +76,11 @@ every project action, `project.secret.` only the secret ones.
 | `project.member.` | `add`, `remove` |
 | `project.secret.` | `read`, `set`, `delete` |
 | `project.container.` | `start`, `stop`, `restart`, `recycle`, `repair-network`, `limits` |
-| `project.browser.` | `start`, `stop` |
+| `project.browser.` | `start`, `stop`, `navigate` |
 | `chat.` | `create`, `delete` |
 | `agent.run.` | `start`, `cancel` — `meta` carries `provider`, `chatId`, `projectId`, and the scheduled task/run ids for unattended turns |
 | `schedule.` | `create`, `update`, `arm`, `delete`, `run-now` |
-| `settings.` | `google-oauth.configure`, `agent.connect`, `agent.disconnect` |
+| `settings.` | `google-oauth.configure`, `playbooks.update`, `agent.connect`, `agent.disconnect` |
 | `self-update.` | `trigger` |
 | `workspace.file.` | `upload`, `download`, `archive-download` |
 | `workspace.` | `git.checkout`, `ide.open`, `terminal.open`, `terminal.close` |

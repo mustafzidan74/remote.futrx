@@ -2,8 +2,10 @@ import { useReducer } from "preact/hooks";
 import { PUBLIC_HOSTNAME } from "../../config/runtime.ts";
 import type { ProjectMeta } from "../../models/project";
 import type { ProjectPreviewLinks } from "../../state/hooks/projects/useProjectPreviewLinks.ts";
+import { useAgentBrowserOpener } from "../../state/hooks/projects/useAgentBrowserOpener.ts";
 import {
   PREVIEW_SHARE_TTL_HOURS,
+  canOpenInAgentBrowser,
   isPreviewLinkBusy,
   isPreviewLinkDone,
   issuedShareUrl,
@@ -20,24 +22,35 @@ import {
   ExternalLink,
   Link2,
   Loader,
+  Monitor,
   RotateCcw,
 } from "../primitives/icons";
 
 /**
  * The body shared by the sidebar Preview popover and the chat header chip's
  * dropdown: one row per listening port, with open / copy / share actions.
+ *
+ * `onAgentBrowserOpened` is what the chat header passes to reveal the Agent
+ * Browser pane. The sidebar has no chat to reveal it in, so it omits the
+ * callback and the row reports the result in place instead.
  */
 export function PreviewPortList({
   project,
   links,
+  onAgentBrowserOpened,
 }: {
   project: ProjectMeta;
   links: ProjectPreviewLinks;
+  onAgentBrowserOpened?: (port: number) => void;
 }) {
   const [feedback, dispatch] = useReducer(
     previewLinkFeedbackReduce,
     previewLinkFeedbackInitial,
   );
+  const agentBrowser = useAgentBrowserOpener({
+    projectId: project.id,
+    onOpened: onAgentBrowserOpened,
+  });
 
   async function copyUrl(port: number, url: string) {
     dispatch({ type: "start", action: "copy", port });
@@ -98,14 +111,27 @@ export function PreviewPortList({
             copied={isPreviewLinkDone(feedback, "copy", row.port)}
             sharing={isPreviewLinkBusy(feedback, "share", row.port)}
             shared={isPreviewLinkDone(feedback, "share", row.port)}
-            error={previewLinkError(feedback, row.port)}
+            agentBrowserBusy={agentBrowser.busyPort === row.port}
+            agentBrowserOpened={agentBrowser.openedPort === row.port}
+            error={
+              previewLinkError(feedback, row.port) ??
+              (agentBrowser.errorPort === row.port ? agentBrowser.error ?? undefined : undefined)
+            }
             onCopy={copyUrl}
             onShare={shareUrl}
+            onOpenInAgentBrowser={(port) => void agentBrowser.open(port)}
           />
         ))
       )}
 
       {issued && <IssuedShareLink url={issued} copied={feedback.copied === true} />}
+
+      {agentBrowser.openedPort !== null && !onAgentBrowserOpened && (
+        <PreviewNotice
+          text={`Loaded :${agentBrowser.openedPort} in the Agent Browser.`}
+          hint="Open a chat in this project and switch the Browser pane to Agent Browser to watch it."
+        />
+      )}
 
       <div class="flex items-center gap-2 pt-0.5">
         <button
@@ -134,9 +160,12 @@ function PortRow({
   copied,
   sharing,
   shared,
+  agentBrowserBusy,
+  agentBrowserOpened,
   error,
   onCopy,
   onShare,
+  onOpenInAgentBrowser,
 }: {
   row: PreviewPortRow;
   url: string;
@@ -144,9 +173,12 @@ function PortRow({
   copied: boolean;
   sharing: boolean;
   shared: boolean;
+  agentBrowserBusy: boolean;
+  agentBrowserOpened: boolean;
   error?: string;
   onCopy: (port: number, url: string) => void;
   onShare: (port: number) => void;
+  onOpenInAgentBrowser: (port: number) => void;
 }) {
   return (
     <div class="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-2">
@@ -199,6 +231,25 @@ function PortRow({
           {copied ? <Check class="h-3 w-3" /> : <Copy class="h-3 w-3" />}
           {copied ? "Copied" : "Copy URL"}
         </button>
+        {canOpenInAgentBrowser(row) && (
+          <button
+            type="button"
+            onClick={() => onOpenInAgentBrowser(row.port)}
+            disabled={agentBrowserBusy}
+            title="Load this port in the project's shared Agent Browser, inside the container"
+            class="inline-flex h-7 items-center gap-1.5 rounded border border-white/10 bg-white/[0.05] px-2.5
+                   text-[11.5px] font-medium text-ink-200 transition hover:bg-white/[0.09] hover:text-ink-100 disabled:opacity-50"
+          >
+            {agentBrowserBusy ? (
+              <Loader class="h-3 w-3 animate-spin" />
+            ) : agentBrowserOpened ? (
+              <Check class="h-3 w-3" />
+            ) : (
+              <Monitor class="h-3 w-3" />
+            )}
+            {agentBrowserBusy ? "Opening…" : agentBrowserOpened ? "Opened" : "Agent Browser"}
+          </button>
+        )}
         {row.shareable && (
           <button
             type="button"

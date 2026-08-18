@@ -26,6 +26,7 @@ export function ChatThread({
   onAnswerQuestion,
   onLoadOlder,
   onRewind,
+  onOpenAgentBrowser,
   mobileToolbar,
 }: {
   chat: ChatMeta;
@@ -46,6 +47,7 @@ export function ChatThread({
   onAnswerQuestion: (text: string) => void;
   onLoadOlder: () => Promise<void>;
   onRewind: (t: number, text: string) => void;
+  onOpenAgentBrowser: () => void;
   mobileToolbar: ComponentChildren;
 }) {
   return (
@@ -56,6 +58,7 @@ export function ChatThread({
           project={project}
           streaming={composer.streaming}
           onHamburger={onHamburger}
+          onOpenAgentBrowser={onOpenAgentBrowser}
         />
         {mobileToolbar}
 

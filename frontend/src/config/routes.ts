@@ -82,6 +82,8 @@ export const API_ROUTES = {
       `/api/projects/${encodeURIComponent(id)}/agent-browser${scope ? `?scope=${encodeURIComponent(scope)}` : ""}`,
     startAgentBrowser: (id: string) =>
       `/api/projects/${encodeURIComponent(id)}/agent-browser/start`,
+    navigateAgentBrowser: (id: string) =>
+      `/api/projects/${encodeURIComponent(id)}/agent-browser/navigate`,
     secrets: (id: string) =>
       `/api/projects/${encodeURIComponent(id)}/secrets`,
     secret: (id: string, key: string) =>
@@ -119,6 +121,10 @@ export const API_ROUTES = {
     item: (name: string) =>
       `/api/admin/skills-global/${encodeURIComponent(name)}`,
     import: "/api/admin/skills-global/import",
+  },
+  playbooks: {
+    collection: "/api/playbooks",
+    admin: "/api/admin/playbooks",
   },
   templates: "/api/templates",
   uploads: "/api/uploads",

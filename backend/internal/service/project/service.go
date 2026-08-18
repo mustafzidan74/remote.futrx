@@ -905,6 +905,51 @@ func (s *Service) stopAgentBrowser(ctx context.Context, id ID) error {
 	return nil
 }
 
+// NavigateAgentBrowser points the project's shared Agent Browser at rawURL.
+//
+// publicHostname is supplied by the transport layer, which owns the
+// deployment's hostname; the policy needs it to recognize the project's own
+// `<slug>--<port>.dev.<host>` preview address. Everything else is rejected —
+// see ValidateAgentBrowserURL.
+//
+// The browser must already be running: this drives an existing session rather
+// than launching one, so a caller that has not started it first gets
+// ErrAgentBrowserNotReady instead of a minute of silence.
+func (s *Service) NavigateAgentBrowser(ctx context.Context, id ID, rawURL, publicHostname string) (string, error) {
+	target, err := s.navigateAgentBrowser(ctx, id, rawURL, publicHostname)
+	s.record(ctx, audit.ActionProjectBrowserNavigate, auditTargetID(id), audit.Meta{"url": target}, err)
+	return target, err
+}
+
+func (s *Service) navigateAgentBrowser(ctx context.Context, id ID, rawURL, publicHostname string) (string, error) {
+	if !ValidID(id) {
+		return "", ErrInvalidID
+	}
+	m, err := s.repo.Get(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	if s.containerBrowser == nil || m.ContainerName == "" {
+		return "", errors.New("project has no container to run the browser in")
+	}
+	target, err := ValidateAgentBrowserURL(rawURL, m.Slug, publicHostname)
+	if err != nil {
+		return "", err
+	}
+	info, err := s.containerBrowser.Status(ctx, m.ContainerName)
+	if err != nil {
+		return "", err
+	}
+	if info.Core != "ready" {
+		return "", ErrAgentBrowserNotReady
+	}
+	if err := s.containerBrowser.Navigate(ctx, m.ContainerName, target); err != nil {
+		return "", err
+	}
+	s.TouchAgentBrowserActivity(ctx, id)
+	return target, nil
+}
+
 func (s *Service) ensureAgentBrowserStarted(id ID, startID int64, m Meta) {
 	if err := s.containerBrowser.Ensure(context.Background(), m.ContainerName); err != nil {
 		log.Printf("projects: start agent browser for %s: %v", id, err)

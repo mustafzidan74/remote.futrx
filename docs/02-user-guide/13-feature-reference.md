@@ -36,6 +36,8 @@ This is the compact inventory of current Remote behavior. “Page” means the l
 | Mode | Choose Chat, Plan, Code, Review, Debug, or Full auto | Advisory prompt policy, not enforcement |
 | Skill picker | Open **Skill set**, search, and select | Catalog depends on provider/project |
 | Skill chips | Review or remove selected skills | Cleared when provider changes |
+| Playbooks | Open **⚡ Playbooks** and select one | Applies its skills/mode/provider, then inserts the prompt; Shift-click sends it |
+| Playbook placeholder | A playbook stops with `{{…}}` still in the text | The token is selected for you; such a prompt is never auto-sent |
 | Attach picker | Choose **+** and select one or more files | Project chats; resumable uploads |
 | Drag attachment | Drag files over the composer | Same upload path |
 | Paste image | Paste image clipboard data into the composer | Same upload path |
@@ -148,6 +150,7 @@ coalesce into one follow-up under the default overlap policy.
 | Insert element context | Happens after selection | Selector, text, HTML, bounds, styles, parents |
 | Preview authentication | Sign in to Remote | Admin or project member |
 | Preview hostname | `slug--port.dev.<host>` | On-demand TLS and known-project check |
+| Open in Agent Browser | Use **Agent Browser** on a port row | Starts the shared browser and loads `127.0.0.1:<port>` inside the container |
 
 ## Agent Browser
 
@@ -194,6 +197,7 @@ Resource defaults are 6 CPUs, 4 GiB memory, and 2,000 processes. Admins alone ma
 | --- | --- |
 | Appearance | System, Dark, Light |
 | Agents | Admin sign-in/status/refresh for host-wide Claude, Codex, Kimi |
+| Playbooks | Admin-curated composer prompt templates: title, emoji, hint, prompt, skills, mode, provider, order |
 | Users | Google OAuth configuration; add/remove users; member/admin roles |
 | Info | Host CPU, memory, disks, network, OS/runtime, process, paths, role |
 
@@ -206,6 +210,7 @@ Resource defaults are 6 CPUs, 4 GiB memory, and 2,000 processes. Admins alone ma
 | `/workspace` | Yes | Yes |
 | Provider homes | Yes | Yes |
 | Project secrets | Yes | Yes |
+| Playbook library | Yes | Yes |
 | Agent Browser profile | Yes | Yes |
 | Scheduled-task definitions and run state | Yes | Yes |
 | Antigravity sign-in and conversation state | Yes, until container replacement | No |
