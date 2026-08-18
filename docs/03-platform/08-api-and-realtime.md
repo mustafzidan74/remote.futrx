@@ -97,7 +97,7 @@ because users authenticate `agy` inside each project.
 | GET | `/api/projects/{id}/container` | Detailed container inspection, including `template` provisioning status |
 | POST | `/api/projects/{id}/repair-network` | Reconfigure container networking and reinspect |
 | GET | `/api/projects/{id}/apps` | List externally reachable container listeners |
-| POST | `/api/projects/{id}/screenshot` | Capture one preview port headlessly inside the container: `{port, path?, width?, height?, fullPage?, notify?}`. `409` for a stopped container or an image without Playwright ([Previews](../02-user-guide/06-previews-and-inspector.md#share-a-screenshot)) |
+| POST | `/api/projects/{id}/screenshot` | Capture one preview port headlessly inside the container: `{port, path?, width?, height?, fullPage?, notify?}`. `409` for a stopped container or an image without Playwright. A `notify` that could not be delivered still answers `200` with the stored record and a `notifyError` ([Previews](../02-user-guide/06-previews-and-inspector.md#share-a-screenshot)) |
 | GET | `/api/projects/{id}/screenshots` | List a project's stored captures, newest first, plus whether a notification sink is configured |
 | GET | `/api/projects/{id}/screenshots/{sid}.png` | Read one stored capture; session and project membership required |
 | POST | `/api/projects/{id}/screenshots/{sid}/send` | Push a stored capture through the notification sinks; `409` when none is configured |

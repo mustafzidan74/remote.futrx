@@ -177,6 +177,10 @@ type CaptureResult struct {
 	// Notifications reports whether any sink is configured, so the card that
 	// renders the capture knows whether to offer a "send it" button at all.
 	Notifications bool `json:"notifications"`
+	// NotifyError explains why a requested delivery did not happen. The
+	// capture itself still succeeded and is listed here, so a delivery
+	// problem is reported alongside the record rather than instead of it.
+	NotifyError string `json:"notifyError,omitempty"`
 	// PublicURL is set only when a sink needed a login-less link. It is shown
 	// once, like a preview share token.
 	PublicURL string `json:"publicUrl,omitempty"`

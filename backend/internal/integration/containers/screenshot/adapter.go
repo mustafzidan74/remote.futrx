@@ -11,6 +11,7 @@ package screenshot
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -99,12 +100,36 @@ func (a *Adapter) Capture(ctx context.Context, req servicescreenshot.CaptureRequ
 		return nil, servicescreenshot.ErrToolingMissing
 	}
 
-	pulled, err := a.runner.Run(ctx, "file", "pull", req.ContainerName+req.RemotePath, "-")
+	return a.pull(ctx, req.ContainerName, req.RemotePath)
+}
+
+// pull copies the PNG to a host temp file and reads it back.
+//
+// It does not pull to stdout, which would be the shorter spelling: the runner
+// returns stdout and stderr merged into one string, so any warning `lxc` chose
+// to print during a successful transfer would end up spliced into the image.
+// Every other file pull in this codebase lands on a host path for the same
+// reason.
+func (a *Adapter) pull(ctx context.Context, containerName, remotePath string) ([]byte, error) {
+	local, err := os.CreateTemp("", "remote-shot-*.png")
+	if err != nil {
+		return nil, fmt.Errorf("stage screenshot on the host: %w", err)
+	}
+	localPath := local.Name()
+	// lxc writes the file itself; the handle only reserved the name.
+	local.Close()
+	defer os.Remove(localPath)
+
+	out, err := a.runner.Run(ctx, "file", "pull", containerName+remotePath, localPath)
 	if err != nil {
 		return nil, fmt.Errorf("pull screenshot from %s failed: %w; output: %s",
-			req.ContainerName, err, tail(pulled))
+			containerName, err, tail(out))
 	}
-	return []byte(pulled), nil
+	data, err := os.ReadFile(localPath)
+	if err != nil {
+		return nil, fmt.Errorf("read the pulled screenshot: %w", err)
+	}
+	return data, nil
 }
 
 // screenshotArgs is the exact `lxc exec` invocation, split out so a test can

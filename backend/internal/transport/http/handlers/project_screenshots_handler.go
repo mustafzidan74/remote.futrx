@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 
@@ -33,7 +32,7 @@ func (h *ProjectHandler) handleScreenshot(
 	id serviceproject.ID,
 	email string,
 ) {
-	if h.screenshots == nil || !h.screenshots.Available() {
+	if h.screenshots == nil || !h.screenshots.CanCapture() {
 		httptransport.SendErr(w, http.StatusServiceUnavailable, servicescreenshot.ErrUnavailable.Error())
 		return
 	}
@@ -92,16 +91,12 @@ func (h *ProjectHandler) handleScreenshots(
 		return
 	}
 
-	raw, err := url.PathUnescape(rest)
-	if err != nil {
-		httptransport.SendErr(w, http.StatusBadRequest, "invalid screenshot id")
-		return
-	}
-	if id, ok := strings.CutSuffix(raw, "/send"); ok {
+	// r.URL.Path is already decoded; nothing here decodes a second time.
+	if id, ok := strings.CutSuffix(rest, "/send"); ok {
 		h.sendScreenshot(w, r, projectID, id)
 		return
 	}
-	screenshotID, ok := screenshotIDFromPath(raw)
+	screenshotID, ok := screenshotIDFromPath(rest)
 	if !ok {
 		httptransport.SendErr(w, http.StatusBadRequest, "invalid screenshot id")
 		return

@@ -131,6 +131,28 @@ func TestScreenshotSendWithoutASink(t *testing.T) {
 	fixture.request(t, http.MethodPost, base+"/screenshots/deadbeefdeadbeef/send", "", http.StatusNotFound)
 }
 
+// TestScreenshotWithNotifyKeepsTheRecord guards the boundary the service
+// draws: the picture was taken and stored, so a sink that would not take it is
+// reported alongside the record rather than instead of it.
+func TestScreenshotWithNotifyKeepsTheRecord(t *testing.T) {
+	fixture := newScreenshotFixture(t)
+	base := "/api/projects/" + string(fixture.project.ID)
+
+	rec := fixture.request(t, http.MethodPost, base+"/screenshot",
+		`{"port":3000,"notify":true}`, http.StatusOK)
+	var created servicescreenshot.CaptureResult
+	if err := json.NewDecoder(rec.Body).Decode(&created); err != nil {
+		t.Fatalf("decode capture: %v", err)
+	}
+	if created.Screenshot.ID == "" {
+		t.Fatal("the capture was discarded because delivery had nowhere to go")
+	}
+	if created.NotifyError == "" {
+		t.Fatal("notifyError is empty; nothing was sent and the caller asked for it")
+	}
+	fixture.request(t, http.MethodGet, created.Screenshot.URL, "", http.StatusOK)
+}
+
 func TestScreenshotRefusesAStoppedContainer(t *testing.T) {
 	fixture := newScreenshotFixture(t)
 	fixture.projects.status = serviceproject.StatusStopped

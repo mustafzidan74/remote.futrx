@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"net/url"
 	"strings"
 
 	servicescreenshot "github.com/futrx-com/remote.futrx.com/internal/service/screenshot"
@@ -84,8 +83,9 @@ func screenshotTokenFromPath(path string) (string, bool) {
 	if !strings.HasSuffix(rest, ".png") {
 		return "", false
 	}
-	token, err := url.PathUnescape(strings.TrimSuffix(rest, ".png"))
-	if err != nil || token == "" {
+	// r.URL.Path arrives decoded, so the token is taken as-is.
+	token := strings.TrimSuffix(rest, ".png")
+	if token == "" {
 		return "", false
 	}
 	return token, true

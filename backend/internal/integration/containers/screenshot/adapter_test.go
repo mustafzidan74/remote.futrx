@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -50,11 +51,15 @@ func TestScreenshotArgs(t *testing.T) {
 	}
 }
 
+// TestCapturePullsTheImageAndCleansUp also pins the shape of the pull: the
+// bytes must come off a host file, never off the runner's merged stdout+stderr
+// string, which would splice any warning `lxc` printed into the image.
 func TestCapturePullsTheImageAndCleansUp(t *testing.T) {
-	runner := &fakeRunner{responses: map[string]string{
-		"exec demo -- sh -c command -v npx":        "/usr/bin/npx\n",
-		"file pull demo/tmp/remote-shot-abc.png -": "\x89PNG\r\n\x1a\n",
-	}}
+	const png = "\x89PNG\r\n\x1a\nbody"
+	runner := &fakeRunner{
+		responses: map[string]string{"exec demo -- sh -c command -v npx": "/usr/bin/npx\n"},
+		writes:    map[string]string{"file pull demo/tmp/remote-shot-abc.png": png},
+	}
 	adapter := NewAdapter(runner)
 
 	data, err := adapter.Capture(context.Background(), servicescreenshot.CaptureRequest{
@@ -64,11 +69,17 @@ func TestCapturePullsTheImageAndCleansUp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Capture(): %v", err)
 	}
-	if string(data) != "\x89PNG\r\n\x1a\n" {
+	if string(data) != png {
 		t.Fatalf("Capture() returned %q, want the pulled bytes verbatim", data)
 	}
 	if !runner.ran("exec demo -- rm -f /tmp/remote-shot-abc.png") {
 		t.Fatalf("the throwaway file was not removed; ran: %v", runner.calls)
+	}
+	if runner.pullDestination == "" || runner.pullDestination == "-" {
+		t.Fatalf("pulled to %q, want a host file path", runner.pullDestination)
+	}
+	if _, err := os.Stat(runner.pullDestination); !os.IsNotExist(err) {
+		t.Fatalf("the host staging file was left behind at %s", runner.pullDestination)
 	}
 }
 
@@ -126,6 +137,11 @@ type fakeRunner struct {
 	calls     []string
 	responses map[string]string
 	failures  map[string]bool
+	// writes maps a call minus its last argument to content the "runner" drops
+	// at that last argument, standing in for `lxc file pull <src> <dst>`.
+	writes map[string]string
+	// pullDestination records where the pull was told to land.
+	pullDestination string
 }
 
 func (r *fakeRunner) Available() bool { return true }
@@ -135,6 +151,15 @@ func (r *fakeRunner) Run(_ context.Context, args ...string) (string, error) {
 	r.mu.Lock()
 	r.calls = append(r.calls, key)
 	r.mu.Unlock()
+	if len(args) > 1 {
+		if content, ok := r.writes[strings.Join(args[:len(args)-1], " ")]; ok {
+			r.pullDestination = args[len(args)-1]
+			if err := os.WriteFile(r.pullDestination, []byte(content), 0o600); err != nil {
+				return "", err
+			}
+			return "", nil
+		}
+	}
 	out := r.responses[key]
 	if r.failures[key] {
 		return out, errors.New("exit status 1")

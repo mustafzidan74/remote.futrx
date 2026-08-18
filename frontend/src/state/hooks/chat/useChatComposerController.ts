@@ -46,6 +46,10 @@ export function useChatComposerController({
     [chatId],
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Where insertText wants the caret once the inserted prompt has rendered.
+  // A ref rather than state: nothing renders from it, and it is written from
+  // inside the setText updater, where the composed length is first known.
+  const pendingSelection = useRef<{ start: number; end: number } | null>(null);
   const { textareaRef, focusInput } = useAutosizeTextarea(text);
   const upload = useAttachmentUpload(chatId, attachmentBasePath);
   const drag = useDragUpload(upload.doUpload);
@@ -135,21 +139,30 @@ export function useChatComposerController({
   /**
    * Puts a ready-made prompt in the composer without destroying a draft: an
    * empty composer is replaced, a half-typed one gets the prompt appended
-   * after a blank line. `select` is a range inside `text` to highlight once
+   * after a blank line. `select` is a range inside `value` to highlight once
    * it lands, so an unfilled placeholder is the first thing the user types
    * over.
+   *
+   * It composes from the updater's `prev`, not from the rendered `text`,
+   * because a slash command clears the draft and then inserts its prompt in
+   * the same tick: reading the captured value there would append the prompt to
+   * the command the user just typed.
    */
   function insertText(value: string, select?: { start: number; end: number }) {
-    const existing = text.trimEnd();
-    const offset = existing ? existing.length + 2 : 0;
-    const next = existing ? `${existing}\n\n${value}` : value;
-    setText(next);
+    setText((previous) => {
+      const existing = previous.trimEnd();
+      const offset = existing ? existing.length + 2 : 0;
+      const next = existing ? `${existing}\n\n${value}` : value;
+      pendingSelection.current = select
+        ? { start: offset + select.start, end: offset + select.end }
+        : { start: next.length, end: next.length };
+      return next;
+    });
     setTimeout(() => {
+      const target = pendingSelection.current;
       const textarea = textareaRef.current;
       textarea?.focus();
-      const start = select ? offset + select.start : next.length;
-      const end = select ? offset + select.end : next.length;
-      textarea?.setSelectionRange(start, end);
+      if (target) textarea?.setSelectionRange(target.start, target.end);
     }, 0);
   }
 

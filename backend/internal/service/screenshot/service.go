@@ -77,10 +77,19 @@ func New(repo Repository, blobs Blobs, capturer Capturer, projects Projects, opt
 	return service
 }
 
-// Available reports whether captures can be taken on this host.
+// Available reports whether stored captures can be listed, read, and sent.
+// It deliberately says nothing about the container runtime: a host whose `lxc`
+// is missing or wedged can take no new pictures, but the ones it already has
+// are files on disk and must keep being served — otherwise the session-gated
+// route would be less available than the login-less public link.
 func (s *Service) Available() bool {
-	return s != nil && s.repo != nil && s.blobs != nil &&
-		s.capturer != nil && s.capturer.Available() && s.projects != nil
+	return s != nil && s.repo != nil && s.blobs != nil && s.projects != nil
+}
+
+// CanCapture reports whether a new picture can be taken right now, which is
+// Available plus a reachable container runtime.
+func (s *Service) CanCapture() bool {
+	return s.Available() && s.capturer != nil && s.capturer.Available()
 }
 
 // NotificationsConfigured reports whether the "send it" buttons have anywhere
@@ -165,11 +174,12 @@ func (s *Service) Capture(
 		ID:   string(projectID),
 		Name: string(result.Screenshot.ID),
 	}, audit.Meta{
-		"port":     in.Port,
-		"path":     in.Path,
-		"fullPage": in.FullPage,
-		"notify":   in.Notify,
-		"bytes":    result.Screenshot.Bytes,
+		"port":        in.Port,
+		"path":        in.Path,
+		"fullPage":    in.FullPage,
+		"notify":      in.Notify,
+		"bytes":       result.Screenshot.Bytes,
+		"notifyError": result.NotifyError,
 	}, err)
 	return result, err
 }
@@ -180,7 +190,7 @@ func (s *Service) capture(
 	in CaptureInput,
 	actor string,
 ) (CaptureResult, error) {
-	if !s.Available() {
+	if !s.CanCapture() {
 		return CaptureResult{}, ErrUnavailable
 	}
 	if !serviceproject.ValidID(projectID) {
@@ -254,9 +264,12 @@ func (s *Service) capture(
 	}
 	delivered, publicURL, err := s.deliver(ctx, projectID, record, meta, data)
 	if err != nil {
-		// The capture succeeded and is stored; a sink that would not take it
-		// is reported, not rolled back.
-		return result, err
+		// The picture exists, is stored, and has already spent one of the
+		// project's retention slots. A sink that would not take it is a second
+		// outcome to report, not a reason to pretend the capture never
+		// happened — which is what returning an error here would mean.
+		result.NotifyError = err.Error()
+		return result, nil
 	}
 	result.Delivered = delivered
 	result.PublicURL = publicURL

@@ -316,11 +316,20 @@ func TestNotifyWithoutASinkReportsTheCaptureAnyway(t *testing.T) {
 	result, err := service.Capture(context.Background(), testProjectID, CaptureInput{
 		Port: 3000, Notify: true,
 	}, "u@e.com")
-	if !errors.Is(err, ErrNoNotification) {
-		t.Fatalf("Capture() error = %v, want ErrNoNotification", err)
+	// The picture exists and has spent a retention slot, so a sink that would
+	// not take it is a second outcome, never a reason to fail the capture.
+	if err != nil {
+		t.Fatalf("Capture() error = %v, want the capture to succeed", err)
 	}
 	if result.Screenshot.ID == "" {
 		t.Fatal("the capture itself must still be reported: it succeeded and is stored")
+	}
+	if result.NotifyError == "" {
+		t.Fatal("notifyError is empty; the caller asked to notify and nothing was sent")
+	}
+	records, _ := service.List(context.Background(), testProjectID)
+	if len(records) != 1 {
+		t.Fatalf("stored records = %d, want the capture to be listed", len(records))
 	}
 }
 
