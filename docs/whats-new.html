@@ -74,7 +74,7 @@ kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;paddi
     <p class="lede">كل ميزة: بتعمل إيه، فين تلاقيها في الواجهة، وإيه اللي تعمله الأول. المنصة الأساسية من FutrX (AGPL)، والإضافات دي على الـ fork بتاعنا ومرفوعة كـ Pull Requests للفريق الأصلي.</p>
   </div>
   <div class="stats">
-    <div class="stat"><b>23</b><span>ميزة</span></div>
+    <div class="stat"><b>28</b><span>ميزة</span></div>
     <div class="stat"><b>15</b><span>skill عامة</span></div>
     <div class="stat"><b>8</b><span>PR للـ upstream</span></div>
   </div>
@@ -109,6 +109,13 @@ kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;paddi
     <div class="card"><span class="tag">جديد</span><h3>تسجيل صوتي → نص (عربي)</h3><p>ميكروفون في الكومبوزر بالعامية المصرية افتراضياً، مع بديل أدق على السيرفر (OpenAI transcription) اختياري.</p><div class="where"><b>فين:</b> زر المايك جنب الإرسال، وSettings → Voice input</div></div>
     <div class="card"><span class="tag">جديد</span><h3>بحث نصي في كل المحادثات</h3><p>بحث عربي/إنجليزي جوه الرسايل مش العناوين بس، والنتيجة توديك للرسالة نفسها.</p><div class="where"><b>فين:</b> خانة البحث في القائمة الجانبية</div></div>
     <div class="card"><span class="tag">جديد</span><h3>لوحة الأوامر <kbd>Ctrl</kbd>+<kbd>K</kbd></h3><p>افتح أي مشروع/شات/صفحة إعدادات أو نفّذ فعل (مشروع جديد، preview، snapshot) من الكيبورد.</p><div class="where"><b>فين:</b> في أي مكان</div></div>
+  </div>
+  <div class="grid" style="margin-top:14px">
+    <div class="card"><span class="tag">جديد</span><h3>Home dashboard</h3><p>شاشة واحدة: المشاريع وحالتها، تنبيهات بأزرار حل، آخر 10 runs بتكلفتها، المهام الجاية بعدّاد، واستهلاك 7 أيام — مع صحة المنصة والذاكرة وآخر backup.</p><div class="where"><b>فين:</b> Home في القائمة الجانبية، أو Ctrl+K → Home</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>Team mode 👥</h3><p>سويتش واحد: Claude ينفّذ → موديل تاني يراجع (VERDICT: SHIP/FIX) → Playwright يختبر → لو فيه ملاحظات ترجع للمنفّذ تلقائي، بحد أقصى دورتين. الشاتات المساعدة مخفية وتقدر تفتحها.</p><div class="where"><b>فين:</b> Run options → Who works on it</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>مكتبة Prompts + رسائل العملاء</h3><p>نصوصك المتكررة بضغطة (بحث، اختصار <code>/s-wpfix</code>، "Save as snippet" من أي رسالة)، وقوالب رسائل للعميل بالعربي/الإنجليزي (تسليم، بيانات دخول، الموقع شغال) تتبعت أو تتحط في الـ portal.</p><div class="where"><b>فين:</b> Snippets في شريط الشات، وProject → Sharing → Message client</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>تكامل GitHub</h3><p>اربط الريبو بالمشروع، افتح PR من الشات (<code>/pr</code>)، استورد تعليقات المراجعة كتاسك، وwebhook يفتح شات (أو يشغّل agent باختيارك) لما ييجي Issue بلابل معيّن أو تعليق <code>/remote</code>.</p><div class="where"><b>فين:</b> Project → GitHub</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>مهام مجدولة متقدمة</h3><p>سلاسل (تاسك بعد تاسك حسب النجاح/الفشل)، شروط قبل التشغيل (رد HTTP، أمر، أيام الأسبوع، نتيجة آخر تشغيل) بدون صرف توكنز، وسجل آخر 50 تشغيل بالملفات اللي اتغيرت والتكلفة.</p><div class="where"><b>فين:</b> Schedules في الشات → New/History</div></div>
   </div>
 </section>
 
