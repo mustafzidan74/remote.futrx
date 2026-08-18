@@ -16,6 +16,7 @@ const DEFAULT_EVENTS: NotificationEventToggles = {
   needsAttention: true,
   scheduledRun: true,
   projectHealth: true,
+  system: true,
 };
 
 const DEFAULT_DIGEST: NotificationDigestSettings = {

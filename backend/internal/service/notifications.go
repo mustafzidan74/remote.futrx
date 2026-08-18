@@ -8,6 +8,7 @@ import (
 
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicehealth "github.com/futrx-com/remote.futrx.com/internal/service/health"
+	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
 	servicepostrun "github.com/futrx-com/remote.futrx.com/internal/service/postrun"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
@@ -34,8 +35,24 @@ var (
 	_ prompt.RunObserver          = (*notifyObserver)(nil)
 	_ serviceschedule.RunObserver = (*notifyObserver)(nil)
 	_ servicehealth.Alerter       = (*notifyObserver)(nil)
+	_ servicemonitoring.Announcer = (*notifyObserver)(nil)
 	_ servicepostrun.Notifier     = (*notifyObserver)(nil)
 )
+
+// PlatformStarted reports that the backend process came up. It is the one
+// notification nobody can infer from the outside: by the time a human looks,
+// a crash-restarted box is answering again as if nothing happened, so the
+// restart itself — and the version it came back on — is the whole message.
+func (o *notifyObserver) PlatformStarted(_ context.Context, version string) {
+	if o == nil {
+		return
+	}
+	o.notifications.Publish(servicenotify.Event{
+		Event:   servicenotify.KindSystem,
+		Status:  servicenotify.StatusStarted,
+		Summary: "Remote started (version " + version + ", uptime reset).",
+	})
+}
 
 // RunSettled reports a finished interactive run. Scheduled runs are skipped:
 // the schedule service reports those with richer task context.

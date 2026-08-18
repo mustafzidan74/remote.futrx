@@ -41,6 +41,8 @@ All `/api/*` and `/ws*` requests require a signed session for a registered user.
 | GET, PUT | `/api/admin/notifications` | Read or write the global notification settings, secrets masked; admin only |
 | POST | `/api/admin/notifications/test` | Deliver a synthetic event to every configured sink and report each outcome; admin only |
 | POST | `/api/admin/notifications/digest/send-now` | Build and deliver the weekly usage digest immediately without advancing the schedule; admin only |
+| GET, PUT | `/api/admin/monitoring` | Read or write the external uptime monitoring settings, heartbeat URL masked; admin only |
+| POST | `/api/admin/monitoring/ping` | Push one heartbeat now and report the delivery outcome; admin only |
 | GET, POST | `/api/admin/secrets` | List the platform secrets vault (values masked) or create an entry; admin only |
 | PUT, DELETE | `/api/admin/secrets/{key}` | Update or remove one vault entry; a blank value keeps the stored one, `clear` removes it; admin only |
 | POST | `/api/admin/secrets/{key}/test` | Probe an SSH target from the host and report `{ok, output, latencyMs}`; admin only |

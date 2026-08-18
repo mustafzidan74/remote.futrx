@@ -39,6 +39,11 @@ const EVENT_ROWS: Array<{ key: keyof NotificationEventToggles; label: string; hi
     label: "Project health",
     hint: "A project container ran short of memory, stopped serving its app, or recovered.",
   },
+  {
+    key: "system",
+    label: "System events",
+    hint: "The platform itself restarted — the one way a crash-restart becomes visible on your phone.",
+  },
 ];
 
 export function NotificationsSettings() {

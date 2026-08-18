@@ -13,6 +13,7 @@ import (
 	servicetemplates "github.com/futrx-com/remote.futrx.com/internal/service/container/templates"
 	servicegithistory "github.com/futrx-com/remote.futrx.com/internal/service/githistory"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
+	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
 	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	serviceselfupdate "github.com/futrx-com/remote.futrx.com/internal/service/selfupdate"
@@ -144,6 +145,13 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			deps.Services.Notifications,
 			deps.Services.Auth,
 		),
+		// External uptime monitoring. GET/HEAD /healthz is public and
+		// session-less by design — the auth middleware only gates /api and
+		// /ws, so the route reaches its own rate limiter untouched.
+		Monitoring: httphandlers.NewMonitoringHandler(
+			monitoringService(deps.Services.Monitoring),
+			deps.Services.Auth,
+		),
 		// Voice input. The composer's browser path never reaches the server;
 		// these routes exist for the optional server-transcription fallback
 		// and its admin panel.
@@ -195,6 +203,16 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 // interface while keeping a nil service nil, so the handler answers 503 on a
 // deployment without a vault store instead of panicking.
 func globalSecretsService(service *serviceglobalsecrets.Service) httphandlers.GlobalSecretsService {
+	if service == nil {
+		return nil
+	}
+	return service
+}
+
+// monitoringService narrows the concrete monitoring service to the
+// transport's interface while keeping a nil service nil, so /healthz reports
+// 503 instead of panicking on a deployment without a monitoring store.
+func monitoringService(service *servicemonitoring.Service) httphandlers.MonitoringService {
 	if service == nil {
 		return nil
 	}
