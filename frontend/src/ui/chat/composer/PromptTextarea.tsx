@@ -9,6 +9,8 @@ export function PromptTextarea({
   onTextChange,
   onPaste,
   onSend,
+  onKeyIntercept,
+  onCaretChange,
   lang,
 }: {
   textareaRef: RefObject<HTMLTextAreaElement>;
@@ -20,6 +22,14 @@ export function PromptTextarea({
   onPaste: (event: ClipboardEvent) => void;
   onSend: () => void;
   /**
+   * First refusal on every keystroke, for the slash-command menu. Returning
+   * true means the menu consumed the key, so the textarea's own shortcuts do
+   * not also fire.
+   */
+  onKeyIntercept?: (event: KeyboardEvent) => boolean;
+  /** Called whenever the caret may have moved, so the menu can re-read it. */
+  onCaretChange?: () => void;
+  /**
    * BCP-47 tag of the dictation language, when one is selected. It tells the
    * browser how to shape and spell-check the text that voice input inserts;
    * `dir` stays "auto" so the base direction still follows the content.
@@ -30,8 +40,12 @@ export function PromptTextarea({
     <textarea
       ref={textareaRef}
       value={text}
-      onInput={(event) => onTextChange((event.currentTarget as HTMLTextAreaElement).value)}
+      onInput={(event) => {
+        onTextChange((event.currentTarget as HTMLTextAreaElement).value);
+        onCaretChange?.();
+      }}
       onKeyDown={(event) => {
+        if (onKeyIntercept?.(event as KeyboardEvent)) return;
         if (
           event.key === "Enter" &&
           (event.ctrlKey || event.metaKey) &&
@@ -42,6 +56,11 @@ export function PromptTextarea({
           onSend();
         }
       }}
+      // The caret moves without the value changing — arrows, Home, a click —
+      // and the slash menu is keyed on where it is, not on what was typed.
+      onKeyUp={() => onCaretChange?.()}
+      onClick={() => onCaretChange?.()}
+      onFocus={() => onCaretChange?.()}
       onPaste={(event) => onPaste(event as ClipboardEvent)}
       rows={1}
       dir="auto"

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import type { ChatStatus, PromptOutcome, SyntheticKind } from "../../../models/chat";
 import { chatComposerSessionStore } from "../../chat/composerSessionStore";
+import { unescapeSlash } from "../../chat/slashCommandState";
 import { useAttachmentUpload } from "./useAttachmentUpload";
 import { useAutosizeTextarea } from "./useAutosizeTextarea";
 import { useDragUpload } from "./useDragUpload";
@@ -102,7 +103,10 @@ export function useChatComposerController({
 
   function handleSend() {
     if (upload.uploading || (!chatComposerSessionStore.allowsQueue(status) && !canSendPrompt)) return;
-    const userText = text.trim();
+    // `//do the thing` is how a user says "this really does start with a
+    // slash"; the escape is the composer's, so it is removed here rather than
+    // travelling to the agent.
+    const userText = unescapeSlash(text.trim());
     const paths = upload.attachments
       .filter((attachment) => attachment.serverPath)
       .map((attachment) => attachment.serverPath);

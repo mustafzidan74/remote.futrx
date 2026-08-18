@@ -47,8 +47,8 @@ listener from the picker.
 
 The preview panels — the globe button on a sidebar project row, and the caret
 on the chat header's **Preview** chip — list every port the project is
-listening on. Each row offers **Open**, **Copy URL**, **Agent Browser**, and
-**Share 24h**.
+listening on. Each row offers **Open**, **Copy URL**, **Agent Browser**,
+**Screenshot**, and **Share 24h**.
 
 **Agent Browser** loads that port in the project's shared headed browser
 instead of your own:
@@ -69,6 +69,46 @@ Platform ports (6080, 8842, 8081, 9222) carry no **Agent Browser** action —
 pointing the Agent Browser at its own view or its own debugging port achieves
 nothing. If the browser cannot start, or the port is refused, the reason is
 shown on that row.
+
+## Share a screenshot
+
+**Screenshot** photographs a port instead of handing out access to it. A share
+link lets someone drive the running app for a day; a screenshot is one frozen,
+dated picture of one address — which is usually what "look at this" means.
+
+1. Select **Screenshot** on the port you want, or type `/screenshot` (optionally
+   `/screenshot 3000`) in the composer.
+2. Remote runs Playwright headless **inside the project container**, against
+   `http://127.0.0.1:<port>/`, and pulls the PNG back to the host.
+3. A thumbnail card appears — in the preview panel, or in the composer's status
+   area when the command was used.
+
+**Outcome:** the capture is stored on the host under
+`DATA_DIR/screenshots/<projectId>/`, readable only by the project's members
+through a session-gated URL. Each project keeps its **20 most recent** captures;
+older ones and their files are removed automatically.
+
+The card offers:
+
+| Action | Effect |
+| --- | --- |
+| **Insert into chat** | Puts a line naming the port, the size, and the capture's URL into the draft, so the transcript records what was looked at. |
+| **Copy link** | Copies the session-gated URL. Anyone opening it still needs a Remote session and project membership. |
+| **Download** | Saves the PNG. |
+| **Send to chat apps** | Pushes the picture through the configured notification sinks. Hidden when none is configured. |
+
+**Sending it onward.** Telegram receives the picture itself (`sendPhoto`), and
+so does WhatsApp through the Cloud API (uploaded to `/media`, then sent as an
+image). Two configurations can carry only text — CallMeBot, whose whole
+interface is one URL, and a Cloud API install pinned to an approved template —
+and for those Remote mints a **24-hour login-less link** (`/s/screenshot/…`) and
+sends that instead. The link is shown on the card so you know it exists: anyone
+holding it can see that one image until it expires. No link is minted when every
+configured sink can carry pictures.
+
+**If it fails.** A container built from an older base image has no Playwright;
+the capture answers with a rebuild hint rather than a generic error. A stopped
+container is refused outright. The whole capture is bounded at 30 seconds.
 
 ## Preview request path
 
@@ -118,6 +158,7 @@ context, not a full-page source export.
 | Allowed ports | 1024–65535 |
 | Preview access | Administrator or project member with a valid Remote session |
 | Public sharing | No anonymous or public preview link |
+| Screenshots | 1280×800 by default, 320–3840 × 240–2160, 20 kept per project |
 | Platform cookies | Remote session, OAuth-state, and return-location cookies are removed before proxying to project code |
 | Inspector origin | Same project preview origin through `/__remote_inspector` |
 | Selected target | One preview process and port at a time |

@@ -16,6 +16,7 @@ import (
 	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
 	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
+	servicescreenshot "github.com/futrx-com/remote.futrx.com/internal/service/screenshot"
 	serviceselfupdate "github.com/futrx-com/remote.futrx.com/internal/service/selfupdate"
 	serviceserverinfo "github.com/futrx-com/remote.futrx.com/internal/service/serverinfo"
 	servicetranscribe "github.com/futrx-com/remote.futrx.com/internal/service/transcribe"
@@ -125,6 +126,7 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			deps.PublicHostname,
 		).WithShares(deps.Services.Shares).
 			WithSnapshots(deps.Services.Snapshots, deps.TrashRetention).
+			WithScreenshots(deps.Services.Screenshots).
 			WithPortal(portalService(deps.Services.Portals)).
 			WithUsage(usageHandler),
 		ProjectHealth: httphandlers.NewProjectHealthHandler(
@@ -162,10 +164,13 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		// The client portal is the one public, session-less page the
 		// application serves; the auth middleware only gates /api and /ws, so
 		// this route reaches its own token check.
-		Portal:     httphandlers.NewPortalHandler(portalService(deps.Services.Portals)),
-		ServerInfo: httphandlers.NewServerInfoHandler(deps.ServerInfo),
-		SelfUpdate: httphandlers.NewSelfUpdateHandler(deps.SelfUpdate, deps.Services.Auth),
-		Skills:     httphandlers.NewSkillHandler(deps.Services.Skills),
+		Portal: httphandlers.NewPortalHandler(portalService(deps.Services.Portals)),
+		// The second public, session-less route: a 24h token that shows one
+		// stored preview screenshot to a chat app that cannot carry pictures.
+		ScreenshotLinks: screenshotLinkHandler(deps.Services.Screenshots),
+		ServerInfo:      httphandlers.NewServerInfoHandler(deps.ServerInfo),
+		SelfUpdate:      httphandlers.NewSelfUpdateHandler(deps.SelfUpdate, deps.Services.Auth),
+		Skills:          httphandlers.NewSkillHandler(deps.Services.Skills),
 		GlobalSkills: httphandlers.NewGlobalSkillHandler(
 			deps.Services.GlobalSkills,
 			deps.Services.Auth,
@@ -197,6 +202,19 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		Middleware:       middleware,
 		Static:           httptransport.NewStaticHandler(deps.Static),
 	}), nil
+}
+
+// screenshotLinkHandler keeps a nil screenshot service nil, so a deployment
+// without one simply never registers the public route.
+func screenshotLinkHandler(service *servicescreenshot.Service) httptransport.RouteRegistrar {
+	if service == nil {
+		return nil
+	}
+	handler := httphandlers.NewScreenshotLinkHandler(service)
+	if handler == nil {
+		return nil
+	}
+	return handler
 }
 
 // globalSecretsService narrows the concrete vault service to the transport's

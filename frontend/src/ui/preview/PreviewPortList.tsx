@@ -3,6 +3,7 @@ import { PUBLIC_HOSTNAME } from "../../config/runtime.ts";
 import type { ProjectMeta } from "../../models/project";
 import type { ProjectPreviewLinks } from "../../state/hooks/projects/useProjectPreviewLinks.ts";
 import { useAgentBrowserOpener } from "../../state/hooks/projects/useAgentBrowserOpener.ts";
+import { useProjectScreenshot } from "../../state/hooks/projects/useProjectScreenshot.ts";
 import {
   PREVIEW_SHARE_TTL_HOURS,
   canOpenInAgentBrowser,
@@ -15,8 +16,10 @@ import {
   type PreviewPortRow,
 } from "../../state/projects/projectPreviewLinksState.ts";
 import { buildProjectPreviewUrl } from "../../shared/projectPreviewUrls.ts";
+import { ScreenshotCard } from "./ScreenshotCard";
 import {
   AlertCircle,
+  Camera,
   Check,
   Copy,
   ExternalLink,
@@ -51,6 +54,7 @@ export function PreviewPortList({
     projectId: project.id,
     onOpened: onAgentBrowserOpened,
   });
+  const screenshot = useProjectScreenshot(project.id);
 
   async function copyUrl(port: number, url: string) {
     dispatch({ type: "start", action: "copy", port });
@@ -113,15 +117,30 @@ export function PreviewPortList({
             shared={isPreviewLinkDone(feedback, "share", row.port)}
             agentBrowserBusy={agentBrowser.busyPort === row.port}
             agentBrowserOpened={agentBrowser.openedPort === row.port}
+            screenshotBusy={screenshot.busyPort === row.port}
             error={
               previewLinkError(feedback, row.port) ??
-              (agentBrowser.errorPort === row.port ? agentBrowser.error ?? undefined : undefined)
+              (agentBrowser.errorPort === row.port ? agentBrowser.error ?? undefined : undefined) ??
+              (screenshot.errorPort === row.port ? screenshot.error ?? undefined : undefined)
             }
             onCopy={copyUrl}
             onShare={shareUrl}
             onOpenInAgentBrowser={(port) => void agentBrowser.open(port)}
+            onScreenshot={(port) => void screenshot.capture(port)}
           />
         ))
+      )}
+
+      {screenshot.card && (
+        <ScreenshotCard
+          screenshot={screenshot.card.screenshot}
+          delivered={screenshot.card.delivered}
+          publicUrl={screenshot.card.publicUrl}
+          sending={screenshot.sending}
+          canSend={screenshot.card.canSend}
+          onSend={screenshot.send}
+          onDismiss={screenshot.dismiss}
+        />
       )}
 
       {issued && <IssuedShareLink url={issued} copied={feedback.copied === true} />}
@@ -162,10 +181,12 @@ function PortRow({
   shared,
   agentBrowserBusy,
   agentBrowserOpened,
+  screenshotBusy,
   error,
   onCopy,
   onShare,
   onOpenInAgentBrowser,
+  onScreenshot,
 }: {
   row: PreviewPortRow;
   url: string;
@@ -175,10 +196,12 @@ function PortRow({
   shared: boolean;
   agentBrowserBusy: boolean;
   agentBrowserOpened: boolean;
+  screenshotBusy: boolean;
   error?: string;
   onCopy: (port: number, url: string) => void;
   onShare: (port: number) => void;
   onOpenInAgentBrowser: (port: number) => void;
+  onScreenshot: (port: number) => void;
 }) {
   return (
     <div class="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-2">
@@ -251,23 +274,40 @@ function PortRow({
           </button>
         )}
         {row.shareable && (
-          <button
-            type="button"
-            onClick={() => onShare(row.port)}
-            disabled={sharing}
-            title={`Create a public link that works for ${PREVIEW_SHARE_TTL_HOURS} hours`}
-            class="inline-flex h-7 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.05] px-2.5
-                   text-[11.5px] font-medium text-ink-200 transition hover:bg-white/[0.09] hover:text-ink-100 disabled:opacity-50"
-          >
-            {sharing ? (
-              <Loader class="h-3 w-3 animate-spin" />
-            ) : shared ? (
-              <Check class="h-3 w-3" />
-            ) : (
-              <Link2 class="h-3 w-3" />
-            )}
-            {sharing ? "Sharing…" : shared ? "Shared" : "Share 24h"}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => onScreenshot(row.port)}
+              disabled={screenshotBusy}
+              title="Photograph this port now and share the picture"
+              class="inline-flex h-7 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.05] px-2.5
+                     text-[11.5px] font-medium text-ink-200 transition hover:bg-white/[0.09] hover:text-ink-100 disabled:opacity-50"
+            >
+              {screenshotBusy ? (
+                <Loader class="h-3 w-3 animate-spin" />
+              ) : (
+                <Camera class="h-3 w-3" />
+              )}
+              {screenshotBusy ? "Capturing…" : "Screenshot"}
+            </button>
+            <button
+              type="button"
+              onClick={() => onShare(row.port)}
+              disabled={sharing}
+              title={`Create a public link that works for ${PREVIEW_SHARE_TTL_HOURS} hours`}
+              class="inline-flex h-7 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.05] px-2.5
+                     text-[11.5px] font-medium text-ink-200 transition hover:bg-white/[0.09] hover:text-ink-100 disabled:opacity-50"
+            >
+              {sharing ? (
+                <Loader class="h-3 w-3 animate-spin" />
+              ) : shared ? (
+                <Check class="h-3 w-3" />
+              ) : (
+                <Link2 class="h-3 w-3" />
+              )}
+              {sharing ? "Sharing…" : shared ? "Shared" : "Share 24h"}
+            </button>
+          </>
         )}
       </div>
 

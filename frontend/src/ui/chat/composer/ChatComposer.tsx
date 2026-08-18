@@ -7,16 +7,20 @@ import type { RegisteredSkill } from "../../../models/skill";
 import type { Attachment } from "../../../models/upload";
 import type { ChatPolicies } from "../../../state/hooks/chat/useChatPolicies";
 import type { PlaybookLibrary } from "../../../state/hooks/chat/usePlaybooks";
+import type { SlashCommands } from "../../../state/hooks/chat/useSlashCommands";
 import { AlertCircle, ChevronDown, Settings, X } from "../../primitives/icons";
+import { ScreenshotCard } from "../../preview/ScreenshotCard";
 import { AttachmentTray } from "./AttachmentTray";
 import { AttachButton } from "./AttachButton";
 import { ComposerAgentControls } from "./ComposerAgentControls";
 import { ComposerDropOverlay } from "./ComposerDropOverlay";
 import { ComposerExecutionControls } from "./ComposerExecutionControls";
+import { ComposerStatusNote } from "./ComposerStatusNote";
 import { PromptTextarea } from "./PromptTextarea";
 import { QueuedPromptList } from "./QueuedPromptList";
 import { SelectedSkillChips } from "./SelectedSkillChips";
 import { SendControls } from "./SendControls";
+import { SlashCommandMenu } from "./SlashCommandMenu";
 import { VoiceInputButton } from "./VoiceInputButton";
 import { VoiceLiveStrip } from "./VoiceLiveStrip";
 import type { ComposerPreferenceActions, ComposerPreferences } from "./preferences";
@@ -32,6 +36,8 @@ export interface ChatComposerProps {
   selectedSkills: SelectedSkill[];
   playbooks: PlaybookLibrary;
   policies: ChatPolicies;
+  /** The `/` menu and everything its commands report back. */
+  slash: SlashCommands;
   attachments: Attachment[];
   uploading: boolean;
   dragging: boolean;
@@ -60,6 +66,7 @@ export function ChatComposer({
   selectedSkills,
   playbooks,
   policies,
+  slash,
   attachments,
   uploading,
   dragging,
@@ -161,11 +168,39 @@ export function ChatComposer({
       */}
       <VoiceLiveStrip voice={voice} />
 
+      {slash.status && (
+        <ComposerStatusNote status={slash.status} onDismiss={slash.dismissStatus} />
+      )}
+
+      {slash.screenshot && (
+        <div class="mx-3 mt-2">
+          <ScreenshotCard
+            screenshot={slash.screenshot.screenshot}
+            delivered={slash.screenshot.delivered}
+            publicUrl={slash.screenshot.publicUrl}
+            sending={slash.busy}
+            canSend={slash.screenshot.canSend}
+            onInsert={() => slash.insertScreenshot(slash.screenshot!)}
+            onSend={() => slash.sendScreenshot(slash.screenshot!)}
+            onDismiss={slash.dismissScreenshot}
+          />
+        </div>
+      )}
+
       <SelectedSkillChips skills={selectedSkills} onRemove={onRemoveSelectedSkill} />
       <QueuedPromptList queuedPrompts={queuedPrompts} onRemove={onRemoveQueued} />
       <AttachmentTray attachments={attachments} onRemove={onRemoveAttachment} />
 
-      <div class="codex-composer-card mx-3 my-2 overflow-visible rounded-xl border border-white/10 bg-[#15171c] shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
+      <div class="codex-composer-card relative mx-3 my-2 overflow-visible rounded-xl border border-white/10 bg-[#15171c] shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
+        {slash.open && (
+          <SlashCommandMenu
+            items={slash.items}
+            activeIndex={slash.activeIndex}
+            query={slash.query}
+            onSelect={(entry, options) => slash.select(entry, options)}
+            onHover={slash.setActiveIndex}
+          />
+        )}
         <form
           onSubmit={submit}
           class="codex-composer-form composer-form flex gap-1.5 items-end px-2 pt-2"
@@ -185,6 +220,8 @@ export function ChatComposer({
             onTextChange={onTextChange}
             onPaste={onPaste}
             onSend={requestSend}
+            onKeyIntercept={slash.onKeyDown}
+            onCaretChange={slash.syncCaret}
             lang={voice.languageTag}
           />
           <button

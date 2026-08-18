@@ -14,7 +14,24 @@ export interface AgentBrowserOpener {
   error: string | null;
   /** The port the error belongs to, so a row shows only its own failure. */
   errorPort: number | null;
-  open: (port: number) => Promise<void>;
+  open: (port: number) => Promise<AgentBrowserResult>;
+  /**
+   * The same start/wait/navigate sequence for an address rather than a port.
+   * `/browser <url>` uses it; nothing about the flow differs except that the
+   * caller already knows where it wants to land.
+   */
+  openUrl: (url: string) => Promise<AgentBrowserResult>;
+}
+
+/**
+ * The outcome, returned as well as stored. A row in the port list reads the
+ * state; a caller with no row of its own — the `/browser` command — needs the
+ * reason back, and reading it off state would give the value from before the
+ * request.
+ */
+export interface AgentBrowserResult {
+  ok: boolean;
+  error?: string;
 }
 
 /**
@@ -50,12 +67,15 @@ export function useAgentBrowserOpener({
     };
   }, []);
 
-  const open = useCallback(
-    async (port: number) => {
+  // `port` is what the port list reports progress against; a URL-driven open
+  // has no row to report into, so it passes null and reports through `error`.
+  const drive = useCallback(
+    async (url: string, port: number | null): Promise<AgentBrowserResult> => {
       if (!projectId) {
-        setError("This chat is not attached to a project container.");
+        const message = "This chat is not attached to a project container.";
+        setError(message);
         setErrorPort(port);
-        return;
+        return { ok: false, error: message };
       }
       setBusyPort(port);
       setError(null);
@@ -63,15 +83,18 @@ export function useAgentBrowserOpener({
       setOpenedPort(null);
       try {
         await agentBrowserApi.startAgentBrowser(projectId);
-        onOpened?.(port);
+        onOpened?.(port ?? 0);
         await waitForBrowserCore(projectId, () => aliveRef.current);
-        await agentBrowserApi.navigateAgentBrowser(projectId, agentBrowserTargetUrl(port));
-        if (!aliveRef.current) return;
+        await agentBrowserApi.navigateAgentBrowser(projectId, url);
+        if (!aliveRef.current) return { ok: true };
         setOpenedPort(port);
+        return { ok: true };
       } catch (cause) {
-        if (!aliveRef.current) return;
-        setError((cause as Error).message || "Could not open the Agent Browser.");
+        const message = (cause as Error).message || "Could not open the Agent Browser.";
+        if (!aliveRef.current) return { ok: false, error: message };
+        setError(message);
         setErrorPort(port);
+        return { ok: false, error: message };
       } finally {
         if (aliveRef.current) setBusyPort(null);
       }
@@ -79,7 +102,13 @@ export function useAgentBrowserOpener({
     [projectId, onOpened],
   );
 
-  return { busyPort, openedPort, error, errorPort, open };
+  const open = useCallback(
+    (port: number) => drive(agentBrowserTargetUrl(port), port),
+    [drive],
+  );
+  const openUrl = useCallback((url: string) => drive(url, null), [drive]);
+
+  return { busyPort, openedPort, error, errorPort, open, openUrl };
 }
 
 /**

@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Remote · mz-ss.tech — دليل الإضافات</title>
+<style>
+:root{
+  --paper:#f7f6f1; --card:#ffffff; --ink:#1b2230; --ink-2:#4a5262; --ink-3:#7a8190;
+  --line:#e2e0d8; --accent:#0f8b6e; --accent-soft:#e3f3ee; --warn:#b9701c; --warn-soft:#fbefdc;
+  --code:#eeede7; --radius:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#10151c; --card:#171d26; --ink:#e7e9ee; --ink-2:#b4bac6; --ink-3:#7f8796;
+    --line:#2a313d; --accent:#3fbf9c; --accent-soft:#12302a; --warn:#e2a24a; --warn-soft:#3a2b14; --code:#0e131a;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#10151c; --card:#171d26; --ink:#e7e9ee; --ink-2:#b4bac6; --ink-3:#7f8796;
+  --line:#2a313d; --accent:#3fbf9c; --accent-soft:#12302a; --warn:#e2a24a; --warn-soft:#3a2b14; --code:#0e131a;
+}
+*{box-sizing:border-box}
+html{background:var(--paper)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Segoe UI","Noto Naskh Arabic UI","Noto Sans Arabic",system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.75}
+code,pre,kbd{font-family:ui-monospace,"Cascadia Mono",Consolas,Menlo,monospace;font-size:.9em;direction:ltr;unicode-bidi:isolate}
+code{background:var(--code);padding:.1em .4em;border-radius:5px}
+a{color:var(--accent)}
+.wrap{max-width:1080px;margin:0 auto;padding:40px 24px 80px}
+header.top{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end;border-bottom:1px solid var(--line);padding-bottom:28px;margin-bottom:36px}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:700;direction:ltr;text-align:right}
+h1{font-size:clamp(28px,4vw,40px);line-height:1.2;margin:.2em 0 .3em;text-wrap:balance}
+.lede{color:var(--ink-2);max-width:60ch;margin:0}
+.stats{display:flex;gap:18px;flex-wrap:wrap}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 16px;min-width:120px}
+.stat b{display:block;font-size:26px;line-height:1;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--ink-3)}
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 32px}
+nav.toc a{text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px;color:var(--ink-2);background:var(--card)}
+nav.toc a:hover{border-color:var(--accent);color:var(--accent)}
+section{margin:0 0 44px}
+h2{font-size:22px;margin:0 0 6px;display:flex;align-items:center;gap:10px}
+h2 .n{font-size:12px;color:var(--ink-3);font-weight:600;font-variant-numeric:tabular-nums;direction:ltr}
+.sub{color:var(--ink-3);margin:0 0 16px;font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.card h3{margin:0;font-size:16px;line-height:1.35}
+.card p{margin:0;color:var(--ink-2);font-size:14.5px}
+.where{font-size:12.5px;color:var(--ink-3)}
+.where b{color:var(--ink-2);font-weight:600}
+.tag{display:inline-block;font-size:11.5px;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-weight:600;align-self:flex-start}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.todo{background:var(--card);border:1px solid var(--line);border-inline-start:4px solid var(--warn);border-radius:var(--radius);padding:16px 20px}
+.todo ol{margin:8px 0 0;padding-inline-start:20px}
+.todo li{margin:6px 0}
+table{width:100%;border-collapse:collapse;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:start;vertical-align:top}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);background:var(--code)}
+tr:last-child td{border-bottom:0}
+.tablewrap{overflow-x:auto}
+footer{color:var(--ink-3);font-size:13px;border-top:1px solid var(--line);padding-top:18px;margin-top:40px}
+.en{direction:ltr;text-align:left}
+.en h2{justify-content:flex-start}
+kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 .4em;background:var(--card)}
+@media (max-width:720px){header.top{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <div class="eyebrow">remote.futrx · fork mustafzidan74 · mz-ss.tech</div>
+    <h1>دليل الإضافات اللي بنيناها على منصة Remote</h1>
+    <p class="lede">كل ميزة: بتعمل إيه، فين تلاقيها في الواجهة، وإيه اللي تعمله الأول. المنصة الأساسية من FutrX (AGPL)، والإضافات دي على الـ fork بتاعنا ومرفوعة كـ Pull Requests للفريق الأصلي.</p>
+  </div>
+  <div class="stats">
+    <div class="stat"><b>23</b><span>ميزة</span></div>
+    <div class="stat"><b>15</b><span>skill عامة</span></div>
+    <div class="stat"><b>8</b><span>PR للـ upstream</span></div>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#safety">الأمان والحماية</a><a href="#work">الشغل اليومي</a><a href="#clients">العملاء</a><a href="#agents">الوكلاء والمهارات</a><a href="#ops">التشغيل والمراقبة</a><a href="#ux">الواجهة</a><a href="#pending">مستني منك</a><a href="#en">English</a>
+</nav>
+
+<section id="safety">
+  <h2>الأمان والحماية <span class="n">01</span></h2>
+  <p class="sub">عشان مفيش حاجة تضيع تاني — لا ملفات ولا داتابيز.</p>
+  <div class="grid">
+    <div class="card"><span class="tag">جديد</span><h3>سلة محذوفات للمشاريع</h3><p>حذف المشروع بقى نقل للـ Trash لمدة 7 أيام مع نسخة كاملة (ملفات + dump للداتابيز). استرجاع بضغطة أو حذف نهائي.</p><div class="where"><b>فين:</b> Settings → Platform → Trash</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>Snapshots لكل مشروع</h3><p>"Snapshot now" قبل أي شغل خطر، وارجع لأي نقطة. بيشمل الـ workspace + الداتابيز.</p><div class="where"><b>فين:</b> Project → Snapshots</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>نسخ احتياطي للسيرفر كله</h3><p><code>remote-backup</code> يومي 03:30 UTC: بيانات المنصة + مشاريع + مفاتيح الوكلاء، مع retention ونسخ خارجي عبر rclone. و<code>remote-restore</code> للاسترجاع.</p><div class="where"><b>فين:</b> على السيرفر (systemd timer)</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>Audit log</h3><p>مين عمل إيه: تسجيل دخول، إنشاء/حذف مشاريع، قراءة secrets، تشغيل وكلاء، إعدادات — مع فلترة وتصدير.</p><div class="where"><b>فين:</b> Settings → Insights → Audit log</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>حدود موارد + حارس ذاكرة</h3><p>حدود CPU/RAM لكل مشروع من الواجهة، وافتراضيات مشتقة من السيرفر، ورفض تشغيل كونتينر يزوّد عن الميزانية بدل ما السيرفر يقع.</p><div class="where"><b>فين:</b> Settings → Platform → Resources، وProject → Settings</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>Secrets vault + SSH targets</h3><p>مكان واحد لتوكن GitHub، سيريالات البلاجينز، ملفات الاعتماد، وSSH لسيرفرات خارجية — يتحقن في كل المشاريع أو مشاريع مختارة. الوكيل يعمل <code>ssh hestia</code> مباشرة.</p><div class="where"><b>فين:</b> Settings → Platform → Secrets vault</div></div>
+  </div>
+</section>
+
+<section id="work">
+  <h2>الشغل اليومي <span class="n">02</span></h2>
+  <p class="sub">أسرع وصول، وشغل يكمّل لوحده وأنت بعيد.</p>
+  <div class="grid">
+    <div class="card"><span class="tag">جديد</span><h3>Autopilot 🛫</h3><p>لما الوكيل يوقف قبل ما يخلّص، المنصة تقوله "كمّل لوحدك" لحد <code>&lt;&lt;DONE&gt;&gt;</code> أو <code>&lt;&lt;BLOCKED&gt;&gt;</code>، بحد أقصى جولات ومدة. الـ runs أصلاً بتشتغل على السيرفر ولو قفلت المتصفح.</p><div class="where"><b>فين:</b> شريط الشات → Autopilot، وpill في الهيدر</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>Auto-test + Test 🧪 (Playwright)</h3><p>اختبار تلقائي بعد كل تاسك، أو زر Test: آخر تغيير / رابط أو flow / التطبيق كله. Playwright + Chromium مدمجين في كل كونتينر.</p><div class="where"><b>فين:</b> شريط الشات → Test / Auto-test</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>Playbooks ⚡</h3><p>7 أوامر جاهزة (مراجعة أمان، تحديث واختبار، تجهيز للتسليم، استيراد/نشر Hestia، فحص موقع، كتابة e2e) بتضبط الـ skills والوضع وتحط الـ prompt.</p><div class="where"><b>فين:</b> شريط الشات → ⚡، وSettings → Playbooks</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>أوامر <code>/</code> في الشات</h3><p><code>/test</code> <code>/deploy</code> <code>/snapshot</code> <code>/preview</code> <code>/review</code> <code>/screenshot</code>، وكل skill وplaybook بيبقى أمر <code>/</code>.</p><div class="where"><b>فين:</b> اكتب <kbd>/</kbd> في الكومبوزر</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>الوصول السريع للـ Preview</h3><p>زر 🌐 جنب كل مشروع وchip "Preview :8080" في الهيدر: فتح، نسخ، مشاركة 24 ساعة، فتح في Agent Browser، لقطة شاشة.</p><div class="where"><b>فين:</b> القائمة الجانبية + هيدر الشات</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>تسجيل صوتي → نص (عربي)</h3><p>ميكروفون في الكومبوزر بالعامية المصرية افتراضياً، مع بديل أدق على السيرفر (OpenAI transcription) اختياري.</p><div class="where"><b>فين:</b> زر المايك جنب الإرسال، وSettings → Voice input</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>بحث نصي في كل المحادثات</h3><p>بحث عربي/إنجليزي جوه الرسايل مش العناوين بس، والنتيجة توديك للرسالة نفسها.</p><div class="where"><b>فين:</b> خانة البحث في القائمة الجانبية</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>لوحة الأوامر <kbd>Ctrl</kbd>+<kbd>K</kbd></h3><p>افتح أي مشروع/شات/صفحة إعدادات أو نفّذ فعل (مشروع جديد، preview، snapshot) من الكيبورد.</p><div class="where"><b>فين:</b> في أي مكان</div></div>
+  </div>
+</section>
+
+<section id="clients">
+  <h2>العملاء <span class="n">03</span></h2>
+  <p class="sub">من الفكرة لحد ما العميل يشوف الشغل من غير ما يبقى عنده حساب.</p>
+  <div class="grid">
+    <div class="card"><span class="tag">جديد</span><h3>روابط معاينة عامة</h3><p>لينك مؤقت (1h/24h/7d) للعميل يفتح الـ preview بدون تسجيل — محصور في البورت ده بس، وبيتلغى فوراً.</p><div class="where"><b>فين:</b> Project → Sharing، أو زر 🌐</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>Client portal</h3><p>صفحة عامة للعميل برابط بـ token: حالة المشروع، روابط المعاينة، آخر التغييرات من git، ملاحظتك — RTL.</p><div class="where"><b>فين:</b> Project → Sharing → Client portal</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>قوالب مشاريع</h3><p>WordPress جاهز ومثبّت (عربي RTL افتراضي، WooCommerce اختياري، باسورد admin كـ secret)، Laravel، Node، Python. الإنشاء بضغطة والتجهيز في الخلفية.</p><div class="where"><b>فين:</b> New project → Template</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>لوحة الاستهلاك والتكلفة</h3><p>توكنز وتكلفة لكل مشروع/عميل/موديل/يوم — عشان التسعير والفواتير. + تقرير أسبوعي على قنوات الإشعار.</p><div class="where"><b>فين:</b> Settings → Insights → Usage</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>لقطة شاشة ومشاركتها</h3><p>لقطة من الـ preview بـ Playwright وإرسالها في الشات أو Telegram/WhatsApp أو نسخ لينك مؤقت.</p><div class="where"><b>فين:</b> قائمة الـ Preview → Share screenshot، أو <code>/screenshot</code></div></div>
+  </div>
+</section>
+
+<section id="agents">
+  <h2>الوكلاء والمهارات <span class="n">04</span></h2>
+  <p class="sub">معاييرك بتتطبق تلقائي في كل مشروع.</p>
+  <div class="grid">
+    <div class="card"><span class="tag">جديد</span><h3>Global skills</h3><p>مكتبة مهارات على مستوى المنصة تتحقن في كل مشروع: الـ 5 guard skills (always on)، deploy-to-hestia، client-site-import، weekly-site-audit، review-protocol، playwright-e2e، وdelegate-skills (Claude ↔ Codex ↔ Kimi).</p><div class="where"><b>فين:</b> Settings → Agents & skills → Global skills</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>تفضيلات الرد</h3><p>لغة ولهجة وأسلوب الرد (عامية مصرية افتراضياً) تتحقن في تعليمات كل مشروع، مع override لكل مستخدم.</p><div class="where"><b>فين:</b> Settings → Agents & skills → Reply preferences</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>مهام مجدولة جاهزة</h3><p>مثال شغال: فحص أسبوعي لموقع (تحديثات، TLS، headers، PageSpeed) كل أحد 08:00 بتوقيت القاهرة، وشات "Reviewer" لمراجعة متقاطعة.</p><div class="where"><b>فين:</b> مشروع WP → الشاتات</div></div>
+  </div>
+</section>
+
+<section id="ops">
+  <h2>التشغيل والمراقبة <span class="n">05</span></h2>
+  <p class="sub">تعرف قبل ما العميل يعرف.</p>
+  <div class="grid">
+    <div class="card"><span class="tag">جديد</span><h3>إشعارات Telegram / Webhook / WhatsApp</h3><p>لما تاسك يخلص أو يفشل أو يحتاجك، وصحة المشاريع، والمهام المجدولة، وإعادة تشغيل المنصة. WhatsApp عبر Meta Cloud API أو CallMeBot.</p><div class="where"><b>فين:</b> Settings → Platform → Notifications</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>مؤشر صحة المشروع</h3><p>نقطة ملونة جنب كل مشروع: ذاكرة، الـ preview بيرد؟ مع تنبيه عند التغير (بدون spam).</p><div class="where"><b>فين:</b> القائمة الجانبية + هيدر المشروع</div></div>
+    <div class="card"><span class="tag">جديد</span><h3><code>/healthz</code> + heartbeat</h3><p>نقطة صحة عامة للمراقبة الخارجية (UptimeRobot) وheartbeat لـ healthchecks.io — عشان لو السيرفر وقع تعرف من بره.</p><div class="where"><b>فين:</b> Settings → System → Monitoring</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>إصلاحات على مستوى الاستضافة</h3><p>Playwright في الـ base image، حل انقطاع lxc عند قفل SSH (linger)، slugs آمنة للشهادات، WordPress خلف الـ proxy، swap تلقائي، وقت إنشاء الكونتينر قابل للضبط.</p><div class="where"><b>فين:</b> installer / base image</div></div>
+  </div>
+</section>
+
+<section id="ux">
+  <h2>الواجهة <span class="n">06</span></h2>
+  <p class="sub">أبسط وأوضح، وعربي صح.</p>
+  <div class="grid">
+    <div class="card"><h3>RTL كامل</h3><p>الرسايل والجداول والعناوين والكومبوزر بتتجه حسب اللغة تلقائياً، والكود يفضل LTR.</p></div>
+    <div class="card"><h3>شريط شات مرتّب</h3><p>موديل واحد "Claude · Opus"، Skills، Playbooks، Test، مايك، إرسال — والباقي في "Run options".</p></div>
+    <div class="card"><h3>إعدادات مجمّعة</h3><p>Personal / Agents & skills / Insights / Platform / System + بحث في الإعدادات.</p></div>
+    <div class="card"><h3>إرشاد أول تشغيل + اختصارات</h3><p>شاشة ترحيب بـ 3 خطوات، اقتراحات playbooks للشات الفاضي، و<kbd>?</kbd> لقائمة الاختصارات.</p></div>
+  </div>
+</section>
+
+<section id="pending">
+  <div class="todo">
+    <h2 style="font-size:18px">مستني منك عشان يشتغل بالكامل</h2>
+    <ol>
+      <li><b>WhatsApp:</b> ابعت "I allow callmebot to send me messages" لرقم <span dir="ltr">+34 644 66 32 62</span> → apikey → Settings → Notifications → WhatsApp → CallMeBot.</li>
+      <li><b>Telegram:</b> bot token من @BotFather + chat id.</li>
+      <li><b>Secrets vault:</b> ضيف <code>GITHUB_TOKEN</code> وSSH target اسمه <code>hestia</code> واضغط Test.</li>
+      <li><b>Codex:</b> اربطه من Settings → Agents عشان المراجعة المتقاطعة.</li>
+      <li><b>WAF على Hestia:</b> allowlist للـ IP <span dir="ltr">191.215.42.26</span> عشان الفحص الأسبوعي يشوف مواقعك.</li>
+      <li><b>الترقية:</b> السيرفر 1 vCPU — 2–4 vCPU / 8GB هتفرق مع Autopilot وAuto-test.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="en" id="en">
+  <h2>English summary</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Area</th><th>Added</th></tr></thead>
+    <tbody>
+      <tr><td>Safety</td><td>Project trash (7-day soft delete + DB dump), per-project snapshots/restore, host backup/restore tooling with nightly timer, audit log, resource policy + aggregate memory guard, platform secrets vault with SSH targets</td></tr>
+      <tr><td>Workflow</td><td>Autopilot (keep-going loop with DONE/BLOCKED markers), Playwright auto-test + Test menu, playbooks, slash commands, preview quick access, voice input (Arabic), full-text chat search, command palette</td></tr>
+      <tr><td>Clients</td><td>Public share links, client portal, project templates (WordPress pre-installed, Laravel, Node, Python), usage &amp; cost dashboard + weekly digest, screenshot sharing</td></tr>
+      <tr><td>Agents</td><td>Global skills library (guards, Hestia deploy/import, audit, review protocol, Playwright, delegate-skills), reply-language preferences, scheduled audit + reviewer chats</td></tr>
+      <tr><td>Operations</td><td>Telegram/webhook/WhatsApp notifications, project health monitor, /healthz + heartbeat, installer fixes (linger, launch timeout, IDNA-safe slugs, proxy-aware WordPress, swap, Playwright in base image)</td></tr>
+      <tr><td>UI</td><td>Full RTL, consolidated composer, grouped settings, onboarding, shortcuts overlay, contrast/focus pass</td></tr>
+    </tbody>
+  </table></div>
+  <p style="color:var(--ink-3);font-size:13px">Upstream PRs #41–#48 (futrx-com/remote.futrx). Everything else lives on the fork <code>mustafzidan74/remote.futrx</code> (branch <code>main</code>, feature branches <code>feat/f1</code>…<code>feat/f23</code>) and is offered as follow-up PRs once the first batch lands.</p>
+</section>
+
+<footer>آخر تحديث: 18 أغسطس 2026 · المنصة: <a href="https://mz-ss.tech">mz-ss.tech</a> · الكود: <a href="https://github.com/mustafzidan74/remote.futrx">github.com/mustafzidan74/remote.futrx</a></footer>
+</div>
+</body>
+</html>

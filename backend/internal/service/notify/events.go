@@ -52,6 +52,8 @@ func EventHeadline(event Event) string {
 		return "Remote system event"
 	case KindDigest:
 		return "Weekly usage report"
+	case KindScreenshot:
+		return "Preview screenshot"
 	case KindTest:
 		return "Test notification"
 	default:

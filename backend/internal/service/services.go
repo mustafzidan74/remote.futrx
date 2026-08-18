@@ -28,6 +28,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/service/runhub"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
 	"github.com/futrx-com/remote.futrx.com/internal/service/schedulecapability"
+	servicescreenshot "github.com/futrx-com/remote.futrx.com/internal/service/screenshot"
 	serviceserverinfo "github.com/futrx-com/remote.futrx.com/internal/service/serverinfo"
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
 	serviceskills "github.com/futrx-com/remote.futrx.com/internal/service/skills"
@@ -49,13 +50,16 @@ type TmuxClient interface {
 }
 
 type Dependencies struct {
-	Chats             servicechat.Repository
-	Projects          serviceproject.Repository
-	ProjectSecrets    serviceproject.SecretsRepository
-	ProjectAccess     serviceproject.AccessRepository
-	ProjectShares     serviceshare.Repository
-	Snapshots         servicesnapshot.Repository
-	SnapshotArchive   servicesnapshot.Archive
+	Chats           servicechat.Repository
+	Projects        serviceproject.Repository
+	ProjectSecrets  serviceproject.SecretsRepository
+	ProjectAccess   serviceproject.AccessRepository
+	ProjectShares   serviceshare.Repository
+	Snapshots       servicesnapshot.Repository
+	SnapshotArchive servicesnapshot.Archive
+	// Screenshots groups the three ports behind preview captures. Any of them
+	// missing leaves the screenshot routes reporting 503.
+	Screenshots       ScreenshotDependencies
 	ProjectStorage    serviceproject.ProjectStorage
 	WorkspacePreparer servicesnapshot.Preparer
 	Database          servicesnapshot.Database
@@ -121,6 +125,15 @@ type SecretsContainerDependencies struct {
 	Material    serviceglobalsecrets.ContainerMaterializer
 }
 
+// ScreenshotDependencies groups what preview screenshots need: the record
+// index, the PNG blobs, and the in-container browser that takes them. They are
+// supplied together because a deployment either has all three or has none.
+type ScreenshotDependencies struct {
+	Records  servicescreenshot.Repository
+	Blobs    servicescreenshot.Blobs
+	Capturer servicescreenshot.Capturer
+}
+
 // ScheduleLimits mirrors the deployment's scheduled-task guardrails without
 // coupling the service layer to the config package. Zero values disable a
 // limit.
@@ -159,6 +172,7 @@ type Services struct {
 	Audit         *serviceaudit.Service
 	Health        *servicehealth.Service
 	Snapshots     *servicesnapshot.Service
+	Screenshots   *servicescreenshot.Service
 	PostRun       *servicepostrun.Driver
 }
 
@@ -338,6 +352,22 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		)
 	}
 	notifications := servicenotify.New(ctx, deps.Notifications, deps.AuthBaseURL, notifyOptions...)
+	// Preview screenshots depend on both the project directory (to find a
+	// container) and the notification service (to push a picture out), so they
+	// are built once both exist.
+	var screenshotService *servicescreenshot.Service
+	if deps.Screenshots.Records != nil && deps.Screenshots.Blobs != nil &&
+		deps.Screenshots.Capturer != nil {
+		screenshotService = servicescreenshot.New(
+			deps.Screenshots.Records,
+			deps.Screenshots.Blobs,
+			deps.Screenshots.Capturer,
+			projectService,
+			servicescreenshot.WithAudit(auditLog),
+			servicescreenshot.WithBaseURL(deps.AuthBaseURL),
+			servicescreenshot.WithNotifier(screenshotNotifier{notifications: notifications}),
+		)
+	}
 	// Voice dictation's optional server fallback. It holds no state beyond the
 	// cached settings document, so it is built here and simply handed to the
 	// transcription handler.
@@ -497,8 +527,48 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Audit:         auditLog,
 		Health:        healthService,
 		Snapshots:     snapshotService,
+		Screenshots:   screenshotService,
 		PostRun:       postRunDriver,
 	}, nil
+}
+
+// screenshotNotifier translates between the screenshot service's picture port
+// and the notification service's sink vocabulary, so neither package imports
+// the other's types.
+type screenshotNotifier struct {
+	notifications *servicenotify.Service
+}
+
+func (n screenshotNotifier) Configured() bool {
+	return n.notifications.ImageSinksConfigured()
+}
+
+func (n screenshotNotifier) NeedsPublicLink() bool {
+	return n.notifications.NeedsPublicLink()
+}
+
+func (n screenshotNotifier) SendImage(
+	ctx context.Context,
+	image servicescreenshot.Image,
+) []servicescreenshot.DeliveryResult {
+	results := n.notifications.SendImage(ctx, servicenotify.Event{
+		Event:  servicenotify.KindScreenshot,
+		Status: servicenotify.StatusFinished,
+	}, servicenotify.Image{
+		Filename: image.Filename,
+		Data:     image.Data,
+		Caption:  image.Caption,
+		LinkURL:  image.LinkURL,
+	})
+	out := make([]servicescreenshot.DeliveryResult, 0, len(results))
+	for _, result := range results {
+		out = append(out, servicescreenshot.DeliveryResult{
+			Sink:      result.Sink,
+			Delivered: result.Delivered,
+			Error:     result.Error,
+		})
+	}
+	return out
 }
 
 // globalSecretsAdapter translates between the vault's own vocabulary and the

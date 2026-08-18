@@ -126,6 +126,29 @@ to break a run:
   `digest:<occurrenceMillis>`); the last 512 keys are remembered.
 - The queue is **not durable**. Events pending at a restart are lost.
 
+## Sending a picture
+
+One thing does not go through the queue at all: a **preview screenshot** pushed
+from the preview panel or `/screenshot`. Somebody pressed a button and is
+waiting for the answer, so the fan-out is synchronous and reports one row per
+sink, exactly like **Send test**.
+
+| Sink | How a picture reaches it |
+| --- | --- |
+| Telegram | `sendPhoto` — the image itself, with the caption |
+| WhatsApp Cloud API | Uploaded to `/media`, then sent as `type=image` with the caption |
+| WhatsApp Cloud API **with a template** | Text only. Meta matches a template by its own approved header, so the picture cannot ride along |
+| CallMeBot | Text only. Its whole interface is one URL with the message in the query string |
+| Generic webhook | The ordinary event JSON, with the link in `url` |
+
+When — and only when — a configured sink can carry text alone, Remote mints a
+**24-hour login-less link** (`/s/screenshot/<token>.png`) and sends that in the
+message. The link is shown in the UI so nobody is surprised by its existence.
+An install whose sinks can all carry pictures never publishes one.
+
+The per-attempt timeout is 60 seconds rather than 10 (the body is megabytes,
+not a JSON blob) and the whole fan-out is bounded at three minutes.
+
 ## Enabling notifications
 
 Settings → **Notifications** (admin only). Fill in at least one destination,
@@ -495,4 +518,5 @@ can always debug a sink.
 - [Deployment and operations](../04-operations/09-deployment-and-operations.md#project-health-monitor) — the `projectHealth` source and its kill switch
 - [Uptime monitoring](../04-operations/11-uptime-monitoring.md) — the `system` source, and the two external checks that survive the box itself dying
 - [Usage and cost](10-usage-and-cost.md) — the ledger behind the weekly digest
+- [Previews and inspector](../02-user-guide/06-previews-and-inspector.md#share-a-screenshot) — where a screenshot delivery comes from
 - [API and realtime](../03-platform/08-api-and-realtime.md) — the rest of the HTTP surface

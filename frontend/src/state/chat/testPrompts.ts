@@ -51,3 +51,46 @@ export function urlCheckPrompt({ url, expectation }: UrlCheckInput): string {
 export function canSendUrlCheck(input: UrlCheckInput): boolean {
   return input.url.trim().length > 0;
 }
+
+/**
+ * The prompt behind `/test [what]`.
+ *
+ * Three shapes, because those are the three things a person means when they
+ * type it: nothing at all is "check what you just did", something that looks
+ * like an address is a page to point at, and anything else is a journey
+ * described in words. Deciding which is which is the only judgement made here;
+ * what the words mean is left to the agent.
+ */
+export function testCommandPrompt(arg: string): string {
+  const value = arg.trim();
+  if (!value) return AUTO_TEST_PROMPT;
+  if (looksLikeUrl(value)) return urlCheckPrompt({ url: value, expectation: "" });
+  return flowCheckPrompt(value);
+}
+
+/** A described journey rather than a single address. */
+export function flowCheckPrompt(description: string): string {
+  return (
+    `Check this with Playwright (playwright-e2e skill): ${description.trim()}. ` +
+    "Find the app on its local port, write a minimal headless spec for that journey, run it, " +
+    "and report PASS/FAIL with the assertion output plus any console or network errors you saw. " +
+    "Do not loosen assertions to pass."
+  );
+}
+
+/**
+ * Whether a `/test` argument is an address rather than a description. A bare
+ * `localhost:3000` and a bare `/checkout` both count: the agent still has to
+ * resolve them against the running app, but they are places, not journeys.
+ */
+export function looksLikeUrl(value: string): boolean {
+  const trimmed = value.trim();
+  if (/\s/.test(trimmed)) return false;
+  return (
+    /^https?:\/\//i.test(trimmed) ||
+    /^localhost(:\d+)?(\/|$)/i.test(trimmed) ||
+    /^127\.0\.0\.1(:\d+)?(\/|$)/.test(trimmed) ||
+    /^\//.test(trimmed) ||
+    /^[a-z0-9-]+(\.[a-z0-9-]+)+(:\d+)?(\/|$)/i.test(trimmed)
+  );
+}
