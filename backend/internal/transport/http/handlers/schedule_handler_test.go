@@ -44,6 +44,48 @@ type scheduleServiceStub struct {
 	runNowID      serviceschedule.ID
 	completeID    serviceschedule.ID
 	completeRunID string
+
+	history     []serviceschedule.RunRecord
+	historyErr  error
+	historyID   serviceschedule.ID
+	runDiff     serviceschedule.RunDiff
+	runDiffErr  error
+	runDiffID   serviceschedule.ID
+	runDiffRun  string
+	callerEmail string
+	callerAdmin bool
+}
+
+func (s *scheduleServiceStub) History(
+	_ context.Context,
+	id serviceschedule.ID,
+	callerEmail string,
+	isAdmin bool,
+) ([]serviceschedule.RunRecord, error) {
+	s.historyID = id
+	s.callerEmail = callerEmail
+	s.callerAdmin = isAdmin
+	if s.historyErr != nil {
+		return nil, s.historyErr
+	}
+	return append([]serviceschedule.RunRecord(nil), s.history...), nil
+}
+
+func (s *scheduleServiceStub) RunDiff(
+	_ context.Context,
+	id serviceschedule.ID,
+	runID string,
+	callerEmail string,
+	isAdmin bool,
+) (serviceschedule.RunDiff, error) {
+	s.runDiffID = id
+	s.runDiffRun = runID
+	s.callerEmail = callerEmail
+	s.callerAdmin = isAdmin
+	if s.runDiffErr != nil {
+		return serviceschedule.RunDiff{}, s.runDiffErr
+	}
+	return s.runDiff, nil
 }
 
 func (s *scheduleServiceStub) List(

@@ -48,6 +48,9 @@ export const API_ROUTES = {
   schedules: {
     item: (id: string) => `/api/schedules/${encodeURIComponent(id)}`,
     run: (id: string) => `/api/schedules/${encodeURIComponent(id)}/run`,
+    history: (id: string) => `/api/schedules/${encodeURIComponent(id)}/history`,
+    runDiff: (id: string, runId: string) =>
+      `/api/schedules/${encodeURIComponent(id)}/history/${encodeURIComponent(runId)}/diff`,
   },
   claudeAuth: {
     status: "/api/claude/auth-status",

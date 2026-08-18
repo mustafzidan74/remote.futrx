@@ -17,6 +17,7 @@ import (
 	containernetwork "github.com/futrx-com/remote.futrx.com/internal/integration/containers/network"
 	containerresources "github.com/futrx-com/remote.futrx.com/internal/integration/containers/resources"
 	containerscheduletools "github.com/futrx-com/remote.futrx.com/internal/integration/containers/scheduletools"
+	containerschedulework "github.com/futrx-com/remote.futrx.com/internal/integration/containers/schedulework"
 	containersecrets "github.com/futrx-com/remote.futrx.com/internal/integration/containers/secrets"
 	containertemplates "github.com/futrx-com/remote.futrx.com/internal/integration/containers/templates"
 	containerworkspace "github.com/futrx-com/remote.futrx.com/internal/integration/containers/workspace"
@@ -53,12 +54,15 @@ type ContainerStack struct {
 	CLI           *servicecli.Provisioner
 	Browser       *servicebrowser.Service
 	ScheduleTools *containerscheduletools.Adapter
-	Listeners     *containerlisteners.Scanner
-	Network       *containernetwork.Repairer
-	Workspace     *containerworkspace.Provisioner
-	Images        *serviceimage.Builder
-	Templates     *servicetemplates.Service
-	Database      *containerdatabase.Adapter
+	// ScheduleWork runs the in-container probes scheduled tasks need: the
+	// commandExitCode gate and the before/after git capture of run history.
+	ScheduleWork *containerschedulework.Adapter
+	Listeners    *containerlisteners.Scanner
+	Network      *containernetwork.Repairer
+	Workspace    *containerworkspace.Provisioner
+	Images       *serviceimage.Builder
+	Templates    *servicetemplates.Service
+	Database     *containerdatabase.Adapter
 	// Preparer remaps a host directory into the container idmap. Snapshot
 	// restores reuse the very adapter the launch path uses, so a restored
 	// workspace is owned exactly like a freshly created one.
@@ -196,6 +200,7 @@ func NewContainerStack(
 		CLI:           cli,
 		Browser:       browser,
 		ScheduleTools: scheduleTools,
+		ScheduleWork:  containerschedulework.NewAdapter(runner),
 		Listeners:     listeners,
 		Network:       network,
 		Workspace:     workspace,

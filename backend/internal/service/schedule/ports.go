@@ -16,6 +16,22 @@ type Repository interface {
 	Delete(ctx context.Context, id ID) error
 }
 
+// HistoryRepository persists the bounded per-task run log. It is separate
+// from Repository because history is append-only and lives in its own files:
+// a task definition rewrite must never rewrite its history.
+type HistoryRepository interface {
+	Append(ctx context.Context, taskID ID, record RunRecord) error
+	List(ctx context.Context, taskID ID) ([]RunRecord, error)
+	Delete(ctx context.Context, taskID ID) error
+}
+
+// UsageLookup reports the token and cost accounting the usage ledger recorded
+// for one chat inside a run's time window. It is optional: a deployment
+// without the ledger simply records no cost.
+type UsageLookup interface {
+	RunUsage(ctx context.Context, chatID servicechat.ID, fromMS, toMS int64) (RunUsage, bool)
+}
+
 type ChatLookup interface {
 	Get(ctx context.Context, id servicechat.ID) (servicechat.Meta, error)
 }
@@ -31,10 +47,23 @@ type IdentityDirectory interface {
 
 // RunResult is delivered exactly once by a RunHandle. Output is inspected for
 // the completion marker as a fallback when the executor cannot classify it.
+//
+// The observer-facing fields below are filled in by the schedule service, not
+// by the executor: a gate skip produces a RunResult no executor ever saw.
 type RunResult struct {
 	Output       string
 	TaskComplete bool
 	Err          error
+
+	// SkippedByGate marks an occurrence that never started because the task's
+	// condition was not met. Reason carries the gate's explanation.
+	SkippedByGate bool
+	GateReason    string
+	// Chain is the position of this run inside a task chain, nil when the run
+	// is not part of one.
+	Chain *ChainRun
+	// Result is the verdict marker the run printed, if any.
+	Result string
 }
 
 // RunHandle represents an accepted, asynchronously executing agent prompt.

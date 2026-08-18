@@ -3,6 +3,8 @@ import { API_ROUTES } from "../../config/routes";
 import type {
   CreateScheduledTaskInput,
   ScheduledTask,
+  ScheduleRunDiff,
+  ScheduleRunRecord,
   UpdateScheduledTaskInput,
 } from "../../models/schedule";
 
@@ -31,6 +33,12 @@ export const chatScheduleApi = {
 
   deleteSchedule: (id: string) =>
     requestJson<{ ok: boolean }>("DELETE", API_ROUTES.schedules.item(id)),
+
+  fetchScheduleHistory: (id: string) =>
+    requestJson<ScheduleRunRecord[]>("GET", API_ROUTES.schedules.history(id)),
+
+  fetchScheduleRunDiff: (id: string, runId: string) =>
+    requestJson<ScheduleRunDiff>("GET", API_ROUTES.schedules.runDiff(id, runId)),
 
   runSchedule: (id: string) =>
     requestJson<ScheduledTaskWire | { ok: boolean }>(

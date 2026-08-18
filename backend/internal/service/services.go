@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/futrx-com/remote.futrx.com/internal/agent"
@@ -66,6 +67,13 @@ type Dependencies struct {
 	WorkspacePreparer servicesnapshot.Preparer
 	Database          servicesnapshot.Database
 	Schedules         serviceschedule.Repository
+	// ScheduleHistory persists the per-task run log behind the History drawer.
+	// Nil leaves history empty rather than failing a run.
+	ScheduleHistory serviceschedule.HistoryRepository
+	// ScheduleWorkspace runs the in-container probes scheduled tasks need.
+	// Nil closes the commandExitCode gate and leaves run history without file
+	// information.
+	ScheduleWorkspace ScheduleWorkspaceCommands
 	Auth              AuthStore
 	Users             serviceuser.Repository
 	UserSettings      serviceusersettings.Repository
@@ -137,6 +145,23 @@ type ScreenshotDependencies struct {
 	Records  servicescreenshot.Repository
 	Blobs    servicescreenshot.Blobs
 	Capturer servicescreenshot.Capturer
+}
+
+// ScheduleWorkspaceCommands is the container-shaped half of the scheduled-task
+// workspace port. The composition root pairs it with the project catalog so
+// the schedule service only ever names a project, never a container.
+type ScheduleWorkspaceCommands interface {
+	RunCommand(
+		ctx context.Context,
+		containerName string,
+		shellCommand string,
+		timeout time.Duration,
+	) (string, int, error)
+	GitStatus(
+		ctx context.Context,
+		containerName string,
+	) (repository bool, head, status, diffStat string, err error)
+	GitShowStat(ctx context.Context, containerName, ref string) (string, error)
 }
 
 // ScheduleLimits mirrors the deployment's scheduled-task guardrails without
@@ -436,17 +461,31 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		agents,
 		promptOptions...,
 	)
+	scheduleOptions := []serviceschedule.Option{
+		serviceschedule.WithMinInterval(deps.ScheduleLimits.MinInterval),
+		serviceschedule.WithMaxConcurrentRuns(deps.ScheduleLimits.MaxConcurrentRuns),
+		serviceschedule.WithMaxTasksPerProject(deps.ScheduleLimits.MaxTasksPerProject),
+		serviceschedule.WithRunObserver(runNotifications),
+		serviceschedule.WithAudit(auditLog),
+		serviceschedule.WithHistory(deps.ScheduleHistory),
+	}
+	if deps.ScheduleWorkspace != nil {
+		scheduleOptions = append(scheduleOptions, serviceschedule.WithWorkspace(
+			scheduleWorkspace{projects: projectService, commands: deps.ScheduleWorkspace},
+		))
+	}
+	if usageService != nil {
+		scheduleOptions = append(scheduleOptions, serviceschedule.WithUsageLookup(
+			scheduleUsageLookup{usage: usageService},
+		))
+	}
 	scheduleService = serviceschedule.New(
 		deps.Schedules,
 		chatService,
 		projectService,
 		authService,
 		scheduledPromptExecutor{prompts: promptService},
-		serviceschedule.WithMinInterval(deps.ScheduleLimits.MinInterval),
-		serviceschedule.WithMaxConcurrentRuns(deps.ScheduleLimits.MaxConcurrentRuns),
-		serviceschedule.WithMaxTasksPerProject(deps.ScheduleLimits.MaxTasksPerProject),
-		serviceschedule.WithRunObserver(runNotifications),
-		serviceschedule.WithAudit(auditLog),
+		scheduleOptions...,
 	)
 	if err := scheduleService.Start(ctx); err != nil {
 		return Services{}, fmt.Errorf("start scheduled tasks: %w", err)
@@ -811,6 +850,125 @@ func (s postRunSchedules) HasTasksForChat(ctx context.Context, chatID servicecha
 		return false
 	}
 	return (*s.schedules).HasTasksForChat(ctx, chatID)
+}
+
+// scheduleWorkspace bridges the schedule service's project-shaped workspace
+// port onto the container-shaped adapter. It is the only place that knows a
+// scheduled task's project has a container behind it.
+type scheduleWorkspace struct {
+	projects *serviceproject.Service
+	commands ScheduleWorkspaceCommands
+}
+
+var _ serviceschedule.Workspace = scheduleWorkspace{}
+
+func (w scheduleWorkspace) container(
+	ctx context.Context,
+	projectID serviceproject.ID,
+) (string, error) {
+	if w.projects == nil || w.commands == nil {
+		return "", errors.New("the project workspace is unavailable")
+	}
+	meta, err := w.projects.Get(ctx, projectID)
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(meta.ContainerName) == "" {
+		return "", errors.New("the project has no container")
+	}
+	return meta.ContainerName, nil
+}
+
+func (w scheduleWorkspace) RunCommand(
+	ctx context.Context,
+	projectID serviceproject.ID,
+	shellCommand string,
+	timeout time.Duration,
+) (serviceschedule.CommandResult, error) {
+	container, err := w.container(ctx, projectID)
+	if err != nil {
+		return serviceschedule.CommandResult{}, err
+	}
+	output, code, err := w.commands.RunCommand(ctx, container, shellCommand, timeout)
+	if err != nil {
+		return serviceschedule.CommandResult{}, err
+	}
+	return serviceschedule.CommandResult{Output: output, ExitCode: code}, nil
+}
+
+func (w scheduleWorkspace) GitSnapshot(
+	ctx context.Context,
+	projectID serviceproject.ID,
+) (serviceschedule.GitSnapshot, error) {
+	container, err := w.container(ctx, projectID)
+	if err != nil {
+		return serviceschedule.GitSnapshot{}, err
+	}
+	repository, head, status, diffStat, err := w.commands.GitStatus(ctx, container)
+	if err != nil {
+		return serviceschedule.GitSnapshot{}, err
+	}
+	return serviceschedule.GitSnapshot{
+		Repository: repository,
+		Head:       head,
+		Status:     status,
+		DiffStat:   diffStat,
+	}, nil
+}
+
+func (w scheduleWorkspace) GitShowStat(
+	ctx context.Context,
+	projectID serviceproject.ID,
+	ref string,
+) (string, error) {
+	container, err := w.container(ctx, projectID)
+	if err != nil {
+		return "", err
+	}
+	return w.commands.GitShowStat(ctx, container, ref)
+}
+
+// scheduleUsageLookup answers "what did this run cost" by summing the ledger
+// entries the chat produced inside the run's window. The scheduler is a system
+// caller, so it reads with admin scope; the answer only ever reaches a caller
+// already authorized for the task.
+type scheduleUsageLookup struct {
+	usage *serviceusage.Service
+}
+
+var _ serviceschedule.UsageLookup = scheduleUsageLookup{}
+
+func (l scheduleUsageLookup) RunUsage(
+	ctx context.Context,
+	chatID servicechat.ID,
+	fromMS, toMS int64,
+) (serviceschedule.RunUsage, bool) {
+	if l.usage == nil || chatID == "" || fromMS <= 0 || toMS < fromMS {
+		return serviceschedule.RunUsage{}, false
+	}
+	page, err := l.usage.Records(ctx, serviceusage.RecordQuery{
+		From:   fromMS,
+		To:     toMS,
+		ChatID: string(chatID),
+		Limit:  200,
+	}, "", true)
+	if err != nil || len(page.Records) == 0 {
+		return serviceschedule.RunUsage{}, false
+	}
+	usage := serviceschedule.RunUsage{}
+	var cost float64
+	priced := false
+	for _, record := range page.Records {
+		usage.Tokens += record.TotalTokens()
+		if record.CostUSD != nil {
+			cost += *record.CostUSD
+			priced = true
+		}
+	}
+	if priced {
+		usage.CostUSD = &cost
+	}
+	return usage, true
 }
 
 type scheduledPromptExecutor struct {

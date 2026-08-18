@@ -70,18 +70,21 @@ type Stores struct {
 	Screenshots    ScreenshotStore
 	ProjectPortals serviceportal.Repository
 	Schedules      serviceschedule.Repository
-	Resources      serviceresources.Repository
-	Auth           AuthStore
-	Users          serviceuser.Repository
-	UserSettings   serviceusersettings.Repository
-	Notifications  servicenotify.Store
-	Monitoring     servicemonitoring.Store
-	Playbooks      serviceplaybooks.Repository
-	GlobalSkills   serviceskills.GlobalRepository
-	GlobalSecrets  serviceglobalsecrets.Store
-	Usage          serviceusage.Repository
-	Transcription  servicetranscribe.Store
-	Audit          serviceaudit.Store
+	// ScheduleHistory is the per-task run log; it lives beside the task
+	// catalog but is written append-only in its own files.
+	ScheduleHistory serviceschedule.HistoryRepository
+	Resources       serviceresources.Repository
+	Auth            AuthStore
+	Users           serviceuser.Repository
+	UserSettings    serviceusersettings.Repository
+	Notifications   servicenotify.Store
+	Monitoring      servicemonitoring.Store
+	Playbooks       serviceplaybooks.Repository
+	GlobalSkills    serviceskills.GlobalRepository
+	GlobalSecrets   serviceglobalsecrets.Store
+	Usage           serviceusage.Repository
+	Transcription   servicetranscribe.Store
+	Audit           serviceaudit.Store
 	// AgentPreferences backs the platform-wide agent reply preferences.
 	AgentPreferences serviceagentprefs.Repository
 }
@@ -130,6 +133,11 @@ func New(dataDir string) (Stores, error) {
 	schedules, err := fileschedule.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init scheduled tasks store: %w", err)
+	}
+
+	scheduleHistory, err := fileschedule.NewHistory(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init scheduled task history store: %w", err)
 	}
 
 	resources, err := fileresources.New(dataDir)
@@ -193,27 +201,28 @@ func New(dataDir string) (Stores, error) {
 	}
 
 	return Stores{
-		Chats:          chats,
-		Projects:       projects,
-		ProjectSecrets: projectSecrets,
-		ProjectAccess:  projectAccess,
-		ProjectShares:  projectShares,
-		Snapshots:      snapshots,
-		Screenshots:    screenshots,
-		ProjectPortals: projectPortals,
-		Schedules:      schedules,
-		Resources:      resources,
-		Auth:           fileauth.New(dataDir),
-		Users:          users,
-		UserSettings:   userSettings,
-		Notifications:  notifications,
-		Monitoring:     monitoring,
-		Playbooks:      playbooks,
-		GlobalSkills:   globalSkills,
-		GlobalSecrets:  globalSecrets,
-		Usage:          usage,
-		Transcription:  transcription,
-		Audit:          auditLog,
+		Chats:           chats,
+		Projects:        projects,
+		ProjectSecrets:  projectSecrets,
+		ProjectAccess:   projectAccess,
+		ProjectShares:   projectShares,
+		Snapshots:       snapshots,
+		Screenshots:     screenshots,
+		ProjectPortals:  projectPortals,
+		Schedules:       schedules,
+		ScheduleHistory: scheduleHistory,
+		Resources:       resources,
+		Auth:            fileauth.New(dataDir),
+		Users:           users,
+		UserSettings:    userSettings,
+		Notifications:   notifications,
+		Monitoring:      monitoring,
+		Playbooks:       playbooks,
+		GlobalSkills:    globalSkills,
+		GlobalSecrets:   globalSecrets,
+		Usage:           usage,
+		Transcription:   transcription,
+		Audit:           auditLog,
 
 		AgentPreferences: agentPreferences,
 	}, nil

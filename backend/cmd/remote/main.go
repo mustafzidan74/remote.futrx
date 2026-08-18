@@ -88,6 +88,8 @@ func main() {
 		Database:          containerStack.Database,
 		ProjectPortals:    storeSet.ProjectPortals,
 		Schedules:         storeSet.Schedules,
+		ScheduleHistory:   storeSet.ScheduleHistory,
+		ScheduleWorkspace: containerStack.ScheduleWork,
 		Auth:              storeSet.Auth,
 		Users:             storeSet.Users,
 		UserSettings:      storeSet.UserSettings,

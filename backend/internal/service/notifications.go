@@ -112,18 +112,36 @@ func (o *notifyObserver) ScheduledRunFinished(
 	}
 	status := servicenotify.StatusSucceeded
 	detail := result.Output
-	if result.Err != nil {
+	switch {
+	case result.SkippedByGate:
+		// A gate skip is not a failure: nothing ran, and nothing is wrong.
+		status = servicenotify.StatusSkipped
+		detail = "Skipped by its condition — " + result.GateReason
+	case result.Err != nil:
 		status = servicenotify.StatusFailed
 		detail = result.Err.Error()
 	}
 	event := servicenotify.Event{
 		Event:     servicenotify.KindScheduledRun,
 		Status:    status,
-		Summary:   scheduleSummary(task.Name, detail),
+		Summary:   scheduleSummary(scheduleLabel(task.Name, result), detail),
 		DedupeKey: fmt.Sprintf("schedule:%s:%d", task.ID, task.LastRunAt),
 	}
 	o.describeChat(ctx, task.ChatID, &event)
 	o.notifications.Publish(event)
+}
+
+// scheduleLabel decorates the task name with its chain position, so a chained
+// run reads "deploy (chain 2/3)" instead of looking like an isolated fire.
+func scheduleLabel(taskName string, result serviceschedule.RunResult) string {
+	label := result.Chain.Label()
+	if label == "" {
+		return taskName
+	}
+	if strings.TrimSpace(taskName) == "" {
+		return label
+	}
+	return taskName + " (" + label + ")"
 }
 
 // ProjectHealthChanged reports a project container crossing a health
