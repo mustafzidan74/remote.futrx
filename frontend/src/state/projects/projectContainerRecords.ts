@@ -5,6 +5,7 @@ import type {
   ProjectSecret,
   ProjectShare,
 } from "../../models/project";
+import type { InheritedSecret } from "../../models/secretsVault";
 
 export interface ProjectDataLoadSignal {
   cancelled: boolean;
@@ -20,6 +21,12 @@ export interface ProjectContainerRecord {
 export interface SecretsRecord {
   loading: boolean;
   data?: ProjectSecret[];
+  /**
+   * What the platform vault also puts into this project's container. Read
+   * only here: values live in Settings -> Secrets vault, and an entry marked
+   * `shadowed` is overridden by the project's own secret of the same name.
+   */
+  inherited?: InheritedSecret[];
   error?: string;
 }
 

@@ -12,6 +12,7 @@ import (
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicetemplates "github.com/futrx-com/remote.futrx.com/internal/service/container/templates"
 	servicegithistory "github.com/futrx-com/remote.futrx.com/internal/service/githistory"
+	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	serviceselfupdate "github.com/futrx-com/remote.futrx.com/internal/service/selfupdate"
@@ -157,6 +158,10 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			deps.Services.Playbooks,
 			deps.Services.Auth,
 		),
+		GlobalSecrets: httphandlers.NewGlobalSecretsHandler(
+			globalSecretsService(deps.Services.GlobalSecrets),
+			deps.Services.Auth,
+		),
 		AdminResources: httphandlers.NewAdminResourcesHandler(
 			deps.Services.Resources,
 			httptransport.NewPrincipalResolver(deps.Services.Auth),
@@ -176,6 +181,16 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		Middleware:       middleware,
 		Static:           httptransport.NewStaticHandler(deps.Static),
 	}), nil
+}
+
+// globalSecretsService narrows the concrete vault service to the transport's
+// interface while keeping a nil service nil, so the handler answers 503 on a
+// deployment without a vault store instead of panicking.
+func globalSecretsService(service *serviceglobalsecrets.Service) httphandlers.GlobalSecretsService {
+	if service == nil {
+		return nil
+	}
+	return service
 }
 
 // portalService narrows the concrete portal service to the transport's

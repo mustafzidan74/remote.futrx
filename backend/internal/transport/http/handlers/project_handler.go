@@ -609,15 +609,18 @@ func (h *ProjectHandler) handleSecrets(w http.ResponseWriter, r *http.Request, i
 			httptransport.SendErr(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
-		secrets, err := h.projects.ListSecrets(r.Context(), id)
+		view, err := h.projects.SecretsView(r.Context(), id)
 		if err != nil {
 			sendProjectError(w, err)
 			return
 		}
-		if secrets == nil {
-			secrets = []serviceproject.Secret{}
+		if view.Secrets == nil {
+			view.Secrets = []serviceproject.Secret{}
 		}
-		httptransport.SendJSON(w, http.StatusOK, secrets)
+		if view.Inherited == nil {
+			view.Inherited = []serviceproject.InheritedSecret{}
+		}
+		httptransport.SendJSON(w, http.StatusOK, view)
 		return
 	}
 

@@ -17,6 +17,7 @@ import (
 	containernetwork "github.com/futrx-com/remote.futrx.com/internal/integration/containers/network"
 	containerresources "github.com/futrx-com/remote.futrx.com/internal/integration/containers/resources"
 	containerscheduletools "github.com/futrx-com/remote.futrx.com/internal/integration/containers/scheduletools"
+	containersecrets "github.com/futrx-com/remote.futrx.com/internal/integration/containers/secrets"
 	containertemplates "github.com/futrx-com/remote.futrx.com/internal/integration/containers/templates"
 	containerworkspace "github.com/futrx-com/remote.futrx.com/internal/integration/containers/workspace"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/hostfs"
@@ -40,11 +41,15 @@ const HostMappedUID = 1000000
 // ContainerStack is the composition root for container application services
 // and their LXD/host-filesystem adapters.
 type ContainerStack struct {
-	Lifecycle     *servicelifecycle.Service
-	Resources     *containerresources.Manager
-	Inspection    *serviceinspection.Service
-	Credentials   *servicecredentials.Service
-	Environment   *containerenvironment.Client
+	Lifecycle   *servicelifecycle.Service
+	Resources   *containerresources.Manager
+	Inspection  *serviceinspection.Service
+	Credentials *servicecredentials.Service
+	Environment *containerenvironment.Client
+	// Secrets materializes the platform vault's files and SSH targets inside
+	// a project container. Environment variables still travel through
+	// Environment; this is everything that has to land on a filesystem.
+	Secrets       *containersecrets.Client
 	CLI           *servicecli.Provisioner
 	Browser       *servicebrowser.Service
 	ScheduleTools *containerscheduletools.Adapter
@@ -117,6 +122,7 @@ func NewContainerStack(
 	credentialTransfer := containercredentials.NewAdapter(runner)
 	credentials := servicecredentials.NewService(profiles, credentialTransfer)
 	environment := containerenvironment.NewClient(runner)
+	vaultSecrets := containersecrets.NewClient(runner)
 	listeners := containerlisteners.NewScanner(runner)
 	network := containernetwork.NewRepairer(runner)
 	cliRuntime := containercli.NewClient(runner)
@@ -186,6 +192,7 @@ func NewContainerStack(
 		Inspection:    inspection,
 		Credentials:   credentials,
 		Environment:   environment,
+		Secrets:       vaultSecrets,
 		CLI:           cli,
 		Browser:       browser,
 		ScheduleTools: scheduleTools,

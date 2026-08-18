@@ -152,6 +152,8 @@ flowchart TD
 
 Adding or updating a secret commits the authoritative store, then attempts to write the managed `.env` file and update the container configuration. Multiline values are deliberately omitted from LXD environment configuration but are still passed to agent executions and written to `.env`. Deleting a secret removes the authoritative entry and attempts to remove each managed copy. Those propagation steps are best-effort and log rather than roll back on failure, so a stale copy can remain. Already-running processes retain their old environment until restarted.
 
+A project's secrets are only half of what its container receives. Platform-wide entries from the [secrets vault](16-secrets-vault.md) — environment variables, credential files, and SSH targets — are applied first, and the project's own secrets on top, so a project key of the same name always wins. The project Secrets tab lists the inherited entries read-only and flags the ones this project overrides.
+
 ## Sharing
 
 - Project creators are added to the membership list automatically.

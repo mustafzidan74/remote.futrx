@@ -41,6 +41,9 @@ All `/api/*` and `/ws*` requests require a signed session for a registered user.
 | GET, PUT | `/api/admin/notifications` | Read or write the global notification settings, secrets masked; admin only |
 | POST | `/api/admin/notifications/test` | Deliver a synthetic event to every configured sink and report each outcome; admin only |
 | POST | `/api/admin/notifications/digest/send-now` | Build and deliver the weekly usage digest immediately without advancing the schedule; admin only |
+| GET, POST | `/api/admin/secrets` | List the platform secrets vault (values masked) or create an entry; admin only |
+| PUT, DELETE | `/api/admin/secrets/{key}` | Update or remove one vault entry; a blank value keeps the stored one, `clear` removes it; admin only |
+| POST | `/api/admin/secrets/{key}/test` | Probe an SSH target from the host and report `{ok, output, latencyMs}`; admin only |
 | GET | `/api/admin/audit` | Newest-first page of audit entries, filtered by `actor`, `action` prefix, `target`, `from`, `to`, `limit`, `cursor`; admin only |
 | GET | `/api/admin/audit/export` | Stream the stored audit JSONL for a `from`/`to` range as a download; admin only |
 | GET, PATCH | `/api/me/settings` | Read or update current user's appearance and chat defaults |
@@ -97,7 +100,7 @@ because users authenticate `agy` inside each project.
 | POST | `/api/projects/{id}/agent-browser/navigate` | Open `{url}` in the running Agent Browser; loopback or this project's own preview host only, `409` while the core is not ready |
 | DELETE | `/api/projects/{id}/agent-browser` | Stop the complete Agent Browser |
 | DELETE | `/api/projects/{id}/agent-browser?scope=view` | Stop only the noVNC view |
-| GET | `/api/projects/{id}/secrets` | List project secrets |
+| GET | `/api/projects/{id}/secrets` | List project secrets, plus an `inherited` list of what the [secrets vault](../02-workspaces/16-secrets-vault.md) adds to this container and which entries the project shadows |
 | PUT, DELETE | `/api/projects/{id}/secrets/{key}` | Set or delete one secret |
 | GET, POST | `/api/projects/{id}/access` | List members or add a registered email |
 | DELETE | `/api/projects/{id}/access/{email}` | Remove a member |

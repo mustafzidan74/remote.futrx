@@ -111,6 +111,22 @@ type ContainerEnvironment interface {
 	ApplyDiff(ctx context.Context, containerName string, set map[string]string, unset []string) error
 }
 
+// GlobalSecrets is the platform secrets vault as project policy sees it: a
+// source of environment variables, credential files, and SSH targets every
+// scoped project container inherits without an operator re-entering them.
+//
+// The port is declared here, and satisfied by an adapter over the vault
+// service, so the dependency points one way only: the vault knows nothing
+// about projects beyond the ids and container names it is handed.
+type GlobalSecrets interface {
+	// SyncContainer converges one container onto the vault. ownKeys are the
+	// project's own secret keys, which shadow vault entries of the same name.
+	SyncContainer(ctx context.Context, projectID, containerName string, ownKeys []string) error
+	// InheritedForProject lists what the vault contributes to one project, so
+	// a member can see everything the container will have.
+	InheritedForProject(ctx context.Context, projectID string, ownKeys []string) ([]InheritedSecret, error)
+}
+
 // ContainerInspector returns a best-effort diagnostic snapshot.
 type ContainerInspector interface {
 	Inspect(ctx context.Context, containerName string) (ContainerInspect, error)

@@ -17,9 +17,9 @@ export function useProjectSecrets(project: ProjectMeta | null) {
       }
       setRecord((current) => ({ ...current, loading: true, error: undefined }));
       try {
-        const data = await projectApi.listSecrets(project.id);
+        const view = await projectApi.listSecrets(project.id);
         if (signal?.cancelled) return;
-        setRecord({ loading: false, data });
+        setRecord({ loading: false, data: view.secrets, inherited: view.inherited });
       } catch (error) {
         if (signal?.cancelled) return;
         setRecord({ loading: false, error: (error as Error).message });
@@ -38,7 +38,7 @@ export function useProjectSecrets(project: ProjectMeta | null) {
         if (index >= 0) list[index] = saved;
         else list.push(saved);
         list.sort((left, right) => left.key.localeCompare(right.key));
-        return { loading: false, data: list };
+        return { ...current, loading: false, data: list };
       });
     },
     [project]
@@ -49,6 +49,7 @@ export function useProjectSecrets(project: ProjectMeta | null) {
       if (!project) return;
       await projectApi.deleteSecret(project.id, key);
       setRecord((current) => ({
+        ...current,
         loading: false,
         data: current.data?.filter((secret) => secret.key !== key) ?? [],
       }));

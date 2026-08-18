@@ -152,6 +152,7 @@ A chat with **no project** ("loose chat") runs the CLI directly on the host inst
 | Project metadata | `DATA_DIR/projects/<id>/meta.json` | JSON | slug is the container name |
 | Project membership | `DATA_DIR/projectaccess/<id>.json` | JSON | flat email list |
 | Project secrets | `DATA_DIR/projectsecrets/<id>.json` | JSON | **plaintext**, mode 0600, not encrypted at rest |
+| Platform secrets vault | `DATA_DIR/globalsecrets.json` | JSON | **plaintext**, mode 0600, env/file/SSH entries injected into every scoped project container ([deep dive](docs/02-workspaces/16-secrets-vault.md)) |
 | Public preview links | `DATA_DIR/projectshares/<id>.json` | JSON | SHA-256 token digests only, mode 0600 |
 | Client portals | `DATA_DIR/portals/<id>.json` | JSON | SHA-256 token digest plus display toggles, mode 0600 ([deep dive](docs/02-workspaces/14-client-portal.md)) |
 | Chat events | `DATA_DIR/chats/<id>/events.jsonl` | JSONL | append-only, monotonic `seq`, no rotation |
@@ -180,6 +181,7 @@ Containers are **cattle**; durable state lives on the host and is bind-mounted i
 - **A managed LXD profile** (`futrx-workspace`, [`resources/manager.go`](backend/internal/integration/containers/resources/manager.go)) carries the fleet resource envelope and sets `security.nesting=true` for nested-container workloads. Chromium currently launches with `--no-sandbox`, so that setting is not a Chromium sandbox guarantee. The envelope itself is **operator policy at runtime** ([`service/resources`](backend/internal/service/resources/), persisted to `DATA_DIR/resources.json`, derived from host capacity on first run) rather than a compiled constant, and an aggregate guard refuses a start that would commit more memory than the host has outside its reserve. Profile convergence on the launch path stays best-effort because errors from `resources.Ensure` are discarded; explicit per-project overrides fail launch when they cannot be applied. The **root-disk quota** needs a btrfs/zfs/lvm/ceph pool; on a `dir` pool it is reported unsupported and skipped. See [Resource limits](docs/02-workspaces/11-resource-limits.md).
 - **Networking:** containers share LXD's default bridge; Caddy reaches them by `<slug>.lxd:<port>` DNS. The bridge has no inter-container ACLs by default.
 - **Everything else crosses via `lxc file push/pull` and `lxc exec`:** credentials, project secrets (as `environment.*` config and `--env` args), agent instructions, and skill links.
+- **Platform secrets** are merged in underneath the project's own: vault entries in scope are applied first (environment variables, files at mode 0600, SSH keys plus a managed `~/.ssh/config` region), then project secrets on top, so a project key always wins. What the vault materialized is recorded in `/root/.remote-secrets.json` inside the container, which is what makes removal exact.
 
 The rootfs is disposable — [`upgrade-workspaces`](backend/cmd/upgrade-workspaces/main.go) replaces containers wholesale onto a new base image, so anything installed outside `/workspace` and the agent homes is lost on upgrade.
 

@@ -23,6 +23,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/integration/hostfs"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/hostinfo"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/lxc"
+	"github.com/futrx-com/remote.futrx.com/internal/integration/sshprobe"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/tmuxcli"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/updatecli"
 	service "github.com/futrx-com/remote.futrx.com/internal/service"
@@ -92,6 +93,12 @@ func main() {
 		Notifications:     storeSet.Notifications,
 		Playbooks:         storeSet.Playbooks,
 		GlobalSkills:      storeSet.GlobalSkills,
+		GlobalSecrets:     storeSet.GlobalSecrets,
+		SecretsContainers: service.SecretsContainerDependencies{
+			Environment: containerStack.Environment,
+			Material:    containerStack.Secrets,
+		},
+		SSHProber:         sshprobe.New(),
 		Usage:             storeSet.Usage,
 		ResourceSettings:  storeSet.Resources,
 		ResourceFleet:     containerStack.Resources,

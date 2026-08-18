@@ -32,6 +32,7 @@ This documentation maps the complete `remote.futrx` application: how to use ever
 | [12-snapshots-and-trash.md](../02-workspaces/12-snapshots-and-trash.md) | Per-project snapshot archives (files + database), soft delete with restore, and the trash janitor |
 | [14-client-portal.md](../02-workspaces/14-client-portal.md) | Public read-only status page per project: token gate, what it shows, storage, API, and audit |
 | [15-autopilot-and-auto-test.md](../02-workspaces/15-autopilot-and-auto-test.md) | Per-chat post-run policies: autopilot rounds and completion markers, Playwright auto-test, the composer Test menu, guards, and attribution |
+| [16-secrets-vault.md](../02-workspaces/16-secrets-vault.md) | Platform secrets vault: env/file/SSH entries, scoping and shadowing, container materialization and manifest cleanup, the SSH env contract, and the admin API |
 | [08-project-templates.md](../02-workspaces/08-project-templates.md) | Stack presets, in-container provisioning, pre-built template images, and adding a template |
 | [13-playbooks.md](../02-workspaces/13-playbooks.md) | One-click composer prompt templates: storage, seeding, placeholders, skill/mode/provider application, and the admin API |
 | [06-previews-and-browser.md](../03-platform/06-previews-and-browser.md) | App discovery, HTTPS preview URLs, element inspection, and Agent Browser |

@@ -133,6 +133,11 @@ export const API_ROUTES = {
       `/api/admin/skills-global/${encodeURIComponent(name)}`,
     import: "/api/admin/skills-global/import",
   },
+  secretsVault: {
+    collection: "/api/admin/secrets",
+    item: (key: string) => `/api/admin/secrets/${encodeURIComponent(key)}`,
+    test: (key: string) => `/api/admin/secrets/${encodeURIComponent(key)}/test`,
+  },
   playbooks: {
     collection: "/api/playbooks",
     admin: "/api/admin/playbooks",

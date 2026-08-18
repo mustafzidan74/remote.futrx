@@ -15,6 +15,7 @@ import (
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
+	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	servicehealth "github.com/futrx-com/remote.futrx.com/internal/service/health"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
 	serviceplaybooks "github.com/futrx-com/remote.futrx.com/internal/service/playbooks"
@@ -63,11 +64,19 @@ type Dependencies struct {
 	Notifications     servicenotify.Store
 	Playbooks         serviceplaybooks.Repository
 	GlobalSkills      serviceskills.GlobalRepository
-	Usage             serviceusage.Repository
-	ResourceSettings  serviceresources.Repository
-	ResourceFleet     serviceresources.Fleet
-	HostCollector     serviceserverinfo.Collector
-	ProjectPortals    serviceportal.Repository
+	// GlobalSecrets backs the platform secrets vault. Nil leaves the vault
+	// unavailable: projects keep their own secrets and nothing is inherited.
+	GlobalSecrets serviceglobalsecrets.Store
+	// SecretsContainers are the two container ports the vault materializes
+	// through. Nil leaves entries stored but never pushed anywhere.
+	SecretsContainers SecretsContainerDependencies
+	// SSHProber runs the host-side connectivity check for an SSH target.
+	SSHProber        serviceglobalsecrets.SSHProber
+	Usage            serviceusage.Repository
+	ResourceSettings serviceresources.Repository
+	ResourceFleet    serviceresources.Fleet
+	HostCollector    serviceserverinfo.Collector
+	ProjectPortals   serviceportal.Repository
 	// GitHistory backs the client portal's changelog. It is the same service
 	// the project page uses; the composition root builds it once and hands it
 	// to both.
@@ -89,6 +98,15 @@ type Dependencies struct {
 	TmuxClient      TmuxClient
 	ValidTmuxName   func(string) bool
 	ScheduleLimits  ScheduleLimits
+}
+
+// SecretsContainerDependencies groups the container capabilities the secrets
+// vault materializes through. They are supplied separately from
+// ProjectContainers because the vault reaches containers the project service
+// never asked it to touch (a background resync after an admin edit).
+type SecretsContainerDependencies struct {
+	Environment serviceglobalsecrets.ContainerEnvironment
+	Material    serviceglobalsecrets.ContainerMaterializer
 }
 
 // ScheduleLimits mirrors the deployment's scheduled-task guardrails without
@@ -117,6 +135,7 @@ type Services struct {
 	UserSettings  *serviceusersettings.Service
 	Notifications *servicenotify.Service
 	Playbooks     *serviceplaybooks.Service
+	GlobalSecrets *serviceglobalsecrets.Service
 	Skills        *serviceskills.Catalog
 	Tmux          *servicetmux.Service
 	Access        *serviceauth.AccessVerifier
@@ -175,14 +194,45 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		deps.ProjectContainers.Admission = policy
 	}
 
+	// The vault and the project service each need the other: a project sync
+	// pulls from the vault, and a vault edit pushes to running project
+	// containers. The vault is built first because it depends only on ports,
+	// and it learns about projects immediately afterwards.
+	var globalSecrets *serviceglobalsecrets.Service
+	if deps.GlobalSecrets != nil {
+		secretOptions := []serviceglobalsecrets.Option{
+			serviceglobalsecrets.WithAudit(auditLog),
+			serviceglobalsecrets.WithContainers(
+				deps.SecretsContainers.Environment,
+				deps.SecretsContainers.Material,
+			),
+		}
+		if deps.SSHProber != nil {
+			secretOptions = append(secretOptions, serviceglobalsecrets.WithSSHProber(deps.SSHProber))
+		}
+		globalSecrets = serviceglobalsecrets.New(deps.GlobalSecrets, secretOptions...)
+	}
+
+	projectOptions := []serviceproject.Option{
+		serviceproject.WithAudit(auditLog),
+		serviceproject.WithStorage(deps.ProjectStorage),
+	}
+	if globalSecrets != nil {
+		projectOptions = append(
+			projectOptions,
+			serviceproject.WithGlobalSecrets(globalSecretsAdapter{secrets: globalSecrets}),
+		)
+	}
 	projectService := serviceproject.New(
 		projects,
 		deps.ProjectContainers,
 		deps.ProjectSecrets,
 		deps.ProjectAccess,
-		serviceproject.WithAudit(auditLog),
-		serviceproject.WithStorage(deps.ProjectStorage),
+		projectOptions...,
 	)
+	if globalSecrets != nil {
+		globalSecrets.SetProjects(secretSyncTargets{projects: projectService})
+	}
 	projectService.StartAgentBrowserReaper(ctx, 20*time.Minute)
 
 	// Snapshots and projects each need the other: a delete takes a snapshot,
@@ -405,6 +455,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		UserSettings:  userSettingsService,
 		Notifications: notifications,
 		Playbooks:     playbookService,
+		GlobalSecrets: globalSecrets,
 		Skills:        skillCatalog,
 		Tmux:          tmuxService,
 		Access:        accessVerifier,
@@ -416,6 +467,66 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Snapshots:     snapshotService,
 		PostRun:       postRunDriver,
 	}, nil
+}
+
+// globalSecretsAdapter translates between the vault's own vocabulary and the
+// port the project service declares, so neither package imports the other.
+type globalSecretsAdapter struct {
+	secrets *serviceglobalsecrets.Service
+}
+
+func (a globalSecretsAdapter) SyncContainer(
+	ctx context.Context,
+	projectID, containerName string,
+	ownKeys []string,
+) error {
+	return a.secrets.SyncContainer(ctx, projectID, containerName, ownKeys)
+}
+
+func (a globalSecretsAdapter) InheritedForProject(
+	ctx context.Context,
+	projectID string,
+	ownKeys []string,
+) ([]serviceproject.InheritedSecret, error) {
+	inherited, err := a.secrets.InheritedForProject(ctx, projectID, ownKeys)
+	if err != nil {
+		return nil, err
+	}
+	list := make([]serviceproject.InheritedSecret, 0, len(inherited))
+	for _, entry := range inherited {
+		list = append(list, serviceproject.InheritedSecret{
+			Key:         entry.Key,
+			Kind:        string(entry.Kind),
+			Source:      entry.Source,
+			Shadowed:    entry.Shadowed,
+			Path:        entry.Path,
+			Description: entry.Description,
+		})
+	}
+	return list, nil
+}
+
+// secretSyncTargets is the reverse direction: the fleet listing the vault
+// fans a change out over.
+type secretSyncTargets struct {
+	projects *serviceproject.Service
+}
+
+func (t secretSyncTargets) SecretTargets(ctx context.Context) ([]serviceglobalsecrets.SecretTarget, error) {
+	targets, err := t.projects.SecretSyncTargets(ctx)
+	if err != nil {
+		return nil, err
+	}
+	list := make([]serviceglobalsecrets.SecretTarget, 0, len(targets))
+	for _, target := range targets {
+		list = append(list, serviceglobalsecrets.SecretTarget{
+			ProjectID:     target.ProjectID,
+			ContainerName: target.ContainerName,
+			Running:       target.Running,
+			OwnKeys:       target.OwnKeys,
+		})
+	}
+	return list, nil
 }
 
 // hostFactsAdapter narrows the server-info collector to the capacity facts the

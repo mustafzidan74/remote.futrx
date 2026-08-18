@@ -8,6 +8,7 @@ import { useUserSettingsContext } from "../../state/context/UserSettingsContext"
 import { useUserDirectory } from "../../state/hooks/users/useUserDirectory";
 import { useGlobalSkills } from "../../state/hooks/settings/useGlobalSkills";
 import { usePlaybookLibrary } from "../../state/hooks/settings/usePlaybookLibrary";
+import { useSecretsVault } from "../../state/hooks/settings/useSecretsVault";
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
 import { useAuditLog } from "../../state/hooks/admin/useAuditLog";
 import { useProjectTrash } from "../../state/hooks/admin/useProjectTrash";
@@ -31,6 +32,7 @@ export function SettingsContainer({
   const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
   const globalSkills = useGlobalSkills(activeTab === "skills" && auth.isAdmin);
   const playbooks = usePlaybookLibrary(activeTab === "playbooks" && auth.isAdmin);
+  const secretsVault = useSecretsVault(activeTab === "secrets" && auth.isAdmin);
   const serverInfo = useServerInfo(activeTab === "info");
   const selfUpdate = useSelfUpdate(activeTab === "updates" && auth.isAdmin);
   const usageDashboard = useUsageDashboard(activeTab === "usage");
@@ -84,6 +86,7 @@ export function SettingsContainer({
       userDirectory={userDirectory}
       globalSkills={globalSkills}
       playbooks={playbooks}
+      secretsVault={secretsVault}
       projects={projects}
       usageDashboard={usageDashboard}
       usageRebuilding={usageRebuilding}

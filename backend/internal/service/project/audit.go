@@ -17,6 +17,13 @@ func WithAudit(recorder audit.Recorder) Option {
 	return func(s *Service) { s.audit = audit.RecorderOrNop(recorder) }
 }
 
+// WithGlobalSecrets attaches the platform secrets vault. Without it a project
+// container receives only the project's own secrets, which is exactly how the
+// platform behaved before the vault existed.
+func WithGlobalSecrets(secrets GlobalSecrets) Option {
+	return func(s *Service) { s.globalSecrets = secrets }
+}
+
 // auditTargetID labels a project the caller named but whose metadata was not
 // (or could not be) loaded.
 func auditTargetID(id ID) audit.Target {

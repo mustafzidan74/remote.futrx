@@ -6,6 +6,7 @@ import (
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
+	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
 	serviceplaybooks "github.com/futrx-com/remote.futrx.com/internal/service/playbooks"
 	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
@@ -21,6 +22,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileaudit"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileauth"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filechat"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/fileglobalsecrets"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filenotify"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileplaybooks"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileportal"
@@ -57,6 +59,7 @@ type Stores struct {
 	Notifications  servicenotify.Store
 	Playbooks      serviceplaybooks.Repository
 	GlobalSkills   serviceskills.GlobalRepository
+	GlobalSecrets  serviceglobalsecrets.Store
 	Usage          serviceusage.Repository
 	Audit          serviceaudit.Store
 }
@@ -132,6 +135,11 @@ func New(dataDir string) (Stores, error) {
 		return Stores{}, fmt.Errorf("init global skills store: %w", err)
 	}
 
+	globalSecrets, err := fileglobalsecrets.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init secrets vault store: %w", err)
+	}
+
 	usage, err := fileusage.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init usage store: %w", err)
@@ -158,6 +166,7 @@ func New(dataDir string) (Stores, error) {
 		Notifications:  notifications,
 		Playbooks:      playbooks,
 		GlobalSkills:   globalSkills,
+		GlobalSecrets:  globalSecrets,
 		Usage:          usage,
 		Audit:          auditLog,
 	}, nil

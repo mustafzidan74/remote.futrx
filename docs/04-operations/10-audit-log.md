@@ -81,7 +81,7 @@ every project action, `project.secret.` only the secret ones.
 | `chat.` | `create`, `delete` |
 | `agent.run.` | `start`, `cancel` — `meta` carries `provider`, `chatId`, `projectId`, and the scheduled task/run ids for unattended turns |
 | `schedule.` | `create`, `update`, `arm`, `delete`, `run-now` |
-| `settings.` | `google-oauth.configure`, `playbooks.update`, `agent.connect`, `agent.disconnect` |
+| `settings.` | `google-oauth.configure`, `playbooks.update`, `agent.connect`, `agent.disconnect`, `secret.create`, `secret.update`, `secret.delete`, `secret.test` |
 | `self-update.` | `trigger` |
 | `workspace.file.` | `upload`, `download`, `archive-download` |
 | `workspace.` | `git.checkout`, `ide.open`, `terminal.open`, `terminal.close` |

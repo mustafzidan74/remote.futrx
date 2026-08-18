@@ -62,6 +62,11 @@ const (
 	ActionSettingsAgentConnect    = "settings.agent.connect"
 	ActionSettingsAgentDisconnect = "settings.agent.disconnect"
 
+	ActionSettingsSecretCreate = "settings.secret.create"
+	ActionSettingsSecretUpdate = "settings.secret.update"
+	ActionSettingsSecretDelete = "settings.secret.delete"
+	ActionSettingsSecretTest   = "settings.secret.test"
+
 	ActionSelfUpdateTrigger = "self-update.trigger"
 
 	ActionWorkspaceFileUpload      = "workspace.file.upload"

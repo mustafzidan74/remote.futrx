@@ -3,6 +3,7 @@ import type { CodexDeviceLogin, KimiDeviceLogin } from "../../models/auth";
 import type { UserDirectory } from "../../state/hooks/users/useUserDirectory";
 import type { GlobalSkillLibrary } from "../../state/hooks/settings/useGlobalSkills";
 import type { PlaybookLibraryEditor } from "../../state/hooks/settings/usePlaybookLibrary";
+import type { SecretsVault } from "../../state/hooks/settings/useSecretsVault";
 import type { ProjectMeta } from "../../models/project";
 import type { AuditLog } from "../../state/hooks/admin/useAuditLog";
 import type { ProjectTrash } from "../../state/hooks/admin/useProjectTrash";
@@ -10,7 +11,7 @@ import type { ServerInfo } from "../../models/serverInfo";
 import type { FleetResourcesView, FleetSettings } from "../../models/resources";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import type { ComponentType } from "preact";
-import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Info, Menu, Monitor, Trash, Users, Zap } from "../primitives/icons";
+import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Info, Key, Menu, Monitor, Trash, Users, Zap } from "../primitives/icons";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { AuditLogSettings } from "./AuditLogSettings";
 import { ClaudeAuthSettings } from "./ClaudeAuthSettings";
@@ -19,6 +20,7 @@ import { KimiAuthSettings } from "./KimiAuthSettings";
 import { GoogleOAuthSettings } from "./GoogleOAuthSettings";
 import { NotificationsSettings } from "./NotificationsSettings";
 import { ResourcesSettings } from "./ResourcesSettings";
+import { SecretsVaultSettings } from "./SecretsVaultSettings";
 import { ServerInfoSettings } from "./ServerInfoSettings";
 import { TrashSettings } from "./TrashSettings";
 import { UpdatesSettings } from "./UpdatesSettings";
@@ -37,6 +39,7 @@ export type SettingsTab =
   | "playbooks"
   | "usage"
   | "resources"
+  | "secrets"
   | "trash"
   | "audit"
   | "updates"
@@ -121,6 +124,13 @@ const tabs: Array<{
     Icon: Cpu,
   },
   {
+    id: "secrets",
+    group: "platform",
+    label: "Secrets vault",
+    description: "Store tokens, licence keys, credential files, and SSH targets once for every project.",
+    Icon: Key,
+  },
+  {
     id: "trash",
     group: "platform",
     label: "Trash",
@@ -173,6 +183,7 @@ export function SettingsPage({
   userDirectory,
   globalSkills,
   playbooks,
+  secretsVault,
   projects,
   usageDashboard,
   usageRebuilding,
@@ -227,6 +238,7 @@ export function SettingsPage({
   userDirectory: UserDirectory;
   globalSkills: GlobalSkillLibrary;
   playbooks: PlaybookLibraryEditor;
+  secretsVault: SecretsVault;
   projects: ProjectMeta[];
   usageDashboard: UsageDashboard;
   usageRebuilding: boolean;
@@ -425,6 +437,16 @@ export function SettingsPage({
               ) : (
                 <SettingsNotice>
                   Container resource limits are managed by server administrators.
+                </SettingsNotice>
+              ))}
+
+            {activeTab === "secrets" &&
+              (isAdmin ? (
+                <SecretsVaultSettings vault={secretsVault} projects={projects} />
+              ) : (
+                <SettingsNotice>
+                  The secrets vault is managed by server administrators. Your project's Secrets tab
+                  lists what its container inherits from it.
                 </SettingsNotice>
               ))}
 

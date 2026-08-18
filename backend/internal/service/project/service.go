@@ -28,6 +28,7 @@ type Service struct {
 	containerTemplates   ContainerTemplates
 	containerDatabase    ContainerDatabase
 	secrets              SecretsRepository
+	globalSecrets        GlobalSecrets
 	access               AccessRepository
 	storage              ProjectStorage
 	audit                audit.Recorder
@@ -95,6 +96,80 @@ func (s *Service) ListSecrets(ctx context.Context, id ID) ([]Secret, error) {
 	return secrets, err
 }
 
+// SecretsView returns the project's own secrets together with what the
+// platform vault contributes to the same container. A member reading the
+// Secrets tab needs both to know what the agent will actually see, so both
+// are resolved in one audited read.
+func (s *Service) SecretsView(ctx context.Context, id ID) (SecretsView, error) {
+	secrets, err := s.listSecrets(ctx, id)
+	s.record(ctx, audit.ActionProjectSecretRead, auditTargetID(id), audit.Meta{"count": len(secrets)}, err)
+	if err != nil {
+		return SecretsView{}, err
+	}
+	view := SecretsView{Secrets: secrets, Inherited: []InheritedSecret{}}
+	if s.globalSecrets == nil {
+		return view, nil
+	}
+	inherited, inheritErr := s.globalSecrets.InheritedForProject(ctx, string(id), secretKeys(secrets))
+	if inheritErr != nil {
+		// The vault is an addition to this page, not a precondition for it: a
+		// member still needs to read and edit the project's own secrets.
+		log.Printf("projects: resolve inherited secrets for %s: %v", id, inheritErr)
+		return view, nil
+	}
+	if inherited != nil {
+		view.Inherited = inherited
+	}
+	return view, nil
+}
+
+// SecretSyncTargets lists every live project the vault can push to. Container
+// state is resolved live rather than read from stored metadata so a vault
+// edit never pushes at a container that is not up.
+func (s *Service) SecretSyncTargets(ctx context.Context) ([]SecretSyncTarget, error) {
+	metas, err := s.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	targets := make([]SecretSyncTarget, 0, len(metas))
+	for _, m := range metas {
+		if m.ContainerName == "" {
+			continue
+		}
+		running := m.Status == StatusRunning
+		if s.containerLifecycle != nil {
+			state, stateErr := s.containerLifecycle.State(ctx, m.ContainerName)
+			if stateErr != nil {
+				continue
+			}
+			running = state == ContainerStateRunning
+		}
+		var ownKeys []string
+		if s.secrets != nil {
+			secrets, listErr := s.secrets.List(ctx, m.ID)
+			if listErr != nil {
+				return nil, listErr
+			}
+			ownKeys = secretKeys(secrets)
+		}
+		targets = append(targets, SecretSyncTarget{
+			ProjectID:     string(m.ID),
+			ContainerName: m.ContainerName,
+			Running:       running,
+			OwnKeys:       ownKeys,
+		})
+	}
+	return targets, nil
+}
+
+func secretKeys(secrets []Secret) []string {
+	keys := make([]string, 0, len(secrets))
+	for _, secret := range secrets {
+		keys = append(keys, secret.Key)
+	}
+	return keys
+}
+
 func (s *Service) listSecrets(ctx context.Context, id ID) ([]Secret, error) {
 	if !ValidID(id) {
 		return nil, ErrInvalidID
@@ -143,6 +218,14 @@ func (s *Service) setSecret(ctx context.Context, id ID, key, value string) (Secr
 			log.Printf("projects: push env %s to %s: %v", key, m.ContainerName, envErr)
 		}
 	}
+	// A new project secret can shadow a vault entry of the same name, which
+	// changes what the vault owns in this container. Re-converge so the
+	// container's manifest matches reality straight away.
+	if s.globalSecrets != nil && m.ContainerName != "" {
+		if syncErr := s.syncContainerEnv(ctx, id, m.ContainerName); syncErr != nil {
+			log.Printf("projects: reconverge secrets for %s after set: %v", m.ContainerName, syncErr)
+		}
+	}
 	return saved, nil
 }
 
@@ -177,6 +260,13 @@ func (s *Service) deleteSecret(ctx context.Context, id ID, key string) error {
 			ctx, m.ContainerName, nil, []string{key},
 		); envErr != nil {
 			log.Printf("projects: unset env %s on %s: %v", key, m.ContainerName, envErr)
+		}
+	}
+	// Removing a project secret can un-shadow a vault entry of the same name,
+	// which the container should now inherit again.
+	if s.globalSecrets != nil && m.ContainerName != "" {
+		if syncErr := s.syncContainerEnv(ctx, id, m.ContainerName); syncErr != nil {
+			log.Printf("projects: reconverge secrets for %s after delete: %v", m.ContainerName, syncErr)
 		}
 	}
 	return nil
@@ -1356,25 +1446,42 @@ func statusForContainerState(state ContainerState) Status {
 	}
 }
 
-// syncContainerEnv pushes every stored secret for the project into the
-// container's LXD environment.* config. Best-effort; logs failures.
+// syncContainerEnv converges one container onto the merged secret set: the
+// platform vault first, then the project's own secrets on top, so a project
+// secret always wins over a vault entry of the same name. The vault pass also
+// materializes credential files and SSH targets, and removes whatever it
+// materialized on an earlier pass and no longer owns.
+//
+// Best-effort at every call site; failures are logged, not surfaced.
 func (s *Service) syncContainerEnv(ctx context.Context, id ID, containerName string) error {
-	if s.containerEnvironment == nil || containerName == "" {
+	if containerName == "" {
 		return nil
 	}
-	if s.secrets == nil {
-		return nil
+	var secs []Secret
+	if s.secrets != nil {
+		var err error
+		secs, err = s.secrets.List(ctx, id)
+		if err != nil {
+			return err
+		}
 	}
-	secs, err := s.secrets.List(ctx, id)
-	if err != nil {
-		return err
+
+	// The vault runs first precisely so the project loop below is the last
+	// writer for any key both of them define.
+	var vaultErr error
+	if s.globalSecrets != nil {
+		vaultErr = s.globalSecrets.SyncContainer(ctx, string(id), containerName, secretKeys(secs))
 	}
-	if len(secs) == 0 {
-		return nil
+
+	if s.containerEnvironment == nil || len(secs) == 0 {
+		return vaultErr
 	}
 	set := make(map[string]string, len(secs))
 	for _, sec := range secs {
 		set[sec.Key] = sec.Value
 	}
-	return s.containerEnvironment.ApplyDiff(ctx, containerName, set, nil)
+	if err := s.containerEnvironment.ApplyDiff(ctx, containerName, set, nil); err != nil {
+		return err
+	}
+	return vaultErr
 }

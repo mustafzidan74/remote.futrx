@@ -40,3 +40,32 @@ func ValidSecretKey(k string) bool {
 	}
 	return true
 }
+
+// InheritedSecret is one platform-vault entry a project's container inherits.
+// It is metadata only: values never leave the vault through this path.
+type InheritedSecret struct {
+	Key         string `json:"key"`
+	Kind        string `json:"kind"`
+	Source      string `json:"source"`
+	Shadowed    bool   `json:"shadowed"`
+	Path        string `json:"path,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+// SecretsView is what the project Secrets tab reads: the project's own
+// entries plus the platform-vault entries its container also receives, with
+// the ones this project overrides flagged as shadowed.
+type SecretsView struct {
+	Secrets   []Secret          `json:"secrets"`
+	Inherited []InheritedSecret `json:"inherited"`
+}
+
+// SecretSyncTarget describes one project the secrets vault can push to. It is
+// the vault's view of the fleet: an id, where to push, whether pushing is
+// possible right now, and which keys this project defines itself.
+type SecretSyncTarget struct {
+	ProjectID     string
+	ContainerName string
+	Running       bool
+	OwnKeys       []string
+}

@@ -35,6 +35,7 @@ type Handlers struct {
 	Skills           RouteRegistrar
 	GlobalSkills     RouteRegistrar
 	Playbooks        RouteRegistrar
+	GlobalSecrets    RouteRegistrar
 	Templates        RouteRegistrar
 	BrowserInspector RouteRegistrar
 	Schedules        RouteRegistrar
@@ -75,6 +76,7 @@ func NewHandler(handlers Handlers) http.Handler {
 	register(handlers.Skills)
 	register(handlers.GlobalSkills)
 	register(handlers.Playbooks)
+	register(handlers.GlobalSecrets)
 	register(handlers.Templates)
 	register(handlers.BrowserInspector)
 	register(handlers.Schedules)

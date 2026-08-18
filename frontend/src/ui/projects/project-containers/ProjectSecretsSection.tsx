@@ -1,7 +1,8 @@
 import { useState } from "preact/hooks";
 import type { ProjectSecret } from "../../../models/project";
+import type { InheritedSecret } from "../../../models/secretsVault";
 import type { SecretsRecord } from "../../../state/projects/projectContainerRecords";
-import { AlertCircle, X } from "../../primitives/icons";
+import { AlertCircle, Key, X } from "../../primitives/icons";
 import { Empty, Loading } from "./ProjectContainerPrimitives";
 import {
   formatUnixTime,
@@ -31,6 +32,7 @@ export function ProjectSecretsSection({
       <p class="text-[11.5px] text-ink-400 leading-relaxed">
         Secrets are passed to the selected agent CLI as <span class="font-mono">--env KEY=VALUE</span> on every prompt run. They never land in the container's filesystem and are not synced back from it.
       </p>
+      <InheritedSecrets list={record.inherited ?? []} />
     </>
   );
 }
@@ -246,4 +248,52 @@ function SecretRow({
       {err && <div class="text-[11.5px] text-accent-red">{err}</div>}
     </div>
   );
+}
+
+/**
+ * What the platform secrets vault also puts into this container, read-only.
+ * A member cannot see or change a vault value here — the point is that they
+ * can tell what the agent will actually have, and why a project secret of the
+ * same name is the one that wins.
+ */
+function InheritedSecrets({ list }: { list: InheritedSecret[] }) {
+  if (list.length === 0) return null;
+  return (
+    <section class="rounded-md border border-white/[0.08] bg-white/[0.02] p-3 space-y-2">
+      <div class="flex items-center gap-2">
+        <Key class="w-3.5 h-3.5 flex-none text-accent-blue" aria-hidden="true" />
+        <div class="text-[12.5px] font-medium text-ink-100">Inherited from the vault</div>
+      </div>
+      <p class="text-[11.5px] text-ink-400 leading-relaxed">
+        Set once by an administrator in Settings &rarr; Secrets vault and injected into this
+        container. Values are not shown here.
+      </p>
+      <ul class="space-y-1.5">
+        {list.map((entry) => (
+          <li key={entry.key} class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[12px]">
+            <span class={`font-mono ${entry.shadowed ? "text-ink-400 line-through" : "text-ink-100"}`}>
+              {entry.key}
+            </span>
+            <span class="text-[11px] text-ink-400">{inheritedKindLabel(entry)}</span>
+            {entry.shadowed && (
+              <span class="text-[11px] text-accent-yellow">
+                overridden by this project's own secret
+              </span>
+            )}
+            {entry.description && (
+              <span class="w-full text-[11px] text-ink-400" dir="auto">
+                {entry.description}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function inheritedKindLabel(entry: InheritedSecret): string {
+  if (entry.kind === "file") return `file → ${entry.path ?? ""}`;
+  if (entry.kind === "ssh") return "ssh target";
+  return "environment variable";
 }
