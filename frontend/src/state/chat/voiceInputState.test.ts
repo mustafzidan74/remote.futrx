@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { defaultVoiceLanguage, resolveVoiceLanguage } from "../../config/voice.ts";
+import {
+  defaultVoiceLanguage,
+  describeVoiceLanguage,
+  resolveVoiceLanguage,
+} from "../../config/voice.ts";
 import {
   IDLE_VOICE_SESSION,
   VoicePreferenceStore,
@@ -21,6 +25,15 @@ import {
   voiceInputAvailable,
   withElapsed,
   withLevel,
+  NO_AUDIO_MESSAGE,
+  clampLevel,
+  isAlreadyStartedError,
+  isFatalRecognitionError,
+  microphoneErrorMessage,
+  microphoneTestVerdict,
+  planAfterRecognitionEnd,
+  recognitionErrorMessage,
+  type RecognitionEndInput,
 } from "./voiceInputState.ts";
 
 test("beginSession splits the existing draft at the caret", () => {
@@ -214,12 +227,16 @@ test("formatElapsed renders the recording timer", () => {
   assert.equal(formatElapsed(-1), "0:00");
 });
 
-test("an Arabic browser starts on Egyptian Arabic, everyone else on auto", () => {
+// Neither default is "auto". `auto` hands the recognizer whatever
+// navigator.language happens to be, which is invisible to the user and is a
+// tag the vendor's speech service may not support at all.
+test("an Arabic browser starts on Egyptian Arabic, everyone else on US English", () => {
   assert.equal(defaultVoiceLanguage("ar"), "ar-EG");
   assert.equal(defaultVoiceLanguage("ar-SA"), "ar-EG");
   assert.equal(defaultVoiceLanguage("AR-eg"), "ar-EG");
-  assert.equal(defaultVoiceLanguage("en-US"), "auto");
-  assert.equal(defaultVoiceLanguage(undefined), "auto");
+  assert.equal(defaultVoiceLanguage("en-US"), "en-US");
+  assert.equal(defaultVoiceLanguage("fr-FR"), "en-US");
+  assert.equal(defaultVoiceLanguage(undefined), "en-US");
 });
 
 test("auto resolves to the browser language, an explicit tag to itself", () => {
@@ -240,7 +257,7 @@ test("the language choice survives a reload", () => {
   const storage = memoryStorage();
 
   const first = new VoicePreferenceStore(storage, "en-US");
-  assert.equal(first.language(), "auto", "an English browser starts on auto");
+  assert.equal(first.language(), "en-US", "an English browser starts on US English");
   first.setLanguage("ar-SA");
 
   assert.equal(new VoicePreferenceStore(storage, "en-US").language(), "ar-SA");
@@ -326,4 +343,174 @@ test("two composers dictating both have to let go before the run shortcut return
 
   second();
   assert.equal(isDictating(), false);
+});
+
+/* --------------------------------------------------------------------- *
+ * Diagnostics
+ *
+ * The feature failed silently: a session ran, ended, and told the user
+ * nothing. These pin the vocabulary that replaced the silence.
+ * --------------------------------------------------------------------- */
+
+test("every Web Speech error code produces a specific, actionable sentence", () => {
+  const messages = new Map<string, string>();
+  for (const code of [
+    "not-allowed",
+    "service-not-allowed",
+    "audio-capture",
+    "network",
+    "language-not-supported",
+    "no-speech",
+    "aborted",
+    "bad-grammar",
+  ]) {
+    const message = recognitionErrorMessage(code);
+    assert.ok(message.length > 20, `${code} needs more than a shrug`);
+    assert.ok(
+      !message.startsWith("Voice input failed ("),
+      `${code} should be explained, not echoed back as a code`,
+    );
+    messages.set(code, message);
+  }
+  assert.equal(new Set(messages.values()).size, messages.size, "no two codes share a message");
+
+  // The two that used to be swallowed entirely are the most informative ones.
+  assert.match(recognitionErrorMessage("no-speech"), /silence/i);
+  assert.match(recognitionErrorMessage("not-allowed"), /padlock|allow/i);
+  // Chrome uploads the audio to Google, so a blocked network is a real cause.
+  assert.match(recognitionErrorMessage("network"), /network|service/i);
+  // An unknown code still names itself rather than vanishing.
+  assert.equal(recognitionErrorMessage("weird-new-code"), "Voice input failed (weird-new-code).");
+  assert.equal(recognitionErrorMessage(""), "Voice input failed.");
+});
+
+test("only the codes that cannot be retried end the session", () => {
+  for (const code of [
+    "not-allowed",
+    "service-not-allowed",
+    "audio-capture",
+    "network",
+    "language-not-supported",
+    "bad-grammar",
+  ]) {
+    assert.equal(isFatalRecognitionError(code), true, code);
+  }
+  // These are how a continuous recognizer stops between phrases.
+  assert.equal(isFatalRecognitionError("no-speech"), false);
+  assert.equal(isFatalRecognitionError("aborted"), false);
+  assert.equal(isFatalRecognitionError(""), false);
+});
+
+test("a refused getUserMedia is reported by its cause, not as a generic failure", () => {
+  assert.match(microphoneErrorMessage({ name: "NotAllowedError" }), /blocked/i);
+  assert.match(microphoneErrorMessage({ name: "NotFoundError" }), /No microphone/i);
+  assert.match(microphoneErrorMessage({ name: "NotReadableError" }), /another application/i);
+  assert.match(microphoneErrorMessage({ name: "OverconstrainedError" }), /matched/i);
+  assert.equal(microphoneErrorMessage(null), "The microphone could not be opened.");
+});
+
+test("Chrome's already-started throw is recognised by name or by message", () => {
+  assert.equal(isAlreadyStartedError({ name: "InvalidStateError" }), true);
+  assert.equal(isAlreadyStartedError(new Error("recognition has already started")), true);
+  assert.equal(isAlreadyStartedError(new Error("something else")), false);
+  assert.equal(isAlreadyStartedError(null), false);
+});
+
+/* --------------------------------------------------------------------- *
+ * What to do when the recognizer ends by itself
+ * --------------------------------------------------------------------- */
+
+function endInput(overrides: Partial<RecognitionEndInput> = {}): RecognitionEndInput {
+  return {
+    stopRequested: false,
+    errorCode: "",
+    restarts: 0,
+    maxRestarts: 20,
+    deadStarts: 0,
+    ranForMs: 60_000,
+    heard: true,
+    ...overrides,
+  };
+}
+
+test("a user-requested stop always finishes, whatever the recognizer said", () => {
+  assert.deepEqual(planAfterRecognitionEnd(endInput({ stopRequested: true })), {
+    action: "finish",
+  });
+  // Even a fatal-looking code: the user asked to stop, and a banner about a
+  // session they deliberately ended is noise.
+  assert.deepEqual(
+    planAfterRecognitionEnd(endInput({ stopRequested: true, errorCode: "aborted" })),
+    { action: "finish" },
+  );
+});
+
+test("Chrome's silence cut-off restarts instead of dropping the microphone", () => {
+  assert.deepEqual(planAfterRecognitionEnd(endInput()), { action: "restart", deadStart: false });
+  assert.deepEqual(planAfterRecognitionEnd(endInput({ errorCode: "no-speech" })), {
+    action: "restart",
+    deadStart: false,
+  });
+});
+
+test("restarting is bounded, and the words survive the last one", () => {
+  assert.deepEqual(planAfterRecognitionEnd(endInput({ restarts: 20, maxRestarts: 20 })), {
+    action: "finish",
+  });
+});
+
+test("a run that ended at once having heard nothing gets one retry, then an explanation", () => {
+  const dead = endInput({ ranForMs: 0, heard: false });
+
+  assert.deepEqual(planAfterRecognitionEnd(dead), { action: "restart", deadStart: true });
+  assert.deepEqual(planAfterRecognitionEnd({ ...dead, deadStarts: 1 }), {
+    action: "fail",
+    message: NO_AUDIO_MESSAGE,
+  });
+  // A short run that *did* hear something is a normal short phrase.
+  assert.deepEqual(planAfterRecognitionEnd({ ...dead, heard: true, deadStarts: 1 }), {
+    action: "restart",
+    deadStart: false,
+  });
+});
+
+test("a fatal code fails immediately, ahead of any restart budget", () => {
+  assert.deepEqual(planAfterRecognitionEnd(endInput({ errorCode: "not-allowed" })), {
+    action: "fail",
+    message: recognitionErrorMessage("not-allowed"),
+  });
+  assert.deepEqual(
+    planAfterRecognitionEnd(endInput({ errorCode: "network", restarts: 0, ranForMs: 0 })),
+    { action: "fail", message: recognitionErrorMessage("network") },
+  );
+});
+
+/* --------------------------------------------------------------------- *
+ * Microphone self-test
+ * --------------------------------------------------------------------- */
+
+test("the microphone test reports which of the two failures the user has", () => {
+  assert.match(microphoneTestVerdict(0.8), /works/i);
+  assert.match(microphoneTestVerdict(0.3), /works/i);
+  assert.match(microphoneTestVerdict(0.12), /quiet/i);
+  assert.match(microphoneTestVerdict(0.05), /quiet/i);
+  assert.match(microphoneTestVerdict(0.01), /No sound/i);
+  assert.match(microphoneTestVerdict(0), /No sound/i);
+  // The percentage is what the user reads back to whoever is helping them.
+  assert.match(microphoneTestVerdict(0.62), /62%/);
+});
+
+test("levels from an analyser are clamped before anything renders them", () => {
+  assert.equal(clampLevel(0.42), 0.42);
+  assert.equal(clampLevel(5), 1);
+  assert.equal(clampLevel(-1), 0);
+  assert.equal(clampLevel(Number.NaN), 0);
+});
+
+test("the tooltip label always names the language actually being recognised", () => {
+  assert.equal(describeVoiceLanguage("ar-EG", "en-US"), "العربية (مصر)");
+  assert.equal(describeVoiceLanguage("en-GB", "ar-EG"), "English (UK)");
+  // "Auto" on its own tells the user nothing, so the resolved tag comes with it.
+  assert.equal(describeVoiceLanguage("auto", "fr-FR"), "Auto (browser language): fr-FR");
+  assert.equal(describeVoiceLanguage("auto", undefined), "Auto (browser language)");
 });

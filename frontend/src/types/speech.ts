@@ -66,6 +66,16 @@ export function speechRecognitionSupported(): boolean {
   return speechRecognitionConstructor() !== null;
 }
 
+/**
+ * Whether this page may ask for a microphone at all. Browsers refuse
+ * getUserMedia and Web Speech on plain HTTP outside localhost, and they do it
+ * without a useful error, so it is worth checking before anything starts.
+ */
+export function secureContextAvailable(): boolean {
+  if (typeof window === "undefined") return true;
+  return window.isSecureContext !== false;
+}
+
 /** Whether MediaRecorder plus getUserMedia are both available. */
 export function mediaRecorderSupported(): boolean {
   return (

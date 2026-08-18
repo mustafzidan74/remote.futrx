@@ -51,6 +51,14 @@ export interface VoiceSession {
   /** How long the current recording has been running, in milliseconds. */
   elapsedMs: number;
   error: string;
+  /**
+   * Something the recognizer reported that the session survived — a silence
+   * timeout, an interruption it restarted from. It is shown beside the live
+   * transcript rather than as a banner, because the session is still running
+   * and a red box every few seconds of quiet would be worse than the silence
+   * it is reporting.
+   */
+  notice: string;
 }
 
 export const IDLE_VOICE_SESSION: VoiceSession = {
@@ -62,6 +70,7 @@ export const IDLE_VOICE_SESSION: VoiceSession = {
   level: 0,
   elapsedMs: 0,
   error: "",
+  notice: "",
 };
 
 /**
@@ -108,7 +117,20 @@ export function applyRecognition(
     ...session,
     final: joinSpeech(session.final, finalChunk),
     interim: interim.trim(),
+    // Words arriving means whatever was reported has passed.
+    notice: "",
   };
+}
+
+/**
+ * Records a non-fatal report from the recognizer without ending the session.
+ * `no-speech` is the one that matters: the microphone was open and only
+ * silence arrived, which is the difference between "this is broken" and "it
+ * cannot hear you".
+ */
+export function applyNotice(session: VoiceSession, notice: string): VoiceSession {
+  if (session.status === "idle" || session.status === "error") return session;
+  return { ...session, notice: notice.trim() };
 }
 
 /**
@@ -132,7 +154,7 @@ export function applyTranscript(session: VoiceSession, transcript: string): Voic
 /** Reports the microphone level for the meter. */
 export function withLevel(session: VoiceSession, level: number): VoiceSession {
   if (session.status === "idle") return session;
-  const clamped = Number.isFinite(level) ? Math.max(0, Math.min(1, level)) : 0;
+  const clamped = clampLevel(level);
   return { ...session, level: clamped };
 }
 
@@ -161,6 +183,7 @@ export function finishSession(session: VoiceSession): VoiceSession {
     final: joinSpeech(session.final, session.interim),
     interim: "",
     level: 0,
+    notice: "",
   };
 }
 
@@ -361,4 +384,207 @@ export function beginDictationClaim(): () => void {
 /** Whether any composer is dictating right now. */
 export function isDictating(): boolean {
   return liveDictations > 0;
+}
+
+/* ------------------------------------------------------------------------ *
+ * Diagnostics
+ *
+ * Dictation fails in ways the user cannot see: a denied permission, a muted
+ * tab, a speech service the browser cannot reach, a device another application
+ * is holding. Every one of those used to end the session the same way a
+ * successful one does — silently, with an unchanged composer. The vocabulary
+ * below is what turns each of them into a sentence the operator can act on,
+ * and it lives here rather than in the hook so the mapping is pinned by tests.
+ * ------------------------------------------------------------------------ */
+
+/**
+ * Chrome ends continuous recognition on its own after roughly a minute of
+ * silence. Restarting keeps a dictation alive across pauses; the budget stops
+ * a recognizer that ends instantly from spinning forever.
+ */
+export const RECOGNITION_RESTART_LIMIT = 20;
+
+/**
+ * How many runs that ended at once, having heard nothing, are tolerated before
+ * the user is told the microphone is not delivering audio. One retry, then an
+ * explanation.
+ */
+export const RECOGNITION_DEAD_START_LIMIT = 2;
+
+/** A run shorter than this that produced no words never really started. */
+export const IMMEDIATE_END_MS = 900;
+
+export const INSECURE_CONTEXT_MESSAGE =
+  "Microphones need a secure connection. Open this page over HTTPS (or on localhost) and try again.";
+
+export const NO_AUDIO_MESSAGE =
+  "The browser ended the microphone straight away without hearing anything. Check that the tab is not muted, that no other app is holding the microphone, and that the system privacy settings let the browser use it. Run the microphone test in this menu to confirm.";
+
+export const ALREADY_STARTED_MESSAGE =
+  "Speech recognition was still running from a previous attempt and would not restart. Reload the tab and try again.";
+
+export const NO_RECOGNITION_MESSAGE = "This browser has no speech recognition.";
+
+/**
+ * The user-facing reason for one Web Speech `error` code.
+ *
+ * Every code the API documents is named, including the two the previous
+ * implementation swallowed. "no-speech" after a user has spoken is the single
+ * most informative signal there is — it means the audio reached the recognizer
+ * as silence — and hiding it is what made this feature undiagnosable.
+ */
+export function recognitionErrorMessage(code: string): string {
+  switch (code) {
+    case "not-allowed":
+      return "Microphone access is blocked. Open the padlock menu in the address bar, allow the microphone for this site, then reload.";
+    case "service-not-allowed":
+      return "The browser refused to use its speech service for this page. Check the site's microphone permission and any managed-browser policy.";
+    case "audio-capture":
+      return "No working microphone was found. Choose an input device in the browser's site settings and try again.";
+    case "network":
+      return "Speech recognition could not reach the browser vendor's speech service. Chrome uploads the audio to Google to transcribe it, so a blocked or offline network stops dictation — switch to server transcription if that traffic is not allowed here.";
+    case "language-not-supported":
+      return "The browser's speech service does not recognise the selected language. Choose another one from this menu.";
+    case "no-speech":
+      return "No speech was detected. The microphone was open but only silence arrived — check that the right input device is selected and that it is not muted.";
+    case "aborted":
+      return "Dictation was interrupted before it finished.";
+    case "bad-grammar":
+      return "The speech service rejected the recognition request.";
+    case "":
+      return "Voice input failed.";
+    default:
+      return `Voice input failed (${code}).`;
+  }
+}
+
+/**
+ * Whether an error code ends the session for good. The rest are the ordinary
+ * ways a continuous recognizer stops between phrases, and are restarted.
+ */
+export function isFatalRecognitionError(code: string): boolean {
+  switch (code) {
+    case "not-allowed":
+    case "service-not-allowed":
+    case "audio-capture":
+    case "language-not-supported":
+    case "network":
+    case "bad-grammar":
+      return true;
+    default:
+      return false;
+  }
+}
+
+/** The reason a `getUserMedia` call failed, in the user's terms. */
+export function microphoneErrorMessage(cause: unknown): string {
+  const name = (cause as { name?: string } | null)?.name ?? "";
+  switch (name) {
+    case "NotAllowedError":
+    case "SecurityError":
+      return "Microphone access is blocked. Open the padlock menu in the address bar, allow the microphone for this site, then reload.";
+    case "NotFoundError":
+    case "DevicesNotFoundError":
+      return "No microphone was found on this machine.";
+    case "NotReadableError":
+    case "TrackStartError":
+      return "The microphone is held by another application, or the system refused to open it.";
+    case "OverconstrainedError":
+      return "No microphone matched the requested settings.";
+    default:
+      return "The microphone could not be opened.";
+  }
+}
+
+/** Chrome throws this when a recognizer that is already running is started again. */
+export function isAlreadyStartedError(cause: unknown): boolean {
+  const error = cause as { name?: string; message?: string } | null;
+  return error?.name === "InvalidStateError" || /already started/i.test(error?.message ?? "");
+}
+
+export interface RecognitionEndInput {
+  /** The user asked to stop. Nothing restarts after that. */
+  stopRequested: boolean;
+  /** The last error code this run reported, or "" when it reported none. */
+  errorCode: string;
+  /** Restarts already spent this session. */
+  restarts: number;
+  /** Restarts this session is allowed. */
+  maxRestarts: number;
+  /** Consecutive runs that ended at once having heard nothing. */
+  deadStarts: number;
+  /** How long this run lasted, in milliseconds. */
+  ranForMs: number;
+  /** Whether this run produced any words. */
+  heard: boolean;
+}
+
+export type RecognitionEndPlan =
+  | { action: "restart"; deadStart: boolean }
+  | { action: "finish" }
+  | { action: "fail"; message: string };
+
+/**
+ * What to do when the recognizer ends by itself.
+ *
+ * Chrome stops continuous recognition after roughly a minute of silence and
+ * fires `end` exactly as it does for a successful stop, so a hook that reads
+ * every `end` as "the user is done" drops the microphone mid-thought. It also
+ * fires `end` immediately when the tab has no usable audio input at all, which
+ * looks identical from the outside — hence the distinction between a pause
+ * worth restarting and a run that never carried audio.
+ */
+export function planAfterRecognitionEnd(input: RecognitionEndInput): RecognitionEndPlan {
+  if (input.stopRequested) return { action: "finish" };
+  if (isFatalRecognitionError(input.errorCode)) {
+    return { action: "fail", message: recognitionErrorMessage(input.errorCode) };
+  }
+  const deadStart = !input.heard && input.ranForMs < IMMEDIATE_END_MS;
+  if (deadStart && input.deadStarts + 1 >= RECOGNITION_DEAD_START_LIMIT) {
+    return { action: "fail", message: NO_AUDIO_MESSAGE };
+  }
+  if (input.restarts >= input.maxRestarts) return { action: "finish" };
+  return { action: "restart", deadStart };
+}
+
+/* ------------------------------------------------------------------------ *
+ * Microphone test
+ *
+ * "Nothing happened" has two very different causes — the microphone never
+ * delivered audio, or it did and recognition failed — and the user cannot tell
+ * them apart from the composer. A two-second capture with a level readout
+ * separates them without involving any speech service at all.
+ * ------------------------------------------------------------------------ */
+
+export const MIC_TEST_DURATION_MS = 2000;
+
+export interface MicrophoneTest {
+  status: "idle" | "running" | "done" | "error";
+  /** Live level while running, 0–1. */
+  level: number;
+  /** Loudest level observed over the whole capture, 0–1. */
+  peak: number;
+  message: string;
+}
+
+export const IDLE_MICROPHONE_TEST: MicrophoneTest = {
+  status: "idle",
+  level: 0,
+  peak: 0,
+  message: "",
+};
+
+/** The verdict for a finished capture, from the loudest level it saw. */
+export function microphoneTestVerdict(peak: number): string {
+  const percent = Math.round(clampLevel(peak) * 100);
+  if (percent >= 30) return `Microphone works — peak level ${percent}%.`;
+  if (percent >= 5) {
+    return `Very quiet — peak level ${percent}%. Move closer, or raise the input level in the system sound settings.`;
+  }
+  return `No sound reached the browser — peak level ${percent}%. Check that the right input device is selected and that it is not muted.`;
+}
+
+/** Levels arrive from an analyser, so they are clamped before anything reads them. */
+export function clampLevel(level: number): number {
+  return Number.isFinite(level) ? Math.max(0, Math.min(1, level)) : 0;
 }

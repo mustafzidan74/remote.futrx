@@ -41,11 +41,16 @@ export const VALID_VOICE_ENGINES = new Set<string>(["browser", "server"]);
 
 /**
  * The language a user who has never chosen one starts with. An Arabic browser
- * gets Egyptian Arabic; everyone else gets their own browser language, which
- * is the least surprising thing to do for a locale we do not list.
+ * gets Egyptian Arabic; everyone else gets US English.
+ *
+ * Neither default is "auto". `auto` hands the recognizer whatever
+ * `navigator.language` happens to be, and a tag the vendor's speech service
+ * does not support comes back as `language-not-supported` — or, worse on
+ * Chrome, as a session that starts, hears nothing, and ends. A concrete tag
+ * the user can read in the tooltip is always better than an invisible guess.
  */
 export function defaultVoiceLanguage(browserLocale: string | undefined): VoiceLanguage {
-  return (browserLocale ?? "").trim().toLowerCase().startsWith("ar") ? "ar-EG" : "auto";
+  return (browserLocale ?? "").trim().toLowerCase().startsWith("ar") ? "ar-EG" : "en-US";
 }
 
 /**
@@ -62,6 +67,22 @@ export function resolveVoiceLanguage(
 
 export function voiceLanguageLabel(language: VoiceLanguage): string {
   return VOICE_LANGUAGE_OPTIONS.find((option) => option.value === language)?.label ?? language;
+}
+
+/**
+ * The label for the mic button's tooltip. "Auto" alone tells the user nothing
+ * about what is actually being recognised — and a session listening for the
+ * wrong language is one of the ways dictation appears to do nothing — so the
+ * tag it resolves to is named alongside it.
+ */
+export function describeVoiceLanguage(
+  language: VoiceLanguage,
+  browserLocale: string | undefined,
+): string {
+  const label = voiceLanguageLabel(language);
+  if (language !== "auto") return label;
+  const tag = resolveVoiceLanguage(language, browserLocale);
+  return tag ? `${label}: ${tag}` : label;
 }
 
 /** The browser's own language tag, or undefined outside a browser. */

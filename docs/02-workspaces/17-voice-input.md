@@ -71,8 +71,16 @@ The mic button's menu offers five choices, remembered per device in
 | `auto` | Auto (browser language) |
 
 A user who has never chosen gets `ar-EG` when `navigator.language` starts with
-`ar`, and `auto` otherwise. `auto` resolves to the browser's own language,
-which is what the Web Speech API falls back to when `lang` is unset.
+`ar`, and `en-US` otherwise. Neither default is `auto`: `auto` hands the
+recognizer whatever `navigator.language` happens to be, which the user cannot
+see and the vendor's speech service may not support — and a language the
+service will not recognise is one of the ways dictation "just does nothing".
+`auto` remains selectable for anyone who wants it.
+
+Whichever language is selected is named in the microphone button's tooltip and
+in its accessible label, listening or idle. "I spoke and nothing appeared" is
+very often "it was listening for the other language", and that is invisible
+unless it is written where the user is already looking.
 
 The choice is per device rather than per account on purpose: which language you
 speak into a microphone is a property of where you are sitting, not of who you
@@ -107,8 +115,13 @@ run bidirectionally, which is the browser's normal Unicode bidi behaviour.
 ## The dictation state machine
 
 `frontend/src/state/chat/voiceInputState.ts` is a pure module — no browser APIs
-— so the merge behaviour is pinned by tests
-(`voiceInputState.test.ts`).
+— so the merge behaviour is pinned by tests (`voiceInputState.test.ts`). The
+Web Speech *lifecycle* is a second pure module,
+`frontend/src/state/chat/voiceDictationController.ts`, whose recognizer
+factory, clock, timers, and two output callbacks are all injected; its tests
+(`voiceDictationController.test.ts`) play out whole sessions — interim results,
+a stop that has to flush, a browser that ends the session by itself — without a
+DOM.
 
 ```
 idle ──click──▶ starting ──▶ listening ──stop/Esc/send──▶ idle
@@ -166,6 +179,84 @@ Two deliberate choices:
   is a reviewable draft anyway.
 - **A failure keeps what was already dictated.** A connection that drops
   halfway through should not also erase the first half.
+
+## When dictation produces nothing
+
+This section exists because it happened: an operator on Chrome/Windows pressed
+the microphone, spoke, pressed stop, and got an unchanged composer and no
+error at all. Everything below is the machinery that makes that outcome
+impossible to reach silently.
+
+### Never open a second capture while the recognizer is running
+
+**This was the bug.** The browser engine's level meter used to call
+`navigator.mediaDevices.getUserMedia({ audio: true })` from the recognizer's
+`start` handler, purely to drive a bar. Chrome's `SpeechRecognition` captures
+from the same input device, and opening a second capture beside it
+re-initialises that device underneath the recognizer: it ends within a second
+or two, reporting `aborted` (sometimes `no-speech`) having heard nothing. Both
+of those codes were swallowed without a banner, and the resulting `end` was
+treated as a normal finish — so the composer was rewritten with exactly the
+draft it already had.
+
+The browser engine therefore has **no level meter**. The level readout belongs
+to the server engine, which owns the stream it is recording anyway, and to the
+microphone self-test, which never runs at the same time as recognition (the
+menu entry is disabled while a session is live, and the hook refuses it too).
+
+### The live strip
+
+While any microphone is open, a strip above the composer shows the status, the
+language being recognised, the restart count, and the current hypothesis. It is
+driven by the dictation session rather than by the draft, deliberately: words
+in the strip but not in the textarea would mean the composer wiring is broken,
+while an empty strip beside a running timer means the microphone is silent.
+The two failures look identical when the textarea is the only feedback.
+
+### Every error code has a sentence
+
+No code is swallowed. `no-speech` in particular — the microphone was open and
+only silence arrived — is the single most useful thing the API says, and it is
+now shown rather than hidden.
+
+| Code | What it means | What to do |
+| --- | --- | --- |
+| `not-allowed` | The site's microphone permission is denied | Padlock menu → allow the microphone → reload |
+| `service-not-allowed` | The browser refused its speech service for this page | Check the site permission and any managed-browser policy |
+| `audio-capture` | No usable input device | Select an input in the browser's site settings |
+| `network` | The vendor's speech service was unreachable | Chrome uploads the audio to Google; a blocked or offline network stops dictation. Use server transcription where that traffic is not allowed |
+| `language-not-supported` | The service does not recognise the selected tag | Pick another language from the menu |
+| `no-speech` | Open microphone, silence only | Run the microphone test; check the input device and mute state |
+| `aborted` | The session was interrupted | Usually the user, a navigation, or another capture |
+
+Anything not on this list is still reported, with its code in the message.
+
+### The conditions that used to be invisible
+
+| Condition | Behaviour now |
+| --- | --- |
+| Page is not a secure context | Refused before anything opens, saying so. Browsers deny microphones on plain HTTP outside `localhost` |
+| `start()` throws `InvalidStateError` ("already started") | The stuck recognizer is aborted and one retry is scheduled; a second failure asks the user to reload the tab |
+| `end` fires immediately having heard nothing (muted tab, no usable input) | One retry, then a banner naming the mute/other-app/OS-privacy causes and pointing at the microphone test |
+| Chrome ends continuous recognition after ~60 s of silence | The session restarts underneath the user, up to 20 times, until they press stop. The strip shows the restart count |
+| Stop pressed with a hypothesis still in flight | `stop()` is called, **not** `abort()`, and results keep being folded in until `end` arrives. `abort()` discards whatever the recognizer has not yet dispatched. A 1.5 s watchdog ends the session anyway if `end` never comes |
+
+### Test microphone
+
+**Test microphone (2s)** in the microphone menu records two seconds and reports
+the peak input level. It answers the one question the composer cannot: did the
+operating system hand the browser any audio at all?
+
+- A healthy level with nothing in the composer points at *recognition* — the
+  language tag, the site's permission for the speech service, or the network
+  path to the vendor.
+- A flat level points at the *device* — the wrong input selected, a muted
+  microphone, another application holding it, or OS privacy settings.
+
+The menu also keeps the last ten lifecycle lines under **What happened last
+time**: which language started, which error code arrived, whether the browser
+restarted the session. That is what to ask an operator for when a report says
+"the microphone does nothing".
 
 ## Server transcription
 
@@ -299,9 +390,11 @@ involved in it.
 | Layer | Path |
 | --- | --- |
 | State machine (pure) | `frontend/src/state/chat/voiceInputState.ts` |
-| Browser + recorder driver | `frontend/src/state/hooks/chat/useVoiceInput.ts` |
+| Web Speech lifecycle (pure) | `frontend/src/state/chat/voiceDictationController.ts` |
+| Recorder + self-test driver | `frontend/src/state/hooks/chat/useVoiceInput.ts` |
 | Web Speech typings | `frontend/src/types/speech.ts` |
-| Mic button | `frontend/src/ui/chat/composer/VoiceInputButton.tsx` |
+| Mic button and menu | `frontend/src/ui/chat/composer/VoiceInputButton.tsx` |
+| Live strip above the composer | `frontend/src/ui/chat/composer/VoiceLiveStrip.tsx` |
 | Admin panel | `frontend/src/ui/settings/VoiceInputSettings.tsx` |
 | Service | `backend/internal/service/transcribe/` |
 | Store | `backend/internal/stores/filetranscribe/` |

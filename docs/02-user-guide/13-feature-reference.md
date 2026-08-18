@@ -39,7 +39,9 @@ This is the compact inventory of current Remote behavior. “Page” means the l
 | Playbooks | Open **⚡ Playbooks** and select one | Applies its skills/mode/provider, then inserts the prompt; Shift-click sends it |
 | Playbook placeholder | A playbook stops with `{{…}}` still in the text | The token is selected for you; such a prompt is never auto-sent |
 | Voice input | Press the microphone, speak, press it again | Text lands at the caret for review; never auto-sent. Hidden when the browser has no speech API and no server fallback is configured |
-| Dictation language | Use the chevron beside the microphone | Arabic (Egypt/Saudi) or English (US/UK), or the browser language; remembered per device in local storage |
+| Dictation language | Use the chevron beside the microphone | Arabic (Egypt/Saudi) or English (US/UK), or the browser language; defaults to `ar-EG` on an Arabic browser and `en-US` otherwise, is always named in the microphone's tooltip, and is remembered per device in local storage |
+| Test microphone | **Test microphone (2s)** in the microphone menu | Records two seconds and reports the input level, separating a dead microphone from failed recognition |
+| Dictation diagnostics | **What happened last time** in the microphone menu | The last few lifecycle lines: which language started, which error code arrived, whether the browser restarted the session |
 | Server transcription | Tick **Use server transcription** in the microphone menu | Only when an admin configured it; records the clip and transcribes it after you stop |
 | Attach picker | Choose **+** and select one or more files | Project chats; resumable uploads |
 | Drag attachment | Drag files over the composer | Same upload path |

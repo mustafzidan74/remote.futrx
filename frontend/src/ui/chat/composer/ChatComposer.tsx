@@ -18,6 +18,7 @@ import { QueuedPromptList } from "./QueuedPromptList";
 import { SelectedSkillChips } from "./SelectedSkillChips";
 import { SendControls } from "./SendControls";
 import { VoiceInputButton } from "./VoiceInputButton";
+import { VoiceLiveStrip } from "./VoiceLiveStrip";
 import type { ComposerPreferenceActions, ComposerPreferences } from "./preferences";
 
 export interface ChatComposerProps {
@@ -151,6 +152,14 @@ export function ChatComposer({
           </button>
         </div>
       )}
+
+      {/*
+        The live dictation strip sits above the composer card rather than only
+        inside the textarea. It is fed by the voice session, not by the draft,
+        so a microphone that is working but not reaching the composer is
+        visible instead of indistinguishable from a dead one.
+      */}
+      <VoiceLiveStrip voice={voice} />
 
       <SelectedSkillChips skills={selectedSkills} onRemove={onRemoveSelectedSkill} />
       <QueuedPromptList queuedPrompts={queuedPrompts} onRemove={onRemoveQueued} />
