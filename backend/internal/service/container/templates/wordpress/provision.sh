@@ -63,6 +63,31 @@ if [ ! -f /workspace/public/wp-config.php ]; then
         --dbname=wordpress --dbuser=root --dbhost=localhost --skip-check
 fi
 
+# The preview sits behind Caddy TLS: without these, WordPress guesses http://
+# URLs for its assets, the browser blocks them as mixed content, and even the
+# installer renders unstyled. Dynamic WP_HOME lets the same install answer on
+# localhost:8080 and on the public preview host.
+if ! grep -q "REMOTE_PREVIEW_PROXY" /workspace/public/wp-config.php; then
+    echo "--- adding preview-proxy settings to wp-config.php ---"
+    python3 - <<'PYPROXY'
+p = "/workspace/public/wp-config.php"
+s = open(p).read()
+block = """<?php
+/* REMOTE_PREVIEW_PROXY: trust Caddy's forwarded proto/host (added by the wordpress template). */
+if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+    $_SERVER['HTTPS'] = 'on';
+}
+if (!defined('WP_HOME') && !empty($_SERVER['HTTP_HOST'])) {
+    $remote_scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    define('WP_HOME', $remote_scheme . '://' . $_SERVER['HTTP_HOST']);
+    define('WP_SITEURL', WP_HOME);
+}
+"""
+s = block + (s[len("<?php"):] if s.startswith("<?php") else s)
+open(p, "w").write(s)
+PYPROXY
+fi
+
 # php -S is enough for a single-developer preview and costs far less memory
 # than nginx + php-fpm on a 4 GB box. PHP_CLI_SERVER_WORKERS keeps wp-admin
 # usable: WordPress makes loopback requests to itself, which deadlock a
