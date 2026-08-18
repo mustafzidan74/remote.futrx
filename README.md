@@ -23,6 +23,8 @@
 
 ![Remote showing an AI conversation beside the application it built](docs/assets/readme/live-preview.webp)
 
+> **This fork (mustafzidan74/remote.futrx)** adds 23 features on top of upstream — trash & snapshots, share links & client portal, Telegram/WhatsApp/webhook notifications, audit log, project templates (WordPress pre-installed, Laravel, Node, Python), global skills, usage & cost dashboard, resource limits, autopilot & Playwright auto-test, playbooks & slash commands, secrets vault with SSH targets, voice input (Arabic), full-text chat search, command palette, health monitor, `/healthz` + heartbeat, and a full RTL/UX pass. See **[docs/whats-new.html](docs/whats-new.html)** (Arabic + English) and the per-feature docs under `docs/02-workspaces/`. Upstream PRs: futrx-com/remote.futrx#41–#48; the rest is offered as follow-ups.
+
 ## What is Remote?
 
 Remote is an open-source, self-hosted home for AI coding agents.
