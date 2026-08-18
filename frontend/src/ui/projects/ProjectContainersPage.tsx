@@ -6,8 +6,10 @@ import type {
   SecretsRecord,
   SharesRecord,
 } from "../../state/projects/projectContainerRecords";
-import { describePortal } from "../../state/projects/projectPortalState";
+import { describePortal, portalFormFrom } from "../../state/projects/projectPortalState";
 import type { PortalFormState } from "../../state/projects/projectPortalState";
+import { buildProjectPreviewUrl } from "../../shared/projectPreviewUrls";
+import { PUBLIC_HOSTNAME } from "../../config/runtime";
 import { describeShareCount, liveShares } from "../../state/projects/projectShareState";
 import { Empty } from "./project-containers/ProjectContainerPrimitives";
 import { ProjectActions } from "./project-containers/ProjectActions";
@@ -17,6 +19,7 @@ import {
 } from "./project-containers/ProjectInfoSection";
 import { ProjectSecretsSection } from "./project-containers/ProjectSecretsSection";
 import { ProjectSnapshotsSection } from "./project-containers/ProjectSnapshotsSection";
+import { ProjectClientMessageSection } from "./project-containers/ProjectClientMessageSection";
 import { ProjectClientPortalSection } from "./project-containers/ProjectClientPortalSection";
 import { ProjectPreviewSharesSection } from "./project-containers/ProjectPreviewSharesSection";
 import { ProjectSharingSection } from "./project-containers/ProjectSharingSection";
@@ -48,6 +51,7 @@ import {
   Loader,
   Globe,
   Menu,
+  MessageSquare,
   RotateCcw,
   Settings,
   Users,
@@ -371,6 +375,23 @@ export function ProjectContainersPage({
                         onSave={onSavePortal}
                       />
                     </ProjectSettingsPanel>
+                    <ProjectSettingsPanel
+                      title="Message client"
+                      description={
+                        "Write to the client from one of your own templates, in Arabic or English."
+                      }
+                      Icon={MessageSquare}
+                    >
+                      <ProjectClientMessageSection
+                        project={project}
+                        portalUrl={portalIssuedUrl}
+                        previewUrl={firstPreviewUrl(project, sharesRecord.data)}
+                        portalEnabled={portalRecord.data?.enabled === true}
+                        onPublishNote={(note) =>
+                          onSavePortal({ ...portalFormFrom(portalRecord.data), note })
+                        }
+                      />
+                    </ProjectSettingsPanel>
                   </div>
                 )}
               </>
@@ -380,6 +401,17 @@ export function ProjectContainersPage({
       </div>
     </div>
   );
+}
+
+/**
+ * The newest public preview link for this project, or null when none is live.
+ * It is what `{{previewUrl}}` resolves to in a client template — the same link
+ * the portal page would show, never the sign-in-gated preview.
+ */
+function firstPreviewUrl(project: ProjectMeta, shares?: ProjectShare[]): string | null {
+  const port = (shares ?? []).map((share) => share.port).sort((a, b) => a - b)[0];
+  if (port === undefined) return null;
+  return buildProjectPreviewUrl(project.slug, port, PUBLIC_HOSTNAME);
 }
 
 function ProjectSettingsNavigation({

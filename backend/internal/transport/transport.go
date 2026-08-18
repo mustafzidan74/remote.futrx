@@ -15,6 +15,7 @@ import (
 	servicegithistory "github.com/futrx-com/remote.futrx.com/internal/service/githistory"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
+	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
 	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	servicescreenshot "github.com/futrx-com/remote.futrx.com/internal/service/screenshot"
@@ -130,6 +131,7 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			WithSnapshots(deps.Services.Snapshots, deps.TrashRetention).
 			WithScreenshots(deps.Services.Screenshots).
 			WithPortal(portalService(deps.Services.Portals)).
+			WithClientMessages(clientMessageService(deps.Services.Notifications)).
 			WithUsage(usageHandler),
 		ProjectHealth: httphandlers.NewProjectHealthHandler(
 			deps.Services.Projects,
@@ -181,6 +183,9 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			deps.Services.Playbooks,
 			deps.Services.Auth,
 		),
+		// Personal snippets and client message templates. Every route derives
+		// the owner from the session, so there is no admin view of them.
+		Snippets: httphandlers.NewSnippetHandler(deps.Services.Snippets, deps.Services.Auth),
 		AgentPreferences: httphandlers.NewAgentPreferencesHandler(
 			agentPreferencesService(deps.Services.AgentPrefs),
 			deps.Services.Auth,
@@ -278,6 +283,16 @@ func transcriptionService(service *servicetranscribe.Service) httphandlers.Trans
 // interface while keeping a nil service nil, so handlers can report 503
 // instead of panicking on a deployment without a portal store.
 func portalService(service *serviceportal.Service) httphandlers.PortalService {
+	if service == nil {
+		return nil
+	}
+	return service
+}
+
+// clientMessageService keeps a nil notification service nil, so a deployment
+// without one answers 503 on /api/projects/{id}/client-message rather than
+// panicking.
+func clientMessageService(service *servicenotify.Service) httphandlers.ClientMessageService {
 	if service == nil {
 		return nil
 	}

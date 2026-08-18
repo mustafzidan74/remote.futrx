@@ -111,7 +111,7 @@ func TelegramMessage(event Event) string {
 
 	if summary := strings.TrimSpace(event.Summary); summary != "" {
 		out.WriteString("\n\n")
-		out.WriteString(escapeTelegramHTML(truncate(summary, 900)))
+		out.WriteString(escapeTelegramHTML(truncate(summary, summaryBudget(event, 900, telegramMessageLimit))))
 	}
 	if link := strings.TrimSpace(event.URL); link != "" {
 		out.WriteString("\n\n<a href=\"")
@@ -131,6 +131,8 @@ func telegramIcon(event Event) string {
 		return "❗"
 	case KindDigest:
 		return "📊"
+	case KindClientMessage:
+		return "💬"
 	case KindScheduledRun:
 		if event.Status == StatusFailed {
 			return "❌"

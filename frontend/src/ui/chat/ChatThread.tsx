@@ -29,6 +29,7 @@ export function ChatThread({
   onAnswerQuestion,
   onLoadOlder,
   onRewind,
+  onSaveSnippet,
   onOpenAgentBrowser,
   mobileToolbar,
 }: {
@@ -53,6 +54,8 @@ export function ChatThread({
   onAnswerQuestion: (text: string) => void;
   onLoadOlder: () => Promise<void>;
   onRewind: (t: number, text: string) => void;
+  /** Offers "Save as snippet" on prompts the user wrote. */
+  onSaveSnippet?: (text: string) => void;
   onOpenAgentBrowser: () => void;
   mobileToolbar: ComponentChildren;
 }) {
@@ -87,6 +90,7 @@ export function ChatThread({
             onAnswerQuestion={onAnswerQuestion}
             onLoadOlder={onLoadOlder}
             onRewind={onRewind}
+            onSaveSnippet={onSaveSnippet}
           />
           {showJump && <JumpToLatestButton onClick={onJumpToBottom} />}
         </div>

@@ -548,3 +548,62 @@ func TestSaveWithoutAStoreIsUnavailable(t *testing.T) {
 		t.Fatalf("View() = %v, want ErrNotFound", err)
 	}
 }
+
+func TestNoteCarriesItsOwnTimestamp(t *testing.T) {
+	base := time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
+	tick := 0
+	service := New(newMemoryRepo(), stubProjects{meta: runningProject()}, "https://remote.example.com",
+		WithClock(func() time.Time {
+			tick++
+			return base.Add(time.Duration(tick) * time.Minute)
+		}))
+
+	written := enable(t, service, UpdateInput{Enabled: true, Note: "first message"})
+	if written.NoteUpdatedAt == 0 {
+		t.Fatal("writing a note did not date it")
+	}
+
+	// A toggle change is not a new message: a month-old note must not start
+	// looking like it was written today.
+	untouched := enable(t, service, UpdateInput{Enabled: true, ShowUsage: true, Note: "first message"})
+	if untouched.NoteUpdatedAt != written.NoteUpdatedAt {
+		t.Fatalf("note date moved from %d to %d without the note changing", written.NoteUpdatedAt, untouched.NoteUpdatedAt)
+	}
+
+	rewritten := enable(t, service, UpdateInput{Enabled: true, Note: "second message"})
+	if rewritten.NoteUpdatedAt <= written.NoteUpdatedAt {
+		t.Fatalf("a new note kept the old date %d", rewritten.NoteUpdatedAt)
+	}
+
+	cleared := enable(t, service, UpdateInput{Enabled: true, Note: ""})
+	if cleared.NoteUpdatedAt != 0 {
+		t.Fatalf("clearing the note left the date %d", cleared.NoteUpdatedAt)
+	}
+}
+
+func TestPageDatesTheClientMessage(t *testing.T) {
+	service := newTestService(t, newMemoryRepo())
+	settings := enable(t, service, UpdateInput{Enabled: true, Note: "The staging site is ready."})
+	token := tokenFrom(t, settings)
+
+	page, err := service.View(context.Background(), testProjectID, token, "1.2.3.4")
+	if err != nil {
+		t.Fatalf("View() = %v", err)
+	}
+	if len(page.Note) == 0 {
+		t.Fatal("the page dropped the note")
+	}
+	if page.NoteUpdatedLabel == "" {
+		t.Fatal("the page did not date the note")
+	}
+
+	// The link survives an edit, so the same token reads the cleared page.
+	enable(t, service, UpdateInput{Enabled: true, Note: ""})
+	page, err = service.View(context.Background(), testProjectID, token, "1.2.3.4")
+	if err != nil {
+		t.Fatalf("View() = %v", err)
+	}
+	if len(page.Note) != 0 || page.NoteUpdatedLabel != "" {
+		t.Fatalf("a page with no note still printed a message dated %q", page.NoteUpdatedLabel)
+	}
+}

@@ -33,6 +33,7 @@ type ProjectHandler struct {
 	screenshots        *servicescreenshot.Service
 	trashRetention     time.Duration
 	portal             PortalService
+	clientMessages     ClientMessageService
 	publicHostname     string
 	usage              *UsageHandler
 	projectHostPattern *regexp.Regexp
@@ -91,6 +92,14 @@ func (h *ProjectHandler) WithScreenshots(screenshots *servicescreenshot.Service)
 // /api/projects/{id}/portal. Without it those routes report 503.
 func (h *ProjectHandler) WithPortal(portal PortalService) *ProjectHandler {
 	h.portal = portal
+	return h
+}
+
+// WithClientMessages enables POST /api/projects/{id}/client-message, which
+// hands a resolved client template to the configured notification sinks.
+// Without it that route reports 503.
+func (h *ProjectHandler) WithClientMessages(sender ClientMessageService) *ProjectHandler {
+	h.clientMessages = sender
 	return h
 }
 
@@ -259,6 +268,11 @@ func (h *ProjectHandler) HandleResource(w http.ResponseWriter, r *http.Request) 
 
 	if len(parts) >= 2 && parts[1] == "portal" {
 		h.handleProjectPortal(w, r, id)
+		return
+	}
+
+	if len(parts) >= 2 && parts[1] == "client-message" {
+		h.handleClientMessage(w, r, id)
 		return
 	}
 

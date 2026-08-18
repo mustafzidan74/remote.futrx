@@ -55,6 +55,10 @@ type Portal struct {
 	ShowUsage     bool   `json:"showUsage"`
 	BrandTitle    string `json:"brandTitle,omitempty"`
 	Note          string `json:"note,omitempty"`
+	// NoteUpdatedAt is when the note last changed, which the page prints so a
+	// client can tell a fresh message from one that has been sitting there for
+	// a month. Zero means "no note has ever been written".
+	NoteUpdatedAt int64 `json:"noteUpdatedAt,omitempty"`
 }
 
 // DefaultPortal is what a project starts with: off, and — once enabled —
@@ -81,6 +85,7 @@ type Settings struct {
 	ShowUsage     bool   `json:"showUsage"`
 	BrandTitle    string `json:"brandTitle,omitempty"`
 	Note          string `json:"note,omitempty"`
+	NoteUpdatedAt int64  `json:"noteUpdatedAt,omitempty"`
 	CreatedAt     int64  `json:"createdAt,omitempty"`
 	UpdatedAt     int64  `json:"updatedAt,omitempty"`
 	// URL carries the one and only copy of the plaintext link, returned by
@@ -110,6 +115,7 @@ func (p Portal) view() Settings {
 		ShowUsage:     p.ShowUsage,
 		BrandTitle:    p.BrandTitle,
 		Note:          p.Note,
+		NoteUpdatedAt: p.NoteUpdatedAt,
 		CreatedAt:     p.CreatedAt,
 		UpdatedAt:     p.UpdatedAt,
 	}
@@ -137,6 +143,9 @@ type Page struct {
 	// one paragraph per line, which is the whole of the "markdown-lite"
 	// contract: escape the HTML, keep the line breaks.
 	Note []string
+	// NoteUpdatedLabel dates the note. Empty when the operator never wrote
+	// one, or when the record predates the field.
+	NoteUpdatedLabel string
 
 	ShowUsage bool
 	UsageRuns int64

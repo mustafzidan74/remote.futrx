@@ -38,6 +38,7 @@ type Handlers struct {
 	Skills           RouteRegistrar
 	GlobalSkills     RouteRegistrar
 	Playbooks        RouteRegistrar
+	Snippets         RouteRegistrar
 	AgentPreferences RouteRegistrar
 	Search           RouteRegistrar
 	GlobalSecrets    RouteRegistrar
@@ -84,6 +85,7 @@ func NewHandler(handlers Handlers) http.Handler {
 	register(handlers.Skills)
 	register(handlers.GlobalSkills)
 	register(handlers.Playbooks)
+	register(handlers.Snippets)
 	register(handlers.AgentPreferences)
 	register(handlers.Search)
 	register(handlers.GlobalSecrets)

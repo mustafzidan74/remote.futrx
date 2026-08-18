@@ -6,6 +6,7 @@ import type { ChatMode, ChatProvider } from "../../../models/chat";
 import type { ProjectMeta } from "../../../models/project";
 import type { ProjectScreenshot, ScreenshotDelivery } from "../../../models/screenshot";
 import type { RegisteredSkill } from "../../../models/skill";
+import type { Snippet } from "../../../models/snippet";
 import { buildProjectPreviewUrl } from "../../../shared/projectPreviewUrls";
 import {
   DEPLOY_FALLBACK_PROMPT,
@@ -26,10 +27,12 @@ import {
   slashTokenAt,
   type SlashCommand,
 } from "../../chat/slashCommandState";
+import { findSnippetByShortcut } from "../../chat/snippetState";
 import { testCommandPrompt } from "../../chat/testPrompts";
 import { isShareablePort } from "../../projects/projectShareState";
 import type { ChatPolicies } from "./useChatPolicies";
 import type { PlaybookLibrary } from "./usePlaybooks";
+import type { SnippetLibrary } from "./useSnippets";
 import { useAgentBrowserOpener } from "../projects/useAgentBrowserOpener";
 import { useAvailableSkills } from "./useAvailableSkills";
 
@@ -96,6 +99,8 @@ export interface SlashCommandInput {
   insertText: (value: string, select?: { start: number; end: number }) => void;
   submitTest: (value: string) => boolean;
   playbooks: PlaybookLibrary;
+  /** This user's own snippets, reachable as `/s-<shortcut>`. */
+  snippets: SnippetLibrary;
   policies: ChatPolicies;
   changeMode: (mode: ChatMode) => void;
   selectSkill: (skill: RegisteredSkill) => void;
@@ -112,6 +117,7 @@ export function useSlashCommands({
   insertText,
   submitTest,
   playbooks,
+  snippets,
   policies,
   changeMode,
   selectSkill,
@@ -144,8 +150,8 @@ export function useSlashCommands({
   }, []);
 
   const registry = useMemo(
-    () => buildSlashRegistry({ playbooks: playbooks.playbooks, skills }),
-    [playbooks.playbooks, skills],
+    () => buildSlashRegistry({ playbooks: playbooks.playbooks, snippets: snippets.snippets, skills }),
+    [playbooks.playbooks, snippets.snippets, skills],
   );
 
   const found = slashTokenAt(text, caret);
@@ -471,6 +477,42 @@ export function useSlashCommands({
     [playbooks, report],
   );
 
+  const runSnippet = useCallback(
+    (snippet: Snippet) => {
+      void snippets.insert(snippet);
+      report(null);
+    },
+    [report, snippets],
+  );
+
+  /**
+   * `/snippet <shortcut>` is the spelling for somebody who remembers the word
+   * but not that it is typed with the `s-` prefix. With no argument it says
+   * what is available rather than guessing which snippet was meant.
+   */
+  const runSnippetByShortcut = useCallback(
+    (arg: string) => {
+      const word = arg.trim();
+      const found = word ? findSnippetByShortcut(snippets.snippets, word) : null;
+      if (found) {
+        runSnippet(found);
+        return;
+      }
+      const known = snippets.snippets
+        .filter((snippet) => snippet.shortcut)
+        .map((snippet) => `/s-${snippet.shortcut}`)
+        .join(", ");
+      report({
+        tone: "error",
+        text: word
+          ? `No snippet is called "${word}".`
+          : "Usage: /snippet <shortcut>",
+        detail: known || "You have no snippets with a shortcut yet.",
+      });
+    },
+    [report, runSnippet, snippets.snippets],
+  );
+
   const runSkill = useCallback(
     (entry: SlashCommand) => {
       if (!entry.skill) return;
@@ -488,6 +530,7 @@ export function useSlashCommands({
   const run = useCallback(
     (entry: SlashCommand, arg: string, send: boolean) => {
       if (entry.group === "playbook") return runPlaybook(entry, send);
+      if (entry.group === "snippet") return entry.snippet ? runSnippet(entry.snippet) : undefined;
       if (entry.group === "skill") return runSkill(entry);
       switch (entry.action) {
         case "test":
@@ -506,6 +549,8 @@ export function useSlashCommands({
           return runAutoTest(arg);
         case "review":
           return runReview();
+        case "snippet":
+          return runSnippetByShortcut(arg);
         case "browser":
           return runBrowser(arg);
         // "skills" is absent on purpose: it needs to know where in the draft
@@ -518,7 +563,8 @@ export function useSlashCommands({
     },
     [
       openPreview, registry, report, runAutoTest, runAutopilot, runBrowser, runDeploy,
-      runPlaybook, runReview, runScreenshot, runSkill, runSnapshot, runTest,
+      runPlaybook, runReview, runScreenshot, runSkill, runSnapshot, runSnippet,
+      runSnippetByShortcut, runTest,
     ],
   );
 

@@ -28,6 +28,7 @@ export function MessageList({
   onAnswerQuestion,
   onLoadOlder,
   onRewind,
+  onSaveSnippet,
 }: {
   status: ChatStatus;
   blocks: ChatMessageBlock[];
@@ -46,6 +47,8 @@ export function MessageList({
   onAnswerQuestion: (text: string) => void;
   onLoadOlder: () => Promise<void>;
   onRewind: (t: number, text: string) => void;
+  /** Offers "Save as snippet" on prompts the user wrote. */
+  onSaveSnippet?: (text: string) => void;
 }) {
   const [visibleBlockCount, setVisibleBlockCount] = useState(INITIAL_VISIBLE_BLOCKS);
   const firstVisibleIndex = Math.max(0, blocks.length - visibleBlockCount);
@@ -145,6 +148,7 @@ export function MessageList({
               cwd={cwd}
               onAnswerQuestion={onAnswerQuestion}
               onRewind={onRewind}
+              onSaveSnippet={onSaveSnippet}
             />
           );
         })}

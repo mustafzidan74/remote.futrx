@@ -1,5 +1,7 @@
 import type { Playbook } from "../../models/playbook.ts";
 import type { RegisteredSkill } from "../../models/skill.ts";
+import type { Snippet } from "../../models/snippet.ts";
+import { normalizeShortcut } from "./snippetState.ts";
 
 /**
  * Slash commands: the registry, the filter, and the parser behind the
@@ -10,17 +12,19 @@ import type { RegisteredSkill } from "../../models/skill.ts";
  * three questions: what commands exist right now, which of them matches what
  * the user is typing, and what a typed line means.
  *
- * Three sources are merged into one list because a user does not care which
- * of them a command came from: the built-ins are the platform's own verbs,
- * playbooks are the operator's saved prompts, and skills are whatever the
- * agent can load. They are labelled by group so the menu can still say.
+ * Four sources are merged into one list because a user does not care which of
+ * them a command came from: the built-ins are the platform's own verbs,
+ * playbooks are the operator's saved prompts, snippets are this user's own,
+ * and skills are whatever the agent can load. They are labelled by group so
+ * the menu can still say.
  */
 
-export type SlashGroup = "builtin" | "playbook" | "skill";
+export type SlashGroup = "builtin" | "playbook" | "snippet" | "skill";
 
 export const SLASH_GROUP_LABEL: Record<SlashGroup, string> = {
   builtin: "Commands",
   playbook: "Playbooks",
+  snippet: "Snippets",
   skill: "Skills",
 };
 
@@ -34,6 +38,7 @@ export type SlashAction =
   | "autopilot"
   | "autotest"
   | "review"
+  | "snippet"
   | "skills"
   | "browser"
   | "help";
@@ -56,6 +61,7 @@ export interface SlashCommand {
   keywords?: string;
   action?: SlashAction;
   playbook?: Playbook;
+  snippet?: Snippet;
   skill?: RegisteredSkill;
 }
 
@@ -148,6 +154,17 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommand[] = [
     keywords: "audit inspect critique",
   },
   {
+    id: "builtin:snippet",
+    command: "snippet",
+    group: "builtin",
+    action: "snippet",
+    title: "/snippet",
+    argHint: "<shortcut>",
+    takesArg: true,
+    hint: "Insert one of your own saved snippets by its shortcut.",
+    keywords: "template saved prompt library mine",
+  },
+  {
     id: "builtin:skills",
     command: "skills",
     group: "builtin",
@@ -197,11 +214,13 @@ export const DEPLOY_FALLBACK_PROMPT =
 
 export interface SlashRegistryInput {
   playbooks?: Playbook[];
+  /** This user's own snippets; only agent-facing ones belong in a prompt. */
+  snippets?: Snippet[];
   skills?: RegisteredSkill[];
 }
 
 /**
- * Merges the three sources into one ordered registry.
+ * Merges the four sources into one ordered registry.
  *
  * Collisions resolve by group priority — a built-in always wins the bare
  * word — and the loser keeps a prefixed spelling rather than disappearing:
@@ -233,6 +252,30 @@ export function buildSlashRegistry(input: SlashRegistryInput = {}): SlashCommand
     });
   }
 
+  // A snippet is always reachable as `/s-<shortcut>`, which is a namespace no
+  // other source writes into, so a personal library can never shadow a
+  // built-in or be shadowed by a skill somebody installs later.
+  for (const snippet of input.snippets ?? []) {
+    const shortcut = normalizeShortcut(snippet.shortcut || snippet.title);
+    if (!shortcut) continue;
+    const command = `s-${shortcut}`;
+    if (taken.has(command)) continue;
+    taken.add(command);
+    // The bare word is offered too, but only while nothing else claims it.
+    const aliases = taken.has(shortcut) ? [] : [shortcut];
+    if (aliases.length > 0) taken.add(shortcut);
+    registry.push({
+      id: `snippet:${snippet.id}`,
+      command,
+      aliases,
+      group: "snippet",
+      title: `/${command}`,
+      hint: snippetHint(snippet),
+      keywords: `${snippet.title} ${(snippet.tags ?? []).join(" ")}`,
+      snippet,
+    });
+  }
+
   for (const skill of input.skills ?? []) {
     const command = normalizeCommandWord(skill.command || skill.name);
     if (!command || taken.has(command)) continue;
@@ -249,6 +292,13 @@ export function buildSlashRegistry(input: SlashRegistryInput = {}): SlashCommand
   }
 
   return registry;
+}
+
+/** The one-liner a snippet shows under its command in the menu. */
+function snippetHint(snippet: Snippet): string {
+  const title = snippet.title.trim();
+  const tags = (snippet.tags ?? []).filter(Boolean);
+  return tags.length > 0 ? `${title} — ${tags.join(", ")}` : title;
 }
 
 /** Reduces a playbook id or skill command to the word a user can type. */
@@ -518,7 +568,7 @@ function pickSkillMatching(
 
 /** The `/help` answer: one line per command, grouped. */
 export function slashHelpText(registry: SlashCommand[]): string {
-  const groups: SlashGroup[] = ["builtin", "playbook", "skill"];
+  const groups: SlashGroup[] = ["builtin", "playbook", "snippet", "skill"];
   const lines: string[] = [];
   for (const group of groups) {
     const entries = registry.filter((entry) => entry.group === group);

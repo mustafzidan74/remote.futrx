@@ -12,6 +12,7 @@ export function MessageBlock({
   cwd,
   onAnswerQuestion,
   onRewind,
+  onSaveSnippet,
 }: {
   block: ChatMessageBlock;
   /** Position in the thread; the anchor a search hit scrolls to. */
@@ -23,6 +24,8 @@ export function MessageBlock({
   cwd?: string;
   onAnswerQuestion?: (text: string) => void;
   onRewind?: (t: number, text: string) => void;
+  /** Offers "Save as snippet" on prompts the user wrote. */
+  onSaveSnippet?: (text: string) => void;
 }) {
   return (
     <div
@@ -42,6 +45,7 @@ export function MessageBlock({
           t={block.t}
           synthetic={block.synthetic}
           onRewind={onRewind}
+          onSaveSnippet={onSaveSnippet}
         />
       );
     }

@@ -102,6 +102,8 @@ export const API_ROUTES = {
     secret: (id: string, key: string) =>
       `/api/projects/${encodeURIComponent(id)}/secrets/${encodeURIComponent(key)}`,
     portal: (id: string) => `/api/projects/${encodeURIComponent(id)}/portal`,
+    clientMessage: (id: string) =>
+      `/api/projects/${encodeURIComponent(id)}/client-message`,
     shares: (id: string) => `/api/projects/${encodeURIComponent(id)}/shares`,
     share: (id: string, shareId: string) =>
       `/api/projects/${encodeURIComponent(id)}/shares/${encodeURIComponent(shareId)}`,
@@ -112,6 +114,12 @@ export const API_ROUTES = {
       `/api/projects/${encodeURIComponent(id)}/access/${encodeURIComponent(email)}`,
   },
   settings: "/api/me/settings",
+  snippets: {
+    collection: "/api/me/snippets",
+    item: (id: string) => `/api/me/snippets/${encodeURIComponent(id)}`,
+    use: (id: string) => `/api/me/snippets/${encodeURIComponent(id)}/use`,
+    import: "/api/me/snippets/import",
+  },
   usage: {
     summary: (query: string) => `/api/usage/summary${query ? `?${query}` : ""}`,
     records: (query: string) => `/api/usage/records${query ? `?${query}` : ""}`,

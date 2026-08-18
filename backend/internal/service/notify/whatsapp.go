@@ -430,7 +430,7 @@ func WhatsAppMessage(event Event) string {
 	}
 	if summary := strings.TrimSpace(event.Summary); summary != "" {
 		out.WriteString("\n")
-		out.WriteString(truncate(summary, 400))
+		out.WriteString(truncate(summary, summaryBudget(event, 400, whatsAppMessageLimit)))
 	}
 	if link := strings.TrimSpace(event.URL); link != "" {
 		out.WriteString("\n")
@@ -447,6 +447,8 @@ func whatsAppIcon(event Event) string {
 		return "❌"
 	case KindNeedsAttention:
 		return "❗"
+	case KindClientMessage:
+		return "💬"
 	case KindDigest:
 		return "📊"
 	case KindScheduledRun:

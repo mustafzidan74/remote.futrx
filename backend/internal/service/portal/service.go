@@ -153,6 +153,15 @@ func (s *Service) save(
 	next.ShowUsage = input.ShowUsage
 	next.BrandTitle = sanitizeBrandTitle(input.BrandTitle)
 	next.Note = sanitizeNote(input.Note)
+	// The note carries its own timestamp: the page dates the message, and a
+	// toggle change must not make a month-old note look like it was written
+	// today.
+	switch {
+	case next.Note == "":
+		next.NoteUpdatedAt = 0
+	case next.Note != current.Note:
+		next.NoteUpdatedAt = now.UnixMilli()
+	}
 	next.UpdatedAt = now.UnixMilli()
 
 	var token string
@@ -243,11 +252,12 @@ func (s *Service) compose(
 		Title: title,
 		// The brand title is consulted before the note, and the project name
 		// only when the operator wrote neither.
-		Direction:      direction(record.BrandTitle, record.Note, project.Name),
-		StatusLabel:    statusLabel(project.Status),
-		Running:        project.Status == serviceproject.StatusRunning,
-		Note:           noteLines(record.Note),
-		UpdatedAtLabel: now.UTC().Format("2 Jan 2006, 15:04 UTC"),
+		Direction:        direction(record.BrandTitle, record.Note, project.Name),
+		StatusLabel:      statusLabel(project.Status),
+		Running:          project.Status == serviceproject.StatusRunning,
+		Note:             noteLines(record.Note),
+		NoteUpdatedLabel: noteUpdatedLabel(record),
+		UpdatedAtLabel:   now.UTC().Format("2 Jan 2006, 15:04 UTC"),
 	}
 	if record.ShowPreview {
 		page.Previews, page.PreviewsNote = s.previews(ctx, project)
@@ -442,6 +452,16 @@ func noteLines(note string) []string {
 		return nil
 	}
 	return strings.Split(note, "\n")
+}
+
+// noteUpdatedLabel dates the operator note for the page. A record written
+// before the field existed has no date, and prints none rather than pretending
+// the note is as old as the portal.
+func noteUpdatedLabel(record Portal) string {
+	if strings.TrimSpace(record.Note) == "" || record.NoteUpdatedAt <= 0 {
+		return ""
+	}
+	return time.UnixMilli(record.NoteUpdatedAt).UTC().Format("2 Jan 2006, 15:04 UTC")
 }
 
 func hostnameOf(baseURL string) string {

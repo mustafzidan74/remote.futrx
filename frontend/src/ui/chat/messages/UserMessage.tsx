@@ -1,5 +1,5 @@
 import type { SyntheticKind } from "../../../models/chat";
-import { PlaneTakeoff, RotateCcw, TestTube } from "../../primitives/icons";
+import { FileText, PlaneTakeoff, RotateCcw, TestTube } from "../../primitives/icons";
 
 /**
  * The badge above a prompt the platform sent on the operator's behalf. Without
@@ -30,11 +30,14 @@ export function UserMessage({
   t,
   synthetic,
   onRewind,
+  onSaveSnippet,
 }: {
   text: string;
   t: number;
   synthetic?: SyntheticKind;
   onRewind?: (t: number, text: string) => void;
+  /** Opens the snippet editor with this message as its body. */
+  onSaveSnippet?: (text: string) => void;
 }) {
   return (
     <div class="group flex justify-end">
@@ -47,18 +50,33 @@ export function UserMessage({
                  ${synthetic ? "border-white/10 bg-white/[0.05] text-ink-200" : "bg-accent-blue/15 border-accent-blue/30"}`}>
           {text}
         </div>
-        {onRewind && (
-          <button
-            type="button"
-            onClick={() => onRewind(t, text)}
-            class="inline-flex items-center gap-1.5 h-8 px-2 rounded-md text-[12px]
-                   text-ink-300 hover:text-ink-100 hover:bg-white/[0.07]
-                   opacity-100 md:opacity-0 md:group-hover:opacity-100 transition"
-            title="Rewind and edit from here"
-          >
-            <RotateCcw class="w-3.5 h-3.5" />
-            Rewind
-          </button>
+        {(onRewind || onSaveSnippet) && (
+          <div class="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition">
+            {onRewind && (
+              <button
+                type="button"
+                onClick={() => onRewind(t, text)}
+                class="inline-flex items-center gap-1.5 h-8 px-2 rounded-md text-[12px]
+                       text-ink-300 hover:text-ink-100 hover:bg-white/[0.07]"
+                title="Rewind and edit from here"
+              >
+                <RotateCcw class="w-3.5 h-3.5" />
+                Rewind
+              </button>
+            )}
+            {onSaveSnippet && (
+              <button
+                type="button"
+                onClick={() => onSaveSnippet(text)}
+                class="inline-flex items-center gap-1.5 h-8 px-2 rounded-md text-[12px]
+                       text-ink-300 hover:text-ink-100 hover:bg-white/[0.07]"
+                title="Save this message as a snippet"
+              >
+                <FileText class="w-3.5 h-3.5" />
+                Save as snippet
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

@@ -46,6 +46,7 @@ agent as `/deploy tomorrow`.
 | `/autopilot on\|off [rounds]` | Arms or stops the unattended follow-up loop. Without a round count it keeps the chat's current limit. |
 | `/autotest on\|off` | Turns the post-run Playwright check on or off. |
 | `/review` | Switches the chat to review mode, selects the review skill if one is registered, and loads "Review the last change." |
+| `/snippet <shortcut>` | Inserts one of your own snippets. With no argument it lists the shortcuts you have. See [snippets](21-snippets-and-client-messages.md). |
 | `/skills` | Re-opens the menu showing only skills. |
 | `/browser <url or port>` | Loads an address in the project's Agent Browser and reveals the pane. A bare port becomes `http://127.0.0.1:<port>/`, which is what the in-container browser can actually reach. |
 | `/help` | Lists every command available in this chat. |
@@ -66,6 +67,19 @@ Picking a playbook does exactly what clicking it in the ⚡ menu does: it applie
 the playbook's skills, mode, and provider, then loads its prompt into the
 composer. `Shift+Enter` sends it immediately, and a prompt with an unfilled
 `{{placeholder}}` is never sent however it was picked.
+
+## Snippets
+
+Every snippet in your personal library is a command under `/s-<shortcut>`, or
+the slug of its title when it has no shortcut. The `s-` namespace belongs to
+snippets alone, so a private library can never shadow a built-in verb, a
+playbook, or a skill — and a skill installed next month can never break a
+shortcut you memorized. The bare word is registered as an alias while nothing
+else claims it.
+
+Picking one resolves its placeholders and inserts it, exactly as clicking it in
+the 📄 Snippets menu does. See
+[21-snippets-and-client-messages.md](21-snippets-and-client-messages.md).
 
 ## Skills
 

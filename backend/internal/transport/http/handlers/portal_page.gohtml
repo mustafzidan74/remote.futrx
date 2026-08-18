@@ -94,8 +94,9 @@ footer { color: var(--muted); font-size: 12.5px; text-align: center; margin-top:
 
   {{ if .Note }}
   <section class="note">
-    <h2>Note</h2>
+    <h2>Message from your developer</h2>
     {{ range .Note }}<p>{{ . }}</p>{{ end }}
+    {{ if .NoteUpdatedLabel }}<p class="meta">Written {{ .NoteUpdatedLabel }}</p>{{ end }}
   </section>
   {{ end }}
 

@@ -54,6 +54,8 @@ func EventHeadline(event Event) string {
 		return "Weekly usage report"
 	case KindScreenshot:
 		return "Preview screenshot"
+	case KindClientMessage:
+		return "Message for the client"
 	case KindTest:
 		return "Test notification"
 	default:

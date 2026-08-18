@@ -2,6 +2,7 @@ import { deepStrictEqual, strictEqual } from "node:assert/strict";
 import { test } from "node:test";
 import type { Playbook } from "../../models/playbook.ts";
 import type { RegisteredSkill } from "../../models/skill.ts";
+import type { Snippet } from "../../models/snippet.ts";
 import {
   BUILTIN_SLASH_COMMANDS,
   applySlashCommand,
@@ -27,6 +28,20 @@ function playbook(id: string, title = id): Playbook {
 
 function skill(command: string, name = command): RegisteredSkill {
   return { name, command, provider: "claude", description: `${name} description` };
+}
+
+function snippet(id: string, shortcut = "", title = id): Snippet {
+  return {
+    id,
+    title,
+    body: "saved text",
+    audience: "agent",
+    shortcut,
+    tags: [],
+    createdAt: 1,
+    updatedAt: 1,
+    uses: 0,
+  };
 }
 
 const commandsOf = (entries: { command: string }[]) => entries.map((entry) => entry.command);
@@ -215,4 +230,70 @@ test("/help lists every group and the escape", () => {
   strictEqual(help.includes("Playbooks: /security-review"), true);
   strictEqual(help.includes("Skills: /playwright-e2e"), true);
   strictEqual(help.includes("//"), true);
+});
+
+test("snippets join the registry under their own /s- namespace", () => {
+  const registry = buildSlashRegistry({
+    playbooks: [playbook("security-review")],
+    snippets: [snippet("wp-fix", "wpfix", "WordPress fix")],
+    skills: [skill("playwright-e2e")],
+  });
+
+  const entry = findSlashCommand(registry, "s-wpfix");
+  strictEqual(entry?.group, "snippet");
+  strictEqual(entry?.command, "s-wpfix");
+  strictEqual(entry?.snippet?.id, "wp-fix");
+  // The bare word is an alias while nothing else claims it.
+  strictEqual(findSlashCommand(registry, "wpfix")?.command, "s-wpfix");
+  // And the built-in verb is still there for the other spelling.
+  strictEqual(findSlashCommand(registry, "snippet")?.action, "snippet");
+});
+
+test("a snippet with no shortcut falls back to its title", () => {
+  const registry = buildSlashRegistry({ snippets: [snippet("x", "", "Delivery note")] });
+
+  strictEqual(findSlashCommand(registry, "s-delivery-note")?.snippet?.id, "x");
+});
+
+test("a snippet can never shadow a built-in or a skill", () => {
+  const registry = buildSlashRegistry({
+    snippets: [snippet("t", "test"), snippet("d", "deploy")],
+    skills: [skill("playwright-e2e")],
+  });
+
+  strictEqual(findSlashCommand(registry, "test")?.group, "builtin");
+  strictEqual(findSlashCommand(registry, "deploy")?.group, "builtin");
+  strictEqual(findSlashCommand(registry, "s-test")?.group, "snippet");
+  strictEqual(findSlashCommand(registry, "s-deploy")?.group, "snippet");
+});
+
+test("two snippets with the same shortcut register only once", () => {
+  const registry = buildSlashRegistry({
+    snippets: [snippet("first", "dup"), snippet("second", "dup")],
+  });
+
+  const matches = registry.filter((entry) => entry.group === "snippet");
+  strictEqual(matches.length, 1);
+  strictEqual(matches[0].snippet?.id, "first");
+});
+
+test("searching the menu finds a snippet by its title and tags", () => {
+  const tagged: Snippet = { ...snippet("x", "wpfix", "WordPress fix"), tags: ["wordpress"] };
+  const registry = buildSlashRegistry({ snippets: [tagged] });
+
+  strictEqual(filterSlashCommands(registry, "wordpress")[0]?.snippet?.id, "x");
+  strictEqual(filterSlashCommands(registry, "s-wpf")[0]?.command, "s-wpfix");
+});
+
+test("help lists the snippet group once snippets exist", () => {
+  const withSnippets = slashHelpText(buildSlashRegistry({ snippets: [snippet("x", "wpfix")] }));
+  strictEqual(withSnippets.includes("Snippets: /s-wpfix"), true);
+
+  const without = slashHelpText(buildSlashRegistry({}));
+  strictEqual(without.includes("Snippets:"), false);
+});
+
+test("a typed /snippet line parses with its shortcut as the argument", () => {
+  deepStrictEqual(parseSlashInput("/snippet wpfix"), { command: "snippet", arg: "wpfix" });
+  deepStrictEqual(parseSlashInput("/s-wpfix"), { command: "s-wpfix", arg: "" });
 });

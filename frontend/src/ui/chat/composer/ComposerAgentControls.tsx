@@ -1,8 +1,10 @@
 import type { ChatProvider, SelectedSkill } from "../../../models/chat";
 import type { RegisteredSkill } from "../../../models/skill";
 import type { PlaybookLibrary } from "../../../state/hooks/chat/usePlaybooks";
+import type { SnippetLibrary } from "../../../state/hooks/chat/useSnippets";
 import { MoreHorizontal } from "../../primitives/icons";
 import { PlaybookPicker } from "./PlaybookPicker";
+import { SnippetPicker } from "./SnippetPicker";
 import { ProviderModelPill } from "./ProviderModelPill";
 import { SkillPicker } from "./SkillPicker";
 import { TestMenu } from "./TestMenu";
@@ -21,6 +23,10 @@ export function ComposerAgentControls({
   streaming,
   selectedSkills,
   playbooks,
+  snippets,
+  draft,
+  pendingSnippet,
+  onPendingSnippetHandled,
   testDisabled,
   secondaryOpen,
   onToggleSecondary,
@@ -35,6 +41,13 @@ export function ComposerAgentControls({
   streaming: boolean;
   selectedSkills: SelectedSkill[];
   playbooks: PlaybookLibrary;
+  /** This user's own saved prompts. */
+  snippets: SnippetLibrary;
+  /** The composer's current text, offered to the snippet editor. */
+  draft: string;
+  /** Text a message's "Save as snippet" action handed over, if any. */
+  pendingSnippet?: string | null;
+  onPendingSnippetHandled?: () => void;
   testDisabled: boolean;
   /** Whether the phone-sized overflow group is showing. Ignored from `md` up. */
   secondaryOpen: boolean;
@@ -65,6 +78,13 @@ export function ComposerAgentControls({
           onSelect={(skill) => onSelectSkill(skill)}
         />
         <PlaybookPicker library={playbooks} disabled={playbooks.running !== null} />
+        <SnippetPicker
+          library={snippets}
+          draft={draft}
+          disabled={snippets.busy !== null}
+          pendingBody={pendingSnippet}
+          onPendingHandled={onPendingSnippetHandled}
+        />
         {/* A check is an ordinary prompt, so the menu is dead while the run
             lock is held — exactly like the Send button beside it. */}
         <TestMenu disabled={testDisabled} onSendTest={onSendTest} />
@@ -76,8 +96,12 @@ export function ComposerAgentControls({
         class={`composer-pill composer-pill-icon md:hidden ${secondaryOpen ? "composer-pill-active" : ""}`}
         aria-controls="composer-overflow-controls"
         aria-expanded={secondaryOpen}
-        aria-label={secondaryOpen ? "Hide skills, playbooks and tests" : "Show skills, playbooks and tests"}
-        title="Skills, playbooks and tests"
+        aria-label={
+          secondaryOpen
+            ? "Hide skills, playbooks, snippets and tests"
+            : "Show skills, playbooks, snippets and tests"
+        }
+        title="Skills, playbooks, snippets and tests"
       >
         <MoreHorizontal class="h-4 w-4" aria-hidden="true" />
       </button>

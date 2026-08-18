@@ -53,12 +53,24 @@ export function resolvePlaybookPrompt(
   prompt: string,
   context: PlaybookContext = {}
 ): ResolvedPrompt {
-  const values: Record<string, string | undefined> = {
+  return resolvePlaceholders(prompt, {
     project: context.projectName,
     slug: context.slug,
     previewUrl: context.previewUrl,
-  };
+  });
+}
 
+/**
+ * The placeholder scanner itself, over an explicit table of values. Snippets
+ * fill in a wider table than playbooks do — a date, a client name, the current
+ * draft — and reuse this so both kinds of saved text behave identically:
+ * unknown names and empty values survive verbatim, positioned against the text
+ * that was produced.
+ */
+export function resolvePlaceholders(
+  prompt: string,
+  values: Record<string, string | undefined>
+): ResolvedPrompt {
   let text = "";
   let cursor = 0;
   const unresolved: UnresolvedPlaceholder[] = [];

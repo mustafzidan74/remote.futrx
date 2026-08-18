@@ -19,6 +19,7 @@ import (
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
 	serviceskills "github.com/futrx-com/remote.futrx.com/internal/service/skills"
 	servicesnapshot "github.com/futrx-com/remote.futrx.com/internal/service/snapshot"
+	servicesnippets "github.com/futrx-com/remote.futrx.com/internal/service/snippets"
 	servicetranscribe "github.com/futrx-com/remote.futrx.com/internal/service/transcribe"
 	serviceusage "github.com/futrx-com/remote.futrx.com/internal/service/usage"
 	serviceuser "github.com/futrx-com/remote.futrx.com/internal/service/user"
@@ -41,6 +42,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filescreenshot"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileskillsglobal"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filesnapshot"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filesnippets"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filetranscribe"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileusage"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileusers"
@@ -77,6 +79,7 @@ type Stores struct {
 	Notifications  servicenotify.Store
 	Monitoring     servicemonitoring.Store
 	Playbooks      serviceplaybooks.Repository
+	Snippets       servicesnippets.Repository
 	GlobalSkills   serviceskills.GlobalRepository
 	GlobalSecrets  serviceglobalsecrets.Store
 	Usage          serviceusage.Repository
@@ -162,6 +165,11 @@ func New(dataDir string) (Stores, error) {
 		return Stores{}, fmt.Errorf("init playbooks store: %w", err)
 	}
 
+	snippets, err := filesnippets.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init snippets store: %w", err)
+	}
+
 	globalSkills, err := fileskillsglobal.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init global skills store: %w", err)
@@ -209,6 +217,7 @@ func New(dataDir string) (Stores, error) {
 		Notifications:  notifications,
 		Monitoring:     monitoring,
 		Playbooks:      playbooks,
+		Snippets:       snippets,
 		GlobalSkills:   globalSkills,
 		GlobalSecrets:  globalSecrets,
 		Usage:          usage,

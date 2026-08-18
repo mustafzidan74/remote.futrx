@@ -186,6 +186,8 @@ export interface ProjectPortal {
   showUsage: boolean;
   brandTitle?: string;
   note?: string;
+  /** When the note last changed; the portal page prints it. */
+  noteUpdatedAt?: number;
   createdAt?: number;
   updatedAt?: number;
   url?: string;
@@ -200,6 +202,20 @@ export interface UpdateProjectPortalInput {
   showUsage: boolean;
   brandTitle: string;
   note: string;
+}
+
+/** One sink's outcome when a client message was handed to the notifiers. */
+export interface ClientMessageDelivery {
+  sink: string;
+  configured: boolean;
+  delivered: boolean;
+  error?: string;
+}
+
+export interface ClientMessageResult {
+  /** False when no sink is set up, which is what hides the send button. */
+  configured: boolean;
+  delivered: ClientMessageDelivery[];
 }
 
 export interface ContainerApp {

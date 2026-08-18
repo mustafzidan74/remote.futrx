@@ -6,6 +6,7 @@ import type { RegisteredSkill } from "../../../models/skill";
 import type { Attachment } from "../../../models/upload";
 import type { ChatPolicies } from "../../../state/hooks/chat/useChatPolicies";
 import type { PlaybookLibrary } from "../../../state/hooks/chat/usePlaybooks";
+import type { SnippetLibrary } from "../../../state/hooks/chat/useSnippets";
 import type { SlashCommands } from "../../../state/hooks/chat/useSlashCommands";
 import { AlertCircle, ChevronDown, Settings, X } from "../../primitives/icons";
 import { ScreenshotCard } from "../../preview/ScreenshotCard";
@@ -34,6 +35,11 @@ export interface ChatComposerProps {
   queuedPrompts: QueuedPrompt[];
   selectedSkills: SelectedSkill[];
   playbooks: PlaybookLibrary;
+  /** This user's own saved prompts and client message templates. */
+  snippets: SnippetLibrary;
+  /** Text a message's "Save as snippet" action handed over, if any. */
+  pendingSnippet?: string | null;
+  onPendingSnippetHandled?: () => void;
   policies: ChatPolicies;
   /** The `/` menu and everything its commands report back. */
   slash: SlashCommands;
@@ -64,6 +70,9 @@ export function ChatComposer({
   queuedPrompts,
   selectedSkills,
   playbooks,
+  snippets,
+  pendingSnippet,
+  onPendingSnippetHandled,
   policies,
   slash,
   attachments,
@@ -142,6 +151,23 @@ export function ChatComposer({
   return (
     <div class="codex-composer-shell flex-none z-20 relative bg-[#0b0d11] border-t border-white/10">
       {dragging && <ComposerDropOverlay />}
+
+      {snippets.notice && (
+        <div class="mx-3 mt-2 flex items-start gap-2 rounded-md border border-accent-blue/30 bg-accent-blue/[0.08] px-2.5 py-2">
+          <AlertCircle class="mt-0.5 h-3.5 w-3.5 flex-none text-accent-blue" aria-hidden="true" />
+          <span class="min-w-0 flex-1 break-words text-[11.5px] leading-4 text-ink-100">
+            {snippets.notice}
+          </span>
+          <button
+            type="button"
+            onClick={snippets.dismissNotice}
+            class="grid h-5 w-5 flex-none place-items-center rounded text-ink-300 hover:bg-white/[0.08] hover:text-ink-50"
+            aria-label="Dismiss snippet notice"
+          >
+            <X class="h-3 w-3" />
+          </button>
+        </div>
+      )}
 
       {playbooks.notice && (
         <div class="mx-3 mt-2 flex items-start gap-2 rounded-md border border-accent-blue/30 bg-accent-blue/[0.08] px-2.5 py-2">
@@ -241,6 +267,10 @@ export function ChatComposer({
             streaming={streaming}
             selectedSkills={selectedSkills}
             playbooks={playbooks}
+            snippets={snippets}
+            draft={text}
+            pendingSnippet={pendingSnippet}
+            onPendingSnippetHandled={onPendingSnippetHandled}
             testDisabled={!canSendPrompt || streaming}
             secondaryOpen={overflowOpen}
             onToggleSecondary={toggleOverflow}

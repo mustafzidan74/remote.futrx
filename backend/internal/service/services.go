@@ -35,6 +35,7 @@ import (
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
 	serviceskills "github.com/futrx-com/remote.futrx.com/internal/service/skills"
 	servicesnapshot "github.com/futrx-com/remote.futrx.com/internal/service/snapshot"
+	servicesnippets "github.com/futrx-com/remote.futrx.com/internal/service/snippets"
 	servicetmux "github.com/futrx-com/remote.futrx.com/internal/service/tmux"
 	servicetranscribe "github.com/futrx-com/remote.futrx.com/internal/service/transcribe"
 	serviceusage "github.com/futrx-com/remote.futrx.com/internal/service/usage"
@@ -81,7 +82,10 @@ type Dependencies struct {
 	Version       string
 	Transcription servicetranscribe.Store
 	Playbooks     serviceplaybooks.Repository
-	GlobalSkills  serviceskills.GlobalRepository
+	// Snippets backs every user's personal prompt library and client message
+	// templates. Nil leaves the /api/me/snippets routes reporting 503.
+	Snippets     servicesnippets.Repository
+	GlobalSkills serviceskills.GlobalRepository
 	// AgentPreferences backs the platform-wide agent reply preferences. Nil
 	// leaves the panel unavailable and injects nothing into any run.
 	AgentPreferences serviceagentprefs.Repository
@@ -167,6 +171,7 @@ type Services struct {
 	Monitoring    *servicemonitoring.Service
 	Transcription *servicetranscribe.Service
 	Playbooks     *serviceplaybooks.Service
+	Snippets      *servicesnippets.Service
 	AgentPrefs    *serviceagentprefs.Service
 	Search        *servicesearch.Service
 	GlobalSecrets *serviceglobalsecrets.Service
@@ -464,6 +469,14 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		}
 	}
 
+	// Personal snippets are per user and seeded lazily on that user's first
+	// read, so nothing has to happen here beyond building the service; a
+	// deployment without a store simply leaves the routes unavailable.
+	var snippetService *servicesnippets.Service
+	if deps.Snippets != nil {
+		snippetService = servicesnippets.New(deps.Snippets)
+	}
+
 	skillService := serviceskills.New()
 	skillCatalog := serviceskills.NewCatalog(skillService, projectService, authService).
 		WithGlobalLibrary(globalSkillService)
@@ -555,6 +568,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Monitoring:    monitoringService,
 		Transcription: transcription,
 		Playbooks:     playbookService,
+		Snippets:      snippetService,
 		AgentPrefs:    agentPreferences,
 		Search:        searchService,
 		GlobalSecrets: globalSecrets,

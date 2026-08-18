@@ -1,6 +1,6 @@
 import type { ChatMeta, UpdateChatInput } from "../../models/chat";
 import type { ProjectMeta } from "../../models/project";
-import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { BrowserDrawer } from "../../ui/chat/browser/BrowserDrawer";
 import { ChatThread } from "../../ui/chat/ChatThread";
 import { MediaViewerOverlay } from "../../ui/chat/files/MediaViewerOverlay";
@@ -19,6 +19,7 @@ import { useChatPolicies } from "../../state/hooks/chat/useChatPolicies";
 import { useChatPreferences } from "../../state/hooks/chat/useChatPreferences";
 import { useChatReadMarker } from "../../state/hooks/chat/useChatReadMarker";
 import { usePlaybooks } from "../../state/hooks/chat/usePlaybooks";
+import { useSnippets } from "../../state/hooks/chat/useSnippets";
 import { useSlashCommands } from "../../state/hooks/chat/useSlashCommands";
 import { useTerminalOverlayController } from "../../state/hooks/chat/useTerminalOverlayController";
 import { useWorkspaceGitRepos } from "../../state/hooks/chat/useWorkspaceGitRepos";
@@ -110,6 +111,20 @@ export function ChatContainer({
     insertPrompt: composer.insertText,
     submitPrompt: composer.submitText,
   });
+  // The user's own snippet library. It shares the playbook context and adds
+  // the current draft, which is what {{selection}} stands for.
+  const snippets = useSnippets({
+    enabled: true,
+    context: playbookContext,
+    draft: composer.text,
+    insertText: composer.insertText,
+    setText: composer.setText,
+  });
+  // "Save as snippet" on a message hands its text to the composer's Snippets
+  // menu, which opens with the editor already filled in.
+  const [pendingSnippet, setPendingSnippet] = useState<string | null>(null);
+  const handleSaveSnippet = useCallback((text: string) => setPendingSnippet(text), []);
+  const clearPendingSnippet = useCallback(() => setPendingSnippet(null), []);
   // Post-run policies. `displayMeta` is the optimistic merge of the loaded
   // chat and the local preference edits, which is also what the workspace
   // socket refreshes when the driver spends a round — so the pill and the
@@ -131,6 +146,7 @@ export function ChatContainer({
     insertText: composer.insertText,
     submitTest: composer.submitTest,
     playbooks,
+    snippets,
     policies,
     changeMode: preferences.changeMode,
     selectSkill: preferences.selectSkill,
@@ -223,6 +239,9 @@ export function ChatContainer({
     queuedPrompts: composer.queue.queuedPrompts,
     selectedSkills,
     playbooks,
+    snippets,
+    pendingSnippet,
+    onPendingSnippetHandled: clearPendingSnippet,
     policies,
     slash,
     attachments: composer.upload.attachments,
@@ -267,6 +286,7 @@ export function ChatContainer({
             onAnswerQuestion={composer.handleAnswerQuestion}
             onLoadOlder={loadOlder}
             onRewind={composer.handleRewind}
+            onSaveSnippet={handleSaveSnippet}
             onOpenAgentBrowser={browser.openAgentBrowserPane}
             mobileToolbar={
               <aside class="workspace-action-toolbar relative z-30 flex flex-none justify-end border-b border-white/10 bg-[#101318] px-3 py-2 md:hidden">

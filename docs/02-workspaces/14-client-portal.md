@@ -15,7 +15,7 @@ holding the link sees a summary; a visitor without it sees a plain 404.
 | Section | Source | Controlled by |
 | --- | --- | --- |
 | Brand title (or project name) and status pill | project metadata (`running` / `stopped` / …) | always shown |
-| Operator note | the note you type in project settings | shown when non-empty |
+| **Message from your developer** | the note you type in project settings, dated with `noteUpdatedAt` | shown when non-empty |
 | **Latest preview** links | ports that currently hold a **live public share link** | *Show preview links* |
 | **Activity** | agent runs in the last 7 days — a count, never a cost | *Show activity* (off by default) |
 | **Recent changes** | last 15 commits of `/workspace`, grouped by day | *Show recent changes* |
@@ -42,6 +42,17 @@ The IDE host, the agent browser (`:6080`), the DevTools port, and the
 application itself are never linked from the portal under any configuration.
 
 ### The note
+
+The note is rendered under the heading **"Message from your developer"**, with
+the date it was last written under it. That date is `noteUpdatedAt`, and it
+moves only when the note text changes — flipping a display toggle must not make
+a month-old message look like it was written today — and it is cleared when the
+note is emptied. A record written before the field existed prints no date rather
+than inventing one.
+
+You can write the note by hand here, or compose it from one of your bilingual
+client templates in **Sharing → Message client**
+([21-snippets-and-client-messages.md](21-snippets-and-client-messages.md)).
 
 The note is **markdown-lite**, which here means exactly two things: HTML is
 escaped, and line breaks are preserved. There is no bold, no links, no lists —
@@ -103,7 +114,8 @@ One JSON document per project at `DATA_DIR/portals/<projectId>.json`, mode
   "showChangelog": true,
   "showUsage": false,
   "brandTitle": "Acme Shop",
-  "note": "Checkout is live on staging.\nInvoices land next week."
+  "note": "Checkout is live on staging.\nInvoices land next week.",
+  "noteUpdatedAt": 1755600000000
 }
 ```
 

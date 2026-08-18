@@ -97,6 +97,7 @@ func main() {
 		Version:           version.Version,
 		Transcription:     storeSet.Transcription,
 		Playbooks:         storeSet.Playbooks,
+		Snippets:          storeSet.Snippets,
 		AgentPreferences:  storeSet.AgentPreferences,
 		GlobalSkills:      storeSet.GlobalSkills,
 		GlobalSecrets:     storeSet.GlobalSecrets,
