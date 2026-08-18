@@ -71,3 +71,5 @@ export const Zap = (p: P) => (<svg {...base} {...p}><path d="M13 2 4 14h7l-1 8 9
 export const Package = (p: P) => (<svg {...base} {...p}><path d="m12 2 9 5v10l-9 5-9-5V7l9-5Z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg>);
 export const PlaneTakeoff = (p: P) => (<svg {...base} {...p}><path d="M2 22h20M3.8 15.5l-1.3-3.9a1 1 0 0 1 .6-1.3l1.2-.4 2.3 2 3.4-1.2-3.6-5.4 1.9-.7 5.7 4.6 4.3-1.5a2 2 0 1 1 1.3 3.8L4.9 16.2a1 1 0 0 1-1.1-.7Z"/></svg>);
 export const TestTube = (p: P) => (<svg {...base} {...p}><path d="M14.5 2v14.5a3.5 3.5 0 0 1-7 0V2M6 2h10M8 12h6"/></svg>);
+export const Mic = (p: P) => (<svg {...base} {...p}><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg>);
+export const MicOff = (p: P) => (<svg {...base} {...p}><path d="M9 9v-4a3 3 0 0 1 5.6-1.5M15 9.3V5M5 10a7 7 0 0 0 10.7 6M19 10a7 7 0 0 1-.6 2.8M12 17v4M8 21h8"/><path d="m2 2 20 20"/></svg>);

@@ -47,6 +47,9 @@ const (
 
 	ActionChatCreate = "chat.create"
 	ActionChatDelete = "chat.delete"
+	// ActionChatTranscribe records a voice dictation sent to the server
+	// transcription provider. Its meta carries the clip duration only.
+	ActionChatTranscribe = "chat.transcribe"
 
 	ActionAgentRunStart  = "agent.run.start"
 	ActionAgentRunCancel = "agent.run.cancel"
@@ -61,6 +64,7 @@ const (
 	ActionSettingsPlaybooks       = "settings.playbooks.update"
 	ActionSettingsAgentConnect    = "settings.agent.connect"
 	ActionSettingsAgentDisconnect = "settings.agent.disconnect"
+	ActionSettingsTranscription   = "settings.transcription.configure"
 
 	ActionSelfUpdateTrigger = "self-update.trigger"
 

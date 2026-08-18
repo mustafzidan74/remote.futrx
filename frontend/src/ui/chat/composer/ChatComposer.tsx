@@ -1,5 +1,6 @@
 import type { RefObject } from "preact";
-import { useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
+import { useVoiceInput } from "../../../state/hooks/chat/useVoiceInput";
 import { modelDisplayLabel, providerDisplayLabel } from "../../../config/chat";
 import type { QueuedPrompt, SelectedSkill } from "../../../models/chat";
 import type { RegisteredSkill } from "../../../models/skill";
@@ -16,9 +17,11 @@ import { PromptTextarea } from "./PromptTextarea";
 import { QueuedPromptList } from "./QueuedPromptList";
 import { SelectedSkillChips } from "./SelectedSkillChips";
 import { SendControls } from "./SendControls";
+import { VoiceInputButton } from "./VoiceInputButton";
 import type { ComposerPreferenceActions, ComposerPreferences } from "./preferences";
 
 export interface ChatComposerProps {
+  chatId: string;
   projectId?: string;
   streaming: boolean;
   canSendPrompt: boolean;
@@ -46,6 +49,7 @@ export interface ChatComposerProps {
 }
 
 export function ChatComposer({
+  chatId,
   projectId,
   streaming,
   canSendPrompt,
@@ -73,6 +77,38 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false);
   const disconnected = !canSendPrompt && !streaming;
+  // Dictation writes into the same draft the textarea does, so it lives here
+  // rather than in the container: everything it needs is already a prop.
+  const voice = useVoiceInput({
+    chatId,
+    text,
+    onTextChange,
+    textareaRef,
+    disabled: uploading || disconnected,
+  });
+  // Sending while dictating has to wait for the transcript. The last words
+  // reach the composer through a state update, so sending in the same tick
+  // would post the text as it was one hypothesis ago — and the server engine
+  // has not even uploaded its clip yet at that point.
+  const [sendAfterDictation, setSendAfterDictation] = useState(false);
+
+  useEffect(() => {
+    if (!sendAfterDictation || voice.active) return;
+    setSendAfterDictation(false);
+    // A session that ended on an error leaves a banner the user should read;
+    // nothing gets sent on their behalf until they have.
+    if (voice.session.status !== "error") onSend();
+  }, [sendAfterDictation, voice.active, voice.session.status, onSend]);
+
+  function submit(event: Event) {
+    event.preventDefault();
+    if (!voice.active) {
+      onSend();
+      return;
+    }
+    voice.stop();
+    setSendAfterDictation(true);
+  }
   const hasContent = text.trim().length > 0 || attachments.some((attachment) => attachment.serverPath);
   const canSend = !uploading && !disconnected && hasContent;
   const settingsSummary = `${providerDisplayLabel(preferences.provider)} · ${modelDisplayLabel(preferences.model, preferences.provider)}`;
@@ -111,10 +147,7 @@ export function ChatComposer({
 
       <div class="codex-composer-card mx-3 my-2 overflow-visible rounded-xl border border-white/10 bg-[#15171c] shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
         <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            onSend();
-          }}
+          onSubmit={submit}
           class="codex-composer-form composer-form flex gap-1.5 items-end px-2 pt-2"
         >
           <AttachButton
@@ -132,6 +165,7 @@ export function ChatComposer({
             onTextChange={onTextChange}
             onPaste={onPaste}
             onSend={onSend}
+            lang={voice.languageTag}
           />
           <button
             type="button"
@@ -149,6 +183,7 @@ export function ChatComposer({
               aria-hidden="true"
             />
           </button>
+          <VoiceInputButton voice={voice} disabled={uploading || disconnected} />
           <SendControls
             streaming={streaming}
             canSend={canSend}

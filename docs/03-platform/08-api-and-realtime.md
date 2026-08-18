@@ -41,6 +41,8 @@ All `/api/*` and `/ws*` requests require a signed session for a registered user.
 | GET, PUT | `/api/admin/notifications` | Read or write the global notification settings, secrets masked; admin only |
 | POST | `/api/admin/notifications/test` | Deliver a synthetic event to every configured sink and report each outcome; admin only |
 | POST | `/api/admin/notifications/digest/send-now` | Build and deliver the weekly usage digest immediately without advancing the schedule; admin only |
+| GET, PUT | `/api/admin/transcription` | Read or write the voice-input transcription settings, API key masked; admin only |
+| POST | `/api/admin/transcription/test` | Transcribe a one-second silent sample and report the round trip; admin only |
 | GET | `/api/admin/audit` | Newest-first page of audit entries, filtered by `actor`, `action` prefix, `target`, `from`, `to`, `limit`, `cursor`; admin only |
 | GET | `/api/admin/audit/export` | Stream the stored audit JSONL for a `from`/`to` range as a download; admin only |
 | GET, PATCH | `/api/me/settings` | Read or update current user's appearance and chat defaults |
@@ -161,6 +163,8 @@ and access on every fire.
 | Method | Route | Purpose |
 | --- | --- | --- |
 | POST, HEAD, PATCH, GET, DELETE | `/api/uploads[/<upload-id>]` | tus resumable upload lifecycle |
+| POST | `/api/transcribe` | Multipart (`audio`, `language`, `durationMs`, `chatId`) voice clip streamed to the transcription provider; 25 MB and 5-minute ceilings, 30/min per user |
+| GET | `/api/transcribe/config` | Whether server transcription is available, and its limits; carries no provider identity |
 | GET | `/__remote_inspector` | Same-origin preview inspection wrapper |
 | GET, POST | `/api/sessions` | List or create host tmux sessions |
 | DELETE | `/api/sessions/{name}` | Delete tmux session |

@@ -16,6 +16,7 @@ import (
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	serviceselfupdate "github.com/futrx-com/remote.futrx.com/internal/service/selfupdate"
 	serviceserverinfo "github.com/futrx-com/remote.futrx.com/internal/service/serverinfo"
+	servicetranscribe "github.com/futrx-com/remote.futrx.com/internal/service/transcribe"
 	serviceworkspacefiles "github.com/futrx-com/remote.futrx.com/internal/service/workspacefiles"
 	serviceworkspaceide "github.com/futrx-com/remote.futrx.com/internal/service/workspaceide"
 	httptransport "github.com/futrx-com/remote.futrx.com/internal/transport/http"
@@ -142,6 +143,13 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			deps.Services.Notifications,
 			deps.Services.Auth,
 		),
+		// Voice input. The composer's browser path never reaches the server;
+		// these routes exist for the optional server-transcription fallback
+		// and its admin panel.
+		Transcribe: httphandlers.NewTranscribeHandler(
+			transcriptionService(deps.Services.Transcription),
+			deps.Services.Auth,
+		).WithAudit(auditLog),
 		// The client portal is the one public, session-less page the
 		// application serves; the auth middleware only gates /api and /ws, so
 		// this route reaches its own token check.
@@ -176,6 +184,16 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		Middleware:       middleware,
 		Static:           httptransport.NewStaticHandler(deps.Static),
 	}), nil
+}
+
+// transcriptionService narrows the concrete transcription service to the
+// transport's interface while keeping a nil service nil, so the handler can
+// report 503 instead of panicking on a deployment without a settings store.
+func transcriptionService(service *servicetranscribe.Service) httphandlers.TranscriptionService {
+	if service == nil {
+		return nil
+	}
+	return service
 }
 
 // portalService narrows the concrete portal service to the transport's

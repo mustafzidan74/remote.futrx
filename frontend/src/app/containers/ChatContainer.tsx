@@ -176,6 +176,7 @@ export function ChatContainer({
   }, [activePane]);
 
   const composerView: ChatComposerProps = {
+    chatId: chat.id,
     projectId: displayMeta.projectId,
     streaming: status === "streaming",
     canSendPrompt,

@@ -15,6 +15,7 @@ import (
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
 	serviceskills "github.com/futrx-com/remote.futrx.com/internal/service/skills"
 	servicesnapshot "github.com/futrx-com/remote.futrx.com/internal/service/snapshot"
+	servicetranscribe "github.com/futrx-com/remote.futrx.com/internal/service/transcribe"
 	serviceusage "github.com/futrx-com/remote.futrx.com/internal/service/usage"
 	serviceuser "github.com/futrx-com/remote.futrx.com/internal/service/user"
 	serviceusersettings "github.com/futrx-com/remote.futrx.com/internal/service/usersettings"
@@ -32,6 +33,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileschedule"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileskillsglobal"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filesnapshot"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filetranscribe"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileusage"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileusers"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileusersettings"
@@ -58,6 +60,7 @@ type Stores struct {
 	Playbooks      serviceplaybooks.Repository
 	GlobalSkills   serviceskills.GlobalRepository
 	Usage          serviceusage.Repository
+	Transcription  servicetranscribe.Store
 	Audit          serviceaudit.Store
 }
 
@@ -137,6 +140,11 @@ func New(dataDir string) (Stores, error) {
 		return Stores{}, fmt.Errorf("init usage store: %w", err)
 	}
 
+	transcription, err := filetranscribe.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init transcription settings store: %w", err)
+	}
+
 	auditLog, err := fileaudit.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init audit store: %w", err)
@@ -159,6 +167,7 @@ func New(dataDir string) (Stores, error) {
 		Playbooks:      playbooks,
 		GlobalSkills:   globalSkills,
 		Usage:          usage,
+		Transcription:  transcription,
 		Audit:          auditLog,
 	}, nil
 }

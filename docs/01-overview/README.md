@@ -34,6 +34,7 @@ This documentation maps the complete `remote.futrx` application: how to use ever
 | [15-autopilot-and-auto-test.md](../02-workspaces/15-autopilot-and-auto-test.md) | Per-chat post-run policies: autopilot rounds and completion markers, Playwright auto-test, the composer Test menu, guards, and attribution |
 | [08-project-templates.md](../02-workspaces/08-project-templates.md) | Stack presets, in-container provisioning, pre-built template images, and adding a template |
 | [13-playbooks.md](../02-workspaces/13-playbooks.md) | One-click composer prompt templates: storage, seeding, placeholders, skill/mode/provider application, and the admin API |
+| [17-voice-input.md](../02-workspaces/17-voice-input.md) | Dictation in the chat composer: the browser Web Speech engine, the optional server transcription fallback, Arabic and RTL handling, limits, and privacy |
 | [06-previews-and-browser.md](../03-platform/06-previews-and-browser.md) | App discovery, HTTPS preview URLs, element inspection, and Agent Browser |
 | [07-data-and-frontend-state.md](../03-platform/07-data-and-frontend-state.md) | File-backed persistence, workspace files, entities, and UI state |
 | [08-api-and-realtime.md](../03-platform/08-api-and-realtime.md) | HTTP endpoints, WebSockets, events, and access gates |

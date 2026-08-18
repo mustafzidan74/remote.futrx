@@ -31,6 +31,7 @@ import (
 	serviceskills "github.com/futrx-com/remote.futrx.com/internal/service/skills"
 	servicesnapshot "github.com/futrx-com/remote.futrx.com/internal/service/snapshot"
 	servicetmux "github.com/futrx-com/remote.futrx.com/internal/service/tmux"
+	servicetranscribe "github.com/futrx-com/remote.futrx.com/internal/service/transcribe"
 	serviceusage "github.com/futrx-com/remote.futrx.com/internal/service/usage"
 	serviceuser "github.com/futrx-com/remote.futrx.com/internal/service/user"
 	serviceusersettings "github.com/futrx-com/remote.futrx.com/internal/service/usersettings"
@@ -61,6 +62,7 @@ type Dependencies struct {
 	Users             serviceuser.Repository
 	UserSettings      serviceusersettings.Repository
 	Notifications     servicenotify.Store
+	Transcription     servicetranscribe.Store
 	Playbooks         serviceplaybooks.Repository
 	GlobalSkills      serviceskills.GlobalRepository
 	Usage             serviceusage.Repository
@@ -116,6 +118,7 @@ type Services struct {
 	Users         *serviceuser.Service
 	UserSettings  *serviceusersettings.Service
 	Notifications *servicenotify.Service
+	Transcription *servicetranscribe.Service
 	Playbooks     *serviceplaybooks.Service
 	Skills        *serviceskills.Catalog
 	Tmux          *servicetmux.Service
@@ -274,6 +277,10 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		)
 	}
 	notifications := servicenotify.New(ctx, deps.Notifications, deps.AuthBaseURL, notifyOptions...)
+	// Voice dictation's optional server fallback. It holds no state beyond the
+	// cached settings document, so it is built here and simply handed to the
+	// transcription handler.
+	transcription := servicetranscribe.New(ctx, deps.Transcription)
 	runNotifications := &notifyObserver{
 		notifications: notifications,
 		chats:         chats,
@@ -404,6 +411,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Users:         userService,
 		UserSettings:  userSettingsService,
 		Notifications: notifications,
+		Transcription: transcription,
 		Playbooks:     playbookService,
 		Skills:        skillCatalog,
 		Tmux:          tmuxService,

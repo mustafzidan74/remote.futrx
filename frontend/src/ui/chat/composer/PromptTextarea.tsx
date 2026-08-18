@@ -9,6 +9,7 @@ export function PromptTextarea({
   onTextChange,
   onPaste,
   onSend,
+  lang,
 }: {
   textareaRef: RefObject<HTMLTextAreaElement>;
   text: string;
@@ -18,6 +19,12 @@ export function PromptTextarea({
   onTextChange: (text: string) => void;
   onPaste: (event: ClipboardEvent) => void;
   onSend: () => void;
+  /**
+   * BCP-47 tag of the dictation language, when one is selected. It tells the
+   * browser how to shape and spell-check the text that voice input inserts;
+   * `dir` stays "auto" so the base direction still follows the content.
+   */
+  lang?: string;
 }) {
   return (
     <textarea
@@ -38,6 +45,7 @@ export function PromptTextarea({
       onPaste={(event) => onPaste(event as ClipboardEvent)}
       rows={1}
       dir="auto"
+      lang={lang || undefined}
       enterkeyhint="enter"
       aria-keyshortcuts="Control+Enter Meta+Enter"
       autocomplete="off"
