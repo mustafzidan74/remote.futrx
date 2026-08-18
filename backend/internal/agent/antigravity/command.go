@@ -107,6 +107,14 @@ func (p *Provider) buildCmd(
 		if err := p.containerDeps.Workspace.EnsureAgentInstructions(ctx, project.ContainerName); err != nil {
 			return nil, "", fmt.Errorf("push agent instructions to container: %w", err)
 		}
+		if err := p.containerDeps.Workspace.EnsureReplyPreferences(
+			ctx, project.ContainerName, string(project.ID),
+		); err != nil {
+			// The reply preference is a nicety layered on top of the run, not
+			// a precondition for it: a workspace whose AGENTS.md cannot be
+			// rewritten still runs, just without the managed block.
+			_ = err
+		}
 		if err := p.containerDeps.Workspace.EnsureSkillLinks(ctx, project.ContainerName); err != nil {
 			// Best-effort: a stale skill shim shouldn't block a run.
 			_ = err

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	service "github.com/futrx-com/remote.futrx.com/internal/service"
+	serviceagentprefs "github.com/futrx-com/remote.futrx.com/internal/service/agentprefs"
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
@@ -15,6 +16,7 @@ import (
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
+	servicesearch "github.com/futrx-com/remote.futrx.com/internal/service/search"
 	serviceselfupdate "github.com/futrx-com/remote.futrx.com/internal/service/selfupdate"
 	serviceserverinfo "github.com/futrx-com/remote.futrx.com/internal/service/serverinfo"
 	servicetranscribe "github.com/futrx-com/remote.futrx.com/internal/service/transcribe"
@@ -166,6 +168,14 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			deps.Services.Playbooks,
 			deps.Services.Auth,
 		),
+		AgentPreferences: httphandlers.NewAgentPreferencesHandler(
+			agentPreferencesService(deps.Services.AgentPrefs),
+			deps.Services.Auth,
+		),
+		Search: httphandlers.NewSearchHandler(
+			searchService(deps.Services.Search),
+			deps.Services.Auth,
+		),
 		GlobalSecrets: httphandlers.NewGlobalSecretsHandler(
 			globalSecretsService(deps.Services.GlobalSecrets),
 			deps.Services.Auth,
@@ -189,6 +199,23 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		Middleware:       middleware,
 		Static:           httptransport.NewStaticHandler(deps.Static),
 	}), nil
+}
+
+// agentPreferencesService and searchService narrow their concrete services to
+// the transport's interfaces while keeping a nil service nil, so the handlers
+// answer 503 on a deployment without the backing store instead of panicking.
+func agentPreferencesService(service *serviceagentprefs.Service) httphandlers.AgentPreferencesService {
+	if service == nil {
+		return nil
+	}
+	return service
+}
+
+func searchService(service *servicesearch.Service) httphandlers.SearchService {
+	if service == nil {
+		return nil
+	}
+	return service
 }
 
 // globalSecretsService narrows the concrete vault service to the transport's
@@ -260,6 +287,20 @@ func (g *accessGate) CallerAndAdmin(ctx context.Context, r *http.Request) (strin
 	}
 	isAdmin, _ := g.auth.IsAdmin(ctx, session.Email)
 	return session.Email, isAdmin, nil
+}
+
+// CallerSubject returns the OAuth subject of the caller's session, empty for
+// the local admin (whose settings are keyed by email instead). It exists so an
+// agent run can find the personal preferences of the person who started it.
+func (g *accessGate) CallerSubject(r *http.Request) string {
+	if g == nil || g.principal == nil {
+		return ""
+	}
+	session, err := g.principal.Session(r)
+	if err != nil || session == nil {
+		return ""
+	}
+	return session.Sub
 }
 
 func (g *accessGate) HasAccess(ctx context.Context, projectID serviceproject.ID, email string) (bool, error) {

@@ -34,6 +34,7 @@ export function WorkspaceContainer() {
             key={workspace.activeChat.id}
             chat={workspace.activeChat}
             projects={workspace.projects}
+            highlightAt={workspace.highlightAt}
             onHamburger={workspace.openSidebar}
           />
         ) : (

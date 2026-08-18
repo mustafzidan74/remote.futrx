@@ -3,6 +3,7 @@ import type { CodexDeviceLogin, KimiDeviceLogin } from "../../models/auth";
 import type { UserDirectory } from "../../state/hooks/users/useUserDirectory";
 import type { GlobalSkillLibrary } from "../../state/hooks/settings/useGlobalSkills";
 import type { PlaybookLibraryEditor } from "../../state/hooks/settings/usePlaybookLibrary";
+import type { AgentPreferencesEditor } from "../../state/hooks/settings/useAgentPreferences";
 import type { SecretsVault } from "../../state/hooks/settings/useSecretsVault";
 import type { ProjectMeta } from "../../models/project";
 import type { AuditLog } from "../../state/hooks/admin/useAuditLog";
@@ -11,8 +12,10 @@ import type { ServerInfo } from "../../models/serverInfo";
 import type { FleetResourcesView, FleetSettings } from "../../models/resources";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import type { ComponentType } from "preact";
-import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Info, Key, Menu, Mic, Monitor, Trash, Users, Zap } from "../primitives/icons";
+import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Globe, Info, Key, Menu, Mic, Monitor, Trash, Users, Zap } from "../primitives/icons";
 import { AppearanceSettings } from "./AppearanceSettings";
+import { ReplyLanguagePreference } from "./ReplyLanguagePreference";
+import { ReplyPreferencesSettings } from "./ReplyPreferencesSettings";
 import { AuditLogSettings } from "./AuditLogSettings";
 import { ClaudeAuthSettings } from "./ClaudeAuthSettings";
 import { CodexAuthSettings } from "./CodexAuthSettings";
@@ -37,6 +40,7 @@ export type SettingsTab =
   | "users"
   | "notifications"
   | "skills"
+  | "reply-preferences"
   | "playbooks"
   | "voice"
   | "usage"
@@ -89,6 +93,13 @@ const tabs: Array<{
     label: "Global skills",
     description: "Publish skills that every project can select.",
     Icon: Code,
+  },
+  {
+    id: "reply-preferences",
+    group: "agents",
+    label: "Reply preferences",
+    description: "Choose the language, tone, and house rules every agent answers with.",
+    Icon: Globe,
   },
   {
     id: "playbooks",
@@ -192,6 +203,7 @@ export function SettingsPage({
   userDirectory,
   globalSkills,
   playbooks,
+  agentPreferences,
   secretsVault,
   projects,
   usageDashboard,
@@ -201,6 +213,7 @@ export function SettingsPage({
   auditLog,
   projectTrash,
   appearanceTheme,
+  appearanceReplyLanguage,
   appearanceLoading,
   appearanceSaving,
   appearanceError,
@@ -222,6 +235,7 @@ export function SettingsPage({
   onCheckForUpdates,
   onApplyUpdate,
   onAppearanceThemeChange,
+  onReplyLanguageChange,
   onStartCodexDeviceLogin,
   onStartKimiDeviceLogin,
 }: {
@@ -247,6 +261,7 @@ export function SettingsPage({
   userDirectory: UserDirectory;
   globalSkills: GlobalSkillLibrary;
   playbooks: PlaybookLibraryEditor;
+  agentPreferences: AgentPreferencesEditor;
   secretsVault: SecretsVault;
   projects: ProjectMeta[];
   usageDashboard: UsageDashboard;
@@ -256,6 +271,7 @@ export function SettingsPage({
   auditLog: AuditLog;
   projectTrash: ProjectTrash;
   appearanceTheme: AppearanceTheme;
+  appearanceReplyLanguage: string;
   appearanceLoading: boolean;
   appearanceSaving: boolean;
   appearanceError: string | null;
@@ -277,6 +293,7 @@ export function SettingsPage({
   onCheckForUpdates: () => Promise<void>;
   onApplyUpdate: (tag?: string) => Promise<void>;
   onAppearanceThemeChange: (theme: AppearanceTheme) => void;
+  onReplyLanguageChange: (language: string) => void;
   onStartCodexDeviceLogin: () => Promise<void>;
   onStartKimiDeviceLogin: () => Promise<void>;
 }) {
@@ -334,13 +351,20 @@ export function SettingsPage({
             </header>
 
             {activeTab === "appearance" && (
-              <AppearanceSettings
-                theme={appearanceTheme}
-                loading={appearanceLoading}
-                saving={appearanceSaving}
-                error={appearanceError}
-                onThemeChange={onAppearanceThemeChange}
-              />
+              <div class="space-y-4">
+                <AppearanceSettings
+                  theme={appearanceTheme}
+                  loading={appearanceLoading}
+                  saving={appearanceSaving}
+                  error={appearanceError}
+                  onThemeChange={onAppearanceThemeChange}
+                />
+                <ReplyLanguagePreference
+                  language={appearanceReplyLanguage}
+                  disabled={appearanceLoading}
+                  onChange={onReplyLanguageChange}
+                />
+              </div>
             )}
 
             {activeTab === "agents" && (
@@ -387,6 +411,16 @@ export function SettingsPage({
                 projects={projects}
               />
             )}
+
+            {activeTab === "reply-preferences" &&
+              (isAdmin ? (
+                <ReplyPreferencesSettings editor={agentPreferences} />
+              ) : (
+                <SettingsNotice>
+                  Reply language, tone, and house rules are set by server administrators. You can
+                  still override the language for your own chats in Appearance.
+                </SettingsNotice>
+              ))}
 
             {activeTab === "playbooks" &&
               (isAdmin ? (

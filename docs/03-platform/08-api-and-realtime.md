@@ -48,7 +48,7 @@ All `/api/*` and `/ws*` requests require a signed session for a registered user.
 | POST | `/api/admin/transcription/test` | Transcribe a one-second silent sample and report the round trip; admin only |
 | GET | `/api/admin/audit` | Newest-first page of audit entries, filtered by `actor`, `action` prefix, `target`, `from`, `to`, `limit`, `cursor`; admin only |
 | GET | `/api/admin/audit/export` | Stream the stored audit JSONL for a `from`/`to` range as a download; admin only |
-| GET, PATCH | `/api/me/settings` | Read or update current user's appearance and chat defaults |
+| GET, PATCH | `/api/me/settings` | Read or update current user's appearance, chat defaults, and personal agent reply language ([Reply preferences](../02-workspaces/18-reply-preferences-and-search.md)) |
 | GET | `/api/server/info` | Host, CPU, memory, storage, network, and process snapshot |
 
 ## Agent authentication and skills
@@ -68,6 +68,7 @@ All `/api/*` and `/ws*` requests require a signed session for a registered user.
 | GET | `/api/templates` | List project templates, their declared `inputs`, and whether each has a pre-built image on this host |
 | GET | `/api/playbooks` | List the composer's playbook library; any signed-in user |
 | GET, PUT | `/api/admin/playbooks` | Read or replace the whole playbook library; admin only |
+| GET, PUT | `/api/admin/agent-preferences` | Read or edit the platform agent reply language, tone, house rules, and scope; admin only ([Reply preferences](../02-workspaces/18-reply-preferences-and-search.md)) |
 
 `{provider}` can also be `antigravity` for the generic status binding, but
 Antigravity has no host login route. Its status is unavailable by design
@@ -168,6 +169,7 @@ and access on every fire.
 | POST, HEAD, PATCH, GET, DELETE | `/api/uploads[/<upload-id>]` | tus resumable upload lifecycle |
 | POST | `/api/transcribe` | Multipart (`audio`, `language`, `durationMs`, `chatId`) voice clip streamed to the transcription provider; 25 MB and 5-minute ceilings, 30/min per user |
 | GET | `/api/transcribe/config` | Whether server transcription is available, and its limits; carries no provider identity |
+| GET | `/api/search?q=&projectId=&limit=` | Full-text search over chat titles, prompts, and agent answers, filtered to the caller's chats; a query under two characters answers `200` with an empty list ([Chat search](../02-workspaces/18-reply-preferences-and-search.md)) |
 | GET | `/__remote_inspector` | Same-origin preview inspection wrapper |
 | GET, POST | `/api/sessions` | List or create host tmux sessions |
 | DELETE | `/api/sessions/{name}` | Delete tmux session |

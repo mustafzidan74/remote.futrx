@@ -27,6 +27,10 @@ type Provisioner struct {
 	publisher       *assets.Publisher
 	instructions    []byte
 	globalSkillsDir string
+	// preferencesState carries the platform reply-preference source, which is
+	// bound after construction because the services that own it are built
+	// later. See preferences.go.
+	preferencesState
 }
 
 // NewProvisioner returns a workspace provisioner backed by shared container

@@ -23,6 +23,11 @@ type CredentialSynchronizer interface {
 type WorkspaceProvisioner interface {
 	EnsureAgentInstructions(context.Context, string) error
 	EnsureSkillLinks(context.Context, string) error
+	// EnsureReplyPreferences regenerates the platform's managed reply-
+	// preference block inside the project's own /workspace/AGENTS.md. It takes
+	// the project id as well as the container name because the preference can
+	// be scoped to projects created after it was set.
+	EnsureReplyPreferences(ctx context.Context, containerName, projectID string) error
 }
 
 // BrowserProvisioner publishes browser tooling and starts its shared core.

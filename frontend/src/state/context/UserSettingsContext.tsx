@@ -19,6 +19,7 @@ interface UserSettingsContextValue {
   refresh: () => Promise<void>;
   setTheme: (theme: AppearanceTheme) => Promise<void>;
   setChatSettings: (chat: Partial<ChatSettings>) => Promise<void>;
+  setReplyLanguage: (language: string) => Promise<void>;
 }
 
 const UserSettingsContext = createContext<UserSettingsContextValue | null>(null);
@@ -73,6 +74,24 @@ export function UserSettingsProvider({ children }: { children: ComponentChildren
     }
   }, [settings]);
 
+  // The personal override of the platform reply language. It is optimistic
+  // like the theme: the field is a text input in its custom mode, so waiting
+  // for the server on every keystroke would make it unusable.
+  const setReplyLanguage = useCallback(async (language: string) => {
+    const previous = settings;
+    setSettings({ ...settings, agent: { ...settings.agent, replyLanguage: language } });
+    setSaving(true);
+    try {
+      setSettings(await settingsApi.update({ agent: { replyLanguage: language } }));
+      setError(null);
+    } catch (e) {
+      setSettings(previous);
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }, [settings]);
+
   const setChatSettings = useCallback(async (chat: Partial<ChatSettings>) => {
     const previous = settings;
     setSettings({ ...settings, chat: { ...settings.chat, ...chat } });
@@ -96,7 +115,8 @@ export function UserSettingsProvider({ children }: { children: ComponentChildren
     refresh,
     setTheme,
     setChatSettings,
-  }), [settings, loading, saving, error, refresh, setTheme, setChatSettings]);
+    setReplyLanguage,
+  }), [settings, loading, saving, error, refresh, setTheme, setChatSettings, setReplyLanguage]);
 
   return (
     <UserSettingsContext.Provider value={value}>

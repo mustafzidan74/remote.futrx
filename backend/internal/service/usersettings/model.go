@@ -1,6 +1,10 @@
 package usersettings
 
-import "errors"
+import (
+	"errors"
+	"strings"
+	"unicode/utf8"
+)
 
 var (
 	ErrNotFound               = errors.New("user settings not found")
@@ -10,7 +14,13 @@ var (
 	ErrInvalidChatMode        = errors.New("invalid chat mode")
 	ErrInvalidReasoningEffort = errors.New("invalid reasoning effort")
 	ErrInvalidServiceTier     = errors.New("invalid service tier")
+	ErrInvalidReplyLanguage   = errors.New("invalid reply language")
 )
+
+// MaxReplyLanguageLength caps a custom reply-language label. It mirrors the
+// platform-side cap in service/agentprefs so neither side can store a value
+// the other refuses.
+const MaxReplyLanguageLength = 64
 
 type Key string
 
@@ -27,7 +37,18 @@ const (
 type Settings struct {
 	Appearance Appearance `json:"appearance"`
 	Chat       Chat       `json:"chat"`
+	Agent      Agent      `json:"agent"`
 	UpdatedAt  int64      `json:"updatedAt,omitempty"`
+}
+
+// Agent holds this user's personal overrides of the platform-wide agent
+// preferences. Only the reply language is personal: tone and house rules are
+// platform policy an individual cannot opt out of.
+type Agent struct {
+	// ReplyLanguage overrides the platform reply language for runs this user
+	// starts. Empty means "follow the platform setting"; "auto" is a real
+	// choice meaning "mirror whatever I write in".
+	ReplyLanguage string `json:"replyLanguage"`
 }
 
 type Appearance struct {
@@ -88,6 +109,11 @@ type Chat struct {
 type UpdateInput struct {
 	Appearance *AppearanceUpdate `json:"appearance,omitempty"`
 	Chat       *ChatUpdate       `json:"chat,omitempty"`
+	Agent      *AgentUpdate      `json:"agent,omitempty"`
+}
+
+type AgentUpdate struct {
+	ReplyLanguage *string `json:"replyLanguage,omitempty"`
 }
 
 type AppearanceUpdate struct {
@@ -112,7 +138,15 @@ func DefaultSettings() Settings {
 			ReasoningEffort: ReasoningEffortAuto,
 			ServiceTier:     ServiceTierAuto,
 		},
+		Agent: Agent{ReplyLanguage: ""},
 	}
+}
+
+// ValidReplyLanguage accepts an empty value ("follow the platform"), any
+// built-in id, and any single-line custom label within the cap.
+func ValidReplyLanguage(language string) bool {
+	return utf8.RuneCountInString(language) <= MaxReplyLanguageLength &&
+		!strings.ContainsAny(language, "\n\r")
 }
 
 func ValidTheme(theme Theme) bool {

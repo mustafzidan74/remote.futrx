@@ -1,6 +1,6 @@
 import type { ComponentChildren } from "preact";
 import { createContext } from "preact";
-import { useContext, useEffect, useReducer, useRef } from "preact/hooks";
+import { useContext, useEffect, useReducer, useRef, useState } from "preact/hooks";
 import type { ChatMeta, CreateChatInput } from "../../models/chat";
 import type { ProjectMeta } from "../../models/project";
 import type { ProjectHealthMap } from "../workspace/projectHealthState";
@@ -29,6 +29,13 @@ interface WorkspaceContextValue {
   activeChat: ChatMeta | null;
   ui: WorkspaceUiState;
   selectChat: (chatId: string | null) => void;
+  /**
+   * Opens a chat and asks the thread to scroll to, and briefly flash, the
+   * message at `at` (unix ms). Used by search hits and by `?chat=&at=` links.
+   */
+  selectChatAt: (chatId: string, at: number) => void;
+  /** The message instant the thread should reveal, or null. */
+  highlightAt: number | null;
   openSidebar: () => void;
   closeSidebar: () => void;
   showChat: () => void;
@@ -67,10 +74,15 @@ export function WorkspaceProvider({
     newProjectState.createInitial()
   );
   const activeChat = workspaceSidebarState.activeChat(data.chats, ui.activeChatId);
+  // The message a search hit or deep link asked for. It is state rather than a
+  // ref because the thread reacts to it, and it is cleared as soon as another
+  // chat is selected so a stale instant never re-scrolls a later visit.
+  const [highlightAt, setHighlightAt] = useState<number | null>(null);
 
   // A notification links to `/?chat=<id>`. Consume that parameter once the chat
   // list has loaded, then fall back to the usual "most recent chat" behaviour.
   const deepLinkChatId = useRef<string | null>(chatDeepLinkState.parse(location.search));
+  const deepLinkAt = useRef<number | null>(chatDeepLinkState.parseAt(location.search));
   // A health notification links to `/?project=<id>`. It opens the project's
   // settings page, whose Info tab is the same view the sidebar dot opens.
   const deepLinkProjectId = useRef<string | null>(projectDeepLinkState.parse(location.search));
@@ -87,6 +99,8 @@ export function WorkspaceProvider({
       );
       if (data.chats.some((chat) => chat.id === requested)) {
         dispatch({ type: "select-chat", chatId: requested });
+        setHighlightAt(deepLinkAt.current);
+        deepLinkAt.current = null;
         return;
       }
     }
@@ -195,7 +209,15 @@ export function WorkspaceProvider({
         health: data.health,
         activeChat,
         ui,
-        selectChat: (chatId) => dispatch({ type: "select-chat", chatId }),
+        selectChat: (chatId) => {
+          setHighlightAt(null);
+          dispatch({ type: "select-chat", chatId });
+        },
+        selectChatAt: (chatId, at) => {
+          setHighlightAt(at > 0 ? at : null);
+          dispatch({ type: "select-chat", chatId });
+        },
+        highlightAt,
         openSidebar: () => dispatch({ type: "open-sidebar" }),
         closeSidebar: () => dispatch({ type: "close-sidebar" }),
         showChat: () => dispatch({ type: "show-chat" }),

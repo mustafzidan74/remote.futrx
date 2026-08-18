@@ -93,6 +93,7 @@ func main() {
 		Notifications:     storeSet.Notifications,
 		Transcription:     storeSet.Transcription,
 		Playbooks:         storeSet.Playbooks,
+		AgentPreferences:  storeSet.AgentPreferences,
 		GlobalSkills:      storeSet.GlobalSkills,
 		GlobalSecrets:     storeSet.GlobalSecrets,
 		SecretsContainers: service.SecretsContainerDependencies{

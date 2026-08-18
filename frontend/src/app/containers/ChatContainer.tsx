@@ -25,10 +25,13 @@ import { useWorkspaceGitRepos } from "../../state/hooks/chat/useWorkspaceGitRepo
 export function ChatContainer({
   chat,
   projects,
+  highlightAt,
   onHamburger,
 }: {
   chat: ChatMeta;
   projects: ProjectMeta[];
+  /** A message instant a search hit or deep link asked the thread to reveal. */
+  highlightAt?: number | null;
   onHamburger: () => void;
 }) {
   const {
@@ -223,6 +226,7 @@ export function ChatContainer({
             chat={displayMeta}
             project={chatProject}
             blocks={blocks}
+            highlightAt={highlightAt ?? null}
             hasOlder={hasOlder}
             loadingOlder={loadingOlder}
             status={status}

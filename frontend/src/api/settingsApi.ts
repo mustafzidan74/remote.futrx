@@ -58,5 +58,15 @@ function normalizeUserSettings(settings: UserSettings): UserSettings {
         ? serviceTier
         : DEFAULT_USER_SETTINGS.chat.serviceTier,
     },
+    agent: {
+      ...DEFAULT_USER_SETTINGS.agent,
+      ...settings?.agent,
+      // A custom language label is free text, so the only shape check possible
+      // here is "is it a string at all".
+      replyLanguage:
+        typeof settings?.agent?.replyLanguage === "string"
+          ? settings.agent.replyLanguage
+          : DEFAULT_USER_SETTINGS.agent.replyLanguage,
+    },
   };
 }

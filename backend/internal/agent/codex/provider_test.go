@@ -381,6 +381,9 @@ type fakeCodexWorkspace struct{}
 func (fakeCodexWorkspace) EnsureAgentInstructions(context.Context, string) error { return nil }
 
 func (fakeCodexWorkspace) EnsureSkillLinks(context.Context, string) error { return nil }
+func (fakeCodexWorkspace) EnsureReplyPreferences(context.Context, string, string) error {
+	return nil
+}
 
 type fakeCodexBrowser struct {
 	agentBrowserMCPCalls  int

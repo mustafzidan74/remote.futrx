@@ -35,6 +35,14 @@ type ProjectAccessChecker interface {
 	HasAccess(ctx context.Context, projectID serviceproject.ID, email string) (bool, error)
 }
 
+// callerSubjectResolver is an optional capability of the access gate: the
+// OAuth subject of the session, which is the primary key of that user's
+// settings document. It is a separate interface so a gate that cannot answer
+// simply does not implement it, and every existing test double keeps working.
+type callerSubjectResolver interface {
+	CallerSubject(r *http.Request) string
+}
+
 type ChatSocket struct {
 	chats  ChatLookup
 	hub    *runhub.Hub
@@ -77,7 +85,7 @@ func (s *ChatSocket) handle(upgrader websocket.Upgrader, w http.ResponseWriter, 
 		}
 		return
 	}
-	email, isAdmin := "", true
+	email, subject, isAdmin := "", "", true
 	if s.access != nil {
 		email, isAdmin, err = s.access.CallerAndAdmin(r.Context(), r)
 		if err != nil || email == "" {
@@ -94,6 +102,9 @@ func (s *ChatSocket) handle(upgrader websocket.Upgrader, w http.ResponseWriter, 
 				http.Error(w, "not a member of this project", http.StatusForbidden)
 				return
 			}
+		}
+		if resolver, ok := s.access.(callerSubjectResolver); ok {
+			subject = resolver.CallerSubject(r)
 		}
 	}
 
@@ -165,6 +176,7 @@ func (s *ChatSocket) handle(upgrader websocket.Upgrader, w http.ResponseWriter, 
 				Prompt: msg.Text,
 				Actor: serviceprompt.Actor{
 					Email:   email,
+					Sub:     subject,
 					IsAdmin: isAdmin,
 				},
 				Synthetic:     servicechat.NormalizeSynthetic(msg.Synthetic),

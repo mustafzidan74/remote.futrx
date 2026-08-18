@@ -3,6 +3,7 @@ package stores
 import (
 	"fmt"
 
+	serviceagentprefs "github.com/futrx-com/remote.futrx.com/internal/service/agentprefs"
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
@@ -20,6 +21,7 @@ import (
 	serviceusage "github.com/futrx-com/remote.futrx.com/internal/service/usage"
 	serviceuser "github.com/futrx-com/remote.futrx.com/internal/service/user"
 	serviceusersettings "github.com/futrx-com/remote.futrx.com/internal/service/usersettings"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/fileagentprefs"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileaudit"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileauth"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filechat"
@@ -65,6 +67,8 @@ type Stores struct {
 	Usage          serviceusage.Repository
 	Transcription  servicetranscribe.Store
 	Audit          serviceaudit.Store
+	// AgentPreferences backs the platform-wide agent reply preferences.
+	AgentPreferences serviceagentprefs.Repository
 }
 
 func New(dataDir string) (Stores, error) {
@@ -158,6 +162,11 @@ func New(dataDir string) (Stores, error) {
 		return Stores{}, fmt.Errorf("init audit store: %w", err)
 	}
 
+	agentPreferences, err := fileagentprefs.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init agent preferences store: %w", err)
+	}
+
 	return Stores{
 		Chats:          chats,
 		Projects:       projects,
@@ -178,5 +187,7 @@ func New(dataDir string) (Stores, error) {
 		Usage:          usage,
 		Transcription:  transcription,
 		Audit:          auditLog,
+
+		AgentPreferences: agentPreferences,
 	}, nil
 }

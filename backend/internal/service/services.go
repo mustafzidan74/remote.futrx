@@ -12,6 +12,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/googleoauth"
 	agentauth "github.com/futrx-com/remote.futrx.com/internal/service/agent/auth"
+	serviceagentprefs "github.com/futrx-com/remote.futrx.com/internal/service/agentprefs"
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
@@ -27,6 +28,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/service/runhub"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
 	"github.com/futrx-com/remote.futrx.com/internal/service/schedulecapability"
+	servicesearch "github.com/futrx-com/remote.futrx.com/internal/service/search"
 	serviceserverinfo "github.com/futrx-com/remote.futrx.com/internal/service/serverinfo"
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
 	serviceskills "github.com/futrx-com/remote.futrx.com/internal/service/skills"
@@ -66,6 +68,9 @@ type Dependencies struct {
 	Transcription     servicetranscribe.Store
 	Playbooks         serviceplaybooks.Repository
 	GlobalSkills      serviceskills.GlobalRepository
+	// AgentPreferences backs the platform-wide agent reply preferences. Nil
+	// leaves the panel unavailable and injects nothing into any run.
+	AgentPreferences serviceagentprefs.Repository
 	// GlobalSecrets backs the platform secrets vault. Nil leaves the vault
 	// unavailable: projects keep their own secrets and nothing is inherited.
 	GlobalSecrets serviceglobalsecrets.Store
@@ -138,6 +143,8 @@ type Services struct {
 	Notifications *servicenotify.Service
 	Transcription *servicetranscribe.Service
 	Playbooks     *serviceplaybooks.Service
+	AgentPrefs    *serviceagentprefs.Service
+	Search        *servicesearch.Service
 	GlobalSecrets *serviceglobalsecrets.Service
 	Skills        *serviceskills.Catalog
 	Tmux          *servicetmux.Service
@@ -169,9 +176,14 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 
 	workspace := workspacehub.New()
 	var runs *runhub.Hub
+	// The search index is created late (it needs the chat access service) but
+	// the repository decorator that feeds it is created here, so the handle is
+	// filled in afterwards — the same late-binding shape the run hub uses.
+	chatSearchIndex := &chatSearchIndexer{}
 	chats := notifyingChatRepository{
 		Repository: deps.Chats,
 		workspace:  workspace,
+		search:     chatSearchIndex,
 		running: func(id servicechat.ID) bool {
 			return runs != nil && runs.IsRunning(id)
 		},
@@ -308,6 +320,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 			return Services{}, err
 		}
 	}
+	userSettingsService := serviceusersettings.New(deps.UserSettings)
 	userService := serviceuser.New(deps.Users, serviceuser.WithAudit(auditLog))
 	authService, err := newAuth(ctx, deps.Auth, userService, deps.AuthBaseURL, auditLog)
 	if err != nil {
@@ -351,11 +364,25 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Schedules: postRunSchedules{schedules: &scheduleService},
 		Notifier:  runNotifications,
 	})
+	// The reply-preference service is built before the prompt service so a run
+	// can carry the preamble, and before the container stack is told about it
+	// so the very first run already regenerates the managed AGENTS.md block.
+	agentPreferences := serviceagentprefs.New(
+		deps.AgentPreferences,
+		serviceagentprefs.WithAudit(auditLog),
+		serviceagentprefs.WithUserOverrides(userReplyLanguage{settings: userSettingsService}),
+		serviceagentprefs.WithProjects(projectCreationDates{projects: projectService}),
+	)
+	if deps.AgentPreferences != nil {
+		bindWorkspacePreferences(deps.AgentContainers.Workspace, agentPreferences)
+	}
+
 	promptOptions := []prompt.Option{
 		prompt.WithScheduleToolIssuer(scheduleCaps),
 		prompt.WithRunObserver(runNotifications),
 		prompt.WithRunObserver(postRunDriver),
 		prompt.WithAudit(auditLog),
+		prompt.WithReplyPreferences(replyPreferencePreamble{prefs: agentPreferences}),
 	}
 	if usageService != nil {
 		promptOptions = append(promptOptions, prompt.WithUsageRecorder(usageService))
@@ -396,7 +423,6 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		}
 	}
 
-	userSettingsService := serviceusersettings.New(deps.UserSettings)
 	skillService := serviceskills.New()
 	skillCatalog := serviceskills.NewCatalog(skillService, projectService, authService).
 		WithGlobalLibrary(globalSkillService)
@@ -445,6 +471,18 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	})
 	healthService.Start(ctx)
 
+	// Full-text chat search. The index is built in the background because a
+	// large history takes seconds to walk and nothing else may wait on it;
+	// live updates arrive through the notifying chat repository above, which
+	// is why the indexer is attached to it rather than polled.
+	searchService := servicesearch.New(
+		chats,
+		servicesearch.WithAccess(chatAccessService),
+		servicesearch.WithProjects(projectService),
+	)
+	chatSearchIndex.attach(searchService)
+	searchService.Start(ctx)
+
 	return Services{
 		Chats:         chatService,
 		ChatAccess:    chatAccessService,
@@ -463,6 +501,8 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Notifications: notifications,
 		Transcription: transcription,
 		Playbooks:     playbookService,
+		AgentPrefs:    agentPreferences,
+		Search:        searchService,
 		GlobalSecrets: globalSecrets,
 		Skills:        skillCatalog,
 		Tmux:          tmuxService,
@@ -831,4 +871,111 @@ func (r chatTmuxResolver) ValidName(name string) bool {
 
 func (r chatTmuxResolver) Cwd(ctx context.Context, session string) (string, error) {
 	return r.client.Cwd(session)
+}
+
+// replyPreferencePreamble adapts the reply-preference service to the port the
+// prompt service declares, so neither package imports the other's vocabulary.
+type replyPreferencePreamble struct {
+	prefs *serviceagentprefs.Service
+}
+
+func (p replyPreferencePreamble) RunPreamble(ctx context.Context, email, sub, projectID string) string {
+	return p.prefs.RunPreamble(
+		ctx,
+		serviceagentprefs.Identity{Email: email, Sub: sub},
+		projectID,
+	)
+}
+
+// userReplyLanguage reads one user's personal reply-language override out of
+// the user settings document. Settings are keyed by OAuth subject when the
+// session had one and by email otherwise, which is why both halves travel.
+type userReplyLanguage struct {
+	settings *serviceusersettings.Service
+}
+
+func (u userReplyLanguage) ReplyLanguage(ctx context.Context, identity serviceagentprefs.Identity) string {
+	if u.settings == nil {
+		return ""
+	}
+	key, err := serviceusersettings.KeyFromSession(identity.Email, identity.Sub)
+	if err != nil {
+		return ""
+	}
+	settings, err := u.settings.Get(ctx, key)
+	if err != nil {
+		return ""
+	}
+	return settings.Agent.ReplyLanguage
+}
+
+// projectCreationDates answers the one project fact the "new projects only"
+// scope needs, without handing the preference service the project service.
+type projectCreationDates struct {
+	projects *serviceproject.Service
+}
+
+func (d projectCreationDates) CreatedAt(ctx context.Context, projectID string) (int64, bool) {
+	if d.projects == nil || projectID == "" {
+		return 0, false
+	}
+	meta, err := d.projects.Get(ctx, serviceproject.ID(projectID))
+	if err != nil {
+		return 0, false
+	}
+	return meta.CreatedAt, true
+}
+
+// workspacePreferenceSink is the optional capability a workspace provisioner
+// advertises when it can host the managed reply-preference block. The
+// container stack is built before this package runs, so the binding is a
+// runtime type assertion rather than a constructor argument.
+type workspacePreferenceSink interface {
+	SetReplyPreferences(func(ctx context.Context, projectID string) (string, error))
+}
+
+func bindWorkspacePreferences(
+	workspace provisioning.WorkspaceProvisioner,
+	prefs *serviceagentprefs.Service,
+) {
+	sink, ok := workspace.(workspacePreferenceSink)
+	if !ok || sink == nil {
+		return
+	}
+	sink.SetReplyPreferences(prefs.WorkspaceBlock)
+}
+
+// chatSearchIndexer is the late-bound handle the chat repository decorator
+// pushes events through. It is a separate type rather than a plain pointer
+// because the decorator is built before the index exists and must be a no-op
+// until it does.
+type chatSearchIndexer struct {
+	search *servicesearch.Service
+}
+
+func (i *chatSearchIndexer) attach(search *servicesearch.Service) {
+	if i != nil {
+		i.search = search
+	}
+}
+
+func (i *chatSearchIndexer) IndexChat(meta servicechat.Meta) {
+	if i == nil || i.search == nil {
+		return
+	}
+	i.search.IndexChat(meta)
+}
+
+func (i *chatSearchIndexer) IndexEvent(id servicechat.ID, event servicechat.Event) {
+	if i == nil || i.search == nil {
+		return
+	}
+	i.search.IndexEvent(id, event)
+}
+
+func (i *chatSearchIndexer) RemoveChat(id servicechat.ID) {
+	if i == nil || i.search == nil {
+		return
+	}
+	i.search.RemoveChat(id)
 }
