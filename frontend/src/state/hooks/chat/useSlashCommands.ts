@@ -360,8 +360,16 @@ export function useSlashCommands({
         return;
       }
       report({ tone: "busy", text: `Loading ${url} in the Agent Browser…` });
-      void agentBrowser.openUrl(url).then(() => {
-        if (alive.current) report({ tone: "info", text: `Loaded ${url} in the Agent Browser.` });
+      void agentBrowser.openUrl(url).then((result) => {
+        if (!alive.current) return;
+        report(
+          result.ok
+            ? { tone: "info", text: `Loaded ${url} in the Agent Browser.` }
+            : {
+                tone: "error",
+                text: result.error || `Could not load ${url} in the Agent Browser.`,
+              },
+        );
       });
     },
     [agentBrowser, report, requireProject],
