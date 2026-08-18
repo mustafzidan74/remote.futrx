@@ -112,7 +112,7 @@ function IssuedLink({
         <button
           type="button"
           onClick={onDismiss}
-          class="h-7 w-7 ml-auto rounded text-ink-300 hover:text-ink-50 hover:bg-white/[0.08] grid place-items-center"
+          class="h-8 w-8 ml-auto rounded text-ink-300 hover:text-ink-50 hover:bg-white/[0.08] grid place-items-center"
           aria-label="Hide link"
           title="Hide link"
         >
@@ -273,7 +273,7 @@ function ActiveShareRow({
           type="button"
           onClick={revoke}
           disabled={busy}
-          class="h-7 w-7 rounded text-ink-300 hover:text-accent-red hover:bg-white/[0.08] grid place-items-center disabled:opacity-50"
+          class="h-8 w-8 rounded text-ink-300 hover:text-accent-red hover:bg-white/[0.08] grid place-items-center disabled:opacity-50"
           aria-label={`Revoke the public link for port ${share.port}`}
           title="Revoke link"
         >

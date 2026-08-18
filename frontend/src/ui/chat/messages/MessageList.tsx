@@ -2,6 +2,7 @@ import type { RefObject } from "preact";
 import { useEffect, useMemo, useState } from "preact/hooks";
 import type { ChatStatus } from "../../../models/chat";
 import type { ChatMessageBlock } from "../../../models/chatMessage";
+import type { PlaybookLibrary } from "../../../state/hooks/chat/usePlaybooks";
 import { Loader } from "../../primitives/icons";
 import { ErrorBanner } from "../../primitives/Feedback";
 import { MessageBlock } from "./MessageBlock";
@@ -18,6 +19,7 @@ export function MessageList({
   error,
   chatId,
   cwd,
+  playbooks,
   scrollRef,
   contentRef,
   bottomRef,
@@ -33,6 +35,7 @@ export function MessageList({
   error: string | null;
   chatId: string;
   cwd?: string;
+  playbooks?: PlaybookLibrary;
   scrollRef: RefObject<HTMLDivElement>;
   contentRef: RefObject<HTMLDivElement>;
   bottomRef: RefObject<HTMLDivElement>;
@@ -83,7 +86,7 @@ export function MessageList({
           </div>
         )}
 
-        {status !== "loading" && blocks.length === 0 && <ThreadEmptyState cwd={cwd} />}
+        {status !== "loading" && blocks.length === 0 && <ThreadEmptyState cwd={cwd} playbooks={playbooks} />}
 
         {(hiddenCount > 0 || hasOlder) && (
           <div class="flex justify-center">

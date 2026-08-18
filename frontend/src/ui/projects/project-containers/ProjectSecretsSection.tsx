@@ -222,14 +222,14 @@ function SecretRow({
           <button
             type="button"
             onClick={() => setRevealed(!revealed)}
-            class="h-7 px-2 rounded text-[11px] text-ink-300 hover:text-ink-100 hover:bg-white/[0.08]"
+            class="h-8 px-2 rounded text-[11px] text-ink-300 hover:text-ink-100 hover:bg-white/[0.08]"
           >
             {revealed ? "hide" : "show"}
           </button>
           <button
             type="button"
             onClick={() => setEditing(true)}
-            class="h-7 px-2 rounded text-[11px] text-ink-300 hover:text-ink-100 hover:bg-white/[0.08]"
+            class="h-8 px-2 rounded text-[11px] text-ink-300 hover:text-ink-100 hover:bg-white/[0.08]"
           >
             edit
           </button>
@@ -237,7 +237,7 @@ function SecretRow({
             type="button"
             onClick={remove}
             disabled={busy}
-            class="h-7 w-7 rounded text-ink-300 hover:text-accent-red hover:bg-white/[0.08] grid place-items-center disabled:opacity-50"
+            class="h-8 w-8 rounded text-ink-300 hover:text-accent-red hover:bg-white/[0.08] grid place-items-center disabled:opacity-50"
             aria-label="Delete"
             title="Delete"
           >

@@ -244,7 +244,7 @@ function PlaybookCard({
             onChange={(event) =>
               onChange({ mode: (event.currentTarget as HTMLSelectElement).value as ChatMode | "" })
             }
-            class="h-7 rounded-md border border-white/10 bg-[#0b0d11] px-1.5 text-[11.5px] text-ink-100 focus:outline-none"
+            class="h-8 rounded-md border border-white/10 bg-[#0b0d11] px-1.5 text-[11.5px] text-ink-100 focus:outline-none"
           >
             <option value="">Keep chat's mode</option>
             {CHAT_MODE_OPTIONS.map((option) => (
@@ -264,7 +264,7 @@ function PlaybookCard({
                 provider: (event.currentTarget as HTMLSelectElement).value as ChatProvider | "",
               })
             }
-            class="h-7 rounded-md border border-white/10 bg-[#0b0d11] px-1.5 text-[11.5px] text-ink-100 focus:outline-none"
+            class="h-8 rounded-md border border-white/10 bg-[#0b0d11] px-1.5 text-[11.5px] text-ink-100 focus:outline-none"
           >
             <option value="">Keep chat's provider</option>
             {CHAT_PROVIDER_OPTIONS.map((option) => (
@@ -278,7 +278,7 @@ function PlaybookCard({
         <button
           type="button"
           onClick={() => setSkillsOpen((open) => !open)}
-          class="inline-flex h-7 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.05] px-2.5
+          class="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.05] px-2.5
                  text-[11.5px] font-medium text-ink-200 transition hover:bg-white/[0.09]"
           aria-expanded={skillsOpen}
         >

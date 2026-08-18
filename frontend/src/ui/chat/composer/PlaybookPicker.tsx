@@ -32,38 +32,32 @@ export function PlaybookPicker({ library, disabled }: { library: PlaybookLibrary
   const count = library.playbooks.length;
 
   return (
-    <div ref={rootRef} class="codex-playbook-control-root relative w-[122px] flex-none sm:w-[136px]">
+    <div ref={rootRef} class="codex-playbook-control-root relative flex-none">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         disabled={disabled}
-        class={`codex-playbook-control flex h-7 w-full items-center justify-between gap-1.5 rounded-md px-2 text-left transition
-                disabled:cursor-not-allowed disabled:opacity-40
-                ${open ? "bg-accent-blue/[0.14] text-accent-blue" : "bg-accent-blue/[0.08] text-ink-100 hover:bg-accent-blue/[0.12]"}`}
+        class={`codex-playbook-control composer-pill ${open ? "composer-pill-active" : ""}`}
         aria-haspopup="menu"
         aria-expanded={open}
         title="Playbooks — one-click prompt templates"
       >
-        <span class="flex min-w-0 items-center gap-1.5">
-          {library.running ? (
-            <Loader class="h-3 w-3 flex-none animate-spin" />
-          ) : (
-            <Zap class="h-3 w-3 flex-none" />
-          )}
-          <span class="truncate text-[11.5px] font-semibold">Playbooks</span>
+        {library.running ? (
+          <Loader class="h-4 w-4 flex-none animate-spin text-accent-blue" />
+        ) : (
+          <Zap class="h-4 w-4 flex-none text-ink-400" aria-hidden="true" />
+        )}
+        <span class="truncate font-semibold text-ink-100">Playbooks</span>
+        <span class="rounded bg-white/10 px-1 py-0.5 text-[10px] leading-none text-ink-300">
+          {library.loading ? "..." : count}
         </span>
-        <span class="inline-flex flex-none items-center gap-1">
-          <span class="rounded bg-white/10 px-1 py-0.5 text-[10px] leading-none text-ink-300">
-            {library.loading ? "..." : count}
-          </span>
-          <ChevronDown class="h-3 w-3 flex-none" />
-        </span>
+        <ChevronDown class="h-4 w-4 flex-none text-ink-400" aria-hidden="true" />
       </button>
 
       {open && (
         <div
-          class="theme-menu-surface absolute left-0 bottom-full z-40 mb-2 w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg
-                 border border-white/10 bg-[#14161d] shadow-2xl sm:left-auto sm:right-0 sm:w-[420px]"
+          class="popover-surface theme-menu-surface absolute left-0 bottom-full z-40 mb-2
+                 w-[calc(100vw-1.5rem)] sm:left-auto sm:right-0 sm:w-[420px]"
           role="menu"
         >
           <div class="border-b border-white/10 bg-[#191a1f] px-3 py-2 text-[11px] leading-4 text-ink-400">

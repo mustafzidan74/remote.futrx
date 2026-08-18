@@ -17,7 +17,7 @@ export function SelectedSkillChips({
         {skills.map((skill) => (
           <span
             key={`${skill.provider || "skill"}:${skill.source || ""}:${skill.command || skill.name}`}
-            class="inline-flex h-7 max-w-full items-center gap-1.5 rounded-md bg-white/[0.06] px-2 text-[12px] text-ink-200"
+            class="inline-flex h-8 max-w-full items-center gap-1.5 rounded-md bg-white/[0.06] px-2 text-[12px] text-ink-200"
             title={skillTitle(skill)}
           >
             <span class="truncate">{skill.name || skill.command}</span>

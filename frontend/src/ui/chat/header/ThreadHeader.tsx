@@ -1,11 +1,10 @@
 import type { ComponentChildren } from "preact";
 import type { ChatMeta } from "../../../models/chat";
 import type { ProjectMeta } from "../../../models/project";
-import { providerDisplayLabel } from "../../../config/chat";
 import { Menu, MessageSquare } from "../../primitives/icons";
 import { ChatPreviewChip } from "../../preview/ChatPreviewChip";
 import type { ChatPolicies } from "../../../state/hooks/chat/useChatPolicies";
-import { AutopilotPill } from "./AutopilotPill";
+import { ChatStatusPill } from "./ChatStatusPill";
 
 /**
  * The chat header is deliberately a two-row layout on narrow viewports and a
@@ -13,8 +12,11 @@ import { AutopilotPill } from "./AutopilotPill";
  * there is room beside it, so adding another control (preview, autopilot, …)
  * can never squeeze the title into a two-character stub.
  *
+ * The title says what the chat is; `ChatStatusPill` says what it is doing.
+ * Those are the only two claims the header makes, and each is made once.
+ *
  * Extra header controls belong in `actions`, which renders in the same
- * right-aligned flex group as the preview chip and inherits its gap.
+ * right-aligned flex group as the status pill and the preview chip.
  */
 export function ThreadHeader({
   chat,
@@ -50,44 +52,35 @@ export function ThreadHeader({
         </button>
 
         <div class="hidden sm:grid h-8 w-8 rounded-md bg-white/[0.05] border border-white/10 text-ink-300 place-items-center flex-none">
-          <MessageSquare class="w-3.5 h-3.5" />
+          <MessageSquare class="w-4 h-4" />
         </div>
 
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2 min-w-0">
-            <h1 dir="auto" title={title} class="bidi-auto truncate text-[14px] font-semibold text-ink-50">
-              {title}
-            </h1>
-            <span
-              class={`h-1.5 w-1.5 rounded-full flex-none ${streaming ? "bg-accent-green animate-pulse" : "bg-ink-400"}`}
-              title={streaming ? "Streaming" : "Ready"}
-            />
-          </div>
-          <div class="text-[11px] leading-4 text-ink-300 truncate">
-            {providerDisplayLabel(chat.provider)} · {streaming ? "Working" : "Ready"}
-          </div>
-        </div>
+        <h1
+          dir="auto"
+          title={title}
+          class="bidi-auto min-w-0 flex-1 truncate text-[14px] font-semibold text-ink-50"
+        >
+          {title}
+        </h1>
       </div>
 
-      {(actions || project || policies) && (
-        <div class="flex w-full flex-none items-center justify-end gap-1.5 empty:hidden sm:ms-auto sm:w-auto">
-          {policies && (
-            <AutopilotPill
-              view={policies.autopilot}
-              busy={policies.busy}
-              onStop={policies.stopAutopilot}
-            />
-          )}
-          {actions}
-          {project && (
-            <ChatPreviewChip
-              project={project}
-              streaming={streaming}
-              onAgentBrowserOpened={onOpenAgentBrowser}
-            />
-          )}
-        </div>
-      )}
+      <div class="flex w-full flex-none items-center justify-end gap-1.5 sm:ms-auto sm:w-auto">
+        <ChatStatusPill
+          provider={chat.provider}
+          streaming={streaming}
+          autopilot={policies?.autopilot}
+          busy={policies?.busy}
+          onStopAutopilot={policies?.stopAutopilot}
+        />
+        {actions}
+        {project && (
+          <ChatPreviewChip
+            project={project}
+            streaming={streaming}
+            onAgentBrowserOpened={onOpenAgentBrowser}
+          />
+        )}
+      </div>
     </header>
   );
 }

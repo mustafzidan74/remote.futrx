@@ -51,7 +51,7 @@ export function ChatPreviewChip({
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        class="inline-flex h-7 items-center gap-1.5 px-2 text-[11.5px] font-medium text-ink-200
+        class="inline-flex h-8 items-center gap-1.5 px-2 text-[11.5px] font-medium text-ink-200
                transition hover:bg-white/[0.09] hover:text-ink-100"
         title={`Open ${url}`}
       >

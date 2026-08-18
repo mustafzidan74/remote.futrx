@@ -11,6 +11,7 @@ export function useSidebarState(
 ) {
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [recentOpen, setRecentOpen] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
     workspaceSidebarState.readCollapsed()
   );
@@ -48,6 +49,8 @@ export function useSidebarState(
     setQuery,
     collapsed,
     toggleCollapsed,
+    recentOpen,
+    toggleRecent: () => setRecentOpen((current) => !current),
     sidebarCollapsed,
     toggleSidebarCollapsed,
   };

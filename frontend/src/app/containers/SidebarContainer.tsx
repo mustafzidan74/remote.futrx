@@ -21,6 +21,16 @@ export function SidebarContainer() {
     [workspace.chats, workspace.projects, sidebar.query]
   );
 
+  /**
+   * Clicking a project row resumes it: its newest chat, or a fresh one when
+   * the project has none. The gear beside it still goes to the settings page.
+   */
+  function openProject(projectId: string) {
+    const chatId = workspaceSidebarState.mostRecentChatId(workspace.chats, projectId);
+    if (chatId) workspace.selectChat(chatId);
+    else void commands.newChatInProject(projectId);
+  }
+
   return (
     <Sidebar
       open={workspace.ui.sidebarOpen}
@@ -28,6 +38,7 @@ export function SidebarContainer() {
       health={workspace.health}
       query={sidebar.query}
       collapsed={sidebar.collapsed}
+      recentOpen={sidebar.recentOpen}
       sidebarCollapsed={sidebar.sidebarCollapsed}
       activeChatId={workspace.ui.activeChatId}
       account={{
@@ -38,9 +49,11 @@ export function SidebarContainer() {
       onQueryChange={sidebar.setQuery}
       onClearQuery={() => sidebar.setQuery("")}
       onToggleSidebar={sidebar.toggleSidebarCollapsed}
+      onToggleRecent={sidebar.toggleRecent}
       onNewProject={commands.newProject}
       onNewChatInProject={commands.newChatInProject}
       onToggleProject={sidebar.toggleCollapsed}
+      onOpenProject={openProject}
       onSelectChat={workspace.selectChat}
       onDeleteChat={commands.deleteChat}
       onToggleChatUnread={commands.toggleChatUnread}

@@ -143,7 +143,7 @@ function TemplateAdminAccess({
         <button
           type="button"
           onClick={() => void copyLogin()}
-          class="inline-flex items-center gap-1.5 h-7 px-2 rounded text-[11.5px] text-ink-200
+          class="inline-flex items-center gap-1.5 h-8 px-2 rounded text-[11.5px] text-ink-200
                  hover:text-ink-50 hover:bg-white/[0.08]"
         >
           <Copy class="w-3.5 h-3.5" />

@@ -75,6 +75,7 @@ export function ChatThread({
             error={error}
             chatId={chat.id}
             cwd={chat.cwd}
+            playbooks={composer.playbooks}
             scrollRef={scrollRef}
             contentRef={contentRef}
             bottomRef={bottomRef}

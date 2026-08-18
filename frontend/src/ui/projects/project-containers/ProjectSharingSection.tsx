@@ -143,7 +143,7 @@ function MemberRow({
           type="button"
           onClick={remove}
           disabled={busy}
-          class="h-7 w-7 ml-auto rounded text-ink-300 hover:text-accent-red hover:bg-white/[0.08] grid place-items-center disabled:opacity-50"
+          class="h-8 w-8 ml-auto rounded text-ink-300 hover:text-accent-red hover:bg-white/[0.08] grid place-items-center disabled:opacity-50"
           aria-label={`Remove ${email}`}
           title="Remove member"
         >

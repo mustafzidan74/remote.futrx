@@ -1,6 +1,7 @@
-import { useCallback, useState } from "preact/hooks";
+import { useCallback, useEffect, useState } from "preact/hooks";
 import {
   SettingsPage,
+  isSettingsTab,
   type SettingsTab,
 } from "../../ui/settings/SettingsPage";
 import { useAuthContext } from "../../state/context/AuthContext";
@@ -28,8 +29,16 @@ export function SettingsContainer({
   const { auth, codexAuth, kimiAuth } = useAuthContext();
   const userSettings = useUserSettingsContext();
   const userDirectory = useUserDirectory(auth.isAdmin);
-  const { projects } = useWorkspaceContext();
+  const { projects, ui } = useWorkspaceContext();
   const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
+
+  // The command palette can name the page it wants. Anything else — the
+  // sidebar gear, the account footer — leaves the request null and lands
+  // wherever the operator last was.
+  const requestedTab = ui.settingsTab;
+  useEffect(() => {
+    if (isSettingsTab(requestedTab)) setActiveTab(requestedTab);
+  }, [requestedTab]);
   const globalSkills = useGlobalSkills(activeTab === "skills" && auth.isAdmin);
   const playbooks = usePlaybookLibrary(activeTab === "playbooks" && auth.isAdmin);
   const secretsVault = useSecretsVault(activeTab === "secrets" && auth.isAdmin);

@@ -51,7 +51,7 @@ export function UserMessage({
           <button
             type="button"
             onClick={() => onRewind(t, text)}
-            class="inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-[12px]
+            class="inline-flex items-center gap-1.5 h-8 px-2 rounded-md text-[12px]
                    text-ink-300 hover:text-ink-100 hover:bg-white/[0.07]
                    opacity-100 md:opacity-0 md:group-hover:opacity-100 transition"
             title="Rewind and edit from here"

@@ -218,7 +218,7 @@ function SecretRow({
                 type="button"
                 onClick={test}
                 disabled={busy}
-                class="h-7 rounded px-2 text-[11px] text-ink-300 hover:bg-white/[0.08] hover:text-ink-100 disabled:opacity-50"
+                class="h-8 rounded px-2 text-[11px] text-ink-300 hover:bg-white/[0.08] hover:text-ink-100 disabled:opacity-50"
               >
                 {busy ? "testing…" : "test"}
               </button>
@@ -226,7 +226,7 @@ function SecretRow({
             <button
               type="button"
               onClick={onEdit}
-              class="h-7 rounded px-2 text-[11px] text-ink-300 hover:bg-white/[0.08] hover:text-ink-100"
+              class="h-8 rounded px-2 text-[11px] text-ink-300 hover:bg-white/[0.08] hover:text-ink-100"
             >
               edit
             </button>
@@ -235,7 +235,7 @@ function SecretRow({
               onClick={remove}
               disabled={busy}
               aria-label={`Delete ${secret.key}`}
-              class="grid h-7 w-7 place-items-center rounded text-ink-300 hover:bg-white/[0.08] hover:text-accent-red disabled:opacity-50"
+              class="grid h-8 w-8 place-items-center rounded text-ink-300 hover:bg-white/[0.08] hover:text-accent-red disabled:opacity-50"
             >
               <Trash class="h-3.5 w-3.5" />
             </button>

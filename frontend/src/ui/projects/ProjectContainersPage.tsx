@@ -100,6 +100,10 @@ const tabs: Array<{
   },
 ];
 
+export function isProjectSettingsTab(id: string | null): id is ProjectSettingsTab {
+  return !!id && tabs.some((tab) => tab.id === id);
+}
+
 export function ProjectContainersPage({
   activeTab,
   project,
