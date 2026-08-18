@@ -38,6 +38,9 @@ This is the compact inventory of current Remote behavior. “Page” means the l
 | Skill chips | Review or remove selected skills | Cleared when provider changes |
 | Playbooks | Open **⚡ Playbooks** and select one | Applies its skills/mode/provider, then inserts the prompt; Shift-click sends it |
 | Playbook placeholder | A playbook stops with `{{…}}` still in the text | The token is selected for you; such a prompt is never auto-sent |
+| Voice input | Press the microphone, speak, press it again | Text lands at the caret for review; never auto-sent. Hidden when the browser has no speech API and no server fallback is configured |
+| Dictation language | Use the chevron beside the microphone | Arabic (Egypt/Saudi) or English (US/UK), or the browser language; remembered per device in local storage |
+| Server transcription | Tick **Use server transcription** in the microphone menu | Only when an admin configured it; records the clip and transcribes it after you stop |
 | Attach picker | Choose **+** and select one or more files | Project chats; resumable uploads |
 | Drag attachment | Drag files over the composer | Same upload path |
 | Paste image | Paste image clipboard data into the composer | Same upload path |
@@ -47,6 +50,10 @@ This is the compact inventory of current Remote behavior. “Page” means the l
 | Queue | Send while streaming | Per-tab `sessionStorage`; not a server-side job |
 | Remove queued prompt | Use **×** on a queue chip | Before it auto-sends |
 | Cancel | Use the red square or Escape while running | Cancels active provider context |
+
+Escape has two jobs in the composer: while the microphone is live it stops
+dictation, and the run-cancel shortcut stands down for that press. A second
+Escape cancels the run as usual.
 
 The placeholder mentions `@` files and `/` commands, but the current source has no implemented mention or slash-command picker. Use the attachment control and skill picker instead.
 
@@ -198,6 +205,7 @@ Resource defaults are 6 CPUs, 4 GiB memory, and 2,000 processes. Admins alone ma
 | Appearance | System, Dark, Light |
 | Agents | Admin sign-in/status/refresh for host-wide Claude, Codex, Kimi |
 | Playbooks | Admin-curated composer prompt templates: title, emoji, hint, prompt, skills, mode, provider, order |
+| Voice input | Admin-configured server-side speech-to-text: provider, API key (masked), model, default language, and a silent-sample round-trip test |
 | Users | Google OAuth configuration; add/remove users; member/admin roles |
 | Info | Host CPU, memory, disks, network, OS/runtime, process, paths, role |
 

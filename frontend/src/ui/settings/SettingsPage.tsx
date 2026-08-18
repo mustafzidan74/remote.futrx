@@ -11,7 +11,7 @@ import type { ServerInfo } from "../../models/serverInfo";
 import type { FleetResourcesView, FleetSettings } from "../../models/resources";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import type { ComponentType } from "preact";
-import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Info, Key, Menu, Monitor, Trash, Users, Zap } from "../primitives/icons";
+import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Info, Key, Menu, Mic, Monitor, Trash, Users, Zap } from "../primitives/icons";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { AuditLogSettings } from "./AuditLogSettings";
 import { ClaudeAuthSettings } from "./ClaudeAuthSettings";
@@ -26,6 +26,7 @@ import { TrashSettings } from "./TrashSettings";
 import { UpdatesSettings } from "./UpdatesSettings";
 import { GlobalSkillsSettings } from "./GlobalSkillsSettings";
 import { PlaybooksSettings } from "./PlaybooksSettings";
+import { VoiceInputSettings } from "./VoiceInputSettings";
 import { UsageSettings } from "./UsageSettings";
 import { UsersPanel } from "../account/UsersPanel";
 import type { UsageDashboard } from "../../state/hooks/usage/useUsageDashboard";
@@ -37,6 +38,7 @@ export type SettingsTab =
   | "notifications"
   | "skills"
   | "playbooks"
+  | "voice"
   | "usage"
   | "resources"
   | "secrets"
@@ -48,7 +50,7 @@ export type SettingsTab =
 type SettingsTabGroup = "personal" | "agents" | "insights" | "platform" | "system";
 
 /**
- * Twelve destinations in one flat column read as a wall. The ids are the
+ * A flat column of destinations reads as a wall. The ids are the
  * routing contract and stay exactly as they are; only the rendering groups
  * them, so the operator scans five short lists instead of one long one.
  */
@@ -94,6 +96,13 @@ const tabs: Array<{
     label: "Playbooks",
     description: "Curate the one-click prompt templates every chat composer offers.",
     Icon: Zap,
+  },
+  {
+    id: "voice",
+    group: "agents",
+    label: "Voice input",
+    description: "Configure the optional server-side speech-to-text fallback for dictation.",
+    Icon: Mic,
   },
   {
     id: "usage",
@@ -386,6 +395,16 @@ export function SettingsPage({
                 <SettingsNotice>
                   Playbooks are curated by server administrators. You can run them from the ⚡
                   button in any chat composer.
+                </SettingsNotice>
+              ))}
+
+            {activeTab === "voice" &&
+              (isAdmin ? (
+                <VoiceInputSettings />
+              ) : (
+                <SettingsNotice>
+                  Dictation works in your browser without any setup — press the microphone in any
+                  chat composer. Server-side transcription is configured by server administrators.
                 </SettingsNotice>
               ))}
 

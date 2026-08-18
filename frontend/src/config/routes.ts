@@ -126,6 +126,12 @@ export const API_ROUTES = {
     test: "/api/admin/notifications/test",
     digestSendNow: "/api/admin/notifications/digest/send-now",
   },
+  transcription: {
+    transcribe: "/api/transcribe",
+    clientConfig: "/api/transcribe/config",
+    settings: "/api/admin/transcription",
+    test: "/api/admin/transcription/test",
+  },
   skills: (query: string) => `/api/skills?${query}`,
   globalSkills: {
     collection: "/api/admin/skills-global",

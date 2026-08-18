@@ -78,10 +78,11 @@ every project action, `project.secret.` only the secret ones.
 | `project.container.` | `start`, `stop`, `restart`, `recycle`, `repair-network`, `limits` |
 | `project.browser.` | `start`, `stop`, `navigate` |
 | `portal.` | `enable`, `rotate`, `disable` — client portal lifecycle, target is the project ([Client portal](../02-workspaces/14-client-portal.md)) |
-| `chat.` | `create`, `delete` |
+| `chat.` | `create`, `delete`, `transcribe` — `transcribe` records one server-side voice dictation, and its `meta` carries the clip duration only ([Voice input](../02-workspaces/17-voice-input.md)) |
 | `agent.run.` | `start`, `cancel` — `meta` carries `provider`, `chatId`, `projectId`, and the scheduled task/run ids for unattended turns |
 | `schedule.` | `create`, `update`, `arm`, `delete`, `run-now` |
 | `settings.` | `google-oauth.configure`, `playbooks.update`, `agent.connect`, `agent.disconnect`, `secret.create`, `secret.update`, `secret.delete`, `secret.test` |
+| `settings.` | `google-oauth.configure`, `playbooks.update`, `agent.connect`, `agent.disconnect`, `transcription.configure` |
 | `self-update.` | `trigger` |
 | `workspace.file.` | `upload`, `download`, `archive-download` |
 | `workspace.` | `git.checkout`, `ide.open`, `terminal.open`, `terminal.close` |
@@ -93,6 +94,11 @@ identity to record.
 `project.container.start` is only recorded when the container was not already
 running. Every agent run calls start for convergence, so recording the no-op
 would bury the real transitions.
+
+`chat.transcribe` deliberately records nothing but how long the clip was. The
+audio and the text it became are the user's own speech and have no business in
+an append-only log; dictation done in the browser produces no entry at all,
+because the server is never involved in it.
 
 There is no `settings.agent.disconnect` flow in the product yet; cancelling an
 in-flight provider login is what currently produces that action.

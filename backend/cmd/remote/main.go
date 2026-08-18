@@ -91,6 +91,7 @@ func main() {
 		Users:             storeSet.Users,
 		UserSettings:      storeSet.UserSettings,
 		Notifications:     storeSet.Notifications,
+		Transcription:     storeSet.Transcription,
 		Playbooks:         storeSet.Playbooks,
 		GlobalSkills:      storeSet.GlobalSkills,
 		GlobalSecrets:     storeSet.GlobalSecrets,
