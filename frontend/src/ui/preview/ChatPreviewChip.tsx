@@ -45,7 +45,7 @@ export function ChatPreviewChip({
   return (
     <div
       ref={anchorRef}
-      class="ml-2 flex flex-none items-stretch overflow-hidden rounded-md border border-white/10 bg-white/5"
+      class="flex flex-none items-stretch overflow-hidden rounded-md border border-white/10 bg-white/5"
     >
       <a
         href={url}
@@ -57,7 +57,7 @@ export function ChatPreviewChip({
       >
         <Globe class="h-3.5 w-3.5 flex-none" aria-hidden="true" />
         <span class="hidden sm:inline">Preview</span>
-        <span class="font-mono">:{port}</span>
+        <span class="font-mono tabular-nums">:{port}</span>
       </a>
       <button
         type="button"

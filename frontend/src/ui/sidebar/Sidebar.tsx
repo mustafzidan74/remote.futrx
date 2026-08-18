@@ -98,7 +98,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={onNewProject}
-              class={`h-10 min-w-10 rounded-md bg-accent-blue text-white grid place-items-center hover:bg-accent-blue/90 active:scale-[0.98] transition ${expandedOnly}`}
+              class={`h-10 min-w-10 rounded-md bg-accent-blue text-ink-900 grid place-items-center hover:bg-accent-blue/85 active:scale-[0.98] transition ${expandedOnly}`}
               aria-label="New project"
               title="New project"
             >
@@ -134,7 +134,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={onNewProject}
-              class="h-10 w-10 rounded-md bg-accent-blue text-white grid place-items-center hover:bg-accent-blue/90 active:scale-[0.98] transition"
+              class="h-10 w-10 rounded-md bg-accent-blue text-ink-900 grid place-items-center hover:bg-accent-blue/85 active:scale-[0.98] transition"
               aria-label="New project"
               title="New project"
             >

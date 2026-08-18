@@ -55,7 +55,7 @@ export function StreamingText({ text, streaming, chatId, cwd }: Props) {
   return (
     <div class="relative">
       {streaming ? (
-        <div class="whitespace-pre-wrap break-words">{displayed}</div>
+        <div dir="auto" class="bidi-auto whitespace-pre-wrap break-words">{displayed}</div>
       ) : (
         <Markdown chatId={chatId} cwd={cwd}>{displayed}</Markdown>
       )}

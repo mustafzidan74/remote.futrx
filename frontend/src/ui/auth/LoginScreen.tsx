@@ -98,7 +98,7 @@ export function LoginScreen({
             <button
               type="submit"
               disabled={submitting}
-              class="w-full h-11 rounded-md bg-accent-blue hover:bg-accent-blue/85 text-white text-sm font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2"
+              class="w-full h-11 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-sm font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2"
             >
               {submitting && <Loader class="w-4 h-4 animate-spin" />}
               {setup ? "Create admin account" : "Sign in as administrator"}

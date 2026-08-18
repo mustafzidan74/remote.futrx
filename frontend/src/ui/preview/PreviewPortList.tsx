@@ -192,14 +192,14 @@ function PortRow({
         <span class="ml-auto flex flex-none items-center gap-1">
           {!row.shareable && (
             <span
-              class="rounded border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-ink-300"
+              class="rounded-md border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-ink-300"
               title="Platform port — the share service refuses public links for it"
             >
               platform
             </span>
           )}
           {row.shareCount > 0 && (
-            <span class="rounded border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-ink-300">
+            <span class="rounded-md border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-ink-300">
               {row.shareCount} link{row.shareCount === 1 ? "" : "s"}
             </span>
           )}
@@ -215,8 +215,8 @@ function PortRow({
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          class="inline-flex h-7 items-center gap-1.5 rounded bg-accent-blue/80 px-2.5 text-[11.5px]
-                 font-medium text-white transition hover:bg-accent-blue"
+          class="inline-flex h-7 items-center gap-1.5 rounded-md bg-accent-blue px-2.5 text-[11.5px]
+                 font-medium text-ink-900 transition hover:bg-accent-blue/85"
         >
           <ExternalLink class="h-3 w-3" />
           Open
@@ -225,7 +225,7 @@ function PortRow({
           type="button"
           onClick={() => onCopy(row.port, url)}
           disabled={copying}
-          class="inline-flex h-7 items-center gap-1.5 rounded border border-white/10 bg-white/[0.05] px-2.5
+          class="inline-flex h-7 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.05] px-2.5
                  text-[11.5px] font-medium text-ink-200 transition hover:bg-white/[0.09] hover:text-ink-100 disabled:opacity-50"
         >
           {copied ? <Check class="h-3 w-3" /> : <Copy class="h-3 w-3" />}
@@ -237,7 +237,7 @@ function PortRow({
             onClick={() => onOpenInAgentBrowser(row.port)}
             disabled={agentBrowserBusy}
             title="Load this port in the project's shared Agent Browser, inside the container"
-            class="inline-flex h-7 items-center gap-1.5 rounded border border-white/10 bg-white/[0.05] px-2.5
+            class="inline-flex h-7 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.05] px-2.5
                    text-[11.5px] font-medium text-ink-200 transition hover:bg-white/[0.09] hover:text-ink-100 disabled:opacity-50"
           >
             {agentBrowserBusy ? (
@@ -256,7 +256,7 @@ function PortRow({
             onClick={() => onShare(row.port)}
             disabled={sharing}
             title={`Create a public link that works for ${PREVIEW_SHARE_TTL_HOURS} hours`}
-            class="inline-flex h-7 items-center gap-1.5 rounded border border-white/10 bg-white/[0.05] px-2.5
+            class="inline-flex h-7 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.05] px-2.5
                    text-[11.5px] font-medium text-ink-200 transition hover:bg-white/[0.09] hover:text-ink-100 disabled:opacity-50"
           >
             {sharing ? (

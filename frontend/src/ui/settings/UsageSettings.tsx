@@ -8,7 +8,8 @@ import {
   usageConfidenceNote,
 } from "../../state/usage/usageChartModel";
 import { USAGE_RANGE_PRESETS, usageRangeLabels } from "../../state/usage/usageRangeState";
-import { AlertCircle, Loader, RotateCcw } from "../primitives/icons";
+import { Loader, RotateCcw } from "../primitives/icons";
+import { ErrorBanner } from "../primitives/Feedback";
 import { UsageBarChart } from "./usage/UsageBarChart";
 import { UsageGroupTable, UsageRecordsTable } from "./usage/UsageTables";
 
@@ -108,13 +109,13 @@ export function UsageSettings({
             class="h-9 px-2.5 rounded-md inline-flex items-center gap-2 text-[12px] text-ink-200
                    hover:text-ink-50 hover:bg-white/[0.08] disabled:opacity-60"
           >
-            <RotateCcw class={`w-3.5 h-3.5 ${dashboard.refreshing ? "animate-spin" : ""}`} />
+            <RotateCcw class={`w-4 h-4 ${dashboard.refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
             <span class="hidden sm:inline">Refresh</span>
           </button>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-          <span class="text-[11.5px] uppercase tracking-wide text-ink-400">Group by</span>
+          <span class="text-[11.5px] uppercase tracking-wide text-ink-300">Group by</span>
           {GROUP_OPTIONS.map(({ id, label }) => (
             <button
               key={id}
@@ -132,17 +133,17 @@ export function UsageSettings({
           ))}
         </div>
 
-        <div class="text-[11.5px] text-ink-400 font-mono">
+        <div dir="ltr" class="bidi-ltr text-[11.5px] text-ink-300 font-mono tabular-nums">
           {labels.fromDate} → {labels.toDate} (UTC)
         </div>
       </section>
 
       {dashboard.error && (
-        <div class="rounded-lg border border-accent-red/25 bg-accent-red/[0.06] p-3
-                    flex items-start gap-2.5 text-[13px] text-accent-red">
-          <AlertCircle class="w-4 h-4 mt-0.5 flex-none" />
-          <span>Could not load usage: {dashboard.error}</span>
-        </div>
+        <ErrorBanner
+          message={`Could not load usage: ${dashboard.error}`}
+          retrying={dashboard.refreshing}
+          onRetry={() => void dashboard.refresh()}
+        />
       )}
 
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -213,9 +214,9 @@ function KpiTile({
 }) {
   return (
     <div class="rounded-lg border border-white/10 bg-[#101318] px-4 py-3">
-      <div class="text-[11.5px] uppercase tracking-wide text-ink-400">{label}</div>
+      <div class="text-[11.5px] uppercase tracking-wide text-ink-300">{label}</div>
       <div class="mt-1 text-[22px] font-semibold text-ink-50 tabular-nums">{value}</div>
-      {detail && <div class="mt-1 text-[11.5px] text-ink-400 leading-snug">{detail}</div>}
+      {detail && <div class="mt-1 text-[11.5px] text-ink-300 leading-snug">{detail}</div>}
     </div>
   );
 }

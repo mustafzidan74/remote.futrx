@@ -75,12 +75,12 @@ function AddMemberForm({
           placeholder="someone@example.com"
           spellcheck={false}
           autoComplete="off"
-          class="h-9 px-2.5 rounded border border-white/10 bg-black/30 text-[13px] text-ink-50 placeholder-ink-400 focus:outline-none focus:border-accent-blue/50"
+          class="h-9 px-2.5 rounded-md border border-white/10 bg-black/30 text-[13px] text-ink-50 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue/50"
         />
         <button
           type="submit"
           disabled={submitting}
-          class="h-9 px-3 rounded bg-accent-blue/80 hover:bg-accent-blue text-white text-[13px] font-medium disabled:opacity-50"
+          class="h-9 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50"
         >
           {submitting ? "Adding…" : "Add"}
         </button>

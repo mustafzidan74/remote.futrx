@@ -37,7 +37,7 @@ export function AppearanceSettings({
         {(loading || saving) && <Loader class="w-4 h-4 mt-2 text-ink-300 animate-spin" />}
       </header>
 
-      <div class="p-4 space-y-3">
+      <div class="p-3 space-y-3">
         <div
           class="grid grid-cols-3 gap-1 rounded-lg bg-white/[0.05] border border-white/10 p-1"
           role="radiogroup"
@@ -54,7 +54,7 @@ export function AppearanceSettings({
                 class={`h-10 rounded-md inline-flex items-center justify-center gap-2 text-sm transition
                         disabled:cursor-wait ${
                           selected
-                            ? "bg-accent-blue text-white shadow-sm"
+                            ? "bg-accent-blue text-ink-900 shadow-sm"
                             : "text-ink-200 hover:text-ink-50 hover:bg-white/[0.07]"
                         }`}
                 aria-checked={selected}

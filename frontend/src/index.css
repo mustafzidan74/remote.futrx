@@ -26,9 +26,100 @@
     letter-spacing: 0;
   }
   * { -webkit-tap-highlight-color: transparent; }
+
+  /*
+   * Keyboard focus is always visible. Most controls in the app set
+   * `focus:outline-none` so a mouse click stays quiet; that class also matches
+   * :focus-visible, so the ring has to win with !important. Scoped to things
+   * you actually activate, never to text fields, which keep their focus border.
+   */
+  :is(
+    button,
+    a[href],
+    summary,
+    [role="tab"],
+    [role="radio"],
+    [role="button"],
+    [role="switch"],
+    [role="checkbox"]
+  ):focus-visible {
+    outline: 2px solid var(--focus-ring-color, #8ab4ff) !important;
+    outline-offset: 2px !important;
+  }
+}
+
+:root {
+  --focus-ring-color: #8ab4ff;
+}
+
+html[data-theme="light"] {
+  --focus-ring-color: #0969da;
 }
 
 @layer components {
+  /*
+   * Row action clusters (sidebar rows, list rows). Hidden until the row is
+   * hovered or something inside it takes focus on precise pointers; always
+   * visible where there is no hover at all, which is every touch device.
+   */
+  .hover-actions {
+    opacity: 1;
+    transition: opacity 120ms ease;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .hover-actions { opacity: 0; }
+    .group:hover .hover-actions,
+    .group:focus-within .hover-actions,
+    .hover-actions:focus-within { opacity: 1; }
+  }
+
+  /*
+   * The project row keeps name + slug on the left and floats its actions over
+   * the right edge, so the resting row is just "dot, name, slug" instead of six
+   * competing controls. The float means revealing the cluster never reflows the
+   * name; where the cluster is permanent (touch) the label reserves the room.
+   */
+  .sidebar-project-row-actions {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0.125rem;
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+    background: var(--sidebar-surface, #101318);
+    box-shadow: -14px 0 14px -10px var(--sidebar-surface, #101318);
+  }
+
+  @media (hover: none) {
+    .sidebar-project-row-label { padding-inline-end: 7.75rem; }
+  }
+
+  .codex-sidebar { --sidebar-surface: #101318; }
+
+  /* Dialogs size to the visual viewport so mobile browser chrome cannot clip
+     the scroll container and strand the footer buttons. */
+  .dialog-panel {
+    max-height: 92vh;
+    max-height: 92dvh;
+  }
+
+  /*
+   * Bidi: prose runs get the first-strong-character heuristic per paragraph so
+   * an Arabic answer reads right-to-left with its punctuation in the right
+   * place, while code, paths, URLs and identifiers stay hard LTR.
+   */
+  .bidi-auto {
+    unicode-bidi: plaintext;
+    text-align: start;
+  }
+
+  .bidi-ltr {
+    direction: ltr;
+    unicode-bidi: isolate;
+    text-align: left;
+  }
+
   .app-shell {
     position: fixed;
     inset-inline: 0;
@@ -184,7 +275,7 @@
   .codex-header .text-ink-200,
   .codex-header .text-ink-300,
   .codex-header .text-ink-400,
-  .codex-header button {
+  .codex-header button:not([class*="bg-accent"]) {
     color: #f4f4f5 !important;
   }
 
@@ -386,7 +477,7 @@
   .codex-sidebar .text-ink-200,
   .codex-sidebar .text-ink-300,
   .codex-sidebar .text-ink-400,
-  .codex-sidebar button,
+  .codex-sidebar button:not([class*="bg-accent"]),
   .codex-sidebar input {
     color: #f4f4f5 !important;
   }
@@ -431,6 +522,9 @@ html[data-theme="dark"] .bg-\[\#101318\] {
   border-color: rgba(255, 255, 255, 0.09) !important;
   color: #e4e4e7 !important;
 }
+
+html[data-theme="dark"] .codex-sidebar { --sidebar-surface: #191a1f; }
+html[data-theme="light"] .codex-sidebar { --sidebar-surface: #f6f8fa; }
 
 html[data-theme="dark"] .bg-\[\#090b0f\] {
   background-color: #0f1014 !important;
@@ -557,8 +651,8 @@ html[data-theme="light"] textarea::placeholder {
 html[data-theme="light"] .text-ink-50,
 html[data-theme="light"] .text-ink-100,
 html[data-theme="light"] .text-ink-200,
-html[data-theme="light"] .codex-header button,
-html[data-theme="light"] .codex-sidebar button,
+html[data-theme="light"] .codex-header button:not([class*="bg-accent"]),
+html[data-theme="light"] .codex-sidebar button:not([class*="bg-accent"]),
 html[data-theme="light"] .codex-sidebar input {
   color: #24292f !important;
 }
@@ -680,6 +774,16 @@ html[data-theme="light"] .codex-composer-card {
     inset 0 1px 0 rgba(255, 255, 255, 0.78),
     0 1px 2px rgba(31, 35, 40, 0.11),
     0 12px 32px rgba(140, 149, 159, 0.14) !important;
+}
+
+/* On a wide desktop the thread would otherwise stretch a paragraph across
+   1500px. The message column caps its measure in MessageList; the composer
+   follows it here so the two stay on the same axis. */
+@media (min-width: 1180px) {
+  .codex-composer-card {
+    max-width: 1100px;
+    margin-inline: auto !important;
+  }
 }
 
 @media (min-width: 768px) {

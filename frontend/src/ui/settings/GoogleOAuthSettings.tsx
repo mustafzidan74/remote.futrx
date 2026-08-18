@@ -81,7 +81,7 @@ export function GoogleOAuthSettings() {
         <button
           type="submit"
           disabled={saving || loading}
-          class="h-10 px-3 rounded-md bg-accent-blue/80 hover:bg-accent-blue text-white text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+          class="h-10 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
         >
           {saving && <Loader class="w-3.5 h-3.5 animate-spin" />}
           {settings?.configured ? "Update Google sign-in" : "Save Google sign-in"}

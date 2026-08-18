@@ -25,7 +25,7 @@ export function UsageBarChart({
 
   return (
     <section class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-      <header class="px-4 py-3 border-b border-white/[0.06] flex items-center gap-3">
+      <header class="px-4 py-3 border-b border-white/[0.06] flex flex-wrap items-center gap-3">
         <div class="flex-1 min-w-0">
           <div class="text-[14.5px] font-semibold text-ink-50">Daily usage</div>
           <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug">
@@ -96,7 +96,7 @@ export function UsageBarChart({
           })}
         </svg>
         {chart.bars.length > 0 && (
-          <div class="mt-1.5 flex justify-between text-[11px] text-ink-400 font-mono">
+          <div dir="ltr" class="bidi-ltr mt-1.5 flex justify-between text-[11px] text-ink-300 font-mono tabular-nums">
             <span>{chart.bars[0].day}</span>
             <span>{chart.bars[chart.bars.length - 1].day}</span>
           </div>

@@ -1,7 +1,8 @@
 import { useState } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import type { AuditEntry, AuditFilters } from "../../models/audit";
-import { AlertCircle, Check, Download, Loader, RotateCcw, X } from "../primitives/icons";
+import { Activity, AlertCircle, Check, Download, Loader, RotateCcw, X } from "../primitives/icons";
+import { EmptyState, ErrorBanner } from "../primitives/Feedback";
 
 // AuditLogSettings is the admin read view over the append-only trail. It is
 // presentational: filtering and paging happen on the server, so this component
@@ -48,7 +49,7 @@ export function AuditLogSettings({
             class="h-9 px-2.5 rounded-md inline-flex items-center gap-2 text-[12px] text-ink-200
                    hover:text-ink-50 hover:bg-white/[0.08] disabled:opacity-60"
           >
-            <RotateCcw class={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <RotateCcw class={`w-4 h-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" />
             <span class="hidden sm:inline">Refresh</span>
           </button>
           <a
@@ -58,7 +59,7 @@ export function AuditLogSettings({
                    hover:text-ink-50 hover:bg-white/[0.08]"
             title="Download the matching date range as JSONL"
           >
-            <Download class="w-3.5 h-3.5" />
+            <Download class="w-4 h-4" aria-hidden="true" />
             <span class="hidden sm:inline">Export</span>
           </a>
         </div>
@@ -68,10 +69,7 @@ export function AuditLogSettings({
         <AuditFilterBar filters={filters} onApply={onFiltersChange} />
 
         {error && (
-          <div class="flex items-start gap-2.5 rounded-lg border border-accent-red/30 bg-accent-red/[0.08] px-3 py-2.5 text-[13px]">
-            <AlertCircle class="w-4 h-4 mt-0.5 flex-none text-accent-red" />
-            <div class="text-accent-red break-words">{error}</div>
-          </div>
+          <ErrorBanner message={error} retrying={loading} onRetry={() => void onRefresh()} />
         )}
 
         {loading && entries.length === 0 ? (
@@ -79,9 +77,11 @@ export function AuditLogSettings({
             <Loader class="w-4 h-4 animate-spin" /> Loading audit entries…
           </div>
         ) : entries.length === 0 ? (
-          <div class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[13px] text-ink-300">
-            No audit entries match these filters.
-          </div>
+          <EmptyState
+            Icon={Activity}
+            title="No audit entries match these filters"
+            hint="Clear the actor, action or date filters to see the full trail."
+          />
         ) : (
           <AuditTable entries={entries} />
         )}
@@ -150,7 +150,7 @@ function AuditFilterBar({
             spellcheck={false}
             autoComplete="off"
             class="h-8 w-full rounded-md border border-white/10 bg-black/30 px-2 text-[12px] text-ink-100
-                   placeholder-ink-400 focus:outline-none focus:border-accent-blue/60"
+                   placeholder:text-ink-400 focus:outline-none focus:border-accent-blue/60"
           />
         </FilterField>
         <FilterField label="Action">
@@ -162,7 +162,7 @@ function AuditFilterBar({
             spellcheck={false}
             autoComplete="off"
             class="h-8 w-full rounded-md border border-white/10 bg-black/30 px-2 text-[12px] text-ink-100
-                   placeholder-ink-400 focus:outline-none focus:border-accent-blue/60"
+                   placeholder:text-ink-400 focus:outline-none focus:border-accent-blue/60"
           />
         </FilterField>
       </div>
@@ -186,11 +186,11 @@ function AuditFilterBar({
           />
         </FilterField>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         <button
           type="submit"
           disabled={!dirty}
-          class="h-8 px-3 rounded bg-accent-blue/80 hover:bg-accent-blue text-white text-[12px]
+          class="h-8 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[12px]
                  font-medium disabled:opacity-50"
         >
           Apply filters
@@ -205,7 +205,7 @@ function AuditFilterBar({
             <X class="w-3.5 h-3.5" /> Clear
           </button>
         )}
-        <span class="ml-auto text-[11px] text-ink-400">
+        <span class="ms-auto text-[11px] text-ink-300">
           Action matches on prefix, so <code>project.</code> selects every project action.
         </span>
       </div>
@@ -216,7 +216,7 @@ function AuditFilterBar({
 function FilterField({ label, children }: { label: string; children: ComponentChildren }) {
   return (
     <label class="block">
-      <span class="mb-1 block text-[10px] uppercase tracking-wide text-ink-500">{label}</span>
+      <span class="mb-1 block text-[10px] uppercase tracking-wide text-ink-300">{label}</span>
       {children}
     </label>
   );
@@ -240,7 +240,7 @@ function AuditTable({ entries }: { entries: AuditEntry[] }) {
           {entries.map((entry) => (
             <tr key={auditRowKey(entry)}>
               <AuditCell>
-                <span class="whitespace-nowrap text-ink-200" title={entry.at}>
+                <span class="whitespace-nowrap tabular-nums text-ink-200" title={entry.at}>
                   {formatAuditTime(entry.at)}
                 </span>
               </AuditCell>
@@ -288,7 +288,7 @@ function AuditCell({ children }: { children: ComponentChildren }) {
 
 function AuditTargetCell({ entry }: { entry: AuditEntry }) {
   const label = entry.target?.name || entry.target?.id;
-  if (!label) return <span class="text-ink-400">—</span>;
+  if (!label) return <span class="text-ink-300">—</span>;
   return (
     <span class="text-ink-200 break-all" title={entry.target?.id ?? ""}>
       {entry.target?.type ? `${entry.target.type}: ` : ""}

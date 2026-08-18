@@ -103,7 +103,7 @@ export function NotificationsSettings() {
         </div>
       </header>
 
-      <form onSubmit={save} class="p-3 space-y-4">
+      <form onSubmit={save} class="p-3 space-y-3">
         <label class="flex items-start gap-2.5 rounded-md border border-white/10 bg-white/[0.03] p-2.5 cursor-pointer">
           <input
             type="checkbox"
@@ -540,7 +540,7 @@ export function NotificationsSettings() {
           <button
             type="submit"
             disabled={saving || loading}
-            class="h-10 px-3 rounded-md bg-accent-blue/80 hover:bg-accent-blue text-white text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+            class="h-10 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
           >
             {saving && <Loader class="w-3.5 h-3.5 animate-spin" />}
             Save notifications

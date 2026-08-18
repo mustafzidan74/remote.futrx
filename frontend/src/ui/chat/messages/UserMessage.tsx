@@ -41,14 +41,10 @@ export function UserMessage({
       <div class="max-w-[92%] sm:max-w-[78%] flex flex-col items-end gap-1.5">
         {synthetic && <SyntheticBadge kind={synthetic} />}
         <div
-          class={`codex-user-bubble rounded-[18px] rounded-br-md px-3.5 py-2.5 text-[14.5px] leading-relaxed
-                  whitespace-pre-wrap break-words shadow-sm border
-                  ${
-                    synthetic
-                      ? "border-white/10 bg-white/[0.05] text-ink-200"
-                      : "bg-accent-blue/15 border-accent-blue/30"
-                  }`}
-        >
+          dir="auto"
+          class={`codex-user-bubble bidi-auto border rounded-[18px] rounded-br-md px-3.5 py-2.5 text-[14.5px] leading-relaxed
+                 whitespace-pre-wrap break-words shadow-sm
+                 ${synthetic ? "border-white/10 bg-white/[0.05] text-ink-200" : "bg-accent-blue/15 border-accent-blue/30"}`}>
           {text}
         </div>
         {onRewind && (

@@ -534,7 +534,7 @@ function EditTaskForm({
 function EditField({ label, children }: { label: string; children: ComponentChildren }) {
   return (
     <label class="block">
-      <span class="mb-1 block text-[10px] uppercase tracking-wide text-ink-500">{label}</span>
+      <span class="mb-1 block text-[10px] uppercase tracking-wide text-ink-300">{label}</span>
       {children}
     </label>
   );
@@ -570,7 +570,7 @@ function TaskDetail({
 }) {
   return (
     <div class="min-w-0">
-      <dt class="text-[10px] uppercase tracking-wide text-ink-500">{label}</dt>
+      <dt class="text-[10px] uppercase tracking-wide text-ink-300">{label}</dt>
       <dd class={`mt-0.5 truncate text-[11.5px] ${tone}`} title={value}>{value}</dd>
     </div>
   );

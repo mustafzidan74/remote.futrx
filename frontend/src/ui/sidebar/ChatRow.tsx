@@ -46,15 +46,19 @@ export function ChatRow({
             />
           )}
           <div class="flex-1 min-w-0">
-            <div class={`text-[13px] leading-snug truncate ${active ? "text-ink-50 font-medium" : "text-ink-100"}`}>
+            <div
+              dir="auto"
+              title={chat.title || "Untitled"}
+              class={`bidi-auto text-[13px] leading-snug truncate ${active ? "text-ink-50 font-medium" : "text-ink-100"}`}
+            >
               {chat.title || "Untitled"}
             </div>
-            <div class="mt-0.5 flex items-center gap-1.5 text-[11px] text-ink-400">
+            <div class="mt-0.5 flex items-center gap-1.5 text-[11px] text-ink-300">
               <span class={`px-1 py-0.5 rounded bg-white/[0.06] text-[10px] leading-none whitespace-nowrap flex-none ${active ? "text-accent-blue" : ""}`}>
                 {modelShortLabel(chat.model)}
               </span>
-              <Clock class="w-3 h-3 flex-none" />
-              <span class="truncate">{timeAgo(chat.lastMessageAt)}</span>
+              <Clock class="w-3 h-3 flex-none text-ink-400" aria-hidden="true" />
+              <span class="truncate tabular-nums">{timeAgo(chat.lastMessageAt)}</span>
             </div>
           </div>
         </div>
@@ -62,8 +66,7 @@ export function ChatRow({
       <button
         type="button"
         onClick={onToggleUnread}
-        class="w-8 grid place-items-center text-ink-300 hover:text-ink-50 hover:bg-white/[0.08]
-               opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+        class="hover-actions w-8 grid place-items-center text-ink-300 hover:text-ink-50 hover:bg-white/[0.08]"
         aria-label={rawUnread ? `Mark ${chat.title || "chat"} read` : `Mark ${chat.title || "chat"} unread`}
         title={rawUnread ? "Mark read" : "Mark unread"}
       >
@@ -72,8 +75,7 @@ export function ChatRow({
       <button
         type="button"
         onClick={onFork}
-        class="w-8 grid place-items-center text-ink-300 hover:text-accent-blue hover:bg-white/[0.08]
-               opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+        class="hover-actions w-8 grid place-items-center text-ink-300 hover:text-accent-blue hover:bg-white/[0.08]"
         aria-label={`Fork ${chat.title || "chat"}`}
         title="Fork from last message"
       >
@@ -82,8 +84,7 @@ export function ChatRow({
       <button
         type="button"
         onClick={onDelete}
-        class="w-8 grid place-items-center rounded-r text-ink-300 hover:text-accent-red hover:bg-accent-red/10
-               opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+        class="hover-actions w-8 grid place-items-center rounded-r text-ink-300 hover:text-accent-red hover:bg-accent-red/10"
         aria-label={`Delete ${chat.title || "chat"}`}
         title="Delete chat"
       >

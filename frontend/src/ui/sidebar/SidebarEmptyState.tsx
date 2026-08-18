@@ -11,7 +11,7 @@ export function SidebarEmptyState({ onNewProject }: { onNewProject: () => void }
       <button
         type="button"
         onClick={onNewProject}
-        class="mt-4 inline-flex items-center gap-1.5 h-9 px-3 rounded-md bg-white/[0.08] hover:bg-white/[0.12] text-ink-100 text-sm"
+        class="mt-4 inline-flex items-center gap-1.5 h-10 px-3 rounded-md bg-white/[0.08] hover:bg-white/[0.12] text-ink-100 text-sm"
       >
         <Plus class="w-4 h-4" /> New project
       </button>

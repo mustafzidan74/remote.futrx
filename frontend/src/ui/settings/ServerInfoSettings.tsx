@@ -89,7 +89,7 @@ export function ServerInfoSettings({
             disabled={refreshing}
             class="h-9 px-2.5 rounded-md inline-flex items-center gap-2 text-[12px] text-ink-200 hover:text-ink-50 hover:bg-white/[0.08] disabled:opacity-60"
           >
-            <RotateCcw class={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            <RotateCcw class={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
             <span class="hidden sm:inline">Refresh</span>
           </button>
         </header>

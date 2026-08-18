@@ -18,25 +18,29 @@ interface MarkdownRenderContext {
 function renderBlock(block: MarkdownBlock, key: string, context: MarkdownRenderContext) {
   switch (block.type) {
     case "paragraph":
-      return <p key={key} class="my-1.5 leading-relaxed">{renderInline(block.text, key, context)}</p>;
+      return (
+        <p key={key} dir="auto" class="bidi-auto my-1.5 leading-relaxed">
+          {renderInline(block.text, key, context)}
+        </p>
+      );
     case "heading":
       return renderHeading(block.level, block.text, key, context);
     case "code":
       return (
         <div key={key} class="relative my-3 rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
           {block.lang && (
-            <div class="px-3 py-1 text-[11px] text-ink-300 border-b border-white/10 bg-white/[0.04]">
+            <div dir="ltr" class="bidi-ltr px-3 py-1 text-[11px] text-ink-300 border-b border-white/10 bg-white/[0.04]">
               {block.lang}
             </div>
           )}
-          <pre class="md-code overflow-x-auto touch-scroll p-3 text-[12.5px] leading-relaxed font-mono">
+          <pre dir="ltr" class="md-code bidi-ltr overflow-x-auto touch-scroll p-3 text-[12.5px] leading-relaxed font-mono">
             <code>{highlightCode(block.text, block.lang)}</code>
           </pre>
         </div>
       );
     case "blockquote":
       return (
-        <blockquote key={key} class="border-l-2 border-accent-blue/45 pl-3 my-2 text-ink-200 italic">
+        <blockquote key={key} dir="auto" class="bidi-auto border-s-2 border-accent-blue/45 ps-3 my-2 text-ink-200 italic">
           {block.children.map((child, index) => renderBlock(child, `${key}-q-${index}`, context))}
         </blockquote>
       );
@@ -49,7 +53,7 @@ function renderBlock(block: MarkdownBlock, key: string, context: MarkdownRenderC
             <thead class="bg-white/[0.04]">
               <tr>
                 {block.header.map((cell, index) => (
-                  <th key={index} class="text-left px-3 py-1.5 font-semibold border-b border-white/10 text-ink-100">
+                  <th key={index} dir="auto" class="bidi-auto px-3 py-1.5 font-semibold border-b border-white/10 text-ink-100">
                     {renderInline(cell, `${key}-h-${index}`, context)}
                   </th>
                 ))}
@@ -59,7 +63,7 @@ function renderBlock(block: MarkdownBlock, key: string, context: MarkdownRenderC
               {block.rows.map((row, rowIndex) => (
                 <tr key={rowIndex}>
                   {row.map((cell, cellIndex) => (
-                    <td key={cellIndex} class="px-3 py-1.5 border-b border-white/10">
+                    <td key={cellIndex} dir="auto" class="bidi-auto px-3 py-1.5 border-b border-white/10">
                       {renderInline(cell, `${key}-r-${rowIndex}-${cellIndex}`, context)}
                     </td>
                   ))}
@@ -75,18 +79,18 @@ function renderBlock(block: MarkdownBlock, key: string, context: MarkdownRenderC
 }
 
 function renderHeading(level: 1 | 2 | 3 | 4 | 5 | 6, text: string, key: string, context: MarkdownRenderContext) {
-  if (level === 1) return <h1 key={key} class="text-xl font-bold mt-3 mb-1.5">{renderInline(text, key, context)}</h1>;
-  if (level === 2) return <h2 key={key} class="text-lg font-bold mt-3 mb-1.5">{renderInline(text, key, context)}</h2>;
-  return <h3 key={key} class="text-base font-bold mt-2 mb-1">{renderInline(text, key, context)}</h3>;
+  if (level === 1) return <h1 key={key} dir="auto" class="bidi-auto text-xl font-bold mt-3 mb-1.5">{renderInline(text, key, context)}</h1>;
+  if (level === 2) return <h2 key={key} dir="auto" class="bidi-auto text-lg font-bold mt-3 mb-1.5">{renderInline(text, key, context)}</h2>;
+  return <h3 key={key} dir="auto" class="bidi-auto text-base font-bold mt-2 mb-1">{renderInline(text, key, context)}</h3>;
 }
 
 function renderList(block: Extract<MarkdownBlock, { type: "list" }>, key: string, context: MarkdownRenderContext) {
-  const className = `${block.ordered ? "list-decimal" : "list-disc"} list-outside pl-5 my-2 space-y-0.5`;
+  const className = `${block.ordered ? "list-decimal" : "list-disc"} list-outside ps-5 my-2 space-y-0.5`;
   const items = block.items.map((item, index) => {
     const content = renderInline(item.text, `${key}-li-${index}`, context);
-    if (item.checked === undefined) return <li key={index}>{content}</li>;
+    if (item.checked === undefined) return <li key={index} class="bidi-auto">{content}</li>;
     return (
-      <li key={index} class="list-none -ml-5 flex items-start gap-2">
+      <li key={index} class="bidi-auto list-none -ms-5 flex items-start gap-2">
         <input
           type="checkbox"
           checked={item.checked}
@@ -99,7 +103,7 @@ function renderList(block: Extract<MarkdownBlock, { type: "list" }>, key: string
   });
 
   if (block.ordered) {
-    return <ol key={key} class={className} start={block.start}>{items}</ol>;
+    return <ol key={key} dir="auto" class={className} start={block.start}>{items}</ol>;
   }
-  return <ul key={key} class={className}>{items}</ul>;
+  return <ul key={key} dir="auto" class={className}>{items}</ul>;
 }

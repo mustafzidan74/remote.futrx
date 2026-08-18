@@ -19,7 +19,7 @@ export function SendControls({
         class={`codex-send-button flex-none w-10 h-10 rounded-lg
                 ${streaming ? "bg-accent-blue hover:bg-accent-blue/85" : "bg-accent-green hover:bg-accent-green/85"}
                 disabled:bg-ink-500 disabled:cursor-not-allowed
-                active:scale-[0.98] disabled:active:scale-100 grid place-items-center text-white transition`}
+                active:scale-[0.98] disabled:active:scale-100 grid place-items-center text-ink-900 transition`}
         aria-label={streaming ? "Queue prompt" : "Send"}
         title={canSend ? (streaming ? "Queue prompt" : "Send") : disconnected ? "Connecting" : "Send"}
       >
@@ -29,8 +29,8 @@ export function SendControls({
         <button
           type="button"
           onClick={onCancel}
-          class="codex-cancel-button flex-none w-10 h-10 rounded-lg bg-accent-red/90 hover:bg-accent-red
-                 active:scale-[0.98] grid place-items-center text-white transition"
+          class="codex-cancel-button flex-none w-10 h-10 rounded-lg bg-accent-red hover:bg-accent-red/85
+                 active:scale-[0.98] grid place-items-center text-ink-900 transition"
           aria-label="Cancel"
           title="Cancel current generation"
         >

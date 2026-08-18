@@ -343,7 +343,7 @@ function AuthFileRow({ file }: { file: AuthBundleFileStatus }) {
     ? "host only"
     : "container only";
   return (
-    <div class="rounded border border-white/[0.06] bg-black/20 px-2.5 py-1.5">
+    <div class="rounded-md border border-white/[0.06] bg-black/20 px-2.5 py-1.5">
       <div class="font-mono text-[11.5px] text-ink-200 break-all">{file.containerPath}</div>
       <div class={`text-[11px] mt-0.5 ${tone}`}>{label}</div>
       <div class="text-[10.5px] font-mono text-ink-400 mt-0.5">

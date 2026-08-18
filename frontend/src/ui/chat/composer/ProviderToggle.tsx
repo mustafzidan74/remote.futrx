@@ -20,7 +20,7 @@ export function ProviderToggle({
               type="button"
               onClick={() => onChange(option.value)}
               class={`h-6 flex-1 rounded px-1.5 text-[11px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-60
-                      ${active ? "bg-accent-blue text-white shadow-sm" : "text-ink-300 hover:bg-white/[0.07] hover:text-ink-100"}`}
+                      ${active ? "bg-accent-blue text-ink-900 shadow-sm" : "text-ink-300 hover:bg-white/[0.07] hover:text-ink-100"}`}
               disabled={streaming}
               aria-pressed={active}
               title={streaming ? "Cannot change provider while streaming" : `Use ${option.label}`}

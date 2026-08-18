@@ -73,7 +73,7 @@ export function FileManagerDrawer({
               onInput={(event) => files.setQuery((event.currentTarget as HTMLInputElement).value)}
               placeholder="Search all files..."
               class="h-8 w-full bg-[#0b0d11] border border-white/10 rounded-md pl-8 pr-8 text-[13px] text-ink-100
-                     placeholder:text-ink-500 focus:outline-none focus:border-accent-blue/60"
+                     placeholder:text-ink-400 focus:outline-none focus:border-accent-blue/60"
             />
             {(files.query || files.searching) && (
               <button

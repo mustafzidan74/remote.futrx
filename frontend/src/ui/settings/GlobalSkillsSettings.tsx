@@ -6,7 +6,8 @@ import {
   globalSkillsState,
   type GlobalSkillDraft,
 } from "../../state/settings/globalSkillsState";
-import { AlertCircle, Check, Download, Edit, Loader, Plus, Trash, X } from "../primitives/icons";
+import { Check, Download, Edit, Loader, Plus, Trash, X } from "../primitives/icons";
+import { ErrorBanner } from "../primitives/Feedback";
 
 // GlobalSkillsSettings is the admin surface for the platform-wide skills
 // library: every project sees these skills in its picker on top of its own
@@ -107,10 +108,7 @@ export function GlobalSkillsSettings({
 
         <div class="p-3 space-y-3">
           {(library.error || formError) && (
-            <div class="flex items-start gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12.5px] text-red-200">
-              <AlertCircle class="w-4 h-4 flex-none mt-0.5" />
-              <span>{formError || library.error}</span>
-            </div>
+            <ErrorBanner message={(formError || library.error) as string} />
           )}
 
           <div class="flex flex-wrap gap-2">
@@ -299,7 +297,7 @@ function SkillEditor({
               }
               placeholder="code-review-guard"
               class="h-9 flex-1 rounded-md border border-white/10 bg-[#0b0d11] px-2.5 text-[13px]
-                     text-ink-100 placeholder:text-ink-500 focus:outline-none disabled:opacity-60"
+                     text-ink-100 placeholder:text-ink-400 focus:outline-none disabled:opacity-60"
             />
             {editing === null && metadata.name && (
               <button
@@ -371,7 +369,7 @@ function SkillEditor({
             onInput={(event) => setNewFilePath((event.currentTarget as HTMLInputElement).value)}
             placeholder="references/checklist.md"
             class="h-9 flex-1 rounded-md border border-white/10 bg-[#0b0d11] px-2.5 text-[13px]
-                   text-ink-100 placeholder:text-ink-500 focus:outline-none"
+                   text-ink-100 placeholder:text-ink-400 focus:outline-none"
           />
           <button
             type="button"
@@ -464,14 +462,14 @@ function ImportFromProject({
           onInput={(event) => setSkill((event.currentTarget as HTMLInputElement).value)}
           placeholder="project skill name"
           class="h-9 flex-1 min-w-[10rem] rounded-md border border-white/10 bg-[#0b0d11] px-2.5 text-[13px]
-                 text-ink-100 placeholder:text-ink-500 focus:outline-none"
+                 text-ink-100 placeholder:text-ink-400 focus:outline-none"
         />
         <input
           value={name}
           onInput={(event) => setName((event.currentTarget as HTMLInputElement).value)}
           placeholder="global name (optional)"
           class="h-9 flex-1 min-w-[10rem] rounded-md border border-white/10 bg-[#0b0d11] px-2.5 text-[13px]
-                 text-ink-100 placeholder:text-ink-500 focus:outline-none"
+                 text-ink-100 placeholder:text-ink-400 focus:outline-none"
         />
       </div>
       <div class="flex gap-2">

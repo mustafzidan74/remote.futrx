@@ -4,7 +4,8 @@ import {
   formatTokens,
   formatUsd,
 } from "../../../state/usage/usageChartModel";
-import { ChevronRight, Loader, X } from "../../primitives/icons";
+import { Activity, ChevronRight, Loader, X } from "../../primitives/icons";
+import { EmptyState } from "../../primitives/Feedback";
 
 const GROUP_HEADINGS: Record<UsageGroupBy, string> = {
   project: "Project",
@@ -27,7 +28,11 @@ export function UsageGroupTable({
   if (groups.length === 0) {
     return (
       <UsagePanel title={GROUP_HEADINGS[groupBy]} description="No usage recorded in this range.">
-        <div class="px-1 py-6 text-center text-[13px] text-ink-400">Nothing to show yet.</div>
+        <EmptyState
+          Icon={Activity}
+          title="No usage in this range"
+          hint="Widen the date range, or run an agent to record the first tokens."
+        />
       </UsagePanel>
     );
   }
@@ -45,7 +50,7 @@ export function UsageGroupTable({
       <UsageScroller>
         <table class="w-full text-[13px] border-collapse min-w-[560px]">
           <thead>
-            <tr class="text-left text-[11.5px] uppercase tracking-wide text-ink-400">
+            <tr class="text-left text-[11.5px] uppercase tracking-wide text-ink-300">
               <th class="font-medium px-2 py-2">{GROUP_HEADINGS[groupBy]}</th>
               <th class="font-medium px-2 py-2 text-right">Runs</th>
               <th class="font-medium px-2 py-2 text-right">Tokens</th>
@@ -62,12 +67,14 @@ export function UsageGroupTable({
                 }`}
                 onClick={drillable ? () => onDrillDown(group) : undefined}
               >
-                <td class="px-2 py-2 text-ink-100 truncate max-w-[220px]">{group.label}</td>
-                <td class="px-2 py-2 text-right text-ink-200 font-mono">{group.runs}</td>
-                <td class="px-2 py-2 text-right text-ink-200 font-mono">
+                <td dir="auto" class="bidi-auto px-2 py-2 text-ink-100 truncate max-w-[220px]" title={group.label}>
+                  {group.label}
+                </td>
+                <td class="px-2 py-2 text-right text-ink-200 font-mono tabular-nums">{group.runs}</td>
+                <td class="px-2 py-2 text-right text-ink-200 font-mono tabular-nums">
                   {formatTokens(group.totalTokens)}
                 </td>
-                <td class="px-2 py-2 text-right font-mono text-ink-50">
+                <td class="px-2 py-2 text-right font-mono tabular-nums text-ink-50">
                   <CostCell
                     cost={group.costUsd}
                     estimated={group.estimatedCostUsd}
@@ -129,13 +136,13 @@ export function UsageRecordsTable({
           <Loader class="w-4 h-4 animate-spin" /> Loading runs…
         </div>
       ) : records.length === 0 ? (
-        <div class="px-1 py-6 text-center text-[13px] text-ink-400">No runs in this range.</div>
+        <EmptyState Icon={Activity} title="No runs in this range" />
       ) : (
         <>
           <UsageScroller>
             <table class="w-full text-[12.5px] border-collapse min-w-[720px]">
               <thead>
-                <tr class="text-left text-[11.5px] uppercase tracking-wide text-ink-400">
+                <tr class="text-left text-[11.5px] uppercase tracking-wide text-ink-300">
                   <th class="font-medium px-2 py-2">When (UTC)</th>
                   <th class="font-medium px-2 py-2">Chat</th>
                   <th class="font-medium px-2 py-2">User</th>
@@ -152,7 +159,7 @@ export function UsageRecordsTable({
                     key={`${record.chatId}-${record.at}`}
                     class="border-t border-white/[0.06] align-top"
                   >
-                    <td class="px-2 py-2 text-ink-300 font-mono whitespace-nowrap">
+                    <td class="px-2 py-2 text-ink-300 font-mono tabular-nums whitespace-nowrap">
                       {formatUtcDateTime(record.at)}
                     </td>
                     <td class="px-2 py-2 text-ink-200 font-mono">
@@ -161,24 +168,24 @@ export function UsageRecordsTable({
                         <span class="ml-1.5 text-[10.5px] text-accent-green">scheduled</span>
                       )}
                     </td>
-                    <td class="px-2 py-2 text-ink-200 truncate max-w-[180px]">
+                    <td class="px-2 py-2 text-ink-200 truncate max-w-[180px]" title={record.userEmail}>
                       {record.userEmail || "—"}
                     </td>
-                    <td class="px-2 py-2 text-ink-200 truncate max-w-[180px]">
+                    <td class="px-2 py-2 text-ink-200 truncate max-w-[180px]" title={record.model || record.provider}>
                       {record.model || record.provider || "—"}
                     </td>
-                    <td class="px-2 py-2 text-right text-ink-200 font-mono">
+                    <td class="px-2 py-2 text-right text-ink-200 font-mono tabular-nums">
                       {formatTokens(record.inputTokens)}
                     </td>
-                    <td class="px-2 py-2 text-right text-ink-200 font-mono">
+                    <td class="px-2 py-2 text-right text-ink-200 font-mono tabular-nums">
                       {formatTokens(record.outputTokens)}
                     </td>
-                    <td class="px-2 py-2 text-right text-ink-300 font-mono">
+                    <td class="px-2 py-2 text-right text-ink-300 font-mono tabular-nums">
                       {formatTokens(record.cacheReadTokens + record.cacheWriteTokens)}
                     </td>
-                    <td class="px-2 py-2 text-right font-mono text-ink-50">
+                    <td class="px-2 py-2 text-right font-mono tabular-nums text-ink-50">
                       {record.costUsd == null ? (
-                        <span class="text-ink-400" title="No provider price and no matching price-table entry">
+                        <span class="text-ink-300" title="No provider price and no matching price-table entry">
                           unknown
                         </span>
                       ) : (
@@ -230,7 +237,7 @@ function CostCell({
     <span title={title || "Reported by the provider"}>
       {allEstimated ? "~" : ""}
       {formatUsd(cost)}
-      {!allEstimated && estimated > 0 && <span class="text-ink-400">*</span>}
+      {!allEstimated && estimated > 0 && <span class="text-ink-300">*</span>}
     </span>
   );
 }
