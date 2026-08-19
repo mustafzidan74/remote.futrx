@@ -15,5 +15,7 @@ export interface ToolCallProps {
   output?: string;
   isError?: boolean;
   status: "running" | "done";
+  /** Opens the call's detail immediately — the turn timeline expands into it. */
+  defaultOpen?: boolean;
   onAnswerQuestion?: (text: string) => void;
 }

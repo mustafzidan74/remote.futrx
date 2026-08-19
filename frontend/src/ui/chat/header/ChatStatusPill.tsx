@@ -1,6 +1,12 @@
 import type { ChatProvider } from "../../../models/chat";
 import { providerDisplayLabel } from "../../../config/chat";
+import {
+  PHASE_ABBREVIATION,
+  formatElapsed,
+  type AgentActivity,
+} from "../../../state/chat/agentActivity";
 import type { AutopilotView } from "../../../state/chat/chatPolicyState";
+import { useActivityClock } from "../../../state/hooks/chat/useAgentActivity";
 import { PlaneTakeoff, X } from "../../primitives/icons";
 
 /**
@@ -15,22 +21,39 @@ import { PlaneTakeoff, X } from "../../primitives/icons";
  * flight. Killing an agent mid-edit to switch off a scheduling policy would
  * leave the workspace in whatever half-state the turn had reached — the Cancel
  * control in the composer is the one that stops work.
+ *
+ * While a run is live the state word is the phase the activity strip is
+ * showing — "thinking", "tool", "writing" — plus the run's elapsed time, so
+ * the header and the strip never disagree about what is happening.
  */
 export function ChatStatusPill({
   provider,
   streaming,
+  activity,
   autopilot,
   busy = false,
   onStopAutopilot,
 }: {
   provider?: ChatProvider;
   streaming: boolean;
+  /** The live phase, when the caller is inside a chat thread. */
+  activity?: AgentActivity;
   autopilot?: AutopilotView;
   busy?: boolean;
   onStopAutopilot?: () => void;
 }) {
   const flying = !!autopilot?.enabled;
-  const state = streaming ? "Working" : "Ready";
+  const phase = streaming && activity ? activity.phase : "idle";
+  const now = useActivityClock(phase !== "idle");
+  const elapsed =
+    phase !== "idle" && activity && activity.startedAt > 0
+      ? formatElapsed(Math.max(0, now - activity.startedAt))
+      : "";
+  const state = streaming
+    ? phase === "idle"
+      ? "Working"
+      : `${PHASE_ABBREVIATION[phase]}${elapsed ? ` ${elapsed}` : ""}`
+    : "Ready";
   const title = flying
     ? `${providerDisplayLabel(provider)} · ${state} · ${autopilot.status}`
     : `${providerDisplayLabel(provider)} · ${state}`;
@@ -45,7 +68,7 @@ export function ChatStatusPill({
         class={`h-1.5 w-1.5 flex-none rounded-full ${streaming ? "bg-accent-green animate-pulse" : "bg-ink-400"}`}
         aria-hidden="true"
       />
-      <span class="text-[11.5px] font-semibold whitespace-nowrap">
+      <span class="text-[11.5px] font-semibold whitespace-nowrap tabular-nums">
         <span class="hidden sm:inline">{providerDisplayLabel(provider)} · </span>
         {state}
       </span>

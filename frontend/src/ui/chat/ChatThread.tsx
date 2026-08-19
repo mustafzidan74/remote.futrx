@@ -1,9 +1,11 @@
 import type { ComponentChildren, RefObject } from "preact";
 import type { ChatMeta, ChatStatus } from "../../models/chat";
+import type { AgentActivity } from "../../state/chat/agentActivity";
 import type { ProjectMeta } from "../../models/project";
 import type { ChatMessageBlock } from "../../models/chatMessage";
 import type { ChatPolicies } from "../../state/hooks/chat/useChatPolicies";
 import { ChatComposer, type ChatComposerProps } from "./composer/ChatComposer";
+import { AgentActivityStrip } from "./messages/AgentActivityStrip";
 import { JumpToLatestButton } from "./messages/JumpToLatestButton";
 import { MessageList } from "./messages/MessageList";
 import { ThreadHeader } from "./header/ThreadHeader";
@@ -11,6 +13,7 @@ import { ThreadHeader } from "./header/ThreadHeader";
 export function ChatThread({
   chat,
   project,
+  activity,
   blocks,
   highlightAt,
   hasOlder,
@@ -36,6 +39,8 @@ export function ChatThread({
 }: {
   chat: ChatMeta;
   project: ProjectMeta | null;
+  /** What the running turn is doing, for the strip and the header pill. */
+  activity: AgentActivity;
   blocks: ChatMessageBlock[];
   /** A message instant to scroll to and flash, or null. */
   highlightAt: number | null;
@@ -69,6 +74,7 @@ export function ChatThread({
           chat={chat}
           project={project}
           streaming={composer.streaming}
+          activity={activity}
           policies={policies}
           onHamburger={onHamburger}
           onOpenAgentBrowser={onOpenAgentBrowser}
@@ -98,6 +104,16 @@ export function ChatThread({
           />
           {showJump && <JumpToLatestButton onClick={onJumpToBottom} />}
         </div>
+
+        {/*
+          Pinned between the transcript and the composer rather than inside the
+          scroller: a live narration that scrolls out of view answers nothing.
+        */}
+        <AgentActivityStrip
+          activity={activity}
+          streaming={composer.streaming}
+          onCancel={composer.onCancel}
+        />
 
         <ChatComposer {...composer} />
       </div>

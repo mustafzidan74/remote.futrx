@@ -1,5 +1,6 @@
 import type { ComponentChildren } from "preact";
 import type { ChatMeta } from "../../../models/chat";
+import type { AgentActivity } from "../../../state/chat/agentActivity";
 import type { ProjectMeta } from "../../../models/project";
 import { Menu, MessageSquare } from "../../primitives/icons";
 import { ChatPreviewChip } from "../../preview/ChatPreviewChip";
@@ -26,6 +27,7 @@ export function ThreadHeader({
   chat,
   project,
   streaming,
+  activity,
   policies,
   actions,
   onHamburger,
@@ -35,6 +37,8 @@ export function ThreadHeader({
   chat: ChatMeta;
   project: ProjectMeta | null;
   streaming: boolean;
+  /** What the running turn is doing; the pill says the same thing the strip does. */
+  activity?: AgentActivity;
   policies?: ChatPolicies;
   /** Optional extra header controls, right-aligned next to the preview chip. */
   actions?: ComponentChildren;
@@ -75,6 +79,7 @@ export function ThreadHeader({
         <ChatStatusPill
           provider={chat.provider}
           streaming={streaming}
+          activity={activity}
           autopilot={policies?.autopilot}
           busy={policies?.busy}
           onStopAutopilot={policies?.stopAutopilot}

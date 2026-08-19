@@ -5,7 +5,7 @@ import type { ToolCallProps } from "../ToolCallTypes";
 import { ToolShell } from "../ToolShell";
 import { shortPath } from "../utils";
 
-export function EditCall({ input, output, status, isError }: Omit<ToolCallProps, "name">) {
+export function EditCall({ input, output, status, isError, defaultOpen }: Omit<ToolCallProps, "name">) {
   const path = (input?.file_path as string) ?? "";
   const oldStr = (input?.old_string as string) ?? "";
   const newStr = (input?.new_string as string) ?? "";
@@ -25,7 +25,7 @@ export function EditCall({ input, output, status, isError }: Omit<ToolCallProps,
       badge={edits ? `${edits.length} edits` : undefined}
       status={status}
       isError={isError}
-      defaultOpen
+      defaultOpen={defaultOpen ?? true}
     >
       <div class="divide-y divide-ink-500">
         {patches.map((parts, index) => (

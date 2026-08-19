@@ -114,10 +114,91 @@ Persisted events receive a monotonic `seq`. On reconnect, the UI sends its last 
 
 The UI groups text, reasoning, and tool events into readable assistant messages. Known read, write, edit, search, shell, and question tools receive specialized renderers; unknown tools use a generic view.
 
-The thread also provides Markdown and syntax-highlighted code, grouped tool calls, visible reasoning blocks, token-usage totals, a working indicator, older-history loading, jump-to-latest behavior, and an error block. An `AskUserQuestion` tool call becomes a paged answer form whose submitted answer is sent as the next prompt.
+The thread also provides Markdown and syntax-highlighted code, per-turn tool timelines, visible reasoning blocks, token-usage totals, older-history loading, jump-to-latest behavior, and an error block. An `AskUserQuestion` tool call becomes a paged answer form whose submitted answer is sent as the next prompt.
 
 Antigravity currently contributes streamed assistant text and session/error
 state, not structured reasoning, tools, or usage.
+
+## Live agent activity
+
+A turn can take minutes. Rather than a silent spinner, the browser narrates
+what the run is doing, using only the events above — no extra backend calls, no
+polling, and no new persisted data.
+
+```mermaid
+flowchart LR
+    Events["Chat events already on screen"] --> Reducer["reduceActivity fold"]
+    Reducer --> Phase["Phase: tool → thinking → writing → starting"]
+    Phase --> Strip["Activity strip above the composer"]
+    Phase --> Pill["Header status pill"]
+    Phase --> Row["Sidebar chat row"]
+    Events --> Timeline["Per-turn timeline in the transcript"]
+```
+
+### Activity strip
+
+While a run is in flight a one-line strip sits between the transcript and the
+composer. It resolves what to say in this priority order:
+
+| Priority | Shown when | Example |
+| --- | --- | --- |
+| 1 | A tool call is open | `📄 Reading wp-config.php`, `⚡ Running wp plugin update --all`, `✏️ Editing functions.php +12 −3` |
+| 2 | Reasoning deltas are arriving | `💭 Thinking…` |
+| 3 | Assistant text deltas are arriving | `✍️ Writing the answer…` |
+| 4 | The prompt was sent and nothing has come back | `⏳ Starting…` |
+
+The strip also carries a spinner, the run's elapsed time as `mm:ss`, a **Stop**
+button wired to the same cancel path as the composer, and a `· 12.4k tokens`
+counter once the provider has reported a token count for the run.
+
+Tool names are mapped to labels by a flat table in
+[`frontend/src/state/chat/agentActivity.ts`](../../frontend/src/state/chat/agentActivity.ts).
+It is provider-neutral — Claude's `Bash` and Codex's `command_execution` both
+read as **Running** — and an unmapped tool falls back to its own raw name
+rather than to a vague "working". MCP tools (`mcp__server__tool`) are split
+into `server · tool` with the raw identifier kept in the tooltip. Every path,
+command, or URL the strip echoes is rendered `dir="auto"`, and the whole line
+truncates rather than wrapping on a phone.
+
+### Show thinking
+
+When a provider streams reasoning, the strip offers a **Show thinking**
+toggle. Turned on, the strip gains an expandable area (collapsed by default)
+that streams the current run's reasoning live, capped at about ten lines and
+auto-scrolled to the newest words. The choice is remembered per browser in
+`localStorage` (`remote.futrx.showThinking.v1`), not in account settings: it
+describes the screen you are watching, not who you are. Providers that never
+send reasoning — Antigravity today — never show the toggle.
+
+### Idle hint
+
+If ninety seconds pass with no event of any kind while a run is active, the
+strip adds `…still working (no output for 1m30s)`. Any event resets the clock,
+so this distinguishes a hung run from a long one.
+
+### Per-turn timeline
+
+A turn's grouped tool calls render as a timeline rather than an opaque
+`N tools used` collapsible. Collapsed it reads `3 steps · 6.4s` plus the failed
+or final step; expanded, each step is one log row — icon, label, target,
+duration, and a short result or error line. A row opens into the existing
+specialized renderer (diff view, command output) on demand. Durations come
+from the `tool_use_start` and `tool_use_end` timestamps already in the event
+log; a transcript written before this existed simply shows no duration.
+
+### Header and sidebar
+
+The header's `ChatStatusPill` shows the same phase and elapsed time
+(`Claude · thinking 1:07`) instead of a generic "Working". The sidebar row for
+the open chat shows a pulsing dot and the abbreviated phase in place of its
+relative timestamp. Only the open chat holds a socket, so every other running
+chat keeps the unqualified running indicator.
+
+**Known gap:** the backend declares `run.started` and `usage.updated` event
+types but no provider adapter emits them, and neither is forwarded to the chat
+event stream. Token counts therefore arrive only with `complete`, so the
+strip's token counter appears at the very end of a run rather than climbing
+during it.
 
 ## Skills
 
@@ -217,3 +298,7 @@ Rewind clears provider session IDs. On the next run, the backend converts remain
 - Skill catalog: [`backend/internal/service/skills/catalog.go`](../../backend/internal/service/skills/catalog.go)
 - Global skills library: [`backend/internal/service/skills/global.go`](../../backend/internal/service/skills/global.go)
 - Frontend chat hook: [`frontend/src/state/hooks/chat/useChat.ts`](../../frontend/src/state/hooks/chat/useChat.ts)
+- Frontend event projector: [`frontend/src/state/chat/chatEventStateProjector.ts`](../../frontend/src/state/chat/chatEventStateProjector.ts)
+- Live activity reducer and tool table: [`frontend/src/state/chat/agentActivity.ts`](../../frontend/src/state/chat/agentActivity.ts)
+- Activity strip: [`frontend/src/ui/chat/messages/AgentActivityStrip.tsx`](../../frontend/src/ui/chat/messages/AgentActivityStrip.tsx)
+- Per-turn timeline: [`frontend/src/ui/chat/messages/TurnTimeline.tsx`](../../frontend/src/ui/chat/messages/TurnTimeline.tsx)

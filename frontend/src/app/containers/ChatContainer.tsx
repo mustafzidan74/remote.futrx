@@ -11,6 +11,7 @@ import { FileManagerDrawer } from "../../ui/chat/files/FileManagerDrawer";
 import { ScheduleDrawer } from "../../ui/chat/schedules/ScheduleDrawer";
 import { chatAttachmentState } from "../../state/chat/chatAttachmentState";
 import { useAuthContext } from "../../state/context/AuthContext";
+import { usePublishChatPhase } from "../../state/hooks/chat/useAgentActivity";
 import { useChat } from "../../state/hooks/chat/useChat";
 import { useChatBrowserController } from "../../state/hooks/chat/useChatBrowserController";
 import { useChatComposerController } from "../../state/hooks/chat/useChatComposerController";
@@ -43,6 +44,7 @@ export function ChatContainer({
   const {
     meta,
     blocks,
+    activity,
     eventCount,
     hasOlder,
     loadingOlder,
@@ -180,6 +182,10 @@ export function ChatContainer({
   });
 
   useChatReadMarker({ chatId: chat.id, eventCount, status });
+  // The sidebar row is a sibling of this container, so the phase it shows is
+  // published rather than threaded through the workspace context — see
+  // `agentPhaseStore`.
+  usePublishChatPhase(chat.id, status === "streaming" ? activity.phase : "idle");
   useChatKeyboardShortcuts({ status, onCancel: cancel });
   const { hasRepos } = useWorkspaceGitRepos({ chatId: chat.id, status });
   const workspaceActions = {
@@ -283,6 +289,7 @@ export function ChatContainer({
           <ChatThread
             chat={displayMeta}
             project={chatProject}
+            activity={activity}
             blocks={blocks}
             highlightAt={highlightAt ?? null}
             hasOlder={hasOlder}

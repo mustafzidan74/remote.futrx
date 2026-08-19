@@ -1,7 +1,9 @@
 import type { ChatMeta } from "../../models/chat";
 import { modelShortLabel } from "../../config/chat";
+import { PHASE_ABBREVIATION } from "../../state/chat/agentActivity";
+import { useLiveChatPhase } from "../../state/hooks/chat/useAgentActivity";
 import { timeAgo } from "../../shared/format";
-import { Clock, Eye, EyeOff, GitFork, Loader, MessageSquare, X } from "../primitives/icons";
+import { Clock, Eye, EyeOff, GitFork, MessageSquare, X } from "../primitives/icons";
 
 export function ChatRow({
   chat,
@@ -20,6 +22,10 @@ export function ChatRow({
 }) {
   const rawUnread = (chat.lastMessageAt || 0) > (chat.lastReadAt || 0);
   const unread = !active && !chat.running && rawUnread;
+  // Only the open chat holds a socket, so only it can say which phase a run is
+  // in. Every other running chat keeps the honest, unqualified "running".
+  const live = useLiveChatPhase();
+  const phase = live?.chatId === chat.id ? PHASE_ABBREVIATION[live.phase] : "";
 
   return (
     <div
@@ -35,7 +41,12 @@ export function ChatRow({
       >
         <div class="flex items-start gap-2">
           {chat.running ? (
-            <Loader class="mt-0.5 w-3.5 h-3.5 flex-none text-accent-blue animate-spin" />
+            <span
+              class="mt-0.5 w-3.5 h-3.5 flex-none grid place-items-center"
+              title={phase ? `Running — ${phase}` : "Running"}
+            >
+              <span class="w-2.5 h-2.5 rounded-full bg-accent-blue animate-pulse shadow-[0_0_0_3px_rgba(93,157,255,0.14)]" />
+            </span>
           ) : unread ? (
             <span class="mt-0.5 w-3.5 h-3.5 flex-none grid place-items-center" title="Unread">
               <span class="w-2.5 h-2.5 rounded-full bg-accent-green shadow-[0_0_0_3px_rgba(43,213,118,0.12)]" />
@@ -57,8 +68,14 @@ export function ChatRow({
               <span class={`px-1 py-0.5 rounded bg-white/[0.06] text-[10px] leading-none whitespace-nowrap flex-none ${active ? "text-accent-blue" : ""}`}>
                 {modelShortLabel(chat.model)}
               </span>
-              <Clock class="w-3 h-3 flex-none text-ink-400" aria-hidden="true" />
-              <span class="truncate tabular-nums">{timeAgo(chat.lastMessageAt)}</span>
+              {chat.running && phase ? (
+                <span class="truncate text-accent-blue">{phase}</span>
+              ) : (
+                <>
+                  <Clock class="w-3 h-3 flex-none text-ink-400" aria-hidden="true" />
+                  <span class="truncate tabular-nums">{timeAgo(chat.lastMessageAt)}</span>
+                </>
+              )}
             </div>
           </div>
         </div>

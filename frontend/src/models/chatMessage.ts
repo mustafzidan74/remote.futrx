@@ -10,6 +10,13 @@ export type AssistantMessagePart =
       output?: string;
       isError?: boolean;
       status: "running" | "done";
+      /**
+       * When the tool started and finished, copied straight off the two chat
+       * events that describe it. They are what lets the turn timeline show a
+       * duration per step without asking the backend for anything new.
+       */
+      startedAt?: number;
+      endedAt?: number;
     }
   | { kind: "thinking"; text: string };
 

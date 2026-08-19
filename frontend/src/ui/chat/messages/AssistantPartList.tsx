@@ -2,7 +2,7 @@ import type { ComponentChildren } from "preact";
 import type { AssistantMessagePart } from "../../../models/chatMessage";
 import { ToolCall } from "../tool-calls/ToolCall";
 import { StreamingText } from "./StreamingText";
-import { ToolGroup } from "./ToolGroup";
+import { TurnTimeline } from "./TurnTimeline";
 
 type ToolPart = Extract<AssistantMessagePart, { kind: "tool" }>;
 
@@ -33,7 +33,7 @@ function renderAssistantParts(
   const flushToolGroup = () => {
     if (!toolGroup.length) return;
     rendered.push(
-      <ToolGroup
+      <TurnTimeline
         key={`tools-${toolGroupStart}`}
         parts={toolGroup}
         startIndex={toolGroupStart}

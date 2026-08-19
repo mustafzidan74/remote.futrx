@@ -5,6 +5,7 @@ import type {
   ChatMessageBlock,
 } from "../../models/chatMessage";
 import type { ChatUsageTotals } from "../../models/chatUsage";
+import { emptyActivity, reduceActivity, type AgentActivity } from "./agentActivity.ts";
 
 type AssistantToolPart = Extract<AssistantMessagePart, { kind: "tool" }>;
 
@@ -28,6 +29,8 @@ export interface ChatRenderState {
   events: ChatEvent[];
   blocks: ChatMessageBlock[];
   usageTotals: ChatUsageTotals;
+  /** What the newest run is doing right now — see `agentActivity.ts`. */
+  activity: AgentActivity;
   eventCount: number;
   hasOlder: boolean;
   nextBefore: number;
@@ -40,6 +43,7 @@ class ChatEventStateProjector {
       events: [],
       blocks: [],
       usageTotals: EMPTY_USAGE_TOTALS,
+      activity: emptyActivity(),
       eventCount: 0,
       hasOlder: false,
       nextBefore: 0,
@@ -52,8 +56,13 @@ class ChatEventStateProjector {
     page: Pick<ChatEventPage, "hasMore" | "nextBefore" | "lastSeq">
   ): ChatRenderState {
     let usageTotals = EMPTY_USAGE_TOTALS;
+    // The activity is folded in the same pass as the totals: it is a fold over
+    // the very events the blocks are built from, so replaying history lands on
+    // the same phase the live stream would have produced.
+    let activity = emptyActivity();
     for (const event of events) {
       usageTotals = this.addUsage(usageTotals, event);
+      activity = reduceActivity(activity, event);
     }
     return {
       events,
@@ -62,6 +71,7 @@ class ChatEventStateProjector {
         []
       ),
       usageTotals,
+      activity,
       eventCount: events.length,
       hasOlder: page.hasMore,
       nextBefore: page.nextBefore ?? 0,
@@ -172,6 +182,7 @@ class ChatEventStateProjector {
           name: event.name,
           input: event.input ?? {},
           status: "running",
+          startedAt: event.t,
         });
         return next;
       }
@@ -180,6 +191,7 @@ class ChatEventStateProjector {
           output: event.output,
           isError: event.isError,
           status: "done",
+          endedAt: event.t,
         });
       case "complete":
         return this.endTrailingAssistant(blocks);

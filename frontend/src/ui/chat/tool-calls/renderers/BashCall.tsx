@@ -4,7 +4,7 @@ import { CodeBlock } from "../CodeBlock";
 import { ToolShell } from "../ToolShell";
 import { truncate } from "../utils";
 
-export function BashCall({ input, output, status, isError }: Omit<ToolCallProps, "name">) {
+export function BashCall({ input, output, status, isError, defaultOpen }: Omit<ToolCallProps, "name">) {
   const command = (input?.command as string) ?? "";
   const description = (input?.description as string) ?? "";
   return (
@@ -14,6 +14,7 @@ export function BashCall({ input, output, status, isError }: Omit<ToolCallProps,
       badge={description ? truncate(description, 30) : undefined}
       status={status}
       isError={isError}
+      defaultOpen={defaultOpen}
     >
       {output ? <CodeBlock text={truncate(output, 6000)} /> : null}
     </ToolShell>

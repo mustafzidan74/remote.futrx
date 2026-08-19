@@ -9,6 +9,7 @@ import type {
   PromptOutcome,
   SyntheticKind,
 } from "../../../models/chat";
+import type { AgentActivity } from "../../chat/agentActivity";
 import {
   chatEventStateProjector,
   type ChatRenderState,
@@ -21,6 +22,8 @@ const CHAT_EVENT_PAGE_LIMIT = 240;
 interface UseChatResult {
   meta: ChatMeta | null;
   blocks: ChatMessageBlock[];
+  /** What the newest run is doing, folded from the same events as the blocks. */
+  activity: AgentActivity;
   usageTotals: ChatUsageTotals;
   eventCount: number;
   hasOlder: boolean;
@@ -238,6 +241,7 @@ export function useChat(chatId: string): UseChatResult {
   return {
     meta,
     blocks: renderState.blocks,
+    activity: renderState.activity,
     usageTotals: renderState.usageTotals,
     eventCount: renderState.eventCount,
     hasOlder: renderState.hasOlder,
