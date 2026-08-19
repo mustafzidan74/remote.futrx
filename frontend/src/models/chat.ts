@@ -15,6 +15,13 @@ export type {
 export interface ChatMeta {
   id: string;
   title: string;
+  /**
+   * A one-line description of what this chat is about, written by the
+   * optional auxiliary model after a run settles. Shown as a subtitle in the
+   * sidebar and on the dashboard; absent on a server that has no such model,
+   * which is why nothing may depend on it.
+   */
+  summary?: string;
   provider?: ChatProvider;
   claudeSessionId?: string;
   codexSessionId?: string;

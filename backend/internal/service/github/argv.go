@@ -144,6 +144,27 @@ func stageAllArgv() []string {
 	return []string{"git", "add", "-A"}
 }
 
+// diffShapeArgv describes the working tree well enough to name it, and no
+// better. It prints two things and nothing else: the per-file insert/delete
+// counts of `git diff --stat`, and the porcelain status list, which is the
+// only place a brand-new untracked file appears at all.
+//
+// What it deliberately does *not* print is a single line of any file. The
+// output of this command is the entire input the auxiliary model gets for a
+// commit subject, so keeping contents out of it here is what keeps source
+// code out of an operator's local model — and out of a remote endpoint, if
+// they pointed it at one.
+//
+// It is one `sh -c` with a fixed program and no interpolation, exactly like
+// workspaceProbeArgv, so there is still nothing for a filename to escape into.
+func diffShapeArgv() []string {
+	const script = `git -c core.quotepath=false diff --stat HEAD -- 2>/dev/null | tail -n 60
+printf 'PATHS
+'
+git -c core.quotepath=false status --porcelain=v1 2>/dev/null | cut -c4- | head -n 60`
+	return []string{"sh", "-c", script}
+}
+
 // commitArgv commits the staged tree.
 //
 // The identity is supplied with `-c` rather than written into the container's

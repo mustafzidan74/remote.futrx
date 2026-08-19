@@ -22,6 +22,13 @@ export const chatApi = {
     requestJson<{ ok: boolean }>("DELETE", API_ROUTES.chats.item(id)),
   fork: (id: string) =>
     requestJson<ChatMeta>("POST", API_ROUTES.chats.fork(id), {}),
+  /**
+   * Asks the auxiliary model for a better name for this chat. The route only
+   * exists on a server that has one, so a 404 here means "not available"
+   * rather than "something broke".
+   */
+  regenerateTitle: (id: string) =>
+    requestJson<ChatMeta>("POST", API_ROUTES.chats.title(id), {}),
   ...chatFilesApi,
   fetchEvents: chatEventsApi.fetchEvents,
   rewind: chatEventsApi.rewind,

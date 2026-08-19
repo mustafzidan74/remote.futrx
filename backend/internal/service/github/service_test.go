@@ -1161,3 +1161,154 @@ func TestPullRequestURL(t *testing.T) {
 		})
 	}
 }
+
+/* ------------------------------------------------------------------ *
+ * Commit message suggestions
+ * ------------------------------------------------------------------ */
+
+// scriptedSubjects stands in for the auxiliary model's commit-subject writer.
+type scriptedSubjects struct {
+	available bool
+	subject   string
+	err       error
+	calls     int
+	sawInput  string
+}
+
+func (s *scriptedSubjects) Available() bool { return s.available }
+
+func (s *scriptedSubjects) Subject(_ context.Context, diffShape string) (string, error) {
+	s.calls++
+	s.sawInput = diffShape
+	return s.subject, s.err
+}
+
+func TestSuggestCommitMessageAlwaysAnswersWithSomethingUsable(t *testing.T) {
+	const datedDefault = "Changes from Remote — 2026-08-18"
+	const diffShape = " api/auth.go | 12 ++++++--\nPATHS\napi/auth.go\napi/auth_test.go"
+
+	tests := []struct {
+		name          string
+		subjects      *scriptedSubjects
+		diff          cliResponse
+		wantMessage   string
+		wantGenerated bool
+		wantCalls     int
+	}{
+		{
+			name:          "a working model writes a conventional subject",
+			subjects:      &scriptedSubjects{available: true, subject: "feat(auth): add device login"},
+			diff:          cliResponse{out: diffShape},
+			wantMessage:   "feat(auth): add device login",
+			wantGenerated: true,
+			wantCalls:     1,
+		},
+		{
+			name:        "no auxiliary model means the dated default, and no container work",
+			subjects:    &scriptedSubjects{available: false},
+			diff:        cliResponse{out: diffShape},
+			wantMessage: datedDefault,
+		},
+		{
+			name:        "a model that errors falls back to the dated default",
+			subjects:    &scriptedSubjects{available: true, err: errors.New("connection refused")},
+			diff:        cliResponse{out: diffShape},
+			wantMessage: datedDefault,
+			wantCalls:   1,
+		},
+		{
+			name:        "an empty answer is not a commit message",
+			subjects:    &scriptedSubjects{available: true, subject: "   "},
+			diff:        cliResponse{out: diffShape},
+			wantMessage: datedDefault,
+			wantCalls:   1,
+		},
+		{
+			name:        "a diff that cannot be read falls back without asking the model",
+			subjects:    &scriptedSubjects{available: true, subject: "feat: nope"},
+			diff:        cliResponse{out: "", err: errors.New("exit 128")},
+			wantMessage: datedDefault,
+		},
+		{
+			name:        "nothing uncommitted means nothing to describe",
+			subjects:    &scriptedSubjects{available: true, subject: "feat: nope"},
+			diff:        cliResponse{out: "PATHS"},
+			wantMessage: datedDefault,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cli := newScriptedCLI(map[string]cliResponse{"sh -c": test.diff})
+			service := New(newMemoryStore(), cli, linkedProject(),
+				WithClock(fixedClock()), WithCommitSubjects(test.subjects))
+
+			result, err := service.SuggestCommitMessage(context.Background(), testProjectID)
+			if err != nil {
+				t.Fatalf("SuggestCommitMessage() = %v", err)
+			}
+			if result.Message != test.wantMessage {
+				t.Fatalf("message = %q, want %q", result.Message, test.wantMessage)
+			}
+			if result.Generated != test.wantGenerated {
+				t.Fatalf("generated = %v, want %v", result.Generated, test.wantGenerated)
+			}
+			if result.Fallback != datedDefault {
+				t.Fatalf("fallback = %q, want the dated default to always be present", result.Fallback)
+			}
+			if !test.wantGenerated && result.Reason == "" {
+				t.Fatal("a non-generated answer must say why")
+			}
+			if test.subjects.calls != test.wantCalls {
+				t.Fatalf("the model was asked %d times, want %d", test.subjects.calls, test.wantCalls)
+			}
+		})
+	}
+}
+
+func TestSuggestCommitMessageSendsShapeNotContents(t *testing.T) {
+	// The whole safety story of this job is that the model sees counts and
+	// paths, never a line of anybody's source. The command is what guarantees
+	// it, so the command is what this test pins.
+	subjects := &scriptedSubjects{available: true, subject: "chore: tidy"}
+	cli := newScriptedCLI(map[string]cliResponse{
+		"sh -c": {out: "api/auth.go | 12 ++++++--\nPATHS\napi/auth.go"},
+	})
+	service := New(newMemoryStore(), cli, linkedProject(),
+		WithClock(fixedClock()), WithCommitSubjects(subjects))
+
+	if _, err := service.SuggestCommitMessage(context.Background(), testProjectID); err != nil {
+		t.Fatalf("SuggestCommitMessage() = %v", err)
+	}
+
+	script := strings.Join(cli.calls[0].Argv, " ")
+	if !strings.Contains(script, "diff --stat") {
+		t.Fatalf("the command does not read the diff stat: %q", script)
+	}
+	for _, forbidden := range []string{"diff -U", "git show", "cat "} {
+		if strings.Contains(script, forbidden) {
+			t.Fatalf("the command reads file contents (%q): %q", forbidden, script)
+		}
+	}
+	if strings.Contains(script, " -p ") || strings.Contains(script, "--patch") {
+		t.Fatalf("the command asks for a patch: %q", script)
+	}
+	if subjects.sawInput == "" {
+		t.Fatal("the model was handed nothing to work from")
+	}
+}
+
+func TestSuggestCommitMessageRefusesAStoppedProject(t *testing.T) {
+	projects := linkedProject()
+	projects.meta.Status = serviceproject.StatusStopped
+	cli := newScriptedCLI(nil)
+	service := New(newMemoryStore(), cli, projects, WithClock(fixedClock()),
+		WithCommitSubjects(&scriptedSubjects{available: true, subject: "feat: x"}))
+
+	if _, err := service.SuggestCommitMessage(context.Background(), testProjectID); !errors.Is(err, ErrNotRunning) {
+		t.Fatalf("SuggestCommitMessage() = %v, want ErrNotRunning", err)
+	}
+	if len(cli.calls) != 0 {
+		t.Fatalf("a stopped project was shelled into: %v", cli.calls)
+	}
+}

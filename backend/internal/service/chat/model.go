@@ -19,8 +19,14 @@ const (
 )
 
 type Meta struct {
-	ID                   ID         `json:"id"`
-	Title                string     `json:"title"`
+	ID    ID     `json:"id"`
+	Title string `json:"title"`
+	// Summary is a one-line description of what this chat is about, written
+	// by the optional auxiliary model after a run settles (see
+	// internal/service/auxmodel). It is a search and scanning aid shown as a
+	// subtitle in the sidebar and on the dashboard; a deployment without the
+	// auxiliary model simply never has one, and nothing depends on it.
+	Summary              string     `json:"summary,omitempty"`
 	Provider             Provider   `json:"provider,omitempty"`
 	ClaudeSessionID      string     `json:"claudeSessionId,omitempty"`
 	CodexSessionID       string     `json:"codexSessionId,omitempty"`

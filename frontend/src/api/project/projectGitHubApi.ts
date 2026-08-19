@@ -2,6 +2,7 @@ import { requestJson } from "../apiRequest";
 import { sendHttpRequest } from "../../transport/http";
 import {
   GitHubDirtyWorkspaceError,
+  type CommitMessageSuggestion,
   type CreateGitHubPRInput,
   type CreateGitHubPRResult,
   type GitHubPullRequest,
@@ -34,6 +35,17 @@ export const projectGitHubApi = {
 
   saveGitHubSettings: (id: string, body: UpdateGitHubSettingsInput) =>
     requestJson<GitHubSettings>("PUT", API_ROUTES.projects.githubSettings(id), body),
+
+  /**
+   * Proposes a commit subject from the shape of the uncommitted diff. It never
+   * fails for want of a model: the response always carries a usable message.
+   */
+  suggestGitHubCommitMessage: (id: string) =>
+    requestJson<CommitMessageSuggestion>(
+      "POST",
+      API_ROUTES.projects.githubCommitMessage(id),
+      {},
+    ),
 
   listGitHubPullRequests: (id: string) =>
     requestJson<GitHubPullRequest[]>("GET", API_ROUTES.projects.githubPullRequests(id)),

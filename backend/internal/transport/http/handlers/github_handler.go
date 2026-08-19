@@ -45,6 +45,7 @@ type GitHubService interface {
 	Settings(ctx context.Context, id serviceproject.ID) (servicegithub.PublicSettings, error)
 	SaveSettings(ctx context.Context, id serviceproject.ID, in servicegithub.SettingsInput, actor string) (servicegithub.PublicSettings, error)
 	HandleDelivery(ctx context.Context, id serviceproject.ID, req servicegithub.DeliveryRequest) (servicegithub.DeliveryOutcome, error)
+	SuggestCommitMessage(ctx context.Context, id serviceproject.ID) (servicegithub.CommitMessageSuggestion, error)
 }
 
 // webhookRateLimit and webhookRateWindow bound how many deliveries one client
@@ -235,6 +236,8 @@ func (h *GitHubHandler) HandleProjectResource(
 		h.handleClone(w, r, id)
 	case segments[0] == "pr" && len(segments) == 1:
 		h.handleCreatePR(w, r, id)
+	case segments[0] == "commit-message" && len(segments) == 1:
+		h.handleCommitMessage(w, r, id)
 	case segments[0] == "prs" && len(segments) == 1:
 		h.handleListPRs(w, r, id)
 	case segments[0] == "prs" && len(segments) == 3 && segments[2] == "import-comments":
@@ -242,6 +245,29 @@ func (h *GitHubHandler) HandleProjectResource(
 	default:
 		httptransport.SendErr(w, http.StatusNotFound, "unknown GitHub action")
 	}
+}
+
+// handleCommitMessage proposes a commit subject for the uncommitted changes.
+//
+// It is POST rather than GET because it makes the container do work and may
+// reach an external endpoint — but it is still a read as far as the
+// repository is concerned: nothing is staged, nothing is committed, and the
+// operator sees the suggestion in an editable field before anything happens.
+func (h *GitHubHandler) handleCommitMessage(
+	w http.ResponseWriter,
+	r *http.Request,
+	id serviceproject.ID,
+) {
+	if r.Method != http.MethodPost {
+		httptransport.SendErr(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	suggestion, err := h.github.SuggestCommitMessage(r.Context(), id)
+	if err != nil {
+		sendGitHubError(w, err)
+		return
+	}
+	httptransport.SendJSON(w, http.StatusOK, suggestion)
 }
 
 // githubPathSegments turns "prs/12/import-comments" into its segments,

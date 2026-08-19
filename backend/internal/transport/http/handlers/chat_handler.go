@@ -1,6 +1,7 @@
 package httphandlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -18,6 +19,13 @@ import (
 	httptransport "github.com/futrx-com/remote.futrx.com/internal/transport/http"
 )
 
+// ChatTitleGenerator rewrites a chat's title with the optional auxiliary
+// model. It is an interface so this handler does not depend on that service,
+// and so a deployment without one simply answers 404 on the route.
+type ChatTitleGenerator interface {
+	RegenerateTitle(ctx context.Context, id servicechat.ID) (servicechat.Meta, error)
+}
+
 type ChatHandler struct {
 	chats     *servicechat.Service
 	access    *servicechat.AccessService
@@ -26,6 +34,7 @@ type ChatHandler struct {
 	history   *servicegithistory.Service
 	ide       *serviceworkspaceide.Service
 	schedules *ScheduleHandler
+	titles    ChatTitleGenerator
 	audit     serviceaudit.Recorder
 }
 
@@ -49,6 +58,13 @@ func NewChatHandler(
 
 func (h *ChatHandler) WithSchedules(schedules *ScheduleHandler) *ChatHandler {
 	h.schedules = schedules
+	return h
+}
+
+// WithTitleGenerator enables POST /api/chats/{id}/title, the "give this chat a
+// better name" action. Without it the route is simply not there.
+func (h *ChatHandler) WithTitleGenerator(titles ChatTitleGenerator) *ChatHandler {
+	h.titles = titles
 	return h
 }
 
@@ -131,6 +147,8 @@ func (h *ChatHandler) HandleResource(w http.ResponseWriter, r *http.Request) {
 			h.handleRewind(w, r, id)
 		case "fork":
 			h.handleFork(w, r, id)
+		case "title":
+			h.handleRegenerateTitle(w, r, id)
 		case "read":
 			h.handleMarkRead(w, r, id)
 		case "unread":
@@ -197,6 +215,33 @@ func (h *ChatHandler) HandleResource(w http.ResponseWriter, r *http.Request) {
 	default:
 		httptransport.SendErr(w, http.StatusMethodNotAllowed, "method not allowed")
 	}
+}
+
+// handleRegenerateTitle rewrites the chat's title with the auxiliary model.
+//
+// Access has already been checked by the caller, so the only new gate here is
+// availability: a deployment with no auxiliary model has no such route, and a
+// model that cannot answer reports why rather than silently leaving the old
+// title in place — this one is a button somebody pressed.
+func (h *ChatHandler) handleRegenerateTitle(
+	w http.ResponseWriter,
+	r *http.Request,
+	id servicechat.ID,
+) {
+	if h.titles == nil {
+		httptransport.SendErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	if r.Method != http.MethodPost {
+		httptransport.SendErr(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	meta, err := h.titles.RegenerateTitle(r.Context(), id)
+	if err != nil {
+		sendAuxModelFailure(w, err)
+		return
+	}
+	httptransport.SendJSON(w, http.StatusOK, meta)
 }
 
 func (h *ChatHandler) handleEvents(w http.ResponseWriter, r *http.Request, id servicechat.ID) {

@@ -88,6 +88,21 @@ type Notifier interface {
 	PublishChatEvent(ctx context.Context, chatID servicechat.ID, event NotifyEvent)
 }
 
+// CommitSubjects writes a conventional-commit subject from the shape of a
+// diff. It is a port rather than a direct dependency on the auxiliary model
+// so this package stays free of any model vocabulary, and so a deployment
+// without one simply leaves it nil.
+//
+// Every caller of this port must have a fallback. The deterministic dated
+// message is that fallback, and it is what ships whenever Available is false,
+// Subject errors, or Subject answers with nothing.
+type CommitSubjects interface {
+	// Available reports whether asking is worth a round trip right now.
+	Available() bool
+	// Subject returns one commit subject line for the given diff shape.
+	Subject(ctx context.Context, diffShape string) (string, error)
+}
+
 // NotifyEvent is the small, sink-neutral shape this package publishes. The
 // composition root maps it onto the notification service's own event type.
 type NotifyEvent struct {

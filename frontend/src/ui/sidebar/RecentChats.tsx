@@ -74,6 +74,15 @@ export function RecentChats({
                   >
                     {chat.title || "Untitled"}
                   </span>
+                  {chat.summary && (
+                    <span
+                      dir="auto"
+                      class="bidi-auto mt-0.5 block truncate text-[10.5px] leading-tight text-ink-400"
+                      title={chat.summary}
+                    >
+                      {chat.summary}
+                    </span>
+                  )}
                   <span class="mt-0.5 flex items-center gap-1 text-[10.5px] text-ink-400">
                     <span class="truncate">
                       {chat.projectId ? projectNames.get(chat.projectId) ?? "Project" : "No project"}

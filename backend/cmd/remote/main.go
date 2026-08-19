@@ -101,6 +101,7 @@ func main() {
 		UserSettings:      storeSet.UserSettings,
 		Notifications:     storeSet.Notifications,
 		Monitoring:        storeSet.Monitoring,
+		AuxModel:          storeSet.AuxModel,
 		MonitoringLXD:     lxcClient,
 		Version:           version.Version,
 		Transcription:     storeSet.Transcription,

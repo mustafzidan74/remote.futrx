@@ -30,6 +30,18 @@ type notifyObserver struct {
 	// it; the project link is assembled here because only this observer knows
 	// which project the event is about.
 	baseURL string
+	// summarizer is the optional auxiliary model. When it answers, a run
+	// notification carries one useful sentence instead of the raw tail of the
+	// agent'''s last message; when it does not — switched off, unreachable,
+	// slow, or simply empty — the raw tail is exactly what still goes out.
+	summarizer runSummarizer
+}
+
+// runSummarizer condenses an agent”'s closing words into one sentence. An
+// empty answer means "use what you would have sent anyway", which is why it
+// returns no error: this observer has nothing useful to do with one.
+type runSummarizer interface {
+	Summarize(ctx context.Context, output string) string
 }
 
 var (
@@ -68,11 +80,31 @@ func (o *notifyObserver) RunSettled(ctx context.Context, outcome prompt.RunOutco
 	if outcome.Synthetic == servicechat.SyntheticGitHubReview {
 		return
 	}
+	// Observers run on the run goroutine, so anything that can wait on a
+	// network call has to leave it. Only the path that may ask the auxiliary
+	// model goes asynchronous; without one, the report is published inline
+	// exactly as it always was.
+	if o.willSummarize(outcome) {
+		go o.publishRunSettled(context.Background(), outcome)
+		return
+	}
+	o.publishRunSettled(ctx, outcome)
+}
+
+// willSummarize reports whether this outcome would reach the auxiliary model.
+// A cancelled or failed run never does: its reason is already one short, exact
+// sentence, and paraphrasing an error is how an error stops being useful.
+func (o *notifyObserver) willSummarize(outcome prompt.RunOutcome) bool {
+	return o.summarizer != nil && !outcome.Cancelled && outcome.Err == nil &&
+		strings.TrimSpace(outcome.Output) != ""
+}
+
+func (o *notifyObserver) publishRunSettled(ctx context.Context, outcome prompt.RunOutcome) {
 	kind, status := servicenotify.RunKind(outcome.Err, outcome.Cancelled)
 	event := servicenotify.Event{
 		Event:     kind,
 		Status:    status,
-		Summary:   runSummary(outcome),
+		Summary:   o.runSummary(ctx, outcome),
 		DedupeKey: fmt.Sprintf("run:%s:%d", outcome.ChatID, outcome.RunID),
 	}
 	o.describeChat(ctx, outcome.ChatID, &event)
@@ -218,12 +250,23 @@ func (o *notifyObserver) describeChat(
 
 // runSummary prefers the agent's own last words and falls back to the failure
 // reason so a failure notification is never empty.
-func runSummary(outcome prompt.RunOutcome) string {
+//
+// When the auxiliary model is configured it gets first refusal on a
+// *successful* run: a phone is a bad place to read the last 500 characters of
+// a coding agent's answer, and one sentence saying what changed is what the
+// notification is for. A failure already has a short, exact reason of its
+// own, so no model is asked to paraphrase it.
+func (o *notifyObserver) runSummary(ctx context.Context, outcome prompt.RunOutcome) string {
 	if outcome.Cancelled {
 		return "The run was cancelled before it finished."
 	}
 	if outcome.Err != nil {
 		return servicenotify.Summary(outcome.Err.Error())
+	}
+	if o.summarizer != nil && strings.TrimSpace(outcome.Output) != "" {
+		if summary := strings.TrimSpace(o.summarizer.Summarize(ctx, outcome.Output)); summary != "" {
+			return servicenotify.Summary(summary)
+		}
 	}
 	return servicenotify.Summary(outcome.Output)
 }

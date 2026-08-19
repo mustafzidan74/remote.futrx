@@ -53,6 +53,15 @@ export function ChatRow({
             >
               {chat.title || "Untitled"}
             </div>
+            {chat.summary && (
+              <div
+                dir="auto"
+                title={chat.summary}
+                class="bidi-auto mt-0.5 truncate text-[11px] leading-snug text-ink-400"
+              >
+                {chat.summary}
+              </div>
+            )}
             <div class="mt-0.5 flex items-center gap-1.5 text-[11px] text-ink-300">
               <span class={`px-1 py-0.5 rounded bg-white/[0.06] text-[10px] leading-none whitespace-nowrap flex-none ${active ? "text-accent-blue" : ""}`}>
                 {modelShortLabel(chat.model)}

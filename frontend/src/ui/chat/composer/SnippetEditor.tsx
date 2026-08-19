@@ -1,4 +1,7 @@
 import { useState } from "preact/hooks";
+import { auxModelApi } from "../../../api/auxModelApi";
+import { useAuxModelJob } from "../../../state/hooks/settings/useAuxModelJobs";
+import type { TranslationTarget } from "../../../models/auxModel";
 import type { SnippetInput } from "../../../models/snippet";
 import {
   SNIPPET_PLACEHOLDERS,
@@ -6,7 +9,7 @@ import {
   parseTags,
   validateSnippetInput,
 } from "../../../state/chat/snippetState";
-import { Loader } from "../../primitives/icons";
+import { Globe, Loader } from "../../primitives/icons";
 
 /**
  * The snippet form, used for both a new entry and an edit.
@@ -30,6 +33,36 @@ export function SnippetEditor({
   const [tagText, setTagText] = useState((initial.tags ?? []).join(", "));
   const [error, setError] = useState<string | null>(null);
   const isClient = input.audience === "client";
+  const canTranslate = useAuxModelJob("translate");
+  const [translating, setTranslating] = useState<TranslationTarget | null>(null);
+
+  /**
+   * Fills one language variant from the other. It writes into the *empty*
+   * direction only when asked for it — the button is per target, so
+   * "Translate to Arabic" always overwrites the Arabic box and reads the
+   * English one, never the reverse.
+   */
+  async function translate(target: TranslationTarget) {
+    const source = target === "ar" ? input.variants.en : input.variants.ar;
+    if (!source?.trim()) {
+      setError(
+        target === "ar"
+          ? "Write the English version first."
+          : "اكتب النص العربي أولاً — write the Arabic version first.",
+      );
+      return;
+    }
+    setTranslating(target);
+    setError(null);
+    try {
+      const result = await auxModelApi.translate(source, target);
+      patch({ variants: { ...input.variants, [target]: result.text } });
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setTranslating(null);
+    }
+  }
 
   function patch(next: Partial<SnippetInput>) {
     setInput((current) => ({ ...current, ...next }));
@@ -106,6 +139,25 @@ export function SnippetEditor({
 
       {isClient ? (
         <>
+          {canTranslate && (
+            <div class="flex flex-wrap items-center gap-1.5">
+              <TranslateButton
+                label="Translate to العربية"
+                busy={translating === "ar"}
+                disabled={translating !== null}
+                onClick={() => void translate("ar")}
+              />
+              <TranslateButton
+                label="Translate to English"
+                busy={translating === "en"}
+                disabled={translating !== null}
+                onClick={() => void translate("en")}
+              />
+              <span class="text-[10.5px] text-ink-400">
+                Written by the auxiliary model — check it before you send.
+              </span>
+            </div>
+          )}
           <label class="block space-y-1">
             <span class="text-[11px] text-ink-400">English</span>
             <textarea
@@ -197,5 +249,31 @@ export function SnippetEditor({
         </button>
       </div>
     </form>
+  );
+}
+
+/** One "Translate to …" button, so the pair cannot drift apart visually. */
+function TranslateButton({
+  label,
+  busy,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  busy: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      class="inline-flex h-7 items-center gap-1.5 rounded-md border border-white/10 px-2 text-[11.5px]
+             text-ink-200 hover:bg-white/[0.07] disabled:opacity-50"
+    >
+      {busy ? <Loader class="h-3 w-3 animate-spin" /> : <Globe class="h-3 w-3" />}
+      {label}
+    </button>
   );
 }

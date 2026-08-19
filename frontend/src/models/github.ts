@@ -163,3 +163,15 @@ export class GitHubDirtyWorkspaceError extends Error {
     this.dirtyCount = dirtyCount;
   }
 }
+
+/**
+ * A proposed commit subject. `message` is always usable: it is the generated
+ * subject when a model wrote one, and the deterministic dated default
+ * otherwise, with `reason` saying which.
+ */
+export interface CommitMessageSuggestion {
+  message: string;
+  generated: boolean;
+  fallback: string;
+  reason?: string;
+}

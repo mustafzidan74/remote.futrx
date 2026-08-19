@@ -1,12 +1,13 @@
 import { useState } from "preact/hooks";
-import type { GitHubStatus } from "../../../models/github";
+import type { CommitMessageSuggestion, GitHubStatus } from "../../../models/github";
 import { GitHubDirtyWorkspaceError } from "../../../models/github";
 import {
   defaultBase,
   needsNewBranch,
   suggestBranchName,
 } from "../../../state/projects/githubPanelState";
-import { AlertCircle, Loader, X } from "../../primitives/icons";
+import { useAuxModelJob } from "../../../state/hooks/settings/useAuxModelJobs";
+import { AlertCircle, Loader, X, Zap } from "../../primitives/icons";
 
 export interface PRDialogSubmit {
   title: string;
@@ -31,11 +32,14 @@ export function ProjectGitHubPRDialog({
   busy,
   onClose,
   onSubmit,
+  onSuggestCommitMessage,
 }: {
   status: GitHubStatus;
   busy: boolean;
   onClose: () => void;
   onSubmit: (input: PRDialogSubmit) => Promise<{ url: string }>;
+  /** Drafts a subject from the diff shape. Always answers with something usable. */
+  onSuggestCommitMessage: () => Promise<CommitMessageSuggestion>;
 }) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -44,6 +48,23 @@ export function ProjectGitHubPRDialog({
   const [commitMessage, setCommitMessage] = useState(status.defaultCommitMessage ?? "");
   const [dirtyCount, setDirtyCount] = useState(status.dirtyCount);
   const [error, setError] = useState<string | null>(null);
+  const canSuggest = useAuxModelJob("commitMessage");
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestion, setSuggestion] = useState<CommitMessageSuggestion | null>(null);
+
+  const suggest = async () => {
+    setSuggesting(true);
+    setSuggestion(null);
+    try {
+      const result = await onSuggestCommitMessage();
+      setSuggestion(result);
+      setCommitMessage(result.message);
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setSuggesting(false);
+    }
+  };
 
   const mustBranch = needsNewBranch(status);
   const base = defaultBase(status);
@@ -173,7 +194,26 @@ export function ProjectGitHubPRDialog({
 
           {commit && (
             <label class="block space-y-1.5">
-              <span class="text-xs text-ink-300">Commit message</span>
+              <span class="flex items-center gap-2 text-xs text-ink-300">
+                Commit message
+                {canSuggest && (
+                  <button
+                    type="button"
+                    onClick={() => void suggest()}
+                    disabled={suggesting || busy}
+                    title="Draft a conventional-commit subject from the changed paths and line counts"
+                    class="inline-flex h-6 items-center gap-1 rounded border border-white/10 px-1.5
+                           text-[11px] text-ink-200 hover:bg-white/[0.07] disabled:opacity-50"
+                  >
+                    {suggesting ? (
+                      <Loader class="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Zap class="h-3 w-3" />
+                    )}
+                    Suggest
+                  </button>
+                )}
+              </span>
               <input
                 type="text"
                 value={commitMessage}
@@ -187,8 +227,11 @@ export function ProjectGitHubPRDialog({
                        placeholder:text-ink-400 focus:outline-none focus:border-accent-blue"
               />
               <span class="block text-[11.5px] text-ink-400 leading-relaxed">
-                The default is generated from today's date, not by an agent, so a repository's
-                history stays predictable. Edit it if you want something more specific.
+                {suggestion?.generated
+                  ? "Drafted by the auxiliary model from the changed paths and line counts — it never saw the contents of a file. Edit it before you push."
+                  : suggestion
+                    ? `No subject was drafted (${suggestion.reason}); the dated default is in the box.`
+                    : "The default is generated from today's date, not by an agent, so a repository's history stays predictable. Edit it if you want something more specific."}
               </span>
             </label>
           )}

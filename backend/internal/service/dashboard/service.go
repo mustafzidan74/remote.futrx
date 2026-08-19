@@ -162,6 +162,7 @@ func (s *Service) chats(ctx context.Context, callerEmail string, isAdmin bool) [
 		rows = append(rows, chatRow{
 			ID:             string(meta.ID),
 			Title:          meta.Title,
+			Summary:        meta.Summary,
 			ProjectID:      string(meta.ProjectID),
 			Provider:       string(meta.Provider),
 			Model:          meta.Model,
@@ -300,6 +301,7 @@ func (s *Service) recent(
 ) []Run {
 	names := projectNames(projects)
 	titles := chatTitles(chats)
+	summaries := chatSummaries(chats)
 	runs := make([]Run, 0, RecentRuns)
 
 	live := make([]chatRow, 0, 4)
@@ -316,6 +318,7 @@ func (s *Service) recent(
 			ID:          "live:" + chat.ID,
 			ChatID:      chat.ID,
 			ChatTitle:   chat.Title,
+			ChatSummary: chat.Summary,
 			ProjectID:   chat.ProjectID,
 			ProjectName: names[chat.ProjectID],
 			Provider:    chat.Provider,
@@ -338,7 +341,7 @@ func (s *Service) recent(
 			if len(runs) >= RecentRuns {
 				break
 			}
-			runs = append(runs, ledgerRun(record, names, titles))
+			runs = append(runs, ledgerRun(record, names, titles, summaries))
 		}
 	}
 	if len(runs) > RecentRuns {
@@ -348,7 +351,7 @@ func (s *Service) recent(
 }
 
 // ledgerRun renders one completed ledger record as an activity row.
-func ledgerRun(record serviceusage.Record, names, titles map[string]string) Run {
+func ledgerRun(record serviceusage.Record, names, titles, summaries map[string]string) Run {
 	started := int64(0)
 	if record.DurationMs > 0 {
 		started = record.At - record.DurationMs
@@ -364,6 +367,7 @@ func ledgerRun(record serviceusage.Record, names, titles map[string]string) Run 
 		ID:          runID(record),
 		ChatID:      record.ChatID,
 		ChatTitle:   title,
+		ChatSummary: summaries[record.ChatID],
 		ProjectID:   record.ProjectID,
 		ProjectName: names[record.ProjectID],
 		Provider:    record.Provider,
@@ -498,8 +502,12 @@ func (s *Service) notificationsConfigured() bool {
 // chatRow is the internal view of a chat: everything the cards, the activity
 // list and the alert rules read, resolved once.
 type chatRow struct {
-	ID             string
-	Title          string
+	ID    string
+	Title string
+	// Summary is the auxiliary model's one-line description of the chat, or
+	// empty on a deployment that has none. It is what turns an activity row
+	// from "Untitled chat" into something recognizable a week later.
+	Summary        string
 	ProjectID      string
 	Provider       string
 	Model          string
@@ -627,6 +635,20 @@ func chatTitles(chats []chatRow) map[string]string {
 		titles[chat.ID] = chat.Title
 	}
 	return titles
+}
+
+// chatSummaries indexes the auxiliary model's one-liners by chat, so a
+// completed run read back from the ledger can carry the same subtitle the
+// sidebar shows. A chat with no summary — every chat, on a deployment without
+// the auxiliary model — is simply absent from the map.
+func chatSummaries(chats []chatRow) map[string]string {
+	summaries := make(map[string]string, len(chats))
+	for _, chat := range chats {
+		if chat.Summary != "" {
+			summaries[chat.ID] = chat.Summary
+		}
+	}
+	return summaries
 }
 
 // window is one inclusive [from, to] usage range in unix milliseconds.

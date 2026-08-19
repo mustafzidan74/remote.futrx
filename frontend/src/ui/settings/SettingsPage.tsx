@@ -12,13 +12,14 @@ import type { ServerInfo } from "../../models/serverInfo";
 import type { FleetResourcesView, FleetSettings } from "../../models/resources";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import type { ComponentType } from "preact";
-import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Globe, Info, Key, Menu, Mic, Monitor, Search, Server, Trash, Users, X, Zap } from "../primitives/icons";
+import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Globe, Info, Key, MemoryStick, Menu, Mic, Monitor, Search, Server, Trash, Users, X, Zap } from "../primitives/icons";
 import { useState } from "preact/hooks";
 import {
   firstSettingsMatch,
   matchingSettingsTabIds,
 } from "../../state/settings/settingsNavState";
 import { AppearanceSettings } from "./AppearanceSettings";
+import { AuxModelSettings } from "./AuxModelSettings";
 import { ReplyLanguagePreference } from "./ReplyLanguagePreference";
 import { ReplyPreferencesSettings } from "./ReplyPreferencesSettings";
 import { AuditLogSettings } from "./AuditLogSettings";
@@ -48,6 +49,7 @@ export type SettingsTab =
   | "skills"
   | "reply-preferences"
   | "playbooks"
+  | "aux-model"
   | "voice"
   | "usage"
   | "resources"
@@ -116,6 +118,14 @@ const tabs: SettingsTabDescriptor[] = [
     label: "Playbooks",
     description: "Curate the one-click prompt templates every chat composer offers.",
     Icon: Zap,
+  },
+  {
+    id: "aux-model",
+    group: "agents",
+    label: "Local / auxiliary model",
+    description:
+      "Run a small local model for the platform's own text chores — chat titles, notification summaries, commit subjects, translation. It never replaces the coding agents.",
+    Icon: MemoryStick,
   },
   {
     id: "voice",
@@ -456,6 +466,16 @@ export function SettingsPage({
                 <SettingsNotice>
                   Playbooks are curated by server administrators. You can run them from the ⚡
                   button in any chat composer.
+                </SettingsNotice>
+              ))}
+
+            {activeTab === "aux-model" &&
+              (isAdmin ? (
+                <AuxModelSettings />
+              ) : (
+                <SettingsNotice>
+                  The auxiliary model is configured by server administrators. Nothing you do
+                  depends on it: every feature it improves works without it.
                 </SettingsNotice>
               ))}
 

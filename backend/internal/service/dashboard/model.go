@@ -177,9 +177,13 @@ const (
 // Run is one row in Recent activity.
 type Run struct {
 	// ID is unique per row so the list can key on it.
-	ID          string    `json:"id"`
-	ChatID      string    `json:"chatId"`
-	ChatTitle   string    `json:"chatTitle"`
+	ID        string `json:"id"`
+	ChatID    string `json:"chatId"`
+	ChatTitle string `json:"chatTitle"`
+	// ChatSummary is the auxiliary model's one-line description of the chat,
+	// shown under the title. Absent on a deployment without that model, which
+	// is why the row never depends on it.
+	ChatSummary string    `json:"chatSummary,omitempty"`
 	ProjectID   string    `json:"projectId,omitempty"`
 	ProjectName string    `json:"projectName,omitempty"`
 	Provider    string    `json:"provider,omitempty"`
