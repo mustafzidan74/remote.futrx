@@ -304,3 +304,87 @@ func TestDeriveAlertsOrdersMostSevereFirst(t *testing.T) {
 		}
 	}
 }
+
+func TestClientSiteAlerts(t *testing.T) {
+	tests := []struct {
+		name         string
+		sites        []ClientSiteRow
+		wantIDs      []string
+		wantSeverity Severity
+		wantTitle    string
+	}{
+		{
+			name:    "nothing watched says nothing",
+			sites:   nil,
+			wantIDs: []string{},
+		},
+		{
+			name: "a down site is critical",
+			sites: []ClientSiteRow{{
+				ID: "aaaaaaaaaaaaaaaaaaaaaaaa", Label: "shop.example.com",
+				Status: "down", Detail: "answered HTTP 502", Since: milli(-20 * time.Minute),
+			}},
+			wantIDs:      []string{"site:aaaaaaaaaaaaaaaaaaaaaaaa"},
+			wantSeverity: SeverityCrit,
+			wantTitle:    "shop.example.com is down",
+		},
+		{
+			name: "a slow site is a warning",
+			sites: []ClientSiteRow{{
+				ID: "bbbbbbbbbbbbbbbbbbbbbbbb", Label: "blog.example.com", Status: "slow",
+			}},
+			wantIDs:      []string{"site:bbbbbbbbbbbbbbbbbbbbbbbb"},
+			wantSeverity: SeverityWarn,
+			wantTitle:    "blog.example.com is slow",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			input := baseAlertInput()
+			input.Sites = test.sites
+			alerts := DeriveAlerts(input)
+			got := alertIDs(alerts)
+			if len(got) != len(test.wantIDs) {
+				t.Fatalf("alerts = %v, want %v", got, test.wantIDs)
+			}
+			if len(test.wantIDs) == 0 {
+				return
+			}
+			alert, ok := findAlert(alerts, test.wantIDs[0])
+			if !ok {
+				t.Fatalf("alerts = %v, want %q", got, test.wantIDs[0])
+			}
+			if alert.Severity != test.wantSeverity {
+				t.Fatalf("severity = %q, want %q", alert.Severity, test.wantSeverity)
+			}
+			if alert.Title != test.wantTitle {
+				t.Fatalf("title = %q, want %q", alert.Title, test.wantTitle)
+			}
+			if alert.Kind != KindSiteWatch {
+				t.Fatalf("kind = %q, want %q", alert.Kind, KindSiteWatch)
+			}
+			if alert.Action != ActionOpenClientSites {
+				t.Fatalf("action = %q, want %q", alert.Action, ActionOpenClientSites)
+			}
+			if alert.SiteID != string(test.sites[0].ID) {
+				t.Fatalf("siteId = %q, want the row's id", alert.SiteID)
+			}
+		})
+	}
+}
+
+// A down client site outranks a warning about this box, because a customer's
+// shop being dark is the most urgent thing this screen can say.
+func TestClientSiteAlertsSortAheadOfWarnings(t *testing.T) {
+	input := baseAlertInput()
+	input.NotificationsEnabled = false
+	input.Sites = []ClientSiteRow{{ID: "aaaaaaaaaaaaaaaaaaaaaaaa", Label: "shop.example.com", Status: "down"}}
+	alerts := DeriveAlerts(input)
+	if len(alerts) < 2 {
+		t.Fatalf("alerts = %v, want the site and the notifications finding", alertIDs(alerts))
+	}
+	if alerts[0].ID != "site:aaaaaaaaaaaaaaaaaaaaaaaa" {
+		t.Fatalf("first alert = %q, want the down site", alerts[0].ID)
+	}
+}

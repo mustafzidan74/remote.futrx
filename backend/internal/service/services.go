@@ -38,6 +38,7 @@ import (
 	servicesearch "github.com/futrx-com/remote.futrx.com/internal/service/search"
 	serviceserverinfo "github.com/futrx-com/remote.futrx.com/internal/service/serverinfo"
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
+	servicesitewatch "github.com/futrx-com/remote.futrx.com/internal/service/sitewatch"
 	serviceskills "github.com/futrx-com/remote.futrx.com/internal/service/skills"
 	servicesnapshot "github.com/futrx-com/remote.futrx.com/internal/service/snapshot"
 	servicesnippets "github.com/futrx-com/remote.futrx.com/internal/service/snippets"
@@ -96,6 +97,10 @@ type Dependencies struct {
 	// every one of those jobs doing exactly what it did before: the feature is
 	// a nice-to-have and is never load bearing.
 	AuxModel serviceauxmodel.Store
+	// SiteWatch backs the always-on watcher for the operator's client
+	// websites. Nil leaves the Client sites page reporting 503 and schedules
+	// nothing.
+	SiteWatch servicesitewatch.Store
 	// Version is stamped into /healthz and the "Remote started" event. It is
 	// the only fact the public health endpoint reveals about this host.
 	Version       string
@@ -224,6 +229,7 @@ type Services struct {
 	// search subtitle) off settled runs, and serves the "rename this chat"
 	// action. Nil on a deployment with no auxiliary model store.
 	AuxJobs       *AuxJobDriver
+	SiteWatch     *servicesitewatch.Service
 	Transcription *servicetranscribe.Service
 	Playbooks     *serviceplaybooks.Service
 	Snippets      *servicesnippets.Service
@@ -254,7 +260,6 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	if deps.Schedules == nil {
 		return Services{}, errors.New("scheduled task repository is required")
 	}
-
 	// The audit recorder is built first so every other service can take it.
 	auditRetention := deps.AuditRetention
 	if auditRetention == 0 {
@@ -262,7 +267,6 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	}
 	auditLog := serviceaudit.New(deps.Audit, serviceaudit.WithRetentionMonths(auditRetention))
 	auditLog.StartJanitor(ctx, 24*time.Hour)
-
 	workspace := workspacehub.New()
 	var runs *runhub.Hub
 	// The search index is created late (it needs the chat access service) but
@@ -280,7 +284,6 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	projects := notifyingProjectRepository{Repository: deps.Projects, workspace: workspace}
 	definitions := agentDefinitions()
 	profiles := profilesFromDefinitions(definitions)
-
 	// The fleet resource policy is loaded (or derived from host capacity on
 	// first run) before any project can launch, so the very first container
 	// of a fresh install already lands inside a host-aware envelope.
@@ -297,7 +300,6 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		deps.ProjectContainers.Policy = policy
 		deps.ProjectContainers.Admission = policy
 	}
-
 	// The vault and the project service each need the other: a project sync
 	// pulls from the vault, and a vault edit pushes to running project
 	// containers. The vault is built first because it depends only on ports,
@@ -316,7 +318,6 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		}
 		globalSecrets = serviceglobalsecrets.New(deps.GlobalSecrets, secretOptions...)
 	}
-
 	projectOptions := []serviceproject.Option{
 		serviceproject.WithAudit(auditLog),
 		serviceproject.WithStorage(deps.ProjectStorage),
@@ -338,7 +339,6 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		globalSecrets.SetProjects(secretSyncTargets{projects: projectService})
 	}
 	projectService.StartAgentBrowserReaper(ctx, 20*time.Minute)
-
 	// Snapshots and projects each need the other: a delete takes a snapshot,
 	// and a snapshot resolves the project it belongs to. The project service
 	// is built first and told about snapshots afterwards, before anything
@@ -363,12 +363,10 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	runs.SetRunningSubscriber(func(id servicechat.ID, _ bool) {
 		chats.publishChat(context.Background(), id)
 	})
-
 	var tmuxResolver servicechat.TmuxResolver
 	if deps.TmuxClient != nil {
 		tmuxResolver = chatTmuxResolver{client: deps.TmuxClient, validName: deps.ValidTmuxName}
 	}
-
 	globalSkillService := serviceskills.NewGlobalService(deps.GlobalSkills, projectService)
 	chatOptions := []servicechat.Option{servicechat.WithAudit(auditLog)}
 	if globalSkillService != nil {
@@ -516,22 +514,16 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	if deps.AgentPreferences != nil {
 		bindWorkspacePreferences(deps.AgentContainers.Workspace, agentPreferences)
 	}
-
 	// Team mode drives the same settled runs as the post-run driver, one hop
 	// at a time, through the same prompt service. It is registered after the
 	// post-run driver so the two see a run in a stable order; neither knows
 	// about the other, and the stand-down rule lives in postrun.Decide.
 	teamDriver := serviceteam.New(serviceteam.Dependencies{
-		Chats:       chats,
 		ChatFactory: chatService,
-		Runs:        runs,
-		Starter:     postRunStarter{prompts: &promptService},
 		Events:      runs,
 		Providers:   connectedProviders{registry: agentAuth},
 		Skills:      globalSkillNames{global: globalSkillService},
-		Notifier:    runNotifications,
 	})
-
 	promptOptions := []prompt.Option{
 		prompt.WithScheduleToolIssuer(scheduleCaps),
 		prompt.WithRunObserver(runNotifications),
@@ -598,7 +590,6 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 			log.Printf("playbooks: seeded %d built-in playbooks", seeded)
 		}
 	}
-
 	// Personal snippets are per user and seeded lazily on that user's first
 	// read, so nothing has to happen here beyond building the service; a
 	// deployment without a store simply leaves the routes unavailable.
@@ -606,7 +597,6 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	if deps.Snippets != nil {
 		snippetService = servicesnippets.New(deps.Snippets)
 	}
-
 	skillService := serviceskills.New()
 	skillCatalog := serviceskills.NewCatalog(skillService, projectService, authService).
 		WithGlobalLibrary(globalSkillService)
@@ -641,7 +631,6 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	if deps.TmuxClient != nil {
 		tmuxService = servicetmux.NewSessions(deps.TmuxClient)
 	}
-
 	// The health monitor is built last: it needs the project repository, the
 	// workspace hub it broadcasts through, and the notification observer it
 	// alerts through, all of which exist by now.
@@ -654,7 +643,6 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Interval:  deps.HealthInterval,
 	})
 	healthService.Start(ctx)
-
 	// External uptime monitoring is built after the notification observer
 	// because starting it announces the restart through that observer. A box
 	// cannot alert about its own death from inside, so this is the half that
@@ -666,7 +654,16 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Version:   deps.Version,
 	})
 	monitoringService.Start(ctx)
-
+	// The client-site watcher is built alongside it and for the mirror-image
+	// reason: monitoring is how the outside world learns this box died, and
+	// this is how this box learns somebody else's website did. It costs no
+	// agent tokens and no container time — one HEAD request per site per
+	// interval, on the platform host's own bandwidth.
+	siteWatchService := servicesitewatch.New(ctx, servicesitewatch.Dependencies{
+		Access:  siteWatchAccess{projects: projectService},
+		Catalog: siteWatchCatalog{projects: projects, secrets: deps.ProjectSecrets},
+	})
+	siteWatchService.Start(ctx)
 	// The GitHub integration is built here because it needs nearly everything
 	// above it: projects to resolve a container, chats and the prompt service
 	// to turn an inbound issue into a run, and the notification observer to
@@ -685,7 +682,6 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 			servicegithub.WithCommitSubjects(auxCommitMessages{aux: auxModel}),
 		)
 	}
-
 	// Full-text chat search. The index is built in the background because a
 	// large history takes seconds to walk and nothing else may wait on it;
 	// live updates arrive through the notifying chat repository above, which
@@ -697,7 +693,6 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	)
 	chatSearchIndex.attach(searchService)
 	searchService.Start(ctx)
-
 	// The home dashboard is assembled last: it reads every service above and
 	// owns no store of its own.
 	dashboardService := newDashboardService(
@@ -709,22 +704,24 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		snapshotService,
 		notifications,
 		monitoringService,
+		siteWatchService,
 		resourceService,
 		deps.Backups,
 		deps.TrashRetention,
 	)
-
 	return Services{
 		Chats:         chatService,
-		ChatAccess:    chatAccessService,
 		Projects:      projectService,
+		Schedules:     scheduleService,
+		Runs:          runs,
+		Skills:        skillCatalog,
+		Access:        accessVerifier,
+		ChatAccess:    chatAccessService,
 		Shares:        shareService,
 		Portals:       portalService,
 		Prompt:        promptService,
-		Schedules:     scheduleService,
 		ScheduleCaps:  scheduleCaps,
 		AgentAuth:     agentAuth,
-		Runs:          runs,
 		Workspace:     workspace,
 		Auth:          authService,
 		Users:         userService,
@@ -733,6 +730,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Monitoring:    monitoringService,
 		AuxModel:      auxModel,
 		AuxJobs:       auxJobs,
+		SiteWatch:     siteWatchService,
 		Transcription: transcription,
 		Playbooks:     playbookService,
 		Snippets:      snippetService,
@@ -740,9 +738,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Search:        searchService,
 		GlobalSecrets: globalSecrets,
 		GitHub:        gitHubService,
-		Skills:        skillCatalog,
 		Tmux:          tmuxService,
-		Access:        accessVerifier,
 		GlobalSkills:  globalSkillService,
 		Usage:         usageService,
 		ModelRouting:  routingService,

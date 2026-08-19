@@ -4,6 +4,7 @@ export interface NotificationEventToggles {
   needsAttention: boolean;
   scheduledRun: boolean;
   projectHealth: boolean;
+  siteWatch: boolean;
   system: boolean;
 }
 

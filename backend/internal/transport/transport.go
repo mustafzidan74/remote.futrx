@@ -26,6 +26,7 @@ import (
 	servicesearch "github.com/futrx-com/remote.futrx.com/internal/service/search"
 	serviceselfupdate "github.com/futrx-com/remote.futrx.com/internal/service/selfupdate"
 	serviceserverinfo "github.com/futrx-com/remote.futrx.com/internal/service/serverinfo"
+	servicesitewatch "github.com/futrx-com/remote.futrx.com/internal/service/sitewatch"
 	servicetranscribe "github.com/futrx-com/remote.futrx.com/internal/service/transcribe"
 	serviceworkspacefiles "github.com/futrx-com/remote.futrx.com/internal/service/workspacefiles"
 	serviceworkspaceide "github.com/futrx-com/remote.futrx.com/internal/service/workspaceide"
@@ -184,6 +185,12 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		// without one loses nothing it had before.
 		AuxModel: httphandlers.NewAuxModelHandler(
 			auxModelService(deps.Services.AuxModel),
+			deps.Services.Auth,
+		),
+		// The client-site watcher. Reads are open to any signed-in user and
+		// filtered by the service; every write is admin-only.
+		SiteWatch: httphandlers.NewSiteWatchHandler(
+			siteWatchService(deps.Services.SiteWatch),
 			deps.Services.Auth,
 		),
 		// Voice input. The composer's browser path never reaches the server;
@@ -348,6 +355,16 @@ func chatTitleGenerator(driver *service.AuxJobDriver) httphandlers.ChatTitleGene
 		return nil
 	}
 	return driver
+}
+
+// siteWatchService narrows the concrete client-site watcher to the
+// transport's interface while keeping a nil service nil, so the routes report
+// 503 instead of panicking on a deployment without a sitewatch store.
+func siteWatchService(service *servicesitewatch.Service) httphandlers.SiteWatchService {
+	if service == nil {
+		return nil
+	}
+	return service
 }
 
 // transcriptionService narrows the concrete transcription service to the

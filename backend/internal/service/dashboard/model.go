@@ -34,6 +34,34 @@ type Snapshot struct {
 	Upcoming []Task    `json:"upcoming"`
 	Usage    Usage     `json:"usage"`
 	Platform Platform  `json:"platform"`
+	// Sites lists the watched client websites that are not currently green.
+	// An empty list on a deployment that watches sites is the good news.
+	Sites ClientSiteBoard `json:"sites"`
+}
+
+// ClientSiteBoard is the home screen's client-site card: whether this
+// deployment watches anything at all, and which of the sites the caller may
+// see are currently unwell.
+type ClientSiteBoard struct {
+	// Available is false when no watcher is wired, which renders as "client
+	// site monitoring is not set up" rather than as "everything is fine".
+	Available bool            `json:"available"`
+	Sites     []ClientSiteRow `json:"sites"`
+}
+
+// ClientSiteRow is one unwell site on the home screen.
+type ClientSiteRow struct {
+	ID     string `json:"id"`
+	Label  string `json:"label"`
+	URL    string `json:"url"`
+	Status string `json:"status"`
+	// Detail is the newest failure reason, already trimmed for a card row.
+	Detail string `json:"detail,omitempty"`
+	// Since is when the current state began, so the card can say how long it
+	// has been down.
+	Since         int64  `json:"since,omitempty"`
+	LastCheckedAt int64  `json:"lastCheckedAt,omitempty"`
+	ProjectID     string `json:"projectId,omitempty"`
 }
 
 // KPIs is the top row of tiles. Both halves of every comparison travel
@@ -121,6 +149,9 @@ const (
 	KindBackup        Kind = "backup"
 	KindPlatform      Kind = "platform"
 	KindCapacity      Kind = "capacity"
+	// KindSiteWatch is a client website that is down or degraded. It is the
+	// one alert on this screen about a machine the operator does not own.
+	KindSiteWatch Kind = "siteWatch"
 )
 
 // Action is the fix the Attention list offers. It is a closed vocabulary so
@@ -138,6 +169,7 @@ const (
 	ActionEnableNotifications Action = "enable-notifications"
 	ActionOpenMonitoring      Action = "open-monitoring"
 	ActionOpenResources       Action = "open-resources"
+	ActionOpenClientSites     Action = "open-client-sites"
 )
 
 // Alert is one row in the Attention column: what is wrong, and the one thing
@@ -156,6 +188,8 @@ type Alert struct {
 	ActionLabel string `json:"actionLabel,omitempty"`
 	ProjectID   string `json:"projectId,omitempty"`
 	ChatID      string `json:"chatId,omitempty"`
+	// SiteID names the watched client site a siteWatch alert is about.
+	SiteID string `json:"siteId,omitempty"`
 	// At is the instant the finding is about (deletion, last snapshot, last
 	// backup), zero when it is about a setting rather than a moment.
 	At int64 `json:"at,omitempty"`

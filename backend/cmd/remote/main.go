@@ -103,6 +103,7 @@ func main() {
 		Monitoring:        storeSet.Monitoring,
 		AuxModel:          storeSet.AuxModel,
 		MonitoringLXD:     lxcClient,
+		SiteWatch:         storeSet.SiteWatch,
 		Version:           version.Version,
 		Transcription:     storeSet.Transcription,
 		Playbooks:         storeSet.Playbooks,

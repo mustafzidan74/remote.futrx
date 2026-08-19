@@ -11,6 +11,7 @@ import (
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
 	serviceserverinfo "github.com/futrx-com/remote.futrx.com/internal/service/serverinfo"
+	servicesitewatch "github.com/futrx-com/remote.futrx.com/internal/service/sitewatch"
 	servicesnapshot "github.com/futrx-com/remote.futrx.com/internal/service/snapshot"
 	serviceusage "github.com/futrx-com/remote.futrx.com/internal/service/usage"
 )
@@ -85,6 +86,14 @@ type Notifications interface {
 // PlatformHealth is the same report /healthz serves.
 type PlatformHealth interface {
 	Report(ctx context.Context, proxied bool) servicemonitoring.Report
+}
+
+// ClientSites is the always-on watcher for the operator's client websites.
+// The dashboard asks it only for what is not green, because a card that lists
+// forty healthy shops is a card nobody reads.
+type ClientSites interface {
+	Available() bool
+	NotGreen(ctx context.Context, callerEmail string, isAdmin bool) ([]servicesitewatch.View, error)
 }
 
 // Capacity is the fleet's memory budget and running-container count.

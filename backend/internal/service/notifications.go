@@ -15,6 +15,7 @@ import (
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	"github.com/futrx-com/remote.futrx.com/internal/service/prompt"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
+	servicesitewatch "github.com/futrx-com/remote.futrx.com/internal/service/sitewatch"
 	serviceusage "github.com/futrx-com/remote.futrx.com/internal/service/usage"
 )
 
@@ -50,6 +51,7 @@ var (
 	_ servicehealth.Alerter       = (*notifyObserver)(nil)
 	_ servicemonitoring.Announcer = (*notifyObserver)(nil)
 	_ servicepostrun.Notifier     = (*notifyObserver)(nil)
+	_ servicesitewatch.Alerter    = (*notifyObserver)(nil)
 )
 
 // PlatformStarted reports that the backend process came up. It is the one
@@ -212,6 +214,52 @@ func (o *notifyObserver) ProjectHealthChanged(
 		// for an hour is reported once, not sixty times.
 		DedupeKey: fmt.Sprintf("health:%s:%s:%d", project.ID, health.Status, health.LastCheckedAt),
 	})
+}
+
+// SiteStateChanged reports one of the operator's client websites changing
+// state. The watcher has already applied its two-consecutive-checks rule, so
+// every call here is a settled change and deserves exactly one message.
+//
+// The deep link points at the linked project when there is one, because that
+// is where the person who can fix the site works; an unlinked site links to
+// the application root, and the body names the page to open.
+func (o *notifyObserver) SiteStateChanged(
+	_ context.Context,
+	site servicesitewatch.Site,
+	alert servicesitewatch.Alert,
+) {
+	if o == nil {
+		return
+	}
+	event := servicenotify.Event{
+		Event:     servicenotify.KindSiteWatch,
+		ProjectID: site.ProjectID,
+		Status:    siteAlertStatus(alert),
+		Summary:   servicenotify.Summary(alert.Summary),
+		At:        alert.At,
+		DedupeKey: alert.DedupeKey,
+		URL:       servicenotify.ProjectURL(o.baseURL, site.ProjectID),
+	}
+	if site.ProjectID != "" && o.projects != nil {
+		if project, err := o.projects.Get(context.Background(), serviceproject.ID(site.ProjectID)); err == nil {
+			event.ProjectName = project.Name
+			event.ProjectSlug = project.Slug
+		}
+	}
+	o.notifications.Publish(event)
+}
+
+// siteAlertStatus maps a site's traffic light onto the same three words the
+// health events use, so a webhook consumer switches on one vocabulary.
+func siteAlertStatus(alert servicesitewatch.Alert) string {
+	switch alert.Kind {
+	case servicesitewatch.AlertDown:
+		return servicenotify.StatusHealthCrit
+	case servicesitewatch.AlertRecovered:
+		return servicenotify.StatusHealthOK
+	default:
+		return servicenotify.StatusHealthWarn
+	}
 }
 
 // describeChat fills the chat and project identity fields of an event. Lookup

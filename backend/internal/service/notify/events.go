@@ -54,6 +54,15 @@ func EventHeadline(event Event) string {
 		default:
 			return "Project health warning"
 		}
+	case KindSiteWatch:
+		switch event.Status {
+		case StatusHealthCrit:
+			return "Client site down"
+		case StatusHealthOK:
+			return "Client site back up"
+		default:
+			return "Client site warning"
+		}
 	case KindSystem:
 		return "Remote system event"
 	case KindDigest:

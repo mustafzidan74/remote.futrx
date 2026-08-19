@@ -172,6 +172,14 @@ export const API_ROUTES = {
     settings: "/api/admin/aux-model",
     test: "/api/admin/aux-model/test",
   },
+  sitewatch: {
+    collection: "/api/sitewatch/sites",
+    item: (id: string) => `/api/sitewatch/sites/${encodeURIComponent(id)}`,
+    check: (id: string) => `/api/sitewatch/sites/${encodeURIComponent(id)}/check`,
+    history: (id: string) => `/api/sitewatch/sites/${encodeURIComponent(id)}/history`,
+    import: "/api/admin/sitewatch/import",
+    candidates: "/api/admin/sitewatch/candidates",
+  },
   transcription: {
     transcribe: "/api/transcribe",
     clientConfig: "/api/transcribe/config",

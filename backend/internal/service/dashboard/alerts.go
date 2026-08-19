@@ -93,6 +93,10 @@ type AlertInput struct {
 	Backup   BackupState
 	Platform servicemonitoring.Report
 	Capacity CapacityState
+	// Sites are the watched client websites that are not green. The watcher
+	// has already applied its two-consecutive-checks rule, so anything here
+	// is a settled outage rather than a single failed request.
+	Sites []ClientSiteRow
 }
 
 // DeriveAlerts is the whole Attention column: every finding worth a human's
@@ -105,6 +109,7 @@ func DeriveAlerts(in AlertInput) []Alert {
 	alerts := make([]Alert, 0, 8)
 	alerts = append(alerts, platformAlerts(in)...)
 	alerts = append(alerts, healthAlerts(in)...)
+	alerts = append(alerts, clientSiteAlerts(in)...)
 	alerts = append(alerts, trashAlerts(in)...)
 	alerts = append(alerts, snapshotAlerts(in)...)
 	alerts = append(alerts, autopilotAlerts(in)...)
@@ -165,6 +170,35 @@ func healthAlerts(in AlertInput) []Alert {
 			Action:      ActionOpenProject,
 			ActionLabel: "Open project",
 			ProjectID:   project.ID,
+		})
+	}
+	return out
+}
+
+// clientSiteAlerts turns the watcher's verdicts into rows. A site that is
+// down is critical: unlike a degraded container, nobody on the operator's
+// team is looking at it, and the people who notice first are the client's
+// customers. A slow site is a warning.
+func clientSiteAlerts(in AlertInput) []Alert {
+	out := make([]Alert, 0, len(in.Sites))
+	for _, site := range in.Sites {
+		severity := SeverityWarn
+		title := site.Label + " is slow"
+		if site.Status == "down" {
+			severity = SeverityCrit
+			title = site.Label + " is down"
+		}
+		out = append(out, Alert{
+			ID:          "site:" + site.ID,
+			Severity:    severity,
+			Kind:        KindSiteWatch,
+			Title:       title,
+			Detail:      strings.TrimSpace(site.Detail),
+			Action:      ActionOpenClientSites,
+			ActionLabel: "Open client sites",
+			ProjectID:   site.ProjectID,
+			SiteID:      site.ID,
+			At:          site.Since,
 		})
 	}
 	return out

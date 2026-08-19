@@ -12,6 +12,7 @@ import (
 	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
+	servicesitewatch "github.com/futrx-com/remote.futrx.com/internal/service/sitewatch"
 	servicesnapshot "github.com/futrx-com/remote.futrx.com/internal/service/snapshot"
 	serviceusage "github.com/futrx-com/remote.futrx.com/internal/service/usage"
 )
@@ -48,6 +49,7 @@ type Dependencies struct {
 	Platform      PlatformHealth
 	Capacity      Capacity
 	Backups       Backups
+	ClientSites   ClientSites
 
 	// TrashRetention is how long a soft-deleted project survives. It is the
 	// same duration the Trash page reports expiries with, passed in because
@@ -114,10 +116,13 @@ func (s *Service) Snapshot(
 	report := s.platformReport(ctx)
 	platform := s.platform(ctx, report, health != nil)
 
+	sites := s.clientSites(ctx, callerEmail, isAdmin)
+
 	snapshot := Snapshot{
 		GeneratedAt: now.UnixMilli(),
 		WindowDays:  WindowDays,
 		Projects:    projects,
+		Sites:       sites,
 		Recent:      s.recent(ctx, callerEmail, isAdmin, now, projects, chats),
 		Upcoming:    s.upcoming(ctx, callerEmail, isAdmin, now, projects),
 		Usage:       usage,
@@ -126,6 +131,7 @@ func (s *Service) Snapshot(
 	snapshot.Alerts = DeriveAlerts(AlertInput{
 		Now:                     now,
 		Projects:                projects,
+		Sites:                   sites.Sites,
 		Chats:                   chatStates(chats),
 		Trash:                   s.trash(ctx, callerEmail, isAdmin),
 		SnapshotsAvailable:      s.deps.Snapshots != nil && s.deps.Snapshots.Available(),
@@ -175,6 +181,50 @@ func (s *Service) chats(ctx context.Context, callerEmail string, isAdmin bool) [
 		})
 	}
 	return rows
+}
+
+// clientSites reads the site watcher for the caller's unwell sites. A watcher
+// that cannot answer costs the home screen one card, never the page: the
+// sites are on somebody else's servers, and this box's own report about them
+// failing is the least important thing on the screen.
+func (s *Service) clientSites(ctx context.Context, callerEmail string, isAdmin bool) ClientSiteBoard {
+	if s.deps.ClientSites == nil || !s.deps.ClientSites.Available() {
+		return ClientSiteBoard{Sites: []ClientSiteRow{}}
+	}
+	board := ClientSiteBoard{Available: true, Sites: []ClientSiteRow{}}
+	views, err := s.deps.ClientSites.NotGreen(ctx, callerEmail, isAdmin)
+	if err != nil {
+		log.Printf("dashboard: list client sites: %v", err)
+		return board
+	}
+	for _, view := range views {
+		board.Sites = append(board.Sites, ClientSiteRow{
+			ID:            string(view.ID),
+			Label:         view.Name(),
+			URL:           view.URL,
+			Status:        string(view.Status),
+			Detail:        clientSiteDetail(view),
+			Since:         view.ChangedAt,
+			LastCheckedAt: view.LastCheckedAt,
+			ProjectID:     view.ProjectID,
+		})
+	}
+	return board
+}
+
+// clientSiteDetail is the one line the card shows under a site's name: what
+// the last check found, trimmed to a card row.
+func clientSiteDetail(view servicesitewatch.View) string {
+	detail := strings.TrimSpace(view.LastError)
+	if detail == "" && view.LastCode > 0 {
+		detail = "HTTP " + strconv.Itoa(view.LastCode)
+	}
+	const limit = 160
+	runes := []rune(detail)
+	if len(runes) <= limit {
+		return detail
+	}
+	return string(runes[:limit]) + "…"
 }
 
 // health reads the monitor's cache for the visible projects. A nil map means

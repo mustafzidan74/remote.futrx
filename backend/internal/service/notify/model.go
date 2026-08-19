@@ -22,6 +22,11 @@ const (
 	// KindProjectHealth reports a project container crossing a health
 	// threshold, or recovering from one.
 	KindProjectHealth Kind = "projectHealth"
+	// KindSiteWatch reports one of the operator's client websites going
+	// down, coming back, slowing past its budget, or approaching a
+	// certificate expiry. It is about somebody else's server, not this one,
+	// which is why it is not folded into KindProjectHealth.
+	KindSiteWatch Kind = "siteWatch"
 	// KindSystem reports the platform's own lifecycle — today only that the
 	// backend process came up. A crash-restart is otherwise invisible from a
 	// phone, because the box is answering again before anyone notices it
@@ -86,6 +91,7 @@ type EventToggles struct {
 	NeedsAttention bool `json:"needsAttention"`
 	ScheduledRun   bool `json:"scheduledRun"`
 	ProjectHealth  bool `json:"projectHealth"`
+	SiteWatch      bool `json:"siteWatch"`
 	System         bool `json:"system"`
 }
 
@@ -100,6 +106,7 @@ func DefaultConfig() Config {
 			NeedsAttention: true,
 			ScheduledRun:   true,
 			ProjectHealth:  true,
+			SiteWatch:      true,
 			System:         true,
 		},
 		Digest: DefaultDigestConfig(),
@@ -151,6 +158,8 @@ func (c Config) WantsEvent(kind Kind) bool {
 		return c.Events.ScheduledRun
 	case KindProjectHealth:
 		return c.Events.ProjectHealth
+	case KindSiteWatch:
+		return c.Events.SiteWatch
 	case KindSystem:
 		return c.Events.System
 	default:
