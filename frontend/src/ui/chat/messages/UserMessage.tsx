@@ -1,5 +1,5 @@
-import type { SyntheticKind } from "../../../models/chat";
-import { Eye, FileText, GitFork, PlaneTakeoff, RotateCcw, TestTube, Users } from "../../primitives/icons";
+import type { ChatEventRouting, SyntheticKind } from "../../../models/chat";
+import { Eye, FileText, GitFork, PlaneTakeoff, RotateCcw, TestTube, Users, Zap } from "../../primitives/icons";
 
 /**
  * How each platform-issued prompt announces itself. Without a badge an
@@ -71,16 +71,46 @@ function SyntheticBadge({ kind }: { kind: SyntheticKind }) {
   );
 }
 
+/**
+ * Which model actually answered this turn, and which rule sent it there.
+ *
+ * Automatic routing means the model that answered is not always the one the
+ * pill named when the prompt was typed, so the turn has to say so itself —
+ * otherwise a reader comparing a cheap answer against an expensive bill has
+ * nothing to go on. The rule name is the audit trail; the full reason,
+ * including any fallback, is the tooltip.
+ */
+function RoutedBadge({ routing }: { routing: ChatEventRouting }) {
+  const model = routing.model || "Auto";
+  const rule = (routing.rule || "").trim();
+  return (
+    <span
+      class="inline-flex items-center gap-1 rounded-full bg-accent-blue/[0.12] px-1.5 py-0.5
+             text-[10px] font-semibold uppercase tracking-[0.06em] text-accent-blue"
+      title={routing.reason || `Routed to ${routing.provider} ${model}`}
+    >
+      <Zap class="h-2.5 w-2.5" aria-hidden="true" />
+      <span class="normal-case tracking-normal">
+        {routing.provider} {model}
+        {rule && <span class="text-ink-300"> · {rule}</span>}
+      </span>
+    </span>
+  );
+}
+
 export function UserMessage({
   text,
   t,
   synthetic,
+  routing,
   onRewind,
   onSaveSnippet,
 }: {
   text: string;
   t: number;
   synthetic?: SyntheticKind;
+  /** Present only when automatic routing chose this turn's model. */
+  routing?: ChatEventRouting;
   onRewind?: (t: number, text: string) => void;
   /** Opens the snippet editor with this message as its body. */
   onSaveSnippet?: (text: string) => void;
@@ -88,7 +118,12 @@ export function UserMessage({
   return (
     <div class="group flex justify-end">
       <div class="max-w-[92%] sm:max-w-[78%] flex flex-col items-end gap-1.5">
-        {synthetic && <SyntheticBadge kind={synthetic} />}
+        {(synthetic || routing) && (
+          <div class="flex flex-wrap items-center justify-end gap-1">
+            {synthetic && <SyntheticBadge kind={synthetic} />}
+            {routing && <RoutedBadge routing={routing} />}
+          </div>
+        )}
         <div
           dir="auto"
           class={`codex-user-bubble bidi-auto border rounded-[18px] rounded-br-md px-3.5 py-2.5 text-[14.5px] leading-relaxed

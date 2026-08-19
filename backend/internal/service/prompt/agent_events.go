@@ -125,6 +125,11 @@ type ledgerRun struct {
 	provider  agent.ProviderID
 	model     string
 	scheduled bool
+	// routedBy and routedModel record the automatic routing decision that
+	// produced this run. Both are empty on a run nobody routed, which is what
+	// makes the savings report computable from the ledger alone.
+	routedBy    string
+	routedModel string
 }
 
 // recordRunUsage forwards a finished turn to the usage ledger. Only completed
@@ -146,15 +151,17 @@ func (rnr *Service) recordRunUsage(ctx context.Context, run ledgerRun, ev agent.
 	// The turn is over, so a cancelled request context must not stop the
 	// ledger write that describes it.
 	rnr.usage.RecordRun(context.WithoutCancel(ctx), serviceusage.RunEvent{
-		At:        at,
-		ChatID:    string(run.chatID),
-		ProjectID: run.projectID,
-		RunID:     run.runID,
-		UserEmail: run.userEmail,
-		Provider:  string(provider),
-		Model:     run.model,
-		Usage:     ev.Usage,
-		Scheduled: run.scheduled,
+		At:          at,
+		ChatID:      string(run.chatID),
+		ProjectID:   run.projectID,
+		RunID:       run.runID,
+		UserEmail:   run.userEmail,
+		Provider:    string(provider),
+		Model:       run.model,
+		Usage:       ev.Usage,
+		Scheduled:   run.scheduled,
+		RoutedBy:    run.routedBy,
+		RoutedModel: run.routedModel,
 	})
 }
 

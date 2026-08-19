@@ -11,6 +11,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
+	servicerouting "github.com/futrx-com/remote.futrx.com/internal/service/routing"
 	"github.com/futrx-com/remote.futrx.com/internal/service/runhub"
 	serviceusage "github.com/futrx-com/remote.futrx.com/internal/service/usage"
 )
@@ -165,6 +166,23 @@ func WithUsageRecorder(recorder UsageRecorder) Option {
 	}
 }
 
+// ModelRouter decides which provider and model answer one turn. It is the
+// prompt service's only view of automatic routing: the policy, the rule
+// vocabulary, and the fallback logic all live in internal/service/routing.
+//
+// A nil router is today's behaviour exactly — the chat's own provider and
+// model run every turn.
+type ModelRouter interface {
+	Route(ctx context.Context, input servicerouting.Input) servicerouting.Decision
+}
+
+// WithModelRouter installs the automatic model router.
+func WithModelRouter(router ModelRouter) Option {
+	return func(service *Service) {
+		service.router = router
+	}
+}
+
 // WithAudit records the start and cancellation of every agent run.
 func WithAudit(recorder audit.Recorder) Option {
 	return func(service *Service) {
@@ -183,6 +201,7 @@ type Service struct {
 	usage         UsageRecorder
 	audit         audit.Recorder
 	replyPrefs    ReplyPreferenceResolver
+	router        ModelRouter
 }
 
 func New(
@@ -387,16 +406,27 @@ func (rnr *Service) runPromptAs(
 
 	priorEvents, _ := rnr.store.ReadEvents(ctx, id)
 
+	// Automatic model routing is applied here, before anything else reads the
+	// provider: the decision can change which agent answers, and the provider
+	// selects the resume session, the skill trigger syntax, and the adapter
+	// this turn runs through. Without a router the decision repeats the
+	// chat's own provider and model, which is what every turn did before
+	// routing existed.
+	routed := rnr.route(ctx, meta, input, prompt)
+	providerID := providerIDFromChatProvider(servicechat.Provider(routed.Provider))
+	runModel := routed.Model
+
 	// Persist the user message before spawning the selected agent. A
-	// synthetic label rides along so the transcript shows who asked.
+	// synthetic label rides along so the transcript shows who asked, and the
+	// routing block records which model answered and why.
 	emit(ChatEvent{
 		T:         time.Now().UnixMilli(),
 		Type:      "user",
 		Text:      prompt,
 		Synthetic: servicechat.NormalizeSynthetic(input.Synthetic),
+		Routing:   routingEvent(routed),
 	})
 
-	providerID := providerIDFromChatProvider(meta.Provider)
 	promptSkills := meta.SelectedSkills
 	if input.ScheduledTaskID != "" && !hasScheduledTasksSkill(promptSkills) {
 		promptSkills = append(
@@ -463,13 +493,15 @@ func (rnr *Service) runPromptAs(
 	}
 
 	ledger := ledgerRun{
-		runID:     ledgerRunID,
-		chatID:    id,
-		projectID: string(meta.ProjectID),
-		userEmail: input.Actor.Email,
-		provider:  providerID,
-		model:     meta.Model,
-		scheduled: input.ScheduledTaskID != "",
+		runID:       ledgerRunID,
+		chatID:      id,
+		projectID:   string(meta.ProjectID),
+		userEmail:   input.Actor.Email,
+		provider:    providerID,
+		model:       runModel,
+		scheduled:   input.ScheduledTaskID != "",
+		routedBy:    routedBy(routed),
+		routedModel: routedModel(routed),
 	}
 
 	run := func(runPrompt, runResumeID string) error {
@@ -478,13 +510,13 @@ func (rnr *Service) runPromptAs(
 			ConversationID: string(id),
 			Prompt:         runPrompt,
 			Cwd:            cwd,
-			Model:          meta.Model,
+			Model:          runModel,
 			Mode:           meta.Mode,
 			ResumeID:       runResumeID,
 			ProjectID:      string(meta.ProjectID),
 			Fork:           meta.ForkPending,
 			Preferences: agent.RunPreferences{
-				ReasoningEffort: agent.ReasoningEffort(meta.ReasoningEffort),
+				ReasoningEffort: agent.ReasoningEffort(routed.ReasoningEffort),
 				ServiceTier:     agent.ServiceTier(meta.ServiceTier),
 			},
 			EnableBrowser:       enableBrowser,
@@ -512,6 +544,117 @@ func (rnr *Service) runPromptAs(
 		emit(ChatEvent{T: time.Now().UnixMilli(), Type: "error", Message: string(providerID) + " exit: " + err.Error()})
 	}
 	return err
+}
+
+// route asks the installed router which provider and model should answer this
+// turn. A nil router, a chat pinned to its own model, or a policy that is
+// switched off all produce the chat's own choice.
+func (rnr *Service) route(
+	ctx context.Context,
+	meta ChatMeta,
+	input StartInput,
+	prompt string,
+) servicerouting.Decision {
+	own := servicerouting.Decision{
+		Provider:        string(servicechat.NormalizeProvider(meta.Provider)),
+		Model:           meta.Model,
+		ReasoningEffort: meta.ReasoningEffort,
+	}
+	if rnr.router == nil {
+		return own
+	}
+	decision := rnr.router.Route(ctx, servicerouting.Input{
+		Pinned: servicechat.NormalizeModelPolicy(meta.ModelPolicy) !=
+			servicechat.ModelPolicyAuto,
+		Provider:        own.Provider,
+		Model:           own.Model,
+		ReasoningEffort: own.ReasoningEffort,
+		Prompt:          prompt,
+		Mode:            meta.Mode,
+		Synthetic:       servicechat.NormalizeSynthetic(input.Synthetic),
+		ProjectID:       string(meta.ProjectID),
+		ProjectSlug:     rnr.projectSlug(ctx, meta.ProjectID),
+		Skills:          skillTriggerNames(meta.SelectedSkills),
+	})
+	// A router that answered with nothing must never blank the run's model.
+	if strings.TrimSpace(decision.Provider) == "" {
+		return own
+	}
+	return decision
+}
+
+// projectSlug resolves the readable name a `projectIs` rule may be written
+// against. A project the resolver cannot read simply leaves the slug empty,
+// so the rule falls back to matching on the id.
+func (rnr *Service) projectSlug(ctx context.Context, projectID servicechat.ProjectID) string {
+	if projectID == "" || rnr.projects == nil {
+		return ""
+	}
+	meta, err := rnr.projects.Get(ctx, serviceproject.ID(projectID))
+	if err != nil {
+		return ""
+	}
+	return meta.Slug
+}
+
+// routingEvent renders a decision for the transcript. An unrouted turn records
+// nothing, so a pinned chat's history looks exactly as it always did.
+func routingEvent(decision servicerouting.Decision) *servicechat.EventRouting {
+	if !decision.Routed {
+		return nil
+	}
+	return &servicechat.EventRouting{
+		Provider: decision.Provider,
+		Model:    decision.Model,
+		RuleID:   decision.RuleID,
+		Rule:     decision.RuleNote,
+		Reason:   decision.Reason,
+	}
+}
+
+// routedBy names what chose this run's model, for the ledger: the rule id, the
+// heuristic id, or "default" when routing fell through to the policy default.
+// Empty means the run was never routed.
+func routedBy(decision servicerouting.Decision) string {
+	if !decision.Routed {
+		return ""
+	}
+	if decision.RuleID != "" {
+		return decision.RuleID
+	}
+	return servicerouting.RoutedByDefault
+}
+
+// routedModel is the destination the policy names, not the model id the
+// provider later reports. The savings report compares it against the policy's
+// cheap and expensive poles, which are written in the same vocabulary.
+func routedModel(decision servicerouting.Decision) string {
+	if !decision.Routed {
+		return ""
+	}
+	return servicerouting.ModelRef{
+		Provider: decision.Provider,
+		Model:    decision.Model,
+	}.Key()
+}
+
+// skillTriggerNames is the selected-skill list a `skillSelected` rule matches
+// against, in the same normalized form the prompt preamble uses.
+func skillTriggerNames(skills []servicechat.SkillRef) []string {
+	if len(skills) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(skills))
+	for _, skill := range skills {
+		name := skillTriggerName(skill.Command)
+		if name == "" {
+			name = skillTriggerName(skill.Name)
+		}
+		if name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
 }
 
 func clearSessionIDForProvider(meta *ChatMeta, provider agent.ProviderID) {

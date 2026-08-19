@@ -44,6 +44,7 @@ export function MessageBlock({
           text={block.text}
           t={block.t}
           synthetic={block.synthetic}
+          routing={block.routing}
           onRewind={onRewind}
           onSaveSnippet={onSaveSnippet}
         />

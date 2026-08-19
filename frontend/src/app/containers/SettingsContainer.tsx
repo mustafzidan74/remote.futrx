@@ -19,6 +19,7 @@ import { useSelfUpdate } from "../../state/hooks/server/useSelfUpdate";
 import { useUsageDashboard } from "../../state/hooks/usage/useUsageDashboard";
 import { usageApi } from "../../api/usageApi";
 import { useFleetResources } from "../../state/hooks/server/useFleetResources";
+import { useModelRouting } from "../../state/hooks/settings/useModelRouting";
 
 export function SettingsContainer({
   onBack,
@@ -46,6 +47,7 @@ export function SettingsContainer({
     activeTab === "reply-preferences" && auth.isAdmin
   );
   const secretsVault = useSecretsVault(activeTab === "secrets" && auth.isAdmin);
+  const modelRouting = useModelRouting(activeTab === "model-routing" && auth.isAdmin);
   const serverInfo = useServerInfo(activeTab === "info");
   const selfUpdate = useSelfUpdate(activeTab === "updates" && auth.isAdmin);
   const usageDashboard = useUsageDashboard(activeTab === "usage");
@@ -101,6 +103,7 @@ export function SettingsContainer({
       playbooks={playbooks}
       agentPreferences={agentPreferences}
       secretsVault={secretsVault}
+      modelRouting={modelRouting}
       projects={projects}
       usageDashboard={usageDashboard}
       usageRebuilding={usageRebuilding}

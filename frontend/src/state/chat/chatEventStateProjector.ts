@@ -145,6 +145,10 @@ class ChatEventStateProjector {
             text: event.text,
             t: event.t,
             ...(event.synthetic ? { synthetic: event.synthetic } : {}),
+            // The routing block says which model actually answered the turn.
+            // It rides through the same way, so a turn nobody routed keeps
+            // exactly the block shape it always had.
+            ...(event.routing ? { routing: event.routing } : {}),
           },
         ];
       }

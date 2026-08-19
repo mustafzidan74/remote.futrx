@@ -1,4 +1,4 @@
-import type { SyntheticKind } from "./chat";
+import type { ChatEventRouting, SyntheticKind } from "./chat";
 
 export type AssistantMessagePart =
   | { kind: "text"; text: string }
@@ -21,6 +21,13 @@ export type AssistantMessageBlock = {
 };
 
 export type ChatMessageBlock =
-  | { type: "user"; text: string; t: number; synthetic?: SyntheticKind }
+  | {
+      type: "user";
+      text: string;
+      t: number;
+      synthetic?: SyntheticKind;
+      /** Which model answered this turn and why, when routing chose it. */
+      routing?: ChatEventRouting;
+    }
   | AssistantMessageBlock
   | { type: "error"; message: string; t: number };

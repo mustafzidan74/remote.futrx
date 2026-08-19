@@ -18,6 +18,7 @@ import { useChatDrawerController } from "../../state/hooks/chat/useChatDrawerCon
 import { useChatKeyboardShortcuts } from "../../state/hooks/chat/useChatKeyboardShortcuts";
 import { useChatPolicies } from "../../state/hooks/chat/useChatPolicies";
 import { useChatPreferences } from "../../state/hooks/chat/useChatPreferences";
+import { useModelRoutingPreview } from "../../state/hooks/chat/useModelRoutingPreview";
 import { useChatReadMarker } from "../../state/hooks/chat/useChatReadMarker";
 import { usePlaybooks } from "../../state/hooks/chat/usePlaybooks";
 import { useSnippets } from "../../state/hooks/chat/useSnippets";
@@ -232,6 +233,18 @@ export function ChatContainer({
     });
   }, [activePane]);
 
+  // The routed-model hint for the next turn. It is only asked for while the
+  // chat is actually on Auto, so a pinned chat costs nothing.
+  const routingPreview = useModelRoutingPreview({
+    enabled: displayMeta.modelPolicy === "auto",
+    draft: composer.text,
+    mode: displayMode,
+    provider: displayMeta.provider || "codex",
+    model: displayMeta.model || "",
+    projectId: displayMeta.projectId,
+    selectedSkills,
+  });
+
   const composerView: ChatComposerProps = {
     chatId: chat.id,
     projectId: displayMeta.projectId,
@@ -243,14 +256,17 @@ export function ChatContainer({
       mode: displayMode,
       reasoningEffort: displayMeta.reasoningEffort || "",
       serviceTier: displayMeta.serviceTier || "",
+      modelPolicy: displayMeta.modelPolicy,
     },
     preferenceActions: {
       changeProvider: preferences.changeProvider,
       changeModel: preferences.changeModel,
+      changeModelPolicy: preferences.changeModelPolicy,
       changeMode: preferences.changeMode,
       changeReasoningEffort: preferences.changeReasoningEffort,
       changeServiceTier: preferences.changeServiceTier,
     },
+    routing: { decision: routingPreview.decision, available: !routingPreview.unavailable },
     queuedPrompts: composer.queue.queuedPrompts,
     selectedSkills,
     playbooks,

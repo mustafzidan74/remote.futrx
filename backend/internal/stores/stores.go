@@ -15,6 +15,7 @@ import (
 	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
+	servicerouting "github.com/futrx-com/remote.futrx.com/internal/service/routing"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
 	servicescreenshot "github.com/futrx-com/remote.futrx.com/internal/service/screenshot"
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
@@ -40,6 +41,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectsecrets"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectshares"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileresources"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filerouting"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileschedule"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filescreenshot"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileskillsglobal"
@@ -75,18 +77,20 @@ type Stores struct {
 	ProjectPortals serviceportal.Repository
 	Schedules      serviceschedule.Repository
 	Resources      serviceresources.Repository
-	Auth           AuthStore
-	Users          serviceuser.Repository
-	UserSettings   serviceusersettings.Repository
-	Notifications  servicenotify.Store
-	Monitoring     servicemonitoring.Store
-	Playbooks      serviceplaybooks.Repository
-	Snippets       servicesnippets.Repository
-	GlobalSkills   serviceskills.GlobalRepository
-	GlobalSecrets  serviceglobalsecrets.Store
-	Usage          serviceusage.Repository
-	Transcription  servicetranscribe.Store
-	Audit          serviceaudit.Store
+	// ModelRouting backs the automatic model routing policy.
+	ModelRouting  servicerouting.Repository
+	Auth          AuthStore
+	Users         serviceuser.Repository
+	UserSettings  serviceusersettings.Repository
+	Notifications servicenotify.Store
+	Monitoring    servicemonitoring.Store
+	Playbooks     serviceplaybooks.Repository
+	Snippets      servicesnippets.Repository
+	GlobalSkills  serviceskills.GlobalRepository
+	GlobalSecrets serviceglobalsecrets.Store
+	Usage         serviceusage.Repository
+	Transcription servicetranscribe.Store
+	Audit         serviceaudit.Store
 	// ScheduleHistory is the per-task run log; it lives beside the task
 	// catalog but is written append-only in its own files.
 	ScheduleHistory serviceschedule.HistoryRepository
@@ -141,6 +145,10 @@ func New(dataDir string) (Stores, error) {
 	resources, err := fileresources.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init resource settings store: %w", err)
+	}
+	modelRouting, err := filerouting.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init model routing store: %w", err)
 	}
 	users, err := fileusers.New(dataDir)
 	if err != nil {
@@ -205,6 +213,7 @@ func New(dataDir string) (Stores, error) {
 		ProjectPortals:   projectPortals,
 		Schedules:        schedules,
 		Resources:        resources,
+		ModelRouting:     modelRouting,
 		Auth:             fileauth.New(dataDir),
 		Users:            users,
 		UserSettings:     userSettings,

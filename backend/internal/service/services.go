@@ -29,6 +29,7 @@ import (
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	"github.com/futrx-com/remote.futrx.com/internal/service/prompt"
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
+	servicerouting "github.com/futrx-com/remote.futrx.com/internal/service/routing"
 	"github.com/futrx-com/remote.futrx.com/internal/service/runhub"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
 	"github.com/futrx-com/remote.futrx.com/internal/service/schedulecapability"
@@ -116,8 +117,12 @@ type Dependencies struct {
 	SSHProber        serviceglobalsecrets.SSHProber
 	Usage            serviceusage.Repository
 	ResourceSettings serviceresources.Repository
-	ResourceFleet    serviceresources.Fleet
-	HostCollector    serviceserverinfo.Collector
+	// ModelRouting backs the automatic model routing policy. Nil leaves every
+	// run on the model its chat names, which is what happened before routing
+	// existed.
+	ModelRouting  servicerouting.Repository
+	ResourceFleet serviceresources.Fleet
+	HostCollector serviceserverinfo.Collector
 	// Backups probes the host's backup marker directory for the home
 	// dashboard's "no recent backup" finding. Nil leaves that alert off, which
 	// is the right answer for a host that never installed the backup timer.
@@ -220,6 +225,7 @@ type Services struct {
 	GlobalSkills  *serviceskills.GlobalService
 	Usage         *serviceusage.Service
 	Resources     *serviceresources.Service
+	ModelRouting  *servicerouting.Service
 	Audit         *serviceaudit.Service
 	Health        *servicehealth.Service
 	Snapshots     *servicesnapshot.Service
@@ -398,13 +404,33 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		return Services{}, err
 	}
 	scheduleCaps := schedulecapability.New(deps.AuthBaseURL)
+	// Automatic model routing is built before both the ledger and the prompt
+	// service: the ledger prices its savings card against the policy's
+	// default model, and the prompt service asks it which model answers each
+	// turn. Without a store it stays nil, and both collaborators fall back to
+	// the behaviour they had before routing existed.
+	var routingService *servicerouting.Service
+	if deps.ModelRouting != nil {
+		routingService = servicerouting.New(
+			deps.ModelRouting,
+			servicerouting.WithAudit(auditLog),
+			servicerouting.WithProviders(routableProviders{registry: agentAuth}),
+		)
+	}
 	// The usage ledger is built before the notification service so the weekly
 	// cost digest has a source to aggregate; without a ledger the digest loop
 	// simply never starts.
 	var usageService *serviceusage.Service
 	notifyOptions := []servicenotify.Option{}
 	if deps.Usage != nil {
-		usageService = serviceusage.New(deps.Usage, projectService, chats)
+		usageOptions := []serviceusage.Option{}
+		if routingService != nil {
+			usageOptions = append(
+				usageOptions,
+				serviceusage.WithRoutingSource(routingReference{routing: routingService}),
+			)
+		}
+		usageService = serviceusage.New(deps.Usage, projectService, chats, usageOptions...)
 		notifyOptions = append(
 			notifyOptions,
 			servicenotify.WithDigestSource(usageDigestSource{usage: usageService}),
@@ -489,6 +515,9 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	}
 	if usageService != nil {
 		promptOptions = append(promptOptions, prompt.WithUsageRecorder(usageService))
+	}
+	if routingService != nil {
+		promptOptions = append(promptOptions, prompt.WithModelRouter(routingService))
 	}
 	promptService = prompt.New(
 		chats,
@@ -683,6 +712,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Access:        accessVerifier,
 		GlobalSkills:  globalSkillService,
 		Usage:         usageService,
+		ModelRouting:  routingService,
 		Resources:     resourceService,
 		Audit:         auditLog,
 		Health:        healthService,
@@ -713,6 +743,61 @@ func (p connectedProviders) Connected() []servicechat.Provider {
 		}
 	}
 	return providers
+}
+
+// routableProviders is the routing service's view of the same registry the
+// team driver reads: which agents this host has a live credential for. It is
+// a second adapter rather than a shared one because the two services speak
+// different vocabularies — team mode names chat providers, routing names
+// plain ids.
+type routableProviders struct {
+	registry *agentauth.Registry
+}
+
+func (p routableProviders) Connected() []string {
+	if p.registry == nil {
+		return nil
+	}
+	bindings := p.registry.Bindings()
+	providers := make([]string, 0, len(bindings))
+	for _, binding := range bindings {
+		if binding.Authenticated() {
+			providers = append(providers, string(binding.ID()))
+		}
+	}
+	return providers
+}
+
+// routingReference resolves the routing policy into the flat reference the
+// usage ledger prices its savings card against. The ledger never sees a rule:
+// it gets the three destinations to compare and a rule-id-to-name map.
+type routingReference struct {
+	routing *servicerouting.Service
+}
+
+func (r routingReference) RoutingReference(ctx context.Context) (serviceusage.RoutingReference, bool) {
+	if r.routing == nil {
+		return serviceusage.RoutingReference{}, false
+	}
+	policy, ok := r.routing.Defaults(ctx)
+	if !ok {
+		return serviceusage.RoutingReference{}, false
+	}
+	labels := make(map[string]string, len(policy.Rules))
+	for _, rule := range policy.Rules {
+		labels[rule.ID] = rule.Note
+	}
+	return serviceusage.RoutingReference{
+		Enabled:        policy.Enabled,
+		DefaultModel:   policy.Default.Model,
+		DefaultKey:     policy.Default.Key(),
+		CheapKey:       policy.Cheap.Key(),
+		ExpensiveKey:   policy.Expensive.Key(),
+		DefaultLabel:   policy.Default.Label(),
+		CheapLabel:     policy.Cheap.Label(),
+		ExpensiveLabel: policy.Expensive.Label(),
+		RuleLabels:     labels,
+	}, true
 }
 
 // globalSkillNames narrows the team's wish list to skills the operator has

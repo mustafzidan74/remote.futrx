@@ -23,7 +23,11 @@ import { SendControls } from "./SendControls";
 import { SlashCommandMenu } from "./SlashCommandMenu";
 import { VoiceInputButton } from "./VoiceInputButton";
 import { VoiceLiveStrip } from "./VoiceLiveStrip";
-import type { ComposerPreferenceActions, ComposerPreferences } from "./preferences";
+import type {
+  ComposerPreferenceActions,
+  ComposerPreferences,
+  ComposerRoutingHint,
+} from "./preferences";
 
 export interface ChatComposerProps {
   chatId: string;
@@ -32,6 +36,8 @@ export interface ChatComposerProps {
   canSendPrompt: boolean;
   preferences: ComposerPreferences;
   preferenceActions: ComposerPreferenceActions;
+  /** The model routing would pick for the next turn, for the Auto pill. */
+  routing: ComposerRoutingHint;
   queuedPrompts: QueuedPrompt[];
   selectedSkills: SelectedSkill[];
   playbooks: PlaybookLibrary;
@@ -67,6 +73,7 @@ export function ChatComposer({
   canSendPrompt,
   preferences,
   preferenceActions,
+  routing,
   queuedPrompts,
   selectedSkills,
   playbooks,
@@ -264,6 +271,8 @@ export function ChatComposer({
             projectId={projectId}
             model={preferences.model}
             provider={preferences.provider}
+            modelPolicy={preferences.modelPolicy}
+            routing={routing}
             streaming={streaming}
             selectedSkills={selectedSkills}
             playbooks={playbooks}
@@ -278,6 +287,7 @@ export function ChatComposer({
             onSelectSkill={onSelectSkill}
             onProviderChange={preferenceActions.changeProvider}
             onModelChange={preferenceActions.changeModel}
+            onModelPolicyChange={preferenceActions.changeModelPolicy}
           />
 
           <RunOptionsPopover

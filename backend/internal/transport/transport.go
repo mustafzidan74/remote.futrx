@@ -20,6 +20,7 @@ import (
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
 	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
+	servicerouting "github.com/futrx-com/remote.futrx.com/internal/service/routing"
 	servicescreenshot "github.com/futrx-com/remote.futrx.com/internal/service/screenshot"
 	servicesearch "github.com/futrx-com/remote.futrx.com/internal/service/search"
 	serviceselfupdate "github.com/futrx-com/remote.futrx.com/internal/service/selfupdate"
@@ -221,6 +222,13 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			deps.Services.Resources,
 			httptransport.NewPrincipalResolver(deps.Services.Auth),
 		),
+		// Automatic model routing: three admin routes for the policy, plus a
+		// preview route any signed-in user may call so the composer pill can
+		// name the model their next turn will use.
+		ModelRouting: modelRoutingHandler(
+			deps.Services.ModelRouting,
+			httptransport.NewPrincipalResolver(deps.Services.Auth),
+		),
 		Templates:        httphandlers.NewTemplateHandler(deps.Templates),
 		BrowserInspector: httphandlers.NewBrowserInspectorHandler(),
 		Schedules:        scheduleHandler,
@@ -236,6 +244,19 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		Middleware:       middleware,
 		Static:           httptransport.NewStaticHandler(deps.Static),
 	}), nil
+}
+
+// modelRoutingHandler keeps a nil routing service nil, so a deployment
+// without one simply never registers the routes instead of answering 503 on
+// every composer keystroke.
+func modelRoutingHandler(
+	service *servicerouting.Service,
+	caller httphandlers.CallerResolver,
+) httptransport.RouteRegistrar {
+	if service == nil {
+		return nil
+	}
+	return httphandlers.NewModelRoutingHandler(service, caller)
 }
 
 // dashboardService narrows the concrete home-dashboard aggregator to the

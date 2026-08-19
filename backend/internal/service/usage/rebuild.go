@@ -54,15 +54,28 @@ func (s *Service) Rebuild(ctx context.Context) (RebuildResult, error) {
 		if err != nil {
 			return RebuildResult{}, fmt.Errorf("read events for chat %s: %w", chat.ID, err)
 		}
+		// The routing decision is persisted on the turn's user event, not on
+		// the `complete` event a record is derived from, so it is carried
+		// forward across the turn.
+		var turnRouting *servicechat.EventRouting
 		for _, event := range events {
+			if event.Type == "user" {
+				turnRouting = event.Routing
+				continue
+			}
 			record, ok := recordFromChatEvent(chat, event, slugs, prices)
 			if !ok {
 				continue
 			}
+			applyRouting(&record, turnRouting)
 			if prior, found := existing[recordKey(record.ChatID, record.At)]; found {
 				record.RunID = prior.RunID
 				record.UserEmail = prior.UserEmail
 				record.Scheduled = prior.Scheduled
+				if record.RoutedBy == "" {
+					record.RoutedBy = prior.RoutedBy
+					record.RoutedModel = prior.RoutedModel
+				}
 				if prior.UserEmail != "" {
 					result.PreservedActors++
 				}
@@ -141,6 +154,22 @@ func recordFromChatEvent(
 		record.Estimated = true
 	}
 	return record, true
+}
+
+// applyRouting stamps a rebuilt record with the routing decision its turn
+// recorded. A turn with no routing block was never routed, so the record keeps
+// the empty fields that mean exactly that.
+func applyRouting(record *Record, routing *servicechat.EventRouting) {
+	if routing == nil || strings.TrimSpace(routing.Provider) == "" {
+		return
+	}
+	record.RoutedBy = strings.TrimSpace(routing.RuleID)
+	if record.RoutedBy == "" {
+		record.RoutedBy = RoutedByDefault
+	}
+	record.RoutedModel = strings.ToLower(
+		strings.TrimSpace(routing.Provider) + "/" + strings.TrimSpace(routing.Model),
+	)
 }
 
 // existingByKey indexes the current ledger so a rebuild can preserve the
