@@ -22,6 +22,7 @@ import {
   ProjectInfoSection,
 } from "./project-containers/ProjectInfoSection";
 import { ProjectSecretsSection } from "./project-containers/ProjectSecretsSection";
+import { ProjectMCPSection } from "./project-containers/ProjectMCPSection";
 import { ProjectSnapshotsSection } from "./project-containers/ProjectSnapshotsSection";
 import { ProjectClientMessageSection } from "./project-containers/ProjectClientMessageSection";
 import { ProjectClientPortalSection } from "./project-containers/ProjectClientPortalSection";
@@ -62,6 +63,7 @@ import {
   Globe,
   Menu,
   MessageSquare,
+  Package,
   RotateCcw,
   Settings,
   Users,
@@ -69,6 +71,7 @@ import {
 } from "../primitives/icons";
 import type { SnapshotsRecord } from "../../state/hooks/projects/useProjectSnapshots";
 import type { ProjectGitHub } from "../../state/hooks/projects/useProjectGitHub";
+import type { ProjectMCP } from "../../state/hooks/projects/useProjectMCP";
 import type { UsageSummary } from "../../models/usage";
 import type { ProjectResources } from "../../models/resources";
 import { projectTemplateName } from "../../models/project";
@@ -148,6 +151,7 @@ export function ProjectContainersPage({
   portalIssuedUrl,
   github,
   githubChats,
+  mcp,
   isAdmin,
   onOpenChat,
   refreshing,
@@ -195,6 +199,8 @@ export function ProjectContainersPage({
   github: ProjectGitHub;
   /** This project's chats, offered as import destinations for PR comments. */
   githubChats: GitHubImportTarget[];
+  /** What MCP servers this project will have, from useProjectMCP. */
+  mcp: ProjectMCP;
   /** Arming inbound automation is administrator-only; the panel says so. */
   isAdmin: boolean;
   onOpenChat: (chatId: string) => void;
@@ -330,6 +336,17 @@ export function ProjectContainersPage({
                       error={resourcesError}
                       onSave={onSetResourceLimits}
                     />
+                    <ProjectSettingsPanel
+                      title="MCP servers"
+                      description="External tools this project's agents can call. An MCP server runs with the container's privileges."
+                      Icon={Package}
+                    >
+                      <ProjectMCPSection
+                        project={project}
+                        mcp={mcp}
+                        vaultKeys={secretsRecord.inherited ?? null}
+                      />
+                    </ProjectSettingsPanel>
                     <ProjectSettingsPanel
                       title="Project lifecycle"
                       description={`Current status: ${project.status || "unknown"}`}

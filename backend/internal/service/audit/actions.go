@@ -95,6 +95,14 @@ const (
 	// savings report prices against.
 	ActionSettingsModelRouting = "settings.model-routing.update"
 
+	// MCP registry edits. The project action records a member switching
+	// servers on or off for one project, so its target is the project id.
+	ActionSettingsMCPCreate  = "settings.mcp.create"
+	ActionSettingsMCPUpdate  = "settings.mcp.update"
+	ActionSettingsMCPDelete  = "settings.mcp.delete"
+	ActionSettingsMCPTest    = "settings.mcp.test"
+	ActionSettingsMCPProject = "settings.mcp.project-update"
+
 	ActionSelfUpdateTrigger = "self-update.trigger"
 
 	ActionWorkspaceFileUpload      = "workspace.file.upload"
@@ -118,4 +126,7 @@ const (
 	TargetSession  = "session"
 	TargetServer   = "server"
 	TargetSnapshot = "snapshot"
+	// TargetMCPServer is one entry in the MCP registry, named by its
+	// registry name — or, for a per-project override, by the project id.
+	TargetMCPServer = "mcp-server"
 )

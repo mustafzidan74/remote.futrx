@@ -14,6 +14,7 @@ import (
 	containerinspection "github.com/futrx-com/remote.futrx.com/internal/integration/containers/inspection"
 	containerlifecycle "github.com/futrx-com/remote.futrx.com/internal/integration/containers/lifecycle"
 	containerlisteners "github.com/futrx-com/remote.futrx.com/internal/integration/containers/listeners"
+	containermcp "github.com/futrx-com/remote.futrx.com/internal/integration/containers/mcp"
 	containernetwork "github.com/futrx-com/remote.futrx.com/internal/integration/containers/network"
 	containerresources "github.com/futrx-com/remote.futrx.com/internal/integration/containers/resources"
 	containerscheduletools "github.com/futrx-com/remote.futrx.com/internal/integration/containers/scheduletools"
@@ -50,7 +51,11 @@ type ContainerStack struct {
 	// Secrets materializes the platform vault's files and SSH targets inside
 	// a project container. Environment variables still travel through
 	// Environment; this is everything that has to land on a filesystem.
-	Secrets       *containersecrets.Client
+	Secrets *containersecrets.Client
+	// MCP writes the per-provider MCP server configuration into a container
+	// and runs the Test probe. Like Secrets it is reached from two places:
+	// the agent run path and the admin Test action.
+	MCP           *containermcp.Client
 	CLI           *servicecli.Provisioner
 	Browser       *servicebrowser.Service
 	ScheduleTools *containerscheduletools.Adapter
@@ -127,6 +132,7 @@ func NewContainerStack(
 	credentials := servicecredentials.NewService(profiles, credentialTransfer)
 	environment := containerenvironment.NewClient(runner)
 	vaultSecrets := containersecrets.NewClient(runner)
+	mcpServers := containermcp.NewClient(runner)
 	listeners := containerlisteners.NewScanner(runner)
 	network := containernetwork.NewRepairer(runner)
 	cliRuntime := containercli.NewClient(runner)
@@ -197,6 +203,7 @@ func NewContainerStack(
 		Credentials:   credentials,
 		Environment:   environment,
 		Secrets:       vaultSecrets,
+		MCP:           mcpServers,
 		CLI:           cli,
 		Browser:       browser,
 		ScheduleTools: scheduleTools,

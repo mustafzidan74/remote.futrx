@@ -38,6 +38,14 @@ type BrowserProvisioner interface {
 	EnsureCore(context.Context, string) error
 }
 
+// MCPProvisioner materializes the project's MCP server configuration for one
+// provider and reports the config file that provider must be pointed at, empty
+// when the provider reads its configuration from a fixed path or has no
+// servers at all.
+type MCPProvisioner interface {
+	EnsureMCPServers(ctx context.Context, containerName, projectID, providerID string) (string, error)
+}
+
 // ScheduleToolsProvisioner publishes the provider-neutral schedule CLI and
 // its selected skill into a project workspace.
 type ScheduleToolsProvisioner interface {
@@ -58,6 +66,10 @@ type ContainerDependencies struct {
 	Browser       BrowserProvisioner
 	ScheduleTools ScheduleToolsProvisioner
 	Lifecycle     ContainerLifecycle
+	// MCP is optional: a deployment without an MCP registry store leaves it
+	// nil and every provider simply runs without external tool servers. It is
+	// therefore excluded from Validate's completeness check below.
+	MCP MCPProvisioner
 }
 
 // IsZero reports whether no container provisioning ports were supplied.

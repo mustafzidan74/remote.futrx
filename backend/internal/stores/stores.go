@@ -10,6 +10,7 @@ import (
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicegithub "github.com/futrx-com/remote.futrx.com/internal/service/github"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
+	servicemcp "github.com/futrx-com/remote.futrx.com/internal/service/mcp"
 	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
 	serviceplaybooks "github.com/futrx-com/remote.futrx.com/internal/service/playbooks"
@@ -35,6 +36,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filechat"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filegithub"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileglobalsecrets"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filemcp"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filemonitoring"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filenotify"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileplaybooks"
@@ -99,6 +101,11 @@ type Stores struct {
 	// SiteWatch backs the always-on watcher for the operator's client
 	// websites: the catalog plus one append-only check log per site.
 	SiteWatch servicesitewatch.Store
+	// MCPServers is the platform MCP registry; ProjectMCP is the per-project
+	// override document beside it. Either one nil leaves the registry
+	// unavailable rather than half-wired.
+	MCPServers servicemcp.Store
+	ProjectMCP servicemcp.ProjectStore
 	// ScheduleHistory is the per-task run log; it lives beside the task
 	// catalog but is written append-only in its own files.
 	ScheduleHistory serviceschedule.HistoryRepository
@@ -198,6 +205,14 @@ func New(dataDir string) (Stores, error) {
 	if err != nil {
 		return Stores{}, fmt.Errorf("init secrets vault store: %w", err)
 	}
+	mcpServers, err := filemcp.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init MCP registry store: %w", err)
+	}
+	projectMCP, err := filemcp.NewProjectStore(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init project MCP store: %w", err)
+	}
 	gitHub, err := filegithub.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init github settings store: %w", err)
@@ -241,6 +256,8 @@ func New(dataDir string) (Stores, error) {
 		Snippets:         snippets,
 		GlobalSkills:     globalSkills,
 		GlobalSecrets:    globalSecrets,
+		MCPServers:       mcpServers,
+		ProjectMCP:       projectMCP,
 		Usage:            usage,
 		Transcription:    transcription,
 		Audit:            auditLog,

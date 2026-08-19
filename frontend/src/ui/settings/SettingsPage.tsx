@@ -5,6 +5,7 @@ import type { GlobalSkillLibrary } from "../../state/hooks/settings/useGlobalSki
 import type { PlaybookLibraryEditor } from "../../state/hooks/settings/usePlaybookLibrary";
 import type { AgentPreferencesEditor } from "../../state/hooks/settings/useAgentPreferences";
 import type { SecretsVault } from "../../state/hooks/settings/useSecretsVault";
+import type { MCPRegistryEditor } from "../../state/hooks/settings/useMCPServers";
 import type { ProjectMeta } from "../../models/project";
 import type { AuditLog } from "../../state/hooks/admin/useAuditLog";
 import type { ProjectTrash } from "../../state/hooks/admin/useProjectTrash";
@@ -12,7 +13,7 @@ import type { ServerInfo } from "../../models/serverInfo";
 import type { FleetResourcesView, FleetSettings } from "../../models/resources";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import type { ComponentType } from "preact";
-import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Globe, Info, Key, MemoryStick, Menu, Mic, Monitor, Search, Server, Trash, Users, X, Zap } from "../primitives/icons";
+import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Globe, Info, Key, MemoryStick, Menu, Mic, Monitor, Package, Search, Server, Trash, Users, X, Zap } from "../primitives/icons";
 import { useState } from "preact/hooks";
 import {
   firstSettingsMatch,
@@ -32,6 +33,7 @@ import { MonitoringSettings } from "./MonitoringSettings";
 import { NotificationsSettings } from "./NotificationsSettings";
 import { ResourcesSettings } from "./ResourcesSettings";
 import { SecretsVaultSettings } from "./SecretsVaultSettings";
+import { MCPServersSettings } from "./MCPServersSettings";
 import { ServerInfoSettings } from "./ServerInfoSettings";
 import { TrashSettings } from "./TrashSettings";
 import { UpdatesSettings } from "./UpdatesSettings";
@@ -50,6 +52,7 @@ export type SettingsTab =
   | "users"
   | "notifications"
   | "skills"
+  | "mcp"
   | "reply-preferences"
   | "playbooks"
   | "model-routing"
@@ -109,6 +112,14 @@ const tabs: SettingsTabDescriptor[] = [
     label: "Global skills",
     description: "Publish skills that every project can select.",
     Icon: Code,
+  },
+  {
+    id: "mcp",
+    group: "agents",
+    label: "MCP servers",
+    description:
+      "Give agents real tools — a client database, Figma, a store API — instead of guesses.",
+    Icon: Package,
   },
   {
     id: "reply-preferences",
@@ -264,6 +275,7 @@ export function SettingsPage({
   agentPreferences,
   secretsVault,
   modelRouting,
+  mcpServers,
   projects,
   usageDashboard,
   usageRebuilding,
@@ -323,6 +335,7 @@ export function SettingsPage({
   agentPreferences: AgentPreferencesEditor;
   secretsVault: SecretsVault;
   modelRouting: ModelRoutingEditor;
+  mcpServers: MCPRegistryEditor;
   projects: ProjectMeta[];
   usageDashboard: UsageDashboard;
   usageRebuilding: boolean;
@@ -471,6 +484,20 @@ export function SettingsPage({
                 projects={projects}
               />
             )}
+
+            {activeTab === "mcp" &&
+              (isAdmin ? (
+                <MCPServersSettings
+                  registry={mcpServers}
+                  projects={projects}
+                  vaultKeys={secretsVault.secrets}
+                />
+              ) : (
+                <SettingsNotice>
+                  MCP servers are curated by server administrators. You can switch the ones your
+                  project inherits on or off under Project → Settings → MCP servers.
+                </SettingsNotice>
+              ))}
 
             {activeTab === "reply-preferences" &&
               (isAdmin ? (

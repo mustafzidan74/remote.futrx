@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -191,6 +192,16 @@ func (p *Provider) buildCmd(
 		}
 		if err := p.containerDeps.Lifecycle.EnsureBootAutostart(ctx, project.ContainerName); err != nil {
 			return nil, "", fmt.Errorf("set container boot.autostart: %w", err)
+		}
+		if p.containerDeps.MCP != nil {
+			// codex reads /root/.codex/config.toml at startup, so there is no
+			// flag to add — the managed region is enough. Failing to write it
+			// must not cost the user their prompt.
+			if _, mcpErr := p.containerDeps.MCP.EnsureMCPServers(
+				ctx, project.ContainerName, string(project.ID), string(agent.ProviderCodex),
+			); mcpErr != nil {
+				log.Printf("codex[%s] materialize MCP servers: %v", req.ConversationID, mcpErr)
+			}
 		}
 	}
 

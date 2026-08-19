@@ -3,6 +3,7 @@ package claude
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -36,6 +37,35 @@ func (p *Provider) args(req agent.RunRequest) []string {
 		args = append(args, "--mcp-config", browserMCPConfigPath)
 	}
 	return args
+}
+
+// appendMCPConfig adds one config file to the `--mcp-config` flag.
+//
+// The flag is variadic — the CLI documents it as taking space-separated files
+// — so a second path has to join the existing group rather than open a second
+// flag, which would replace the first and silently drop the Agent Browser's
+// tools. Any existing group is therefore lifted out and re-emitted, once, at
+// the end of the command line: that is the only position where a variadic
+// option cannot swallow the value of a flag that follows it.
+func appendMCPConfig(args []string, path string) []string {
+	if path == "" {
+		return args
+	}
+	kept := make([]string, 0, len(args)+2)
+	configs := make([]string, 0, 2)
+	for index := 0; index < len(args); index++ {
+		if args[index] != "--mcp-config" {
+			kept = append(kept, args[index])
+			continue
+		}
+		for index+1 < len(args) && !strings.HasPrefix(args[index+1], "-") {
+			index++
+			configs = append(configs, args[index])
+		}
+	}
+	configs = append(configs, path)
+	kept = append(kept, "--mcp-config")
+	return append(kept, configs...)
 }
 
 func sanitizeModel(model string) string {
@@ -163,6 +193,19 @@ func (p *Provider) buildCmd(
 		}
 		if err := p.containerDeps.Lifecycle.EnsureBootAutostart(ctx, project.ContainerName); err != nil {
 			return nil, "", fmt.Errorf("set container boot.autostart: %w", err)
+		}
+		if p.containerDeps.MCP != nil {
+			// External MCP tool servers are a capability, not a
+			// precondition: a registry that cannot be materialized must not
+			// cost the user their prompt. The run continues without them.
+			mcpConfig, mcpErr := p.containerDeps.MCP.EnsureMCPServers(
+				ctx, project.ContainerName, string(project.ID), string(agent.ProviderClaude),
+			)
+			if mcpErr != nil {
+				log.Printf("claude[%s] materialize MCP servers: %v", req.ConversationID, mcpErr)
+			} else if mcpConfig != "" {
+				args = appendMCPConfig(args, mcpConfig)
+			}
 		}
 	}
 

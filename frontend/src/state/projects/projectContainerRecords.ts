@@ -6,6 +6,7 @@ import type {
   ProjectShare,
 } from "../../models/project";
 import type { InheritedSecret } from "../../models/secretsVault";
+import type { MCPProjectSettings } from "../../models/mcp";
 
 export interface ProjectDataLoadSignal {
   cancelled: boolean;
@@ -42,6 +43,17 @@ export interface SharesRecord {
 export interface PortalRecord {
   loading: boolean;
   data?: ProjectPortal;
+  error?: string;
+}
+
+/**
+ * What MCP servers this project's containers will be configured with, plus
+ * when they were last written in. Nothing here is a credential: an entry
+ * carries `${KEY}` placeholders, never a value.
+ */
+export interface ProjectMCPRecord {
+  loading: boolean;
+  data?: MCPProjectSettings;
   error?: string;
 }
 
