@@ -355,7 +355,7 @@ export function SettingsPage({
         <SettingsNavigation
           activeTab={activeTab}
           onTabChange={onTabChange}
-          className="theme-submenu-surface hidden md:flex w-56 flex-none overflow-y-auto touch-scroll scrollbar-thin border-r border-white/10 bg-[#0f1217] p-3"
+          className="theme-submenu-surface hidden md:flex md:flex-col w-56 flex-none overflow-y-auto overflow-x-hidden touch-scroll scrollbar-thin border-r border-white/10 bg-[#0f1217] p-3"
         />
         <SettingsNavigation
           activeTab={activeTab}
@@ -703,7 +703,7 @@ function SettingsNavigation({
       )}
 
       <nav
-        class="w-full space-y-3"
+        class="w-full min-w-0 flex-1 space-y-3"
         role="tablist"
         aria-orientation="vertical"
         onKeyDown={onKeyDown}
