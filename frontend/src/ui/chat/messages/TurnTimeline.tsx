@@ -1,4 +1,4 @@
-import { useState } from "preact/hooks";
+import { useMemo, useState } from "preact/hooks";
 import type { AssistantMessagePart } from "../../../models/chatMessage";
 import {
   buildTurnTimeline,
@@ -32,7 +32,9 @@ export function TurnTimeline({
   chatId?: string;
   onAnswerQuestion?: (text: string) => void;
 }) {
-  const steps = buildTurnTimeline(parts);
+  // The projector rebuilds every block on each streamed frame, so this is
+  // memoized on the parts it was handed rather than recomputed per repaint.
+  const steps = useMemo(() => buildTurnTimeline(parts), [parts]);
   const status = parts.some((part) => part.status === "running") ? "running" : "done";
   const isError = steps.some((step) => step.isError);
 
@@ -59,11 +61,16 @@ export function TurnTimeline({
   );
 }
 
-/** The one step worth naming on the collapsed row: the failure, or the last. */
+/**
+ * The one step worth naming on the collapsed row: the failure, or the last.
+ * It is clipped hard because the badge sits beside the summary and does not
+ * truncate on its own.
+ */
 function headline(steps: TimelineStep[]): string | undefined {
   const step = steps.find((candidate) => candidate.isError) ?? steps[steps.length - 1];
   if (!step) return undefined;
-  return step.target ? `${step.label} ${step.target}` : step.label;
+  const text = step.target ? `${step.label} ${step.target}` : step.label;
+  return text.length <= 40 ? text : `${text.slice(0, 39)}…`;
 }
 
 function TimelineRow({
