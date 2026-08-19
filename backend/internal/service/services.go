@@ -686,8 +686,10 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	// agent tokens and no container time — one HEAD request per site per
 	// interval, on the platform host's own bandwidth.
 	siteWatchService := servicesitewatch.New(ctx, servicesitewatch.Dependencies{
+		Store:   deps.SiteWatch,
 		Access:  siteWatchAccess{projects: projectService},
 		Catalog: siteWatchCatalog{projects: projects, secrets: deps.ProjectSecrets},
+		Alerter: runNotifications,
 	})
 	siteWatchService.Start(ctx)
 	// The GitHub integration is built here because it needs nearly everything
