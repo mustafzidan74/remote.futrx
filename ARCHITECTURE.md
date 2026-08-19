@@ -160,6 +160,7 @@ A chat with **no project** ("loose chat") runs the CLI directly on the host inst
 | Scheduled tasks | `DATA_DIR/scheduled-tasks/tasks.json` | JSON | definitions, deadlines, durable claims, pending state, and last outcomes |
 | Notification settings | `DATA_DIR/notifications.json` | JSON | Telegram bot token, WhatsApp credential, webhook secret, and the weekly digest schedule, **plaintext**, mode 0600 |
 | Monitoring settings | `DATA_DIR/monitoring.json` | JSON | Outbound heartbeat URL and interval plus the last push outcome, **plaintext**, mode 0600 ([deep dive](docs/04-operations/11-uptime-monitoring.md)) |
+| Client site watcher | `DATA_DIR/sitewatch/sites.json` + `history/<id>.jsonl` | JSON + JSONL | The watched client websites (mode 0600 — a site may carry a shared request token) plus one append-only check log per site, trimmed to 500 records ([deep dive](docs/04-operations/12-client-site-monitoring.md)) |
 | Global skills library | `DATA_DIR/skills-global/<name>/` | SKILL.md dirs + `_index.json` | admin-published skills pushed into every project container ([deep dive](docs/02-workspaces/09-global-skills.md)) |
 | Fleet resource policy | `DATA_DIR/resources.json` | JSON | container defaults, host reserve, per-project ceiling, running-container cap |
 | Playbook library | `DATA_DIR/playbooks.json` | JSON | admin-curated composer prompt templates, seeded once on first run ([deep dive](docs/02-workspaces/13-playbooks.md)) |

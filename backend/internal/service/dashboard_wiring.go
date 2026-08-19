@@ -11,6 +11,7 @@ import (
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
+	servicesitewatch "github.com/futrx-com/remote.futrx.com/internal/service/sitewatch"
 	servicesnapshot "github.com/futrx-com/remote.futrx.com/internal/service/snapshot"
 	serviceusage "github.com/futrx-com/remote.futrx.com/internal/service/usage"
 )
@@ -33,6 +34,7 @@ func newDashboardService(
 	snapshots *servicesnapshot.Service,
 	notifications *servicenotify.Service,
 	platform *servicemonitoring.Service,
+	clientSites *servicesitewatch.Service,
 	capacity *serviceresources.Service,
 	backups servicedashboard.Backups,
 	trashRetention time.Duration,
@@ -49,6 +51,7 @@ func newDashboardService(
 		Snapshots:      dashboardSnapshots(snapshots),
 		Notifications:  dashboardNotifications(notifications),
 		Platform:       dashboardPlatform(platform),
+		ClientSites:    dashboardClientSites(clientSites),
 		Capacity:       dashboardCapacity(capacity),
 		Backups:        backups,
 		TrashRetention: trashRetention,
@@ -98,6 +101,13 @@ func dashboardNotifications(service *servicenotify.Service) servicedashboard.Not
 }
 
 func dashboardPlatform(service *servicemonitoring.Service) servicedashboard.PlatformHealth {
+	if service == nil {
+		return nil
+	}
+	return service
+}
+
+func dashboardClientSites(service *servicesitewatch.Service) servicedashboard.ClientSites {
 	if service == nil {
 		return nil
 	}

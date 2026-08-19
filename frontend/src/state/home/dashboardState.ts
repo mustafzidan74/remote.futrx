@@ -42,6 +42,7 @@ const SUPPORTED_ACTIONS = new Set([
   "enable-notifications",
   "open-monitoring",
   "open-resources",
+  "open-client-sites",
 ]);
 
 export interface AlertView {

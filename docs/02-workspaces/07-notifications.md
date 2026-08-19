@@ -18,6 +18,7 @@ routing yet.
 | `needsAttention` | The agent called a tool that hands control back to a human | `waiting` |
 | `scheduledRun` | A scheduled task run settled | `succeeded`, `failed` |
 | `projectHealth` | A running project crossed a health threshold, or recovered | `warn`, `crit`, `ok` |
+| `siteWatch` | A watched *client* website went down, came back, slowed past its budget, or is close to a certificate expiry | `warn`, `crit`, `ok` |
 | `system` | The backend process started (a deploy, a reboot, or a crash-restart) | `started` |
 | `digest` | The weekly cost-and-usage schedule came due | `finished` |
 
@@ -38,6 +39,12 @@ Two details worth knowing:
   running project once a minute, but a status must hold for **two consecutive
   sweeps** before it is published, so a container that touches 80% for one
   allocation spike never pings. See [Project health](#project-health).
+
+- **`siteWatch` is about somebody else's server.** It comes from the
+  [client site watcher](../04-operations/12-client-site-monitoring.md), which
+  polls the websites this operator built for their clients. It applies the
+  same two-consecutive-checks rule in both directions, so a single failed
+  request never pings and a recovery is announced exactly once.
 
 Every notification carries a deep link back to the chat:
 `https://<your-host>/?chat=<chatId>`. The SPA reads that parameter once on
@@ -379,7 +386,7 @@ body:
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `event` | string | `runFinished`, `runFailed`, `needsAttention`, `scheduledRun`, `projectHealth`, `system`, or `test` |
+| `event` | string | `runFinished`, `runFailed`, `needsAttention`, `scheduledRun`, `projectHealth`, `siteWatch`, `system`, or `test` |
 | `event` | string | `runFinished`, `runFailed`, `needsAttention`, `scheduledRun`, `digest`, or `test` |
 | `projectId`, `projectSlug`, `projectName` | string | Omitted for loose (project-less) chats |
 | `chatId`, `chatTitle` | string | `chatTitle` omitted if the chat has no title yet; both are absent on `projectHealth` and `system` |
@@ -464,6 +471,7 @@ All three routes are admin-only; a registered non-admin gets `403`.
     "needsAttention": true,
     "scheduledRun": true,
     "projectHealth": true,
+    "siteWatch": true,
     "system": true
   }
   "whatsapp": {
@@ -517,6 +525,7 @@ can always debug a sink.
 - [Scheduled tasks](06-scheduled-tasks.md) — the `scheduledRun` source
 - [Deployment and operations](../04-operations/09-deployment-and-operations.md#project-health-monitor) — the `projectHealth` source and its kill switch
 - [Uptime monitoring](../04-operations/11-uptime-monitoring.md) — the `system` source, and the two external checks that survive the box itself dying
+- [Client site monitoring](../04-operations/12-client-site-monitoring.md) — the `siteWatch` source: the operator's clients' websites, watched without spending a token
 - [Usage and cost](10-usage-and-cost.md) — the ledger behind the weekly digest
 - [Previews and inspector](../02-user-guide/06-previews-and-inspector.md#share-a-screenshot) — where a screenshot delivery comes from
 - [API and realtime](../03-platform/08-api-and-realtime.md) — the rest of the HTTP surface

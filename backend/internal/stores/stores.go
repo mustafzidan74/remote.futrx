@@ -18,6 +18,7 @@ import (
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
 	servicescreenshot "github.com/futrx-com/remote.futrx.com/internal/service/screenshot"
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
+	servicesitewatch "github.com/futrx-com/remote.futrx.com/internal/service/sitewatch"
 	serviceskills "github.com/futrx-com/remote.futrx.com/internal/service/skills"
 	servicesnapshot "github.com/futrx-com/remote.futrx.com/internal/service/snapshot"
 	servicesnippets "github.com/futrx-com/remote.futrx.com/internal/service/snippets"
@@ -42,6 +43,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileresources"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileschedule"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filescreenshot"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filesitewatch"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileskillsglobal"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filesnapshot"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filesnippets"
@@ -80,13 +82,16 @@ type Stores struct {
 	UserSettings   serviceusersettings.Repository
 	Notifications  servicenotify.Store
 	Monitoring     servicemonitoring.Store
-	Playbooks      serviceplaybooks.Repository
-	Snippets       servicesnippets.Repository
-	GlobalSkills   serviceskills.GlobalRepository
-	GlobalSecrets  serviceglobalsecrets.Store
-	Usage          serviceusage.Repository
-	Transcription  servicetranscribe.Store
-	Audit          serviceaudit.Store
+	// SiteWatch backs the always-on watcher for the operator's client
+	// websites: the catalog plus one append-only check log per site.
+	SiteWatch     servicesitewatch.Store
+	Playbooks     serviceplaybooks.Repository
+	Snippets      servicesnippets.Repository
+	GlobalSkills  serviceskills.GlobalRepository
+	GlobalSecrets serviceglobalsecrets.Store
+	Usage         serviceusage.Repository
+	Transcription servicetranscribe.Store
+	Audit         serviceaudit.Store
 	// ScheduleHistory is the per-task run log; it lives beside the task
 	// catalog but is written append-only in its own files.
 	ScheduleHistory serviceschedule.HistoryRepository
@@ -158,6 +163,10 @@ func New(dataDir string) (Stores, error) {
 	if err != nil {
 		return Stores{}, fmt.Errorf("init monitoring settings store: %w", err)
 	}
+	siteWatch, err := filesitewatch.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init client site store: %w", err)
+	}
 	playbooks, err := fileplaybooks.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init playbooks store: %w", err)
@@ -210,6 +219,7 @@ func New(dataDir string) (Stores, error) {
 		UserSettings:     userSettings,
 		Notifications:    notifications,
 		Monitoring:       monitoring,
+		SiteWatch:        siteWatch,
 		Playbooks:        playbooks,
 		Snippets:         snippets,
 		GlobalSkills:     globalSkills,

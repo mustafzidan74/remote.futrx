@@ -40,6 +40,11 @@ const EVENT_ROWS: Array<{ key: keyof NotificationEventToggles; label: string; hi
     hint: "A project container ran short of memory, stopped serving its app, or recovered.",
   },
   {
+    key: "siteWatch",
+    label: "Client sites",
+    hint: "One of the client websites you watch went down, came back, slowed past its budget, or is about to lose its certificate.",
+  },
+  {
     key: "system",
     label: "System events",
     hint: "The platform itself restarted — the one way a crash-restart becomes visible on your phone.",

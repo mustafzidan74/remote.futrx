@@ -4,6 +4,7 @@ import { formatBytes, formatRelative, type StatusTone } from "../../state/home/d
 import { Meter } from "../primitives/Meter";
 import { TONE_DOT, TONE_TEXT } from "./DashboardCard";
 import { AttentionCard } from "./AttentionCard";
+import { ClientSitesCard } from "./ClientSitesCard";
 import { KpiTiles } from "./KpiTiles";
 import { ProjectsCard } from "./ProjectsCard";
 import { RecentActivityCard } from "./RecentActivityCard";
@@ -65,6 +66,9 @@ export function Dashboard({
         return;
       case "open-resources":
         handlers.openSettings("resources");
+        return;
+      case "open-client-sites":
+        handlers.openSettings("client-sites");
         return;
       default:
         // An action a newer server offers and this build does not know. The
@@ -166,6 +170,12 @@ export function Dashboard({
               onRunNow={handlers.runTaskNow}
               onOpenChat={handlers.openChat}
             />
+            <ClientSitesCard
+              sites={snapshot?.sites ?? EMPTY_SITES}
+              loading={loading && !snapshot}
+              now={now}
+              onOpenSettings={() => handlers.openSettings("client-sites")}
+            />
           </div>
 
           <UsageCard
@@ -192,6 +202,8 @@ function scrollToAttention() {
     .getElementById(ATTENTION_ANCHOR)
     ?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
+
+const EMPTY_SITES = { available: false, sites: [] };
 
 const EMPTY_USAGE = {
   available: false,

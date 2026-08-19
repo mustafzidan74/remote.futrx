@@ -30,6 +30,7 @@ type Handlers struct {
 	UserSettings     RouteRegistrar
 	Notifications    RouteRegistrar
 	Monitoring       RouteRegistrar
+	SiteWatch        RouteRegistrar
 	Transcribe       RouteRegistrar
 	Portal           RouteRegistrar
 	ScreenshotLinks  RouteRegistrar
@@ -79,6 +80,7 @@ func NewHandler(handlers Handlers) http.Handler {
 	register(handlers.UserSettings)
 	register(handlers.Notifications)
 	register(handlers.Monitoring)
+	register(handlers.SiteWatch)
 	register(handlers.Transcribe)
 	register(handlers.Portal)
 	register(handlers.ScreenshotLinks)

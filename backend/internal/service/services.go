@@ -36,6 +36,7 @@ import (
 	servicesearch "github.com/futrx-com/remote.futrx.com/internal/service/search"
 	serviceserverinfo "github.com/futrx-com/remote.futrx.com/internal/service/serverinfo"
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
+	servicesitewatch "github.com/futrx-com/remote.futrx.com/internal/service/sitewatch"
 	serviceskills "github.com/futrx-com/remote.futrx.com/internal/service/skills"
 	servicesnapshot "github.com/futrx-com/remote.futrx.com/internal/service/snapshot"
 	servicesnippets "github.com/futrx-com/remote.futrx.com/internal/service/snippets"
@@ -88,6 +89,10 @@ type Dependencies struct {
 	// MonitoringLXD is the container daemon probe behind the "lxd" check of
 	// /healthz. Nil reports that check as skipped rather than degraded.
 	MonitoringLXD servicemonitoring.LXD
+	// SiteWatch backs the always-on watcher for the operator's client
+	// websites. Nil leaves the Client sites page reporting 503 and schedules
+	// nothing.
+	SiteWatch servicesitewatch.Store
 	// Version is stamped into /healthz and the "Remote started" event. It is
 	// the only fact the public health endpoint reveals about this host.
 	Version       string
@@ -207,6 +212,7 @@ type Services struct {
 	UserSettings  *serviceusersettings.Service
 	Notifications *servicenotify.Service
 	Monitoring    *servicemonitoring.Service
+	SiteWatch     *servicesitewatch.Service
 	Transcription *servicetranscribe.Service
 	Playbooks     *serviceplaybooks.Service
 	Snippets      *servicesnippets.Service
@@ -608,6 +614,19 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	})
 	monitoringService.Start(ctx)
 
+	// The client-site watcher is built alongside it and for the mirror-image
+	// reason: monitoring is how the outside world learns this box died, and
+	// this is how this box learns somebody else's website did. It costs no
+	// agent tokens and no container time — one HEAD request per site per
+	// interval, on the platform host's own bandwidth.
+	siteWatchService := servicesitewatch.New(ctx, servicesitewatch.Dependencies{
+		Store:   deps.SiteWatch,
+		Access:  siteWatchAccess{projects: projectService},
+		Catalog: siteWatchCatalog{projects: projects, secrets: deps.ProjectSecrets},
+		Alerter: runNotifications,
+	})
+	siteWatchService.Start(ctx)
+
 	// The GitHub integration is built here because it needs nearly everything
 	// above it: projects to resolve a container, chats and the prompt service
 	// to turn an inbound issue into a run, and the notification observer to
@@ -649,6 +668,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		snapshotService,
 		notifications,
 		monitoringService,
+		siteWatchService,
 		resourceService,
 		deps.Backups,
 		deps.TrashRetention,
@@ -671,6 +691,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		UserSettings:  userSettingsService,
 		Notifications: notifications,
 		Monitoring:    monitoringService,
+		SiteWatch:     siteWatchService,
 		Transcription: transcription,
 		Playbooks:     playbookService,
 		Snippets:      snippetService,

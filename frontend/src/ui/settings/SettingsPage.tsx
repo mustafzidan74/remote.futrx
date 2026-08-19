@@ -22,6 +22,7 @@ import { AppearanceSettings } from "./AppearanceSettings";
 import { ReplyLanguagePreference } from "./ReplyLanguagePreference";
 import { ReplyPreferencesSettings } from "./ReplyPreferencesSettings";
 import { AuditLogSettings } from "./AuditLogSettings";
+import { ClientSitesSettings } from "./ClientSitesSettings";
 import { ClaudeAuthSettings } from "./ClaudeAuthSettings";
 import { CodexAuthSettings } from "./CodexAuthSettings";
 import { KimiAuthSettings } from "./KimiAuthSettings";
@@ -50,6 +51,7 @@ export type SettingsTab =
   | "playbooks"
   | "voice"
   | "usage"
+  | "client-sites"
   | "resources"
   | "secrets"
   | "trash"
@@ -130,6 +132,14 @@ const tabs: SettingsTabDescriptor[] = [
     label: "Usage",
     description: "Track tokens and estimated cost per project, user, provider, and model.",
     Icon: Activity,
+  },
+  {
+    id: "client-sites",
+    group: "insights",
+    label: "Client sites",
+    description:
+      "Watch the websites you built for other people, and get pinged the moment one goes down.",
+    Icon: Globe,
   },
   {
     id: "users",
@@ -477,6 +487,10 @@ export function SettingsPage({
                 rebuilding={usageRebuilding}
                 rebuildMessage={usageRebuildMessage}
               />
+            )}
+
+            {activeTab === "client-sites" && (
+              <ClientSitesSettings isAdmin={isAdmin} projects={projects} />
             )}
 
             {activeTab === "users" && (

@@ -23,6 +23,31 @@ export interface DashboardSnapshot {
   upcoming: DashboardTask[];
   usage: DashboardUsage;
   platform: DashboardPlatform;
+  /** The watched client websites that are not currently green. */
+  sites: DashboardClientSites;
+}
+
+/**
+ * The home screen's client-site card. `available` is false when this
+ * deployment watches nothing at all, which renders as "not set up" rather
+ * than as "everything is fine".
+ */
+export interface DashboardClientSites {
+  available: boolean;
+  sites: DashboardClientSite[];
+}
+
+export interface DashboardClientSite {
+  id: string;
+  label: string;
+  url: string;
+  status: string;
+  /** The newest failure reason, already trimmed for a card row. */
+  detail?: string;
+  /** When the current state began, so the card can say how long. */
+  since?: number;
+  lastCheckedAt?: number;
+  projectId?: string;
 }
 
 export interface DashboardKpis {
@@ -73,7 +98,8 @@ export type AlertKind =
   | "notifications"
   | "backup"
   | "platform"
-  | "capacity";
+  | "capacity"
+  | "siteWatch";
 
 /**
  * The fix an alert offers. A closed vocabulary, so the browser wires a button
@@ -87,7 +113,8 @@ export type AlertAction =
   | "restore-trash"
   | "enable-notifications"
   | "open-monitoring"
-  | "open-resources";
+  | "open-resources"
+  | "open-client-sites";
 
 export interface DashboardAlert {
   id: string;
@@ -99,6 +126,8 @@ export interface DashboardAlert {
   actionLabel?: string;
   projectId?: string;
   chatId?: string;
+  /** The watched client site a siteWatch alert is about. */
+  siteId?: string;
   at?: number;
 }
 

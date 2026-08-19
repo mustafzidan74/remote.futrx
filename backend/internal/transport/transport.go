@@ -24,6 +24,7 @@ import (
 	servicesearch "github.com/futrx-com/remote.futrx.com/internal/service/search"
 	serviceselfupdate "github.com/futrx-com/remote.futrx.com/internal/service/selfupdate"
 	serviceserverinfo "github.com/futrx-com/remote.futrx.com/internal/service/serverinfo"
+	servicesitewatch "github.com/futrx-com/remote.futrx.com/internal/service/sitewatch"
 	servicetranscribe "github.com/futrx-com/remote.futrx.com/internal/service/transcribe"
 	serviceworkspacefiles "github.com/futrx-com/remote.futrx.com/internal/service/workspacefiles"
 	serviceworkspaceide "github.com/futrx-com/remote.futrx.com/internal/service/workspaceide"
@@ -174,6 +175,12 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			monitoringService(deps.Services.Monitoring),
 			deps.Services.Auth,
 		),
+		// The client-site watcher. Reads are open to any signed-in user and
+		// filtered by the service; every write is admin-only.
+		SiteWatch: httphandlers.NewSiteWatchHandler(
+			siteWatchService(deps.Services.SiteWatch),
+			deps.Services.Auth,
+		),
 		// Voice input. The composer's browser path never reaches the server;
 		// these routes exist for the optional server-transcription fallback
 		// and its admin panel.
@@ -292,6 +299,16 @@ func globalSecretsService(service *serviceglobalsecrets.Service) httphandlers.Gl
 // transport's interface while keeping a nil service nil, so /healthz reports
 // 503 instead of panicking on a deployment without a monitoring store.
 func monitoringService(service *servicemonitoring.Service) httphandlers.MonitoringService {
+	if service == nil {
+		return nil
+	}
+	return service
+}
+
+// siteWatchService narrows the concrete client-site watcher to the
+// transport's interface while keeping a nil service nil, so the routes report
+// 503 instead of panicking on a deployment without a sitewatch store.
+func siteWatchService(service *servicesitewatch.Service) httphandlers.SiteWatchService {
 	if service == nil {
 		return nil
 	}
