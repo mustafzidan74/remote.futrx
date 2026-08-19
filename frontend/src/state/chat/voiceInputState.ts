@@ -42,8 +42,31 @@ export interface VoiceSession {
   /** The composer text on either side of the caret when the session began. */
   before: string;
   after: string;
-  /** Speech that has firmed up during this session. */
+  /**
+   * Speech that has firmed up during this session.
+   *
+   * Derived, never accumulated: it is always `settledSpeech(committed, finals)`.
+   * Nothing may append to it, because the recognizer re-delivers results it has
+   * already delivered and an accumulator turns every re-delivery into a copy.
+   */
   final: string;
+  /**
+   * Text carried over from *earlier* recognizer instances — the runs Chrome
+   * ended by itself and the controller restarted — plus any server transcript.
+   * It is settled: no result index can ever rewrite it.
+   */
+  committed: string;
+  /**
+   * The final transcripts of the recognizer instance that is running now,
+   * keyed by their absolute index in `SpeechRecognitionEvent.results`.
+   *
+   * This is the whole point of the model. Chrome re-dispatches a result that
+   * has already firmed up — sometimes verbatim, sometimes with a correction —
+   * in a later `result` event, and it does so at the *same* index. Storing by
+   * index makes a re-delivery a replacement instead of a second copy, and lets
+   * the correction win. Holes are "" so the list stays dense.
+   */
+  finals: readonly string[];
   /** The hypothesis still being rewritten. Always empty once the session ends. */
   interim: string;
   /** Microphone level, 0–1, for the meter. 0 when unavailable. */
@@ -66,6 +89,11 @@ export const IDLE_VOICE_SESSION: VoiceSession = {
   before: "",
   after: "",
   final: "",
+  committed: "",
+  // Frozen because it is spread into every fresh session: a shared mutable
+  // default is exactly the kind of thing that would leak one session's
+  // transcript into the next one.
+  finals: Object.freeze([]),
   interim: "",
   level: 0,
   elapsedMs: 0,
@@ -89,6 +117,7 @@ export function beginSession(
     status,
     before: text.slice(0, split),
     after: text.slice(split),
+    finals: [],
   };
 }
 
@@ -102,24 +131,80 @@ export function markRunning(
     : { ...session, status, error: "" };
 }
 
+/** One transcript the recognizer has firmed up, at its absolute result index. */
+export interface RecognitionFinal {
+  /** The entry's index in `SpeechRecognitionEvent.results`. */
+  index: number;
+  transcript: string;
+}
+
+export interface RecognitionUpdate {
+  /** Every `isFinal` entry the event carried, with its absolute index. */
+  finals?: readonly RecognitionFinal[];
+  /** The hypothesis, which replaces the previous one wholesale. */
+  interim?: string;
+}
+
 /**
- * Folds one Web Speech `result` event into the session. `finalChunk` is only
- * the text that firmed up in *this* event — the caller slices from
- * `event.resultIndex` — while `interim` replaces the previous hypothesis
- * wholesale, which is exactly how the API rewrites it.
+ * Folds one Web Speech `result` event into the session.
+ *
+ * Both halves are **assignments, not appends**, and that is the whole defect
+ * this function exists to make impossible. `interim` replaces the previous
+ * hypothesis because the API rewrites it on every event. Each final is stored
+ * at its own result index, because Chrome re-dispatches results that have
+ * already firmed up: the same index arrives again in a later event, sometimes
+ * carrying a corrected transcript. Appending it produced the duplicated
+ * sentence the operator reported; assigning it keeps one copy and lets the
+ * correction replace the first reading.
+ *
+ * The settled text is therefore a pure function of what the recognizer has
+ * said so far — replay the same events in any order and the result is the
+ * same — which is what makes the duplication unreachable rather than merely
+ * unlikely.
  */
 export function applyRecognition(
   session: VoiceSession,
-  { finalChunk = "", interim = "" }: { finalChunk?: string; interim?: string },
+  { finals = [], interim = "" }: RecognitionUpdate,
 ): VoiceSession {
   if (session.status === "idle") return session;
+  const next = session.finals.slice();
+  for (const entry of finals) {
+    if (!Number.isInteger(entry.index) || entry.index < 0) continue;
+    // A dense list keeps `settledSpeech` a plain fold; a gap only appears when
+    // a later index firms up before an earlier one, which the recognizer does
+    // not do but which costs nothing to survive.
+    while (next.length < entry.index) next.push("");
+    next[entry.index] = entry.transcript;
+  }
   return {
     ...session,
-    final: joinSpeech(session.final, finalChunk),
+    finals: next,
+    final: settledSpeech(session.committed, next),
     interim: interim.trim(),
     // Words arriving means whatever was reported has passed.
     notice: "",
   };
+}
+
+/**
+ * Freezes the current recognizer's finals into `committed` and clears the
+ * index map.
+ *
+ * Called when a recognizer instance is replaced — Chrome ends continuous
+ * recognition after about a minute and the controller starts a fresh one. The
+ * new instance numbers its results from 0 again, so without this the second
+ * run's first sentence would overwrite the first run's. Because the derived
+ * text is unchanged by the move, this is invisible in the composer.
+ */
+export function commitRecognizer(session: VoiceSession): VoiceSession {
+  if (session.status === "idle") return session;
+  const settled = settledSpeech(session.committed, session.finals);
+  return { ...session, committed: settled, finals: [], final: settled };
+}
+
+/** The settled speech for a session: a fold over the recognizer's result list. */
+function settledSpeech(committed: string, finals: readonly string[]): string {
+  return finals.reduce<string>((text, chunk) => joinSpeech(text, chunk ?? ""), committed);
 }
 
 /**
@@ -142,10 +227,13 @@ export function applyTranscript(session: VoiceSession, transcript: string): Voic
   // after the user ended the session must not revive it and overwrite what
   // they have typed since.
   if (session.status === "idle") return session;
+  const settled = joinSpeechOnce(session.final, transcript);
   return {
     ...session,
     status: "idle",
-    final: joinSpeech(session.final, transcript),
+    committed: settled,
+    finals: [],
+    final: settled,
     interim: "",
     level: 0,
   };
@@ -175,12 +263,25 @@ export function markTranscribing(session: VoiceSession): VoiceSession {
  * than discarded: the user watched those words appear and would read their
  * disappearance as lost dictation, and the composer is a draft they review
  * before sending anyway.
+ *
+ * The promotion goes through `joinSpeechOnce` rather than `joinSpeech` because
+ * of the race this whole change is about. `stop()` gives the recognizer a
+ * short window to flush, and the words it flushes are usually the same words
+ * the hypothesis was already showing. Whichever order they land in, the
+ * sentence must appear once — so an interim the settled text already ends with
+ * is dropped instead of appended.
+ *
+ * It is also idempotent: finishing an already-finished session changes
+ * nothing, so a watchdog and a real `end` racing each other cannot both write.
  */
 export function finishSession(session: VoiceSession): VoiceSession {
+  const settled = joinSpeechOnce(session.final, session.interim);
   return {
     ...session,
     status: "idle",
-    final: joinSpeech(session.final, session.interim),
+    committed: settled,
+    finals: [],
+    final: settled,
     interim: "",
     level: 0,
     notice: "",
@@ -271,6 +372,37 @@ export function joinSpeech(left: string, right: string): string {
   if (!head) return tail;
   if (!tail) return head;
   return CLINGING_PUNCTUATION.test(tail) ? `${head}${tail}` : `${head} ${tail}`;
+}
+
+/**
+ * `joinSpeech`, except that a right-hand run the left already ends with is
+ * dropped rather than repeated.
+ *
+ * The two recognizer paths that can deliver the same words twice are a stop
+ * that promotes its hypothesis while the recognizer is still flushing the
+ * matching final, and a server transcript that arrives after a browser session
+ * left text behind. Comparing on the same normalisation `joinSpeech` applies —
+ * trimmed, with runs of whitespace collapsed — means "الموقع  شغال" and
+ * "الموقع شغال" count as the same words.
+ *
+ * The repeat must cover whole words. "الموقع شغال دلوقتي" followed by
+ * "شغال دلوقتي" is one sentence, because those words are already its tail; the
+ * same sentence followed by "دلوقتي حصل" is two, and both are kept.
+ */
+export function joinSpeechOnce(left: string, right: string): string {
+  const head = normalizeSpeech(left);
+  const tail = normalizeSpeech(right);
+  if (!head || !tail) return joinSpeech(left, right);
+  if (head === tail) return joinSpeech(left, "");
+  if (head.endsWith(tail) && head[head.length - tail.length - 1] === " ") {
+    return joinSpeech(left, "");
+  }
+  return joinSpeech(left, right);
+}
+
+/** Trimmed, with internal whitespace runs collapsed, for comparing two runs. */
+function normalizeSpeech(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
 }
 
 /** Punctuation that belongs against the previous word, Arabic marks included. */

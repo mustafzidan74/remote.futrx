@@ -12,6 +12,7 @@ import {
   applyTranscript,
   beginDictationClaim,
   beginSession,
+  commitRecognizer,
   composeText,
   dismissError,
   failSession,
@@ -19,6 +20,7 @@ import {
   formatElapsed,
   isDictating,
   joinSpeech,
+  joinSpeechOnce,
   markRunning,
   markTranscribing,
   resolveEngine,
@@ -78,7 +80,7 @@ test("a firmed-up chunk moves out of the interim span and stays", () => {
   let session = beginSession("", 0, "listening");
 
   session = applyRecognition(session, { interim: "open the" });
-  session = applyRecognition(session, { finalChunk: "open the file", interim: "" });
+  session = applyRecognition(session, { finals: [{ index: 0, transcript: "open the file" }] });
   assert.equal(session.final, "open the file");
   assert.equal(session.interim, "");
 
@@ -86,7 +88,7 @@ test("a firmed-up chunk moves out of the interim span and stays", () => {
   session = applyRecognition(session, { interim: "and run" });
   assert.equal(composeText(session).text, "open the file and run");
 
-  session = applyRecognition(session, { finalChunk: "and run the tests", interim: "" });
+  session = applyRecognition(session, { finals: [{ index: 1, transcript: "and run the tests" }] });
   assert.equal(composeText(session).text, "open the file and run the tests");
 });
 
@@ -94,7 +96,7 @@ test("dictation lands at the caret and leaves the rest of the draft alone", () =
   let session = beginSession("Please  then commit.", 7);
 
   session = markRunning(session, "listening");
-  session = applyRecognition(session, { finalChunk: "run the linter", interim: "" });
+  session = applyRecognition(session, { finals: [{ index: 0, transcript: "run the linter" }] });
 
   const composed = composeText(session);
   assert.equal(composed.text, "Please run the linter then commit.");
@@ -107,8 +109,7 @@ test("dictation lands at the caret and leaves the rest of the draft alone", () =
 
 test("dictating into an empty composer produces no stray whitespace", () => {
   const session = applyRecognition(beginSession("", 0, "listening"), {
-    finalChunk: "مرحبا",
-    interim: "",
+    finals: [{ index: 0, transcript: "مرحبا" }],
   });
 
   assert.deepEqual(composeText(session), { text: "مرحبا", caret: "مرحبا".length });
@@ -116,8 +117,7 @@ test("dictating into an empty composer produces no stray whitespace", () => {
 
 test("a draft that already ends in whitespace does not gain a second space", () => {
   const session = applyRecognition(beginSession("note: ", 6, "listening"), {
-    finalChunk: "ship it",
-    interim: "",
+    finals: [{ index: 0, transcript: "ship it" }],
   });
 
   assert.equal(composeText(session).text, "note: ship it");
@@ -125,8 +125,7 @@ test("a draft that already ends in whitespace does not gain a second space", () 
 
 test("punctuation the recognizer emits separately hugs the word before it", () => {
   const session = applyRecognition(beginSession("", 0, "listening"), {
-    finalChunk: "done",
-    interim: "",
+    finals: [{ index: 0, transcript: "done" }],
   });
 
   assert.equal(composeText(applyRecognition(session, { interim: "." })).text, "done.");
@@ -137,7 +136,10 @@ test("punctuation the recognizer emits separately hugs the word before it", () =
 // A hypothesis the user watched appear should not vanish when they press stop.
 test("stopping keeps a hypothesis that never firmed up", () => {
   let session = beginSession("", 0, "listening");
-  session = applyRecognition(session, { finalChunk: "open the", interim: "file" });
+  session = applyRecognition(session, {
+    finals: [{ index: 0, transcript: "open the" }],
+    interim: "file",
+  });
 
   session = finishSession(session);
 
@@ -148,7 +150,7 @@ test("stopping keeps a hypothesis that never firmed up", () => {
 
 test("a failure halfway through keeps what was already dictated", () => {
   let session = beginSession("prefix ", 7, "listening");
-  session = applyRecognition(session, { finalChunk: "half a sentence", interim: "" });
+  session = applyRecognition(session, { finals: [{ index: 0, transcript: "half a sentence" }] });
 
   session = failSession(session, "network error");
 
@@ -187,7 +189,10 @@ test("a server transcript lands whole and ends the session", () => {
 test("events after the session ended are ignored", () => {
   const idle = IDLE_VOICE_SESSION;
 
-  assert.deepEqual(applyRecognition(idle, { finalChunk: "late", interim: "x" }), idle);
+  assert.deepEqual(
+    applyRecognition(idle, { finals: [{ index: 0, transcript: "late" }], interim: "x" }),
+    idle,
+  );
   assert.deepEqual(withLevel(idle, 0.8), idle);
   assert.deepEqual(withElapsed(idle, 5000), idle);
   assert.deepEqual(markRunning(idle, "listening"), idle);
@@ -513,4 +518,132 @@ test("the tooltip label always names the language actually being recognised", ()
   // "Auto" on its own tells the user nothing, so the resolved tag comes with it.
   assert.equal(describeVoiceLanguage("auto", "fr-FR"), "Auto (browser language): fr-FR");
   assert.equal(describeVoiceLanguage("auto", undefined), "Auto (browser language)");
+});
+
+/* ------------------------------------------------------------------------ *
+ * Duplication
+ *
+ * The settled text is a *pure function* of the recognizer's result list. That
+ * is the property these tests protect, because the alternative — an
+ * accumulator that appends whatever the last event carried — turns every
+ * re-delivery of an already-firmed result into a second copy of the sentence,
+ * which is what the operator saw in Chrome.
+ * ------------------------------------------------------------------------ */
+
+test("a final re-delivered at the same index replaces it instead of adding a copy", () => {
+  let session = beginSession("", 0, "listening");
+
+  session = applyRecognition(session, { finals: [{ index: 0, transcript: "ابدأ تشغيل الموقع" }] });
+  assert.equal(composeText(session).text, "ابدأ تشغيل الموقع");
+
+  // Chrome re-dispatches results it has already firmed up.
+  session = applyRecognition(session, { finals: [{ index: 0, transcript: "ابدأ تشغيل الموقع" }] });
+  session = applyRecognition(session, { finals: [{ index: 0, transcript: "ابدأ تشغيل الموقع" }] });
+
+  assert.equal(composeText(session).text, "ابدأ تشغيل الموقع");
+  assert.deepEqual([...session.finals], ["ابدأ تشغيل الموقع"]);
+});
+
+test("a corrected re-delivery wins over the reading it replaces", () => {
+  let session = beginSession("", 0, "listening");
+
+  session = applyRecognition(session, { finals: [{ index: 0, transcript: "ابدا تشغيل الموقع" }] });
+  session = applyRecognition(session, { finals: [{ index: 0, transcript: "ابدأ تشغيل الموقع" }] });
+
+  assert.equal(session.final, "ابدأ تشغيل الموقع");
+});
+
+test("the settled text is the same whatever order the results are replayed in", () => {
+  const events = [
+    { finals: [{ index: 0, transcript: "ابدأ تشغيل الموقع" }] },
+    { finals: [{ index: 1, transcript: "الموقع شغال دلوقتي" }] },
+    { finals: [{ index: 0, transcript: "ابدأ تشغيل الموقع" }] },
+  ];
+  const settle = (order: typeof events) =>
+    order.reduce(
+      (session, event) => applyRecognition(session, event),
+      beginSession("", 0, "listening"),
+    ).final;
+
+  assert.equal(settle(events), "ابدأ تشغيل الموقع الموقع شغال دلوقتي");
+  assert.equal(settle([...events].reverse()), "ابدأ تشغيل الموقع الموقع شغال دلوقتي");
+  assert.equal(settle([...events, ...events]), "ابدأ تشغيل الموقع الموقع شغال دلوقتي");
+});
+
+test("commitRecognizer freezes a run so the next one may restart at index 0", () => {
+  let session = beginSession("", 0, "listening");
+  session = applyRecognition(session, { finals: [{ index: 0, transcript: "ابدأ تشغيل الموقع" }] });
+
+  // Chrome ended the recognizer; a fresh one takes over and numbers from zero.
+  session = commitRecognizer(session);
+  assert.equal(session.committed, "ابدأ تشغيل الموقع");
+  assert.deepEqual([...session.finals], [], "the index map belongs to one instance only");
+  assert.equal(session.final, "ابدأ تشغيل الموقع", "and nothing moved in the composer");
+
+  session = applyRecognition(session, { finals: [{ index: 0, transcript: "الموقع شغال دلوقتي" }] });
+  assert.equal(composeText(session).text, "ابدأ تشغيل الموقع الموقع شغال دلوقتي");
+
+  // The second instance re-delivering its own index 0 is still one copy.
+  session = applyRecognition(session, { finals: [{ index: 0, transcript: "الموقع شغال دلوقتي" }] });
+  assert.equal(composeText(session).text, "ابدأ تشغيل الموقع الموقع شغال دلوقتي");
+});
+
+test("a gap in the result indices does not shuffle the settled text", () => {
+  let session = beginSession("", 0, "listening");
+
+  session = applyRecognition(session, { finals: [{ index: 2, transcript: "third" }] });
+  session = applyRecognition(session, { finals: [{ index: 0, transcript: "first" }] });
+  session = applyRecognition(session, { finals: [{ index: 1, transcript: "second" }] });
+
+  assert.equal(session.final, "first second third");
+});
+
+test("finishing does not settle a hypothesis the text already ends with", () => {
+  let session = beginSession("", 0, "listening");
+  session = applyRecognition(session, {
+    finals: [{ index: 0, transcript: "الموقع شغال دلوقتي" }],
+    // The recognizer's guess at what comes next is the tail it just firmed up.
+    interim: "دلوقتي",
+  });
+
+  session = finishSession(session);
+
+  assert.equal(composeText(session).text, "الموقع شغال دلوقتي");
+});
+
+test("finishing is idempotent, so a watchdog and a real end cannot both write", () => {
+  let session = beginSession("", 0, "listening");
+  session = applyRecognition(session, {
+    finals: [{ index: 0, transcript: "افتح المشروع" }],
+    interim: "وشغّل الاختبارات",
+  });
+
+  const once = finishSession(session);
+  const twice = finishSession(once);
+
+  assert.equal(composeText(once).text, "افتح المشروع وشغّل الاختبارات");
+  assert.deepEqual(twice, once);
+});
+
+test("a server transcript that repeats what is already there lands once", () => {
+  let session = beginSession("", 0, "recording");
+  session = applyRecognition(session, { finals: [{ index: 0, transcript: "الموقع شغال دلوقتي" }] });
+
+  session = applyTranscript(markTranscribing(session), "الموقع شغال دلوقتي");
+
+  assert.equal(composeText(session).text, "الموقع شغال دلوقتي");
+});
+
+test("joinSpeechOnce drops a repeated run but never a genuine continuation", () => {
+  assert.equal(joinSpeechOnce("الموقع شغال", "الموقع شغال"), "الموقع شغال");
+  assert.equal(joinSpeechOnce("ابدأ تشغيل الموقع", "الموقع"), "ابدأ تشغيل الموقع");
+  assert.equal(joinSpeechOnce("الموقع شغال", "دلوقتي"), "الموقع شغال دلوقتي");
+  // Whitespace is normalised the same way joinSpeech normalises it.
+  assert.equal(joinSpeechOnce("open  the file", "the   file"), "open  the file");
+  // A partial word is not a repeat: "شغال" does not end "الموقع شغالة".
+  assert.equal(joinSpeechOnce("الموقع شغالة", "شغال"), "الموقع شغالة شغال");
+  assert.equal(joinSpeechOnce("", "الموقع شغال"), "الموقع شغال");
+  assert.equal(joinSpeechOnce("الموقع شغال", ""), "الموقع شغال");
+  // Punctuation still hugs the word before it.
+  assert.equal(joinSpeechOnce("انتهى", "،"), "انتهى،");
 });

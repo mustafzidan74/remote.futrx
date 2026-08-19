@@ -12,6 +12,7 @@ import {
   applyNotice,
   applyRecognition,
   beginSession,
+  commitRecognizer,
   composeText,
   dismissError,
   failSession,
@@ -20,6 +21,7 @@ import {
   markRunning,
   planAfterRecognitionEnd,
   recognitionErrorMessage,
+  type RecognitionFinal,
   type VoiceSession,
 } from "./voiceInputState.ts";
 
@@ -49,6 +51,12 @@ import {
  *    continuous recognition after about a minute of silence; the session
  *    restarts underneath the user until they press stop.
  *  - **Every failure produces a sentence.** No error code is swallowed.
+ *  - **A phrase spoken once appears once.** Chrome re-dispatches results it
+ *    has already firmed up, keeps dispatching them during the flush a `stop()`
+ *    asks for, and numbers a restarted recognizer's results from zero again.
+ *    None of those may add a second copy, so the settled text is derived from
+ *    the recognizer's result list by index instead of accumulated, exactly one
+ *    recognizer is ever attached, and a closed session accepts nothing.
  */
 
 /** The clock and timers, injected so tests do not wait in real time. */
@@ -97,8 +105,19 @@ export class BrowserDictation {
   private readonly flushMs: number;
 
   private session: VoiceSession = IDLE_VOICE_SESSION;
-  /** The recognizer whose events count. Identity *is* the ownership token. */
+  /**
+   * The recognizer whose events count. Identity *is* the ownership token, and
+   * there is never more than one: `launch()` refuses to build a second while
+   * this is set, so a rapid toggle or a restart racing a stop cannot end up
+   * with two live recognizers feeding the same session.
+   */
   private recognition: SpeechRecognitionLike | null = null;
+  /**
+   * True once the session has been finished, failed, or abandoned. A closed
+   * session accepts nothing: no late `result` from a recognizer that was on
+   * its way out may write to the composer after the text was settled.
+   */
+  private closed = true;
   private stopRequested = false;
   private restarts = 0;
   private deadStarts = 0;
@@ -137,6 +156,7 @@ export class BrowserDictation {
     this.deadStarts = 0;
     this.retriedAlreadyStarted = false;
     this.lastErrorCode = "";
+    this.closed = false;
     this.apply(() => beginSession(text, caret), { write: false });
 
     if (!this.host.secureContext) {
@@ -184,6 +204,7 @@ export class BrowserDictation {
    * because it is no longer the owner.
    */
   abandon(): void {
+    this.closed = true;
     this.clearFlushTimer();
     const instance = this.detach();
     abortQuietly(instance);
@@ -195,8 +216,22 @@ export class BrowserDictation {
     this.apply(dismissError, { write: false });
   }
 
-  /** Replaces the session wholesale; the hook uses it to seed a restart. */
+  /**
+   * Opens one recognizer for the running session.
+   *
+   * It is a no-op while an instance is still attached. Two live recognizers
+   * transcribe the same microphone into the same session, so every phrase
+   * lands twice — the third way this feature could duplicate text, reachable
+   * through a rapid toggle, the already-started retry, or a restart racing a
+   * stop. Refusing here is what makes `this.recognition` a real invariant
+   * rather than a convention.
+   */
   private launch(): void {
+    if (this.recognition) {
+      this.trace("launch ignored — a recognizer is already attached");
+      return;
+    }
+    if (this.closed) return;
     const instance = this.host.create();
     if (!instance) {
       this.fail(NO_RECOGNITION_MESSAGE);
@@ -209,7 +244,7 @@ export class BrowserDictation {
     if (tag) instance.lang = tag;
 
     instance.onstart = () => {
-      if (this.recognition !== instance) return;
+      if (!this.owns(instance)) return;
       // Re-stamped here so "how long did this run last" measures from the
       // moment audio actually opened. `heardThisRun` is deliberately not
       // reset: a result can beat `start` on some builds, and that is speech.
@@ -221,20 +256,26 @@ export class BrowserDictation {
     };
 
     instance.onresult = (event: SpeechRecognitionEvent) => {
-      if (this.recognition !== instance) return;
-      const { finalChunk, interim } = readResults(event);
-      if (!finalChunk && !interim) return;
+      // Two guards, not one. Identity rejects a recognizer that is no longer
+      // the owner — an abandoned one, or the instance a restart replaced — and
+      // `closed` rejects an event that arrives for the *current* owner after
+      // the session's text was already settled by a stop, a watchdog, or a
+      // failure. Without the second one, a final that lands a beat after the
+      // flush deadline is folded on top of the hypothesis it duplicates.
+      if (!this.owns(instance)) return;
+      const { finals, interim } = readResults(event);
+      if (finals.length === 0 && !interim) return;
       this.heardThisRun = true;
       // markRunning first: a result that arrives while the session is still
       // "starting" is real speech and must reach the composer, which the
       // previous implementation dropped.
       this.apply((current) =>
-        applyRecognition(markRunning(current, "listening"), { finalChunk, interim }),
+        applyRecognition(markRunning(current, "listening"), { finals, interim }),
       );
     };
 
     instance.onerror = (event: SpeechRecognitionErrorEvent) => {
-      if (this.recognition !== instance) return;
+      if (!this.owns(instance)) return;
       this.lastErrorCode = event.error;
       this.trace(`error: ${event.error}`);
       // A user-initiated stop reports itself as "aborted" or "no-speech";
@@ -268,8 +309,13 @@ export class BrowserDictation {
     };
 
     instance.onend = () => {
-      if (this.recognition !== instance) return;
+      if (!this.owns(instance)) return;
       this.recognition = null;
+      // A recognizer that has ended is finished talking to us. Cutting its
+      // handlers here — not only in `abortQuietly` — is what stops a build
+      // that dispatches one last `result` after `end` from writing into the
+      // session the restart is about to reuse.
+      releaseHandlers(instance);
       this.clearFlushTimer();
       const errorCode = this.lastErrorCode;
       this.lastErrorCode = "";
@@ -293,6 +339,11 @@ export class BrowserDictation {
       }
       this.restarts += 1;
       this.deadStarts = plan.deadStart ? this.deadStarts + 1 : 0;
+      // The replacement recognizer numbers its results from 0 again, so what
+      // this one firmed up is frozen into `committed` before it starts. Skip
+      // this and the second run's first sentence overwrites the first run's;
+      // do it with an accumulator instead and every restart duplicates.
+      this.apply(commitRecognizer, { write: false });
       this.launch();
     };
 
@@ -324,8 +375,15 @@ export class BrowserDictation {
     }
   }
 
-  /** Ends cleanly, folding any unfirmed hypothesis into the composer. */
+  /**
+   * Ends cleanly, folding any unfirmed hypothesis into the composer.
+   *
+   * The session is closed *before* the recognizer is released, so that even a
+   * handler dispatched synchronously out of `abort()` finds a closed session
+   * and writes nothing.
+   */
   private finish(): void {
+    this.closed = true;
     this.clearFlushTimer();
     const instance = this.detach();
     abortQuietly(instance);
@@ -338,10 +396,16 @@ export class BrowserDictation {
   }
 
   private fail(message: string): void {
+    this.closed = true;
     this.clearFlushTimer();
     const instance = this.detach();
     abortQuietly(instance);
     this.apply((current) => failSession(current, message));
+  }
+
+  /** Whether an event from `instance` may still write to this session. */
+  private owns(instance: SpeechRecognitionLike): boolean {
+    return this.recognition === instance && !this.closed;
   }
 
   private detach(): SpeechRecognitionLike | null {
@@ -381,23 +445,32 @@ export class BrowserDictation {
 }
 
 /**
- * Folds one `result` event into a final chunk and a replacement hypothesis.
- * Only entries from `resultIndex` onward are new; the rest have already been
- * merged.
+ * Reads one `result` event into the finals it carries — each with the index it
+ * occupies in the recognizer's own result list — and one replacement
+ * hypothesis.
+ *
+ * The indices are the important part. `event.resultIndex` is the first entry
+ * that *changed*, not the first entry that is new, so a re-delivered or
+ * corrected final shows up here again at the index it already had. Returning
+ * the index rather than a concatenated chunk lets the session store it by
+ * position and keep exactly one copy; the previous version returned only text,
+ * which left the caller with no way to tell a new sentence from the same
+ * sentence said once.
  */
 export function readResults(event: SpeechRecognitionEvent): {
-  finalChunk: string;
+  finals: RecognitionFinal[];
   interim: string;
 } {
-  let finalChunk = "";
+  const finals: RecognitionFinal[] = [];
   let interim = "";
-  for (let index = event.resultIndex; index < event.results.length; index += 1) {
+  const first = Math.max(0, event.resultIndex ?? 0);
+  for (let index = first; index < event.results.length; index += 1) {
     const result = event.results[index];
     const transcript = result?.[0]?.transcript ?? "";
-    if (result?.isFinal) finalChunk += transcript;
+    if (result?.isFinal) finals.push({ index, transcript });
     else interim += transcript;
   }
-  return { finalChunk, interim };
+  return { finals, interim };
 }
 
 function startFailureMessage(cause: unknown): string {
@@ -408,12 +481,23 @@ function startFailureMessage(cause: unknown): string {
   return "Voice input could not start.";
 }
 
-function abortQuietly(instance: SpeechRecognitionLike | null): void {
-  if (!instance) return;
+/**
+ * Cuts every wire from a recognizer to the controller.
+ *
+ * Detaching the handlers is the strongest of the guards against a late result:
+ * identity checks and the `closed` flag decide not to *use* an event, this one
+ * means the event is never delivered at all.
+ */
+function releaseHandlers(instance: SpeechRecognitionLike): void {
   instance.onstart = null;
   instance.onresult = null;
   instance.onerror = null;
   instance.onend = null;
+}
+
+function abortQuietly(instance: SpeechRecognitionLike | null): void {
+  if (!instance) return;
+  releaseHandlers(instance);
   try {
     instance.abort?.();
   } catch {

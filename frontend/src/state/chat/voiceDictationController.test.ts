@@ -61,9 +61,21 @@ class FakeRecognition {
     this.onstart?.();
   }
 
-  /** Fires one `result` event carrying a fresh hypothesis and/or firmed text. */
-  emitResult(chunks: { transcript: string; isFinal: boolean }[]): void {
-    const index = this.resultIndex;
+  /**
+   * Builds one `result` event the way the API shapes it.
+   *
+   * `at` overrides the absolute index the batch starts from. That is how
+   * Chrome re-delivers something it has already firmed up: a later event
+   * points back at an index it has sent before, carrying either the same
+   * transcript or a corrected one. Building the event separately from firing
+   * it also lets a test hold on to one and deliver it late, which is what an
+   * event Chrome had already queued when the user pressed stop looks like.
+   */
+  resultEvent(
+    chunks: { transcript: string; isFinal: boolean }[],
+    { at }: { at?: number } = {},
+  ): SpeechRecognitionEvent {
+    const index = at ?? this.resultIndex;
     const results: Record<number, unknown> & { length: number } = {
       length: index + chunks.length,
     };
@@ -74,9 +86,19 @@ class FakeRecognition {
         0: { transcript: chunk.transcript, confidence: 0.9 },
       };
     });
-    // The API only advances resultIndex past entries that have firmed up.
-    this.resultIndex += chunks.filter((chunk) => chunk.isFinal).length;
-    this.onresult?.({ resultIndex: index, results } as unknown as SpeechRecognitionEvent);
+    // The API only advances resultIndex past entries that have firmed up, and
+    // a re-delivery never moves it backwards.
+    const firmed = chunks.filter((chunk) => chunk.isFinal).length;
+    this.resultIndex = Math.max(this.resultIndex, index + firmed);
+    return { resultIndex: index, results } as unknown as SpeechRecognitionEvent;
+  }
+
+  /** Fires one `result` event carrying a fresh hypothesis and/or firmed text. */
+  emitResult(
+    chunks: { transcript: string; isFinal: boolean }[],
+    options: { at?: number } = {},
+  ): void {
+    this.onresult?.(this.resultEvent(chunks, options));
   }
 
   emitError(code: string): void {
@@ -523,4 +545,227 @@ test("the selected language is handed to every recognizer, restarts included", (
   bench.live().emitEnd();
 
   assert.equal(bench.live().lang, "ar-EG", "the restart recognises the same language");
+});
+
+/* ------------------------------------------------------------------------ *
+ * Duplication
+ *
+ * The operator dictates one Arabic sentence in Chrome and the composer ends up
+ * holding it twice. Three separate mechanisms could produce that, and the
+ * tests below pin all three shut:
+ *
+ *  1. the recognizer re-delivering a result it has already firmed up, which an
+ *     accumulator folds in a second time;
+ *  2. the flush a `stop()` asks for landing after the hypothesis was already
+ *     promoted, so the tail is written twice;
+ *  3. two recognizers attached at once, each transcribing the same microphone
+ *     into the same session.
+ *
+ * Every assertion is on the composer draft, because the draft is what the
+ * operator reads.
+ * ------------------------------------------------------------------------ */
+
+test("a final Chrome delivers again at the same index is not a second copy", () => {
+  const bench = harness();
+
+  bench.controller.start("", 0);
+  const recognizer = bench.live();
+  recognizer.emitStart();
+  recognizer.emitResult([{ transcript: "ابدأ تشغيل الموقع", isFinal: true }]);
+  assert.equal(bench.draft(), "ابدأ تشغيل الموقع");
+
+  // Chrome re-dispatches an already-final result while it refines the tail of
+  // the utterance. The event points back at the index it has already sent.
+  recognizer.emitResult([{ transcript: "ابدأ تشغيل الموقع", isFinal: true }], { at: 0 });
+  recognizer.emitResult([{ transcript: "ابدأ تشغيل الموقع", isFinal: true }], { at: 0 });
+
+  assert.equal(bench.draft(), "ابدأ تشغيل الموقع", "spoken once, written once");
+  assert.equal(bench.controller.current.final, "ابدأ تشغيل الموقع");
+});
+
+test("a re-delivered final that corrects itself replaces the first reading", () => {
+  const bench = harness();
+
+  bench.controller.start("", 0);
+  const recognizer = bench.live();
+  recognizer.emitStart();
+  recognizer.emitResult([{ transcript: "ابدا تشغيل الموقع", isFinal: true }]);
+  recognizer.emitResult([{ transcript: "ابدأ تشغيل الموقع", isFinal: true }], { at: 0 });
+
+  assert.equal(bench.draft(), "ابدأ تشغيل الموقع", "the correction wins, and stands alone");
+});
+
+test("a batch that repeats one final and adds another keeps one of each", () => {
+  const bench = harness();
+
+  bench.controller.start("", 0);
+  const recognizer = bench.live();
+  recognizer.emitStart();
+  recognizer.emitResult([{ transcript: "ابدأ تشغيل الموقع", isFinal: true }]);
+  // resultIndex points at the first *changed* entry, not the first new one, so
+  // a settled result rides along with the new one in the same event.
+  recognizer.emitResult(
+    [
+      { transcript: "ابدأ تشغيل الموقع", isFinal: true },
+      { transcript: "الموقع شغال دلوقتي", isFinal: true },
+    ],
+    { at: 0 },
+  );
+
+  assert.equal(bench.draft(), "ابدأ تشغيل الموقع الموقع شغال دلوقتي");
+});
+
+test("a phrase that firms up out of its own hypothesis is written once", () => {
+  const bench = harness();
+
+  bench.controller.start("", 0);
+  const recognizer = bench.live();
+  recognizer.emitStart();
+  recognizer.emitResult([{ transcript: "الموقع", isFinal: false }]);
+  recognizer.emitResult([{ transcript: "الموقع شغال", isFinal: false }]);
+  recognizer.emitResult([{ transcript: "الموقع شغال دلوقتي", isFinal: true }]);
+
+  assert.equal(bench.draft(), "الموقع شغال دلوقتي");
+  assert.equal(bench.controller.current.interim, "");
+});
+
+test("a final that lands after a stop promoted the hypothesis is not written twice", () => {
+  const bench = harness();
+
+  bench.controller.start("", 0);
+  const recognizer = bench.live();
+  recognizer.emitStart();
+  recognizer.emitResult([{ transcript: "الموقع شغال دلوقتي", isFinal: false }]);
+
+  // The event Chrome has already queued, and the handler it holds, captured
+  // before the stop tears anything down.
+  const deliver = recognizer.onresult;
+  const queued = recognizer.resultEvent([{ transcript: "الموقع شغال دلوقتي", isFinal: true }], {
+    at: 0,
+  });
+
+  bench.controller.stop();
+  recognizer.emitEnd();
+  assert.equal(bench.draft(), "الموقع شغال دلوقتي", "the hypothesis was promoted");
+
+  deliver?.(queued);
+
+  assert.equal(bench.draft(), "الموقع شغال دلوقتي", "and the late final changed nothing");
+  assert.equal(bench.controller.current.status, "idle");
+});
+
+test("a final that lands after the flush watchdog fired is not written twice", () => {
+  const bench = harness();
+
+  bench.controller.start("note: ", 6);
+  const recognizer = bench.live();
+  recognizer.emitStart();
+  recognizer.emitResult([{ transcript: "ship it today", isFinal: false }]);
+
+  const deliver = recognizer.onresult;
+  const queued = recognizer.resultEvent([{ transcript: "ship it today", isFinal: true }], {
+    at: 0,
+  });
+
+  bench.controller.stop();
+  // The recognizer never fires `end`, so the watchdog ends the session.
+  bench.clock.advance(1500);
+  assert.equal(bench.draft(), "note: ship it today");
+
+  deliver?.(queued);
+  recognizer.emitEnd();
+
+  assert.equal(bench.draft(), "note: ship it today");
+  assert.equal(bench.controller.current.status, "idle");
+});
+
+test("a restarted recognizer numbers from zero without losing or repeating a run", () => {
+  const bench = harness();
+
+  bench.controller.start("", 0);
+  const first = bench.live();
+  first.emitStart();
+  first.emitResult([{ transcript: "ابدأ تشغيل الموقع", isFinal: true }]);
+
+  // Chrome's own cut-off after about a minute.
+  bench.clock.advance(60_000);
+  first.emitEnd();
+
+  const second = bench.live();
+  assert.notEqual(second, first, "a fresh recognizer took over");
+  assert.equal(second.resultIndex, 0, "which numbers its own results from zero");
+  second.emitStart();
+  second.emitResult([{ transcript: "الموقع شغال دلوقتي", isFinal: true }]);
+
+  assert.equal(
+    bench.draft(),
+    "ابدأ تشغيل الموقع الموقع شغال دلوقتي",
+    "session one is kept and session two is appended once",
+  );
+
+  // The new instance re-delivering its own index 0 is still just one copy.
+  second.emitResult([{ transcript: "الموقع شغال دلوقتي", isFinal: true }], { at: 0 });
+  assert.equal(bench.draft(), "ابدأ تشغيل الموقع الموقع شغال دلوقتي");
+
+  // And the recognizer that ended has been cut loose entirely.
+  assert.equal(first.onresult, null, "the ended recognizer's handlers are gone");
+  first.emitResult([{ transcript: "ابدأ تشغيل الموقع", isFinal: true }], { at: 0 });
+  assert.equal(bench.draft(), "ابدأ تشغيل الموقع الموقع شغال دلوقتي");
+});
+
+test("a rapid start, stop, start keeps exactly one recognizer and one copy", () => {
+  const bench = harness();
+
+  bench.controller.start("", 0);
+  const first = bench.live();
+  first.emitStart();
+  first.emitResult([{ transcript: "ابدأ تشغيل الموقع", isFinal: true }]);
+
+  // Two stop presses and a start, all before the recognizer has finished
+  // flushing. Nothing here may open a second recognizer against the same
+  // microphone: two of them transcribe every phrase twice.
+  bench.controller.stop();
+  bench.controller.stop();
+  bench.controller.start("", 0);
+  assert.equal(bench.recognizers.length, 1, "no second recognizer while the first is live");
+
+  first.emitEnd();
+  assert.equal(bench.controller.current.status, "idle");
+  assert.equal(bench.draft(), "ابدأ تشغيل الموقع");
+  assert.equal(first.onresult, null, "the first recognizer was released");
+
+  const carried = bench.draft() ?? "";
+  bench.controller.start(carried, carried.length);
+  assert.equal(bench.recognizers.length, 2);
+  const second = bench.live();
+  second.emitStart();
+  second.emitResult([{ transcript: "الموقع شغال دلوقتي", isFinal: true }]);
+
+  assert.equal(bench.draft(), "ابدأ تشغيل الموقع الموقع شغال دلوقتي");
+});
+
+test("a stop does not settle a tail the firmed-up text already ends with", () => {
+  const bench = harness();
+
+  bench.controller.start("", 0);
+  const recognizer = bench.live();
+  recognizer.emitStart();
+  // Chrome routinely reports the sentence it has just firmed up together with
+  // a hypothesis for what it thinks comes next — and that hypothesis is very
+  // often the tail it has only this moment settled.
+  recognizer.emitResult([
+    { transcript: "الموقع شغال دلوقتي", isFinal: true },
+    { transcript: "دلوقتي", isFinal: false },
+  ]);
+  assert.equal(
+    bench.draft(),
+    "الموقع شغال دلوقتي دلوقتي",
+    "a hypothesis is shown for as long as it is a hypothesis",
+  );
+
+  bench.controller.stop();
+  recognizer.emitEnd();
+
+  assert.equal(bench.draft(), "الموقع شغال دلوقتي", "but stopping does not settle it twice");
+  assert.equal(bench.controller.current.status, "idle");
 });
