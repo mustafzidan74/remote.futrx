@@ -16,6 +16,7 @@ import (
 	servicegithistory "github.com/futrx-com/remote.futrx.com/internal/service/githistory"
 	servicegithub "github.com/futrx-com/remote.futrx.com/internal/service/github"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
+	servicemcp "github.com/futrx-com/remote.futrx.com/internal/service/mcp"
 	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
 	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
@@ -113,6 +114,13 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		githubService(deps.Services.GitHub),
 		deps.Services.Auth,
 	).WithAudit(auditLog)
+	// One handler serves both halves of the MCP registry too: the admin
+	// routes registered on the mux, and the project panel mounted under the
+	// project handler.
+	mcpHandler := httphandlers.NewMCPHandler(
+		mcpService(deps.Services.MCP),
+		deps.Services.Auth,
+	)
 	scheduleHandler := httphandlers.NewScheduleHandler(
 		deps.Services.Schedules,
 		deps.Services.ScheduleCaps,
@@ -142,6 +150,7 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			WithPortal(portalService(deps.Services.Portals)).
 			WithClientMessages(clientMessageService(deps.Services.Notifications)).
 			WithGitHub(gitHubHandler).
+			WithMCP(mcpHandler).
 			WithUsage(usageHandler),
 		ProjectHealth: httphandlers.NewProjectHealthHandler(
 			deps.Services.Projects,
@@ -217,6 +226,9 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			globalSecretsService(deps.Services.GlobalSecrets),
 			deps.Services.Auth,
 		),
+		// The admin half of the MCP registry. Its project half is mounted by
+		// the project handler, which has already resolved membership.
+		MCPServers: mcpHandler,
 		AdminResources: httphandlers.NewAdminResourcesHandler(
 			deps.Services.Resources,
 			httptransport.NewPrincipalResolver(deps.Services.Auth),
@@ -272,6 +284,16 @@ func agentPreferencesService(service *serviceagentprefs.Service) httphandlers.Ag
 }
 
 func searchService(service *servicesearch.Service) httphandlers.SearchService {
+	if service == nil {
+		return nil
+	}
+	return service
+}
+
+// mcpService narrows the concrete MCP registry to the transport's interface
+// while keeping a nil service nil, so the routes answer 503 on a deployment
+// without a registry store instead of panicking.
+func mcpService(service *servicemcp.Service) httphandlers.MCPService {
 	if service == nil {
 		return nil
 	}

@@ -21,6 +21,7 @@ import (
 	servicegithub "github.com/futrx-com/remote.futrx.com/internal/service/github"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	servicehealth "github.com/futrx-com/remote.futrx.com/internal/service/health"
+	servicemcp "github.com/futrx-com/remote.futrx.com/internal/service/mcp"
 	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
 	serviceplaybooks "github.com/futrx-com/remote.futrx.com/internal/service/playbooks"
@@ -112,6 +113,14 @@ type Dependencies struct {
 	// SecretsContainers are the two container ports the vault materializes
 	// through. Nil leaves entries stored but never pushed anywhere.
 	SecretsContainers SecretsContainerDependencies
+	// MCPServers is the platform MCP registry and ProjectMCP the per-project
+	// override document. Either nil leaves the registry routes reporting 503
+	// and nothing is written into any container.
+	MCPServers servicemcp.Store
+	ProjectMCP servicemcp.ProjectStore
+	// MCPContainers is the container port the registry materializes and
+	// probes through. Nil leaves entries stored but never pushed anywhere.
+	MCPContainers servicemcp.Containers
 	// SSHProber runs the host-side connectivity check for an SSH target.
 	SSHProber        serviceglobalsecrets.SSHProber
 	Usage            serviceusage.Repository
@@ -213,6 +222,7 @@ type Services struct {
 	AgentPrefs    *serviceagentprefs.Service
 	Search        *servicesearch.Service
 	GlobalSecrets *serviceglobalsecrets.Service
+	MCP           *servicemcp.Service
 	GitHub        *servicegithub.Service
 	Skills        *serviceskills.Catalog
 	Tmux          *servicetmux.Service
@@ -367,6 +377,24 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		chatOptions...,
 	)
 	chatAccessService := servicechat.NewAccessService(chatService, projectService)
+
+	// The MCP registry is built before the agent providers because each
+	// provider's run path materializes it: the port is handed to them through
+	// the same container-dependency bundle every other capability arrives on.
+	var mcpService *servicemcp.Service
+	if deps.MCPServers != nil && deps.ProjectMCP != nil {
+		mcpOptions := []servicemcp.Option{
+			servicemcp.WithAudit(auditLog),
+			servicemcp.WithContainers(deps.MCPContainers),
+			servicemcp.WithProjects(mcpProjectTargets{projects: projectService}),
+		}
+		if globalSecrets != nil {
+			mcpOptions = append(mcpOptions, servicemcp.WithSecrets(mcpSecretsAdapter{secrets: globalSecrets}))
+		}
+		mcpService = servicemcp.New(deps.MCPServers, deps.ProjectMCP, mcpOptions...)
+		deps.AgentContainers.MCP = mcpProvisioner{mcp: mcpService}
+	}
+
 	agents := agent.NewRegistry()
 	agentAuth := agentauth.NewRegistry()
 	for index, definition := range definitions {
@@ -677,6 +705,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		AgentPrefs:    agentPreferences,
 		Search:        searchService,
 		GlobalSecrets: globalSecrets,
+		MCP:           mcpService,
 		GitHub:        gitHubService,
 		Skills:        skillCatalog,
 		Tmux:          tmuxService,
@@ -775,6 +804,61 @@ func (n screenshotNotifier) SendImage(
 		})
 	}
 	return out
+}
+
+// mcpProvisioner is the agent-facing face of the MCP registry: providers know
+// only "materialize whatever this project should have and tell me the config
+// path", never the registry's shape.
+type mcpProvisioner struct {
+	mcp *servicemcp.Service
+}
+
+func (p mcpProvisioner) EnsureMCPServers(
+	ctx context.Context,
+	containerName, projectID, providerID string,
+) (string, error) {
+	configPath, err := p.mcp.EnsureContainer(ctx, projectID, containerName)
+	if err != nil {
+		return "", err
+	}
+	// Only Claude Code needs a path on its command line; codex reads its own
+	// config file at startup, so it is told nothing.
+	if providerID != servicemcp.ProviderClaude {
+		return "", nil
+	}
+	return configPath, nil
+}
+
+// mcpSecretsAdapter narrows the vault to the one read the MCP registry makes:
+// the values behind a project's ${KEY} placeholders, on the materialization
+// path only.
+type mcpSecretsAdapter struct {
+	secrets *serviceglobalsecrets.Service
+}
+
+func (a mcpSecretsAdapter) ValuesForProject(
+	ctx context.Context,
+	projectID string,
+	keys []string,
+) (map[string]string, error) {
+	return a.secrets.ValuesForProject(ctx, projectID, keys)
+}
+
+// mcpProjectTargets resolves a project to its container for the Test probe.
+type mcpProjectTargets struct {
+	projects *serviceproject.Service
+}
+
+func (t mcpProjectTargets) MCPTarget(ctx context.Context, projectID string) (servicemcp.Target, error) {
+	meta, err := t.projects.Get(ctx, serviceproject.ID(projectID))
+	if err != nil {
+		return servicemcp.Target{}, err
+	}
+	return servicemcp.Target{
+		ProjectID:     projectID,
+		ContainerName: meta.ContainerName,
+		Running:       meta.Status == serviceproject.StatusRunning,
+	}, nil
 }
 
 // globalSecretsAdapter translates between the vault's own vocabulary and the

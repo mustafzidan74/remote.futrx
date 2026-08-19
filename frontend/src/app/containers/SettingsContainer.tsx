@@ -11,6 +11,7 @@ import { useGlobalSkills } from "../../state/hooks/settings/useGlobalSkills";
 import { usePlaybookLibrary } from "../../state/hooks/settings/usePlaybookLibrary";
 import { useAgentPreferences } from "../../state/hooks/settings/useAgentPreferences";
 import { useSecretsVault } from "../../state/hooks/settings/useSecretsVault";
+import { useMCPServers } from "../../state/hooks/settings/useMCPServers";
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
 import { useAuditLog } from "../../state/hooks/admin/useAuditLog";
 import { useProjectTrash } from "../../state/hooks/admin/useProjectTrash";
@@ -45,7 +46,12 @@ export function SettingsContainer({
   const agentPreferences = useAgentPreferences(
     activeTab === "reply-preferences" && auth.isAdmin
   );
-  const secretsVault = useSecretsVault(activeTab === "secrets" && auth.isAdmin);
+  // The vault is also read on the MCP tab: an MCP entry references a vault
+  // key, so the secret-ref picker needs the same list the vault screen shows.
+  const secretsVault = useSecretsVault(
+    (activeTab === "secrets" || activeTab === "mcp") && auth.isAdmin,
+  );
+  const mcpServers = useMCPServers(activeTab === "mcp" && auth.isAdmin);
   const serverInfo = useServerInfo(activeTab === "info");
   const selfUpdate = useSelfUpdate(activeTab === "updates" && auth.isAdmin);
   const usageDashboard = useUsageDashboard(activeTab === "usage");
@@ -101,6 +107,7 @@ export function SettingsContainer({
       playbooks={playbooks}
       agentPreferences={agentPreferences}
       secretsVault={secretsVault}
+      mcpServers={mcpServers}
       projects={projects}
       usageDashboard={usageDashboard}
       usageRebuilding={usageRebuilding}

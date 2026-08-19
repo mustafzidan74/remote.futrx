@@ -294,6 +294,48 @@ func (s *Service) EnvForProject(
 	return EnvFor(secrets, projectID, ownKeys), nil
 }
 
+// ValuesForProject returns the values behind the named keys for one project,
+// for callers that materialize a value into a file the container already
+// receives — today, the MCP registry substituting a ${KEY} placeholder into
+// an MCP server's environment or headers.
+//
+// It is deliberately narrow: only `env` entries whose scope covers the
+// project resolve, so this can never widen what a project can read beyond the
+// environment its container is already given. A key that does not resolve is
+// simply absent from the result, and the caller skips whatever needed it
+// rather than writing a placeholder through.
+//
+// This is the one read path that returns a value. It is reachable from the
+// container-materialization path only; no HTTP handler calls it.
+func (s *Service) ValuesForProject(
+	ctx context.Context,
+	projectID string,
+	keys []string,
+) (map[string]string, error) {
+	if len(keys) == 0 {
+		return nil, nil
+	}
+	secrets, err := s.load(ctx)
+	if err != nil {
+		return nil, err
+	}
+	wanted := make(map[string]bool, len(keys))
+	for _, key := range keys {
+		wanted[key] = true
+	}
+	values := make(map[string]string, len(keys))
+	for _, secret := range secrets {
+		if secret.Kind != KindEnv || !wanted[secret.Key] || !secret.Scope.Includes(projectID) {
+			continue
+		}
+		if secret.Value == "" {
+			continue
+		}
+		values[secret.Key] = secret.Value
+	}
+	return values, nil
+}
+
 // InheritedForProject lists what the vault contributes to one project.
 func (s *Service) InheritedForProject(
 	ctx context.Context,

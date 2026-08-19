@@ -35,6 +35,7 @@ type ProjectHandler struct {
 	portal             PortalService
 	clientMessages     ClientMessageService
 	github             *GitHubHandler
+	mcp                *MCPHandler
 	publicHostname     string
 	usage              *UsageHandler
 	projectHostPattern *regexp.Regexp
@@ -110,6 +111,14 @@ func (h *ProjectHandler) WithClientMessages(sender ClientMessageService) *Projec
 // report 503.
 func (h *ProjectHandler) WithGitHub(github *GitHubHandler) *ProjectHandler {
 	h.github = github
+	return h
+}
+
+// WithMCP enables GET/PUT /api/projects/{id}/mcp. It is mounted here for the
+// same reason the GitHub routes are: the membership check has already been
+// made by the time this handler dispatches. Without it that route reports 503.
+func (h *ProjectHandler) WithMCP(mcp *MCPHandler) *ProjectHandler {
+	h.mcp = mcp
 	return h
 }
 
@@ -297,6 +306,20 @@ func (h *ProjectHandler) HandleResource(w http.ResponseWriter, r *http.Request) 
 			rest = parts[2]
 		}
 		h.github.HandleProjectResource(w, r, id, rest, email, isAdmin)
+		return
+	}
+
+	if len(parts) >= 2 && parts[1] == "mcp" {
+		if h.mcp == nil {
+			httptransport.SendErr(w, http.StatusServiceUnavailable,
+				"MCP registry is unavailable on this server")
+			return
+		}
+		rest := ""
+		if len(parts) == 3 {
+			rest = parts[2]
+		}
+		h.mcp.HandleProjectResource(w, r, id, rest, email)
 		return
 	}
 

@@ -44,6 +44,7 @@ type Handlers struct {
 	AgentPreferences RouteRegistrar
 	Search           RouteRegistrar
 	GlobalSecrets    RouteRegistrar
+	MCPServers       RouteRegistrar
 	Templates        RouteRegistrar
 	BrowserInspector RouteRegistrar
 	Schedules        RouteRegistrar
@@ -93,6 +94,7 @@ func NewHandler(handlers Handlers) http.Handler {
 	register(handlers.AgentPreferences)
 	register(handlers.Search)
 	register(handlers.GlobalSecrets)
+	register(handlers.MCPServers)
 	register(handlers.Templates)
 	register(handlers.BrowserInspector)
 	register(handlers.Schedules)

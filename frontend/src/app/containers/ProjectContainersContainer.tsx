@@ -8,6 +8,7 @@ import type { ProjectMeta } from "../../models/project";
 import { useProjectContainersController } from "../../state/hooks/projects/useProjectContainersController";
 import { useProjectUsage } from "../../state/hooks/usage/useProjectUsage";
 import { useProjectResources } from "../../state/hooks/projects/useProjectResources";
+import { useProjectMCP } from "../../state/hooks/projects/useProjectMCP";
 import type { ProjectHealthMap } from "../../state/workspace/projectHealthState";
 import { useAuthContext } from "../../state/context/AuthContext";
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
@@ -51,6 +52,9 @@ export function ProjectContainersContainer({
   const { selectedProject, info, secrets, access, shares, snapshots, portal } = controller;
   const usage = useProjectUsage(selectedProject?.id);
   const resources = useProjectResources(selectedProject, activeTab === "settings");
+  // The MCP panel lives on the Settings tab and is only read while it is open:
+  // the list is cheap, but there is no reason to fetch it behind another tab.
+  const mcp = useProjectMCP(selectedProject, activeTab === "settings");
 
   const githubChats = useMemo(
     () =>
@@ -81,6 +85,7 @@ export function ProjectContainersContainer({
       portalIssuedUrl={portal.issuedUrl}
       github={controller.github}
       githubChats={githubChats}
+      mcp={mcp}
       isAdmin={auth.isAdmin}
       onOpenChat={selectChat}
       refreshing={controller.refreshing}

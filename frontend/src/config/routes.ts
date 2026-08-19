@@ -123,6 +123,7 @@ export const API_ROUTES = {
       `/api/projects/${encodeURIComponent(id)}/shares/${encodeURIComponent(shareId)}`,
     usage: (id: string, query = "") =>
       `/api/projects/${encodeURIComponent(id)}/usage${query ? `?${query}` : ""}`,
+    mcp: (id: string) => `/api/projects/${encodeURIComponent(id)}/mcp`,
     access: (id: string) => `/api/projects/${encodeURIComponent(id)}/access`,
     accessMember: (id: string, email: string) =>
       `/api/projects/${encodeURIComponent(id)}/access/${encodeURIComponent(email)}`,
@@ -173,6 +174,11 @@ export const API_ROUTES = {
     collection: "/api/admin/secrets",
     item: (key: string) => `/api/admin/secrets/${encodeURIComponent(key)}`,
     test: (key: string) => `/api/admin/secrets/${encodeURIComponent(key)}/test`,
+  },
+  mcpServers: {
+    collection: "/api/admin/mcp-servers",
+    item: (name: string) => `/api/admin/mcp-servers/${encodeURIComponent(name)}`,
+    test: (name: string) => `/api/admin/mcp-servers/${encodeURIComponent(name)}/test`,
   },
   playbooks: {
     collection: "/api/playbooks",
