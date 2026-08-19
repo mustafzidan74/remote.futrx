@@ -27,6 +27,8 @@ export interface UsageDayPoint {
   runs: number;
 }
 
+import type { RoutingUsageSummary } from "./modelRouting";
+
 export interface UsageSummary {
   from: number;
   to: number;
@@ -35,6 +37,8 @@ export interface UsageSummary {
   projects: number;
   groups: UsageGroup[];
   daily: UsageDayPoint[];
+  /** The automatic-routing savings card. Absent when no policy is wired. */
+  routing?: RoutingUsageSummary;
 }
 
 export interface UsageRecord {
@@ -56,6 +60,10 @@ export interface UsageRecord {
   durationMs?: number;
   turns?: number;
   scheduled?: boolean;
+  /** The rule, heuristic, or "default" that picked this run's model. */
+  routedBy?: string;
+  /** The destination the policy named, spelled "provider/model". */
+  routedModel?: string;
 }
 
 export interface UsageRecordPage {

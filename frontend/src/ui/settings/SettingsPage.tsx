@@ -37,8 +37,10 @@ import { GlobalSkillsSettings } from "./GlobalSkillsSettings";
 import { PlaybooksSettings } from "./PlaybooksSettings";
 import { VoiceInputSettings } from "./VoiceInputSettings";
 import { UsageSettings } from "./UsageSettings";
+import { ModelRoutingSettings } from "./ModelRoutingSettings";
 import { UsersPanel } from "../account/UsersPanel";
 import type { UsageDashboard } from "../../state/hooks/usage/useUsageDashboard";
+import type { ModelRoutingEditor } from "../../state/hooks/settings/useModelRouting";
 
 export type SettingsTab =
   | "appearance"
@@ -48,6 +50,7 @@ export type SettingsTab =
   | "skills"
   | "reply-preferences"
   | "playbooks"
+  | "model-routing"
   | "voice"
   | "usage"
   | "resources"
@@ -115,6 +118,14 @@ const tabs: SettingsTabDescriptor[] = [
     group: "agents",
     label: "Playbooks",
     description: "Curate the one-click prompt templates every chat composer offers.",
+    Icon: Zap,
+  },
+  {
+    id: "model-routing",
+    group: "agents",
+    label: "Model routing",
+    description:
+      "Send routine turns to a cheap model and hard ones to the expensive one, under a policy you control.",
     Icon: Zap,
   },
   {
@@ -232,6 +243,7 @@ export function SettingsPage({
   playbooks,
   agentPreferences,
   secretsVault,
+  modelRouting,
   projects,
   usageDashboard,
   usageRebuilding,
@@ -290,6 +302,7 @@ export function SettingsPage({
   playbooks: PlaybookLibraryEditor;
   agentPreferences: AgentPreferencesEditor;
   secretsVault: SecretsVault;
+  modelRouting: ModelRoutingEditor;
   projects: ProjectMeta[];
   usageDashboard: UsageDashboard;
   usageRebuilding: boolean;
@@ -456,6 +469,16 @@ export function SettingsPage({
                 <SettingsNotice>
                   Playbooks are curated by server administrators. You can run them from the ⚡
                   button in any chat composer.
+                </SettingsNotice>
+              ))}
+
+            {activeTab === "model-routing" &&
+              (isAdmin ? (
+                <ModelRoutingSettings editor={modelRouting} />
+              ) : (
+                <SettingsNotice>
+                  Automatic model routing is configured by server administrators. You can still
+                  switch any chat between Auto and a pinned model from the composer's agent pill.
                 </SettingsNotice>
               ))}
 

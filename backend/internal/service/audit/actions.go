@@ -90,6 +90,11 @@ const (
 	ActionSettingsSecretDelete = "settings.secret.delete"
 	ActionSettingsSecretTest   = "settings.secret.test"
 
+	// ActionSettingsModelRouting records an edit to the automatic model
+	// routing policy: the master switch, the rule list, and the two poles the
+	// savings report prices against.
+	ActionSettingsModelRouting = "settings.model-routing.update"
+
 	ActionSelfUpdateTrigger = "self-update.trigger"
 
 	ActionWorkspaceFileUpload      = "workspace.file.upload"

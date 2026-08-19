@@ -22,6 +22,7 @@ type metaRecord struct {
 	Mode            string           `json:"mode,omitempty"`
 	ReasoningEffort string           `json:"reasoningEffort,omitempty"`
 	ServiceTier     string           `json:"serviceTier,omitempty"`
+	ModelPolicy     string           `json:"modelPolicy,omitempty"`
 	ProjectID       string           `json:"projectId,omitempty"`
 	ForkPending     bool             `json:"forkPending,omitempty"`
 	SelectedSkills  []skillRefRecord `json:"selectedSkills,omitempty"`
@@ -109,6 +110,7 @@ func metaRecordFromDomain(m servicechat.Meta) metaRecord {
 		Mode:            m.Mode,
 		ReasoningEffort: m.ReasoningEffort,
 		ServiceTier:     m.ServiceTier,
+		ModelPolicy:     m.ModelPolicy,
 		ProjectID:       string(m.ProjectID),
 		ForkPending:     m.ForkPending,
 		SelectedSkills:  skillRefRecordsFromDomain(m.SelectedSkills),
@@ -246,6 +248,7 @@ func (r metaRecord) toDomain() servicechat.Meta {
 		Mode:            r.Mode,
 		ReasoningEffort: servicechat.NormalizeReasoningEffort(r.ReasoningEffort),
 		ServiceTier:     servicechat.NormalizeServiceTier(r.ServiceTier),
+		ModelPolicy:     servicechat.NormalizeModelPolicy(r.ModelPolicy),
 		ProjectID:       servicechat.ProjectID(r.ProjectID),
 		ForkPending:     r.ForkPending,
 		SelectedSkills:  servicechat.NormalizeSelectedSkills(skillRefRecordsToDomain(r.SelectedSkills), provider),
@@ -324,6 +327,44 @@ type eventRecord struct {
 	Message         string          `json:"message,omitempty"`
 	Running         bool            `json:"running,omitempty"`
 	Synthetic       string          `json:"synthetic,omitempty"`
+	Routing         *routingRecord  `json:"routing,omitempty"`
+}
+
+// routingRecord is the persisted shape of one automatic model-routing
+// decision. It mirrors servicechat.EventRouting field for field so the store
+// stays the only place that knows the on-disk names.
+type routingRecord struct {
+	Provider string `json:"provider"`
+	Model    string `json:"model,omitempty"`
+	RuleID   string `json:"ruleId,omitempty"`
+	Rule     string `json:"rule,omitempty"`
+	Reason   string `json:"reason,omitempty"`
+}
+
+func routingRecordFromDomain(routing *servicechat.EventRouting) *routingRecord {
+	if routing == nil {
+		return nil
+	}
+	return &routingRecord{
+		Provider: routing.Provider,
+		Model:    routing.Model,
+		RuleID:   routing.RuleID,
+		Rule:     routing.Rule,
+		Reason:   routing.Reason,
+	}
+}
+
+func (r *routingRecord) toDomain() *servicechat.EventRouting {
+	if r == nil {
+		return nil
+	}
+	return &servicechat.EventRouting{
+		Provider: r.Provider,
+		Model:    r.Model,
+		RuleID:   r.RuleID,
+		Rule:     r.Rule,
+		Reason:   r.Reason,
+	}
 }
 
 func eventRecordFromDomain(ev servicechat.Event) eventRecord {
@@ -349,6 +390,7 @@ func eventRecordFromDomain(ev servicechat.Event) eventRecord {
 		Message:         ev.Message,
 		Running:         ev.Running,
 		Synthetic:       servicechat.NormalizeSynthetic(ev.Synthetic),
+		Routing:         routingRecordFromDomain(ev.Routing),
 	}
 }
 
@@ -375,5 +417,6 @@ func (r eventRecord) toDomain() servicechat.Event {
 		Message:         r.Message,
 		Running:         r.Running,
 		Synthetic:       servicechat.NormalizeSynthetic(r.Synthetic),
+		Routing:         r.Routing.toDomain(),
 	}
 }

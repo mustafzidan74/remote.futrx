@@ -121,6 +121,7 @@ func main() {
 		SSHProber:         sshprobe.New(),
 		Usage:             storeSet.Usage,
 		ResourceSettings:  storeSet.Resources,
+		ModelRouting:      storeSet.ModelRouting,
 		ResourceFleet:     containerStack.Resources,
 		HostCollector:     hostCollector,
 		Backups:           backupProber,

@@ -155,6 +155,7 @@ func (s *Service) create(ctx context.Context, in CreateInput) (Meta, error) {
 		Mode:            mode,
 		ReasoningEffort: NormalizeReasoningEffort(in.ReasoningEffort),
 		ServiceTier:     NormalizeServiceTier(in.ServiceTier),
+		ModelPolicy:     NormalizeModelPolicy(in.ModelPolicy),
 		ProjectID:       in.ProjectID,
 		SelectedSkills:  NormalizeSelectedSkills(s.withDefaultSkills(ctx, in, provider), provider),
 		CompanionOf:     in.CompanionOf,
@@ -275,6 +276,9 @@ func (s *Service) Update(ctx context.Context, id ID, in UpdateInput) (Meta, erro
 		}
 		if in.ServiceTier != nil {
 			m.ServiceTier = NormalizeServiceTier(*in.ServiceTier)
+		}
+		if in.ModelPolicy != nil {
+			m.ModelPolicy = NormalizeModelPolicy(*in.ModelPolicy)
 		}
 		if in.SelectedSkills != nil {
 			m.SelectedSkills = NormalizeSelectedSkills(*in.SelectedSkills, m.Provider)

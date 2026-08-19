@@ -142,6 +142,13 @@ export const API_ROUTES = {
   },
   serverInfo: "/api/server/info",
   adminResources: "/api/admin/resources",
+  modelRouting: {
+    policy: "/api/admin/model-routing",
+    test: "/api/admin/model-routing/test",
+    // Not admin-gated: the composer pill has to tell whoever is typing which
+    // model their next turn will use.
+    preview: "/api/model-routing/preview",
+  },
   selfUpdate: {
     status: "/api/admin/update/status",
     check: "/api/admin/update/check",

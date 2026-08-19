@@ -1,4 +1,5 @@
-import type { ChatProvider, SelectedSkill } from "../../../models/chat";
+import type { ChatModelPolicy, ChatProvider, SelectedSkill } from "../../../models/chat";
+import type { ComposerRoutingHint } from "./preferences";
 import type { RegisteredSkill } from "../../../models/skill";
 import type { PlaybookLibrary } from "../../../state/hooks/chat/usePlaybooks";
 import type { SnippetLibrary } from "../../../state/hooks/chat/useSnippets";
@@ -20,6 +21,8 @@ export function ComposerAgentControls({
   projectId,
   model,
   provider,
+  modelPolicy,
+  routing,
   streaming,
   selectedSkills,
   playbooks,
@@ -34,10 +37,14 @@ export function ComposerAgentControls({
   onSelectSkill,
   onProviderChange,
   onModelChange,
+  onModelPolicyChange,
 }: {
   projectId?: string;
   model: string;
   provider: ChatProvider;
+  modelPolicy: ChatModelPolicy;
+  /** What the next turn would be routed to, and whether Auto is on offer. */
+  routing: ComposerRoutingHint;
   streaming: boolean;
   selectedSkills: SelectedSkill[];
   playbooks: PlaybookLibrary;
@@ -56,15 +63,20 @@ export function ComposerAgentControls({
   onSelectSkill: (skill: RegisteredSkill) => void;
   onProviderChange: (provider: ChatProvider) => void;
   onModelChange: (model: string) => void;
+  onModelPolicyChange: (policy: ChatModelPolicy) => void;
 }) {
   return (
     <div class="codex-composer-agent-controls flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
       <ProviderModelPill
         provider={provider}
         model={model}
+        modelPolicy={modelPolicy}
+        routedNext={routing.decision}
+        routingAvailable={routing.available}
         streaming={streaming}
         onProviderChange={onProviderChange}
         onModelChange={onModelChange}
+        onModelPolicyChange={onModelPolicyChange}
       />
 
       <div

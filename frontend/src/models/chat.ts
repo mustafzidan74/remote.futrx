@@ -30,6 +30,12 @@ export interface ChatMeta {
   mode?: ChatMode;
   reasoningEffort?: ReasoningEffort;
   serviceTier?: ServiceTier;
+  /**
+   * Who picks the model for the next turn. "pinned" (the default, and what
+   * every chat did before automatic routing existed) uses the provider and
+   * model above; "auto" hands the choice to the platform routing policy.
+   */
+  modelPolicy?: ChatModelPolicy;
   projectId?: string;
   selectedSkills?: SelectedSkill[];
   /** Post-run policies: what the platform does on its own once a turn settles. */
@@ -44,6 +50,25 @@ export interface ChatMeta {
    */
   companionOf?: string;
   companionRole?: TeamRoleName;
+}
+
+export type ChatModelPolicy = "pinned" | "auto";
+
+/**
+ * One automatic routing decision, as the transcript shows it: which model
+ * actually answered the turn and why. Absent on every turn a chat answered
+ * with its own pinned model, and on every turn recorded before routing
+ * existed.
+ */
+export interface ChatEventRouting {
+  provider: string;
+  model?: string;
+  /** The policy rule that won; absent for the default model or a heuristic. */
+  ruleId?: string;
+  /** That rule's human name, which is what the badge shows. */
+  rule?: string;
+  /** The one-sentence explanation, including any fallback. */
+  reason?: string;
 }
 
 export type TeamRoleName = "implementer" | "reviewer" | "tester";
@@ -131,7 +156,7 @@ export interface SelectedSkill {
 type ChatEventBase = { seq?: number; t: number };
 
 export type ChatEvent = ChatEventBase & (
-  | { type: "user"; text: string; synthetic?: SyntheticKind }
+  | { type: "user"; text: string; synthetic?: SyntheticKind; routing?: ChatEventRouting }
   | { type: "assistant_text"; text: string; messageId?: string }
   | { type: "thinking"; text: string }
   | { type: "tool_use_start"; id: string; name: string; input: Record<string, unknown> }
@@ -205,6 +230,7 @@ export interface CreateChatInput {
   mode?: ChatMode;
   reasoningEffort?: ReasoningEffort;
   serviceTier?: ServiceTier;
+  modelPolicy?: ChatModelPolicy;
   projectId?: string;
   selectedSkills?: SelectedSkill[];
 }
@@ -217,6 +243,7 @@ export interface UpdateChatInput {
   mode?: ChatMode;
   reasoningEffort?: ReasoningEffort;
   serviceTier?: ServiceTier;
+  modelPolicy?: ChatModelPolicy;
   selectedSkills?: SelectedSkill[];
   autopilot?: AutopilotPatch;
   autoTest?: AutoTestPatch;

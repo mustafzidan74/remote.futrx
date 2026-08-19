@@ -125,3 +125,29 @@ test("an appended completion returns the activity to idle", () => {
 test("an empty state starts idle", () => {
   assert.equal(chatEventStateProjector.empty().activity.phase, "idle");
 });
+
+// On Auto the model that answered is not the one the composer named when the
+// prompt was typed, so the turn has to carry the decision itself.
+test("carries the routing decision onto the user block", () => {
+  const routing = {
+    provider: "claude",
+    model: "haiku",
+    ruleId: "chat-mode",
+    rule: "Chat mode is cheap",
+    reason: 'rule "Chat mode is cheap" matched',
+  };
+  const state = chatEventStateProjector.fromEvents(
+    [
+      { seq: 1, t: 1, type: "user", text: "pinned turn" },
+      { seq: 2, t: 2, type: "user", text: "routed turn", routing },
+      { seq: 3, t: 3, type: "user", text: "routed check", synthetic: "autotest", routing },
+    ],
+    { hasMore: false, nextBefore: 0, lastSeq: 3 },
+  );
+
+  assert.deepEqual(state.blocks, [
+    { type: "user", text: "pinned turn", t: 1 },
+    { type: "user", text: "routed turn", t: 2, routing },
+    { type: "user", text: "routed check", t: 3, synthetic: "autotest", routing },
+  ]);
+});

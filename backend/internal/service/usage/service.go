@@ -31,6 +31,10 @@ type RunEvent struct {
 	Model     string
 	Usage     json.RawMessage
 	Scheduled bool
+	// RoutedBy and RoutedModel describe the automatic routing decision behind
+	// this run. Both empty means the run was never routed.
+	RoutedBy    string
+	RoutedModel string
 }
 
 // Service turns completed runs into ledger records and answers aggregation
@@ -39,10 +43,28 @@ type Service struct {
 	repo     Repository
 	projects ProjectDirectory
 	chats    ChatDirectory
+	routing  RoutingSource
 }
 
-func New(repo Repository, projects ProjectDirectory, chats ChatDirectory) *Service {
-	return &Service{repo: repo, projects: projects, chats: chats}
+// Option configures the ledger.
+type Option func(*Service)
+
+// WithRoutingSource supplies the automatic model routing reference the
+// savings card is computed against. Without it a summary carries no routing
+// card, which is the right answer for a deployment that never configured
+// routing.
+func WithRoutingSource(source RoutingSource) Option {
+	return func(s *Service) { s.routing = source }
+}
+
+func New(repo Repository, projects ProjectDirectory, chats ChatDirectory, options ...Option) *Service {
+	service := &Service{repo: repo, projects: projects, chats: chats}
+	for _, option := range options {
+		if option != nil {
+			option(service)
+		}
+	}
+	return service
 }
 
 // RecordRun appends one completed run to the ledger. It never fails a run:
@@ -90,6 +112,8 @@ func (s *Service) recordFromRun(ctx context.Context, event RunEvent) (Record, bo
 		DurationMs:       usage.DurationMs,
 		Turns:            usage.Turns,
 		Scheduled:        event.Scheduled,
+		RoutedBy:         strings.TrimSpace(event.RoutedBy),
+		RoutedModel:      strings.ToLower(strings.TrimSpace(event.RoutedModel)),
 	}
 	record.ProjectSlug = s.projectSlug(ctx, record.ProjectID)
 	s.applyCost(ctx, &record, usage.CostUSD)
@@ -183,6 +207,7 @@ func (s *Service) Summary(
 		groupBy = GroupByProject
 	}
 	summary := Summary{From: from, To: to, GroupBy: groupBy}
+	routingCard := s.routingAccumulatorFor(ctx)
 	groups := map[string]*Group{}
 	days := map[string]*DayPoint{}
 	projects := map[string]struct{}{}
@@ -192,6 +217,7 @@ func (s *Service) Summary(
 			return true
 		}
 		summary.Totals.add(record)
+		routingCard.add(record)
 		if record.ProjectID != "" {
 			projects[record.ProjectID] = struct{}{}
 		}
@@ -224,6 +250,7 @@ func (s *Service) Summary(
 	summary.Projects = len(projects)
 	summary.Groups = sortedGroups(groups)
 	summary.Daily = fillDays(days, from, to)
+	summary.Routing = routingCard.result()
 	return summary, nil
 }
 

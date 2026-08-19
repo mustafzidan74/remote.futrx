@@ -1,6 +1,7 @@
 import type {
   ChatMeta,
   ChatMode,
+  ChatModelPolicy,
   ChatProvider,
   ReasoningEffort,
   SelectedSkill,
@@ -15,6 +16,7 @@ export interface ResolvedChatMeta extends ChatMeta {
   mode: ChatMode;
   reasoningEffort: ReasoningEffort;
   serviceTier: ServiceTier;
+  modelPolicy: ChatModelPolicy;
 }
 
 class ChatPreferenceState {
@@ -42,6 +44,10 @@ class ChatPreferenceState {
       mode: baseMeta.mode || defaults.mode,
       reasoningEffort: baseMeta.reasoningEffort ?? defaults.reasoningEffort,
       serviceTier: baseMeta.serviceTier ?? defaults.serviceTier,
+      // Pinned is the answer for a chat created before routing existed, and
+      // is the default for a new one: the model the user picked is the model
+      // that runs until they ask for Auto.
+      modelPolicy: baseMeta.modelPolicy === "auto" ? "auto" : "pinned",
     };
   }
 

@@ -19,26 +19,31 @@ const (
 )
 
 type Meta struct {
-	ID                   ID         `json:"id"`
-	Title                string     `json:"title"`
-	Provider             Provider   `json:"provider,omitempty"`
-	ClaudeSessionID      string     `json:"claudeSessionId,omitempty"`
-	CodexSessionID       string     `json:"codexSessionId,omitempty"`
-	KimiSessionID        string     `json:"kimiSessionId,omitempty"`
-	AntigravitySessionID string     `json:"antigravitySessionId,omitempty"`
-	TmuxSession          string     `json:"tmuxSession,omitempty"`
-	Cwd                  string     `json:"cwd,omitempty"`
-	CreatedAt            int64      `json:"createdAt"`
-	LastMessageAt        int64      `json:"lastMessageAt"`
-	LastReadAt           int64      `json:"lastReadAt,omitempty"`
-	Running              bool       `json:"running,omitempty"`
-	Model                string     `json:"model,omitempty"`
-	Mode                 string     `json:"mode,omitempty"`
-	ReasoningEffort      string     `json:"reasoningEffort,omitempty"`
-	ServiceTier          string     `json:"serviceTier,omitempty"`
-	ProjectID            ProjectID  `json:"projectId,omitempty"`
-	ForkPending          bool       `json:"forkPending,omitempty"`
-	SelectedSkills       []SkillRef `json:"selectedSkills,omitempty"`
+	ID                   ID       `json:"id"`
+	Title                string   `json:"title"`
+	Provider             Provider `json:"provider,omitempty"`
+	ClaudeSessionID      string   `json:"claudeSessionId,omitempty"`
+	CodexSessionID       string   `json:"codexSessionId,omitempty"`
+	KimiSessionID        string   `json:"kimiSessionId,omitempty"`
+	AntigravitySessionID string   `json:"antigravitySessionId,omitempty"`
+	TmuxSession          string   `json:"tmuxSession,omitempty"`
+	Cwd                  string   `json:"cwd,omitempty"`
+	CreatedAt            int64    `json:"createdAt"`
+	LastMessageAt        int64    `json:"lastMessageAt"`
+	LastReadAt           int64    `json:"lastReadAt,omitempty"`
+	Running              bool     `json:"running,omitempty"`
+	Model                string   `json:"model,omitempty"`
+	Mode                 string   `json:"mode,omitempty"`
+	ReasoningEffort      string   `json:"reasoningEffort,omitempty"`
+	ServiceTier          string   `json:"serviceTier,omitempty"`
+	// ModelPolicy is who picks the model for the next turn: "pinned" (the
+	// default) uses the Provider/Model above exactly as the user chose them,
+	// "auto" hands the choice to the platform's model-routing policy. Always
+	// serialized so the browser never has to guess what an absent key means.
+	ModelPolicy    string     `json:"modelPolicy"`
+	ProjectID      ProjectID  `json:"projectId,omitempty"`
+	ForkPending    bool       `json:"forkPending,omitempty"`
+	SelectedSkills []SkillRef `json:"selectedSkills,omitempty"`
 	// Autopilot and AutoTest are the chat's post-run policies: what the
 	// platform does on its own once an agent turn settles. Both default off,
 	// and both are always serialized so the browser never has to guess
@@ -114,11 +119,30 @@ type Event struct {
 	Usage                json.RawMessage `json:"usage,omitempty"`
 	Message              string          `json:"message,omitempty"`
 	Running              bool            `json:"running,omitempty"`
+	// Routing records which model actually answered this turn and why. It is
+	// written onto the turn's user event, so reading a transcript back tells
+	// the operator what a routed run cost them without consulting the ledger.
+	// Nil on every turn that ran before routing existed, and on every turn a
+	// chat answered with its own pinned model.
+	Routing *EventRouting `json:"routing,omitempty"`
 	// Synthetic labels a prompt the platform sent on the operator's behalf
 	// (see SyntheticAutopilot / SyntheticAutoTest). Empty means a human typed
 	// it. The browser badges the bubble so an unattended round is never
 	// mistaken for something the operator asked for.
 	Synthetic string `json:"synthetic,omitempty"`
+}
+
+// EventRouting is the audit trail of one automatic model-routing decision.
+type EventRouting struct {
+	Provider string `json:"provider"`
+	Model    string `json:"model,omitempty"`
+	// RuleID is the policy rule that won, empty when the default model or a
+	// built-in heuristic decided.
+	RuleID string `json:"ruleId,omitempty"`
+	// Rule is that rule's human name, which is what the transcript shows.
+	Rule string `json:"rule,omitempty"`
+	// Reason is the one-sentence explanation, including any fallback.
+	Reason string `json:"reason,omitempty"`
 }
 
 type EventPageQuery struct {
@@ -142,6 +166,7 @@ type CreateInput struct {
 	Mode            string     `json:"mode,omitempty"`
 	ReasoningEffort string     `json:"reasoningEffort,omitempty"`
 	ServiceTier     string     `json:"serviceTier,omitempty"`
+	ModelPolicy     string     `json:"modelPolicy,omitempty"`
 	ProjectID       ProjectID  `json:"projectId,omitempty"`
 	SelectedSkills  []SkillRef `json:"selectedSkills,omitempty"`
 	// CompanionOf and CompanionRole are set only by the team service when it
@@ -154,14 +179,17 @@ type CreateInput struct {
 }
 
 type UpdateInput struct {
-	Title           *string     `json:"title,omitempty"`
-	Cwd             *string     `json:"cwd,omitempty"`
-	Provider        *Provider   `json:"provider,omitempty"`
-	Model           *string     `json:"model,omitempty"`
-	Mode            *string     `json:"mode,omitempty"`
-	ReasoningEffort *string     `json:"reasoningEffort,omitempty"`
-	ServiceTier     *string     `json:"serviceTier,omitempty"`
-	SelectedSkills  *[]SkillRef `json:"selectedSkills,omitempty"`
+	Title           *string   `json:"title,omitempty"`
+	Cwd             *string   `json:"cwd,omitempty"`
+	Provider        *Provider `json:"provider,omitempty"`
+	Model           *string   `json:"model,omitempty"`
+	Mode            *string   `json:"mode,omitempty"`
+	ReasoningEffort *string   `json:"reasoningEffort,omitempty"`
+	ServiceTier     *string   `json:"serviceTier,omitempty"`
+	// ModelPolicy switches this chat between its pinned model and automatic
+	// routing. Absent leaves the stored choice alone.
+	ModelPolicy    *string     `json:"modelPolicy,omitempty"`
+	SelectedSkills *[]SkillRef `json:"selectedSkills,omitempty"`
 	// Autopilot and AutoTest patch the post-run policies. Absent leaves the
 	// stored policy alone; present replaces only the fields it names.
 	Autopilot *AutopilotInput `json:"autopilot,omitempty"`
@@ -223,6 +251,26 @@ func NormalizeReasoningEffort(effort string) string {
 	default:
 		return ""
 	}
+}
+
+// Model policies: who picks the model for the next turn.
+const (
+	// ModelPolicyPinned uses the chat's own provider and model, which is what
+	// every chat did before automatic routing existed and is still the
+	// default for a new one.
+	ModelPolicyPinned = "pinned"
+	// ModelPolicyAuto hands the choice to the platform routing policy.
+	ModelPolicyAuto = "auto"
+)
+
+// NormalizeModelPolicy collapses anything unrecognized onto "pinned", so a
+// document written before this field existed, or a client that sends noise,
+// keeps today's behaviour.
+func NormalizeModelPolicy(policy string) string {
+	if strings.EqualFold(strings.TrimSpace(policy), ModelPolicyAuto) {
+		return ModelPolicyAuto
+	}
+	return ModelPolicyPinned
 }
 
 // NormalizeServiceTier maps codex service_tier values we expose (default,

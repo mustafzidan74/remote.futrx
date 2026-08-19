@@ -30,8 +30,21 @@ test("preserves normalized skill identity and chat defaults", () => {
       mode: "code",
       reasoningEffort: "high",
       serviceTier: "priority",
+      // A chat stored before automatic routing existed reads back as pinned,
+      // which is the behaviour it already had.
+      modelPolicy: "pinned",
     }
   );
+});
+
+test("a chat switched to Auto resolves to the auto model policy", () => {
+  const resolved = chatPreferenceState.resolveMeta(
+    { id: "chat", title: "Chat", createdAt: 1, lastMessageAt: 1, modelPolicy: "auto" },
+    null,
+    { provider: "codex", model: "gpt-5", mode: "code", reasoningEffort: "", serviceTier: "" }
+  );
+  assert.equal(resolved.modelPolicy, "auto");
+  assert.equal(resolved.model, "gpt-5", "Auto must not erase the model the chat falls back to");
 });
 
 test("keeps the scheduled-tasks skill identity stable after workspace provisioning", () => {

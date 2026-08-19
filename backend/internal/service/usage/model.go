@@ -42,6 +42,17 @@ type Record struct {
 	DurationMs int64 `json:"durationMs,omitempty"`
 	Turns      int64 `json:"turns,omitempty"`
 	Scheduled  bool  `json:"scheduled,omitempty"`
+
+	// RoutedBy names what the automatic model router used to pick this run's
+	// model: a policy rule id, a heuristic id, or "default". Empty means the
+	// run used the model its chat already named, which is every run recorded
+	// before routing existed.
+	RoutedBy string `json:"routedBy,omitempty"`
+	// RoutedModel is the destination the policy named, spelled
+	// "provider/model" — not the model id the provider later reported. The
+	// savings report classifies a run by comparing it against the policy's
+	// cheap and expensive poles, which are written the same way.
+	RoutedModel string `json:"routedModel,omitempty"`
 }
 
 // TotalTokens is the billable token count across every bucket.
@@ -139,6 +150,9 @@ type Summary struct {
 	Projects int        `json:"projects"`
 	Groups   []Group    `json:"groups"`
 	Daily    []DayPoint `json:"daily"`
+	// Routing is the automatic model routing savings card. Nil when this
+	// deployment has no routing policy wired.
+	Routing *RoutingSummary `json:"routing,omitempty"`
 }
 
 // Query selects the records an aggregation reads.

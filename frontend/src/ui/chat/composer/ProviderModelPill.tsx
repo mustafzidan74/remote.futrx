@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import type { ChatProvider } from "../../../models/chat";
+import type { ChatModelPolicy, ChatProvider } from "../../../models/chat";
+import type { RoutingDecision } from "../../../models/modelRouting";
 import {
   PROVIDER_OPTIONS,
   modelDisplayLabel,
   modelOptionsForProvider,
   providerDisplayLabel,
 } from "../../../config/chat";
-import { Bot, ChevronDown } from "../../primitives/icons";
+import { Bot, ChevronDown, Zap } from "../../primitives/icons";
 
 /**
  * Agent and model in one pill: "Claude · Opus".
@@ -16,24 +17,44 @@ import { Bot, ChevronDown } from "../../primitives/icons";
  * often than they are changed. Reading them is now free; changing them is one
  * click, and the two lists sit in the same panel because picking an agent is
  * almost always followed by picking its model.
+ *
+ * The pill also owns the chat's model policy. On Auto the platform picks per
+ * turn, so the pill stops naming a fixed model and names the one the *next*
+ * turn will use instead — otherwise the operator would be reading a label
+ * that no longer describes what is about to run.
  */
 export function ProviderModelPill({
   provider,
   model,
+  modelPolicy,
+  routedNext,
+  routingAvailable,
   streaming,
   onProviderChange,
   onModelChange,
+  onModelPolicyChange,
 }: {
   provider: ChatProvider;
   model: string;
+  modelPolicy: ChatModelPolicy;
+  /** What routing would pick for the next turn, when the chat is on Auto. */
+  routedNext?: RoutingDecision | null;
+  /** False on a deployment with no routing policy: the Auto entry is hidden. */
+  routingAvailable: boolean;
   streaming: boolean;
   onProviderChange: (provider: ChatProvider) => void;
   onModelChange: (model: string) => void;
+  onModelPolicyChange: (policy: ChatModelPolicy) => void;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const options = modelOptionsForProvider(provider);
-  const label = `${providerDisplayLabel(provider)} · ${modelDisplayLabel(model, provider)}`;
+  const auto = modelPolicy === "auto";
+  const pinnedLabel = `${providerDisplayLabel(provider)} · ${modelDisplayLabel(model, provider)}`;
+  const label = auto ? `Auto → ${routedLabel(routedNext)}` : pinnedLabel;
+  const title = auto
+    ? routedNext?.reason || "The platform picks the model for each turn"
+    : "Choose the agent and model";
 
   useEffect(() => {
     if (!open) return;
@@ -62,7 +83,9 @@ export function ProviderModelPill({
 
   function pickModel(value: string) {
     setOpen(false);
-    if (value !== model) onModelChange(value);
+    // Re-picking the model a chat already has still has to leave Auto, so the
+    // change is forwarded whenever the chat is routed even if the id matches.
+    if (value !== model || auto) onModelChange(value);
   }
 
   return (
@@ -75,9 +98,13 @@ export function ProviderModelPill({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={`Agent and model — ${label}`}
-        title={streaming ? "Cannot change the agent while it is working" : "Choose the agent and model"}
+        title={streaming ? "Cannot change the agent while it is working" : title}
       >
-        <Bot class="h-4 w-4 flex-none text-ink-400" aria-hidden="true" />
+        {auto ? (
+          <Zap class="h-4 w-4 flex-none text-accent-blue" aria-hidden="true" />
+        ) : (
+          <Bot class="h-4 w-4 flex-none text-ink-400" aria-hidden="true" />
+        )}
         <span class="min-w-0 truncate font-semibold text-ink-100">{label}</span>
         <ChevronDown class="h-4 w-4 flex-none text-ink-400" aria-hidden="true" />
       </button>
@@ -117,20 +144,48 @@ export function ProviderModelPill({
           <div class="popover-section max-h-[13rem] overflow-y-auto touch-scroll scrollbar-thin">
             <div class="popover-label">Model</div>
             <div class="mt-1 space-y-0.5" role="listbox" aria-label="Model">
+              {routingAvailable && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    onModelPolicyChange("auto");
+                  }}
+                  class={`flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left transition
+                          ${auto ? "bg-accent-blue/[0.14] text-accent-blue" : "text-ink-100 hover:bg-white/[0.07]"}`}
+                  role="option"
+                  aria-selected={auto}
+                >
+                  <span class="min-w-0">
+                    <span class="flex items-center gap-1 text-[12.5px] font-semibold">
+                      <Zap class="h-3 w-3 flex-none" aria-hidden="true" />
+                      Auto
+                    </span>
+                    <span class="block truncate text-[11.5px] text-ink-300">
+                      {routedNext
+                        ? `next turn: ${routedLabel(routedNext)}`
+                        : "the platform picks per turn"}
+                    </span>
+                  </span>
+                  {auto && <span class="h-2 w-2 flex-none rounded-full bg-accent-blue" />}
+                </button>
+              )}
               {model && !options.some((option) => option.value === model) && (
                 <button
                   type="button"
                   onClick={() => pickModel(model)}
-                  class="w-full rounded-md bg-accent-blue/[0.14] px-2.5 py-2 text-left text-accent-blue"
+                  class={`w-full rounded-md px-2.5 py-2 text-left ${
+                    auto ? "text-ink-100 hover:bg-white/[0.07]" : "bg-accent-blue/[0.14] text-accent-blue"
+                  }`}
                   role="option"
-                  aria-selected="true"
+                  aria-selected={!auto}
                 >
                   <span class="block text-[12.5px] font-semibold">{model}</span>
                   <span class="block text-[11.5px] text-ink-300">custom model</span>
                 </button>
               )}
               {options.map((option) => {
-                const active = (model || "") === option.value;
+                const active = !auto && (model || "") === option.value;
                 return (
                   <button
                     key={option.value || "auto"}
@@ -155,4 +210,11 @@ export function ProviderModelPill({
       )}
     </div>
   );
+}
+
+/** How the routed destination reads in the pill and in the Auto entry. */
+function routedLabel(decision?: RoutingDecision | null): string {
+  if (!decision) return "picking…";
+  const provider = decision.provider as ChatProvider;
+  return `${providerDisplayLabel(provider)} ${modelDisplayLabel(decision.model, provider)}`;
 }

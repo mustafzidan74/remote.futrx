@@ -10,6 +10,7 @@ import {
 import { USAGE_RANGE_PRESETS, usageRangeLabels } from "../../state/usage/usageRangeState";
 import { Loader, RotateCcw } from "../primitives/icons";
 import { ErrorBanner } from "../primitives/Feedback";
+import { AutoRoutingCard } from "./usage/AutoRoutingCard";
 import { UsageBarChart } from "./usage/UsageBarChart";
 import { UsageGroupTable, UsageRecordsTable } from "./usage/UsageTables";
 
@@ -156,6 +157,8 @@ export function UsageSettings({
         <KpiTile label="Runs" value={String(totals?.runs ?? 0)} />
         <KpiTile label="Active projects" value={String(summary?.projects ?? 0)} />
       </div>
+
+      {summary?.routing && <AutoRoutingCard summary={summary.routing} />}
 
       <UsageBarChart daily={summary?.daily ?? []} metric={metric} onMetricChange={setMetric} />
 

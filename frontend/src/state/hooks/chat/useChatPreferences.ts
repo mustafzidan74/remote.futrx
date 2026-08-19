@@ -1,6 +1,7 @@
 import type {
   ChatMeta,
   ChatMode,
+  ChatModelPolicy,
   ChatProvider,
   ReasoningEffort,
   SelectedSkill,
@@ -29,7 +30,16 @@ export function useChatPreferences({
 
   function changeProvider(provider: ChatProvider) {
     if (provider === displayProvider) return;
-    metaActions.applyMeta({ provider, model: "", reasoningEffort: "", serviceTier: "", selectedSkills: [] });
+    // Naming an agent by hand pins the chat, the same way naming a model
+    // does: the operator just answered the question routing was answering.
+    metaActions.applyMeta({
+      provider,
+      model: "",
+      reasoningEffort: "",
+      serviceTier: "",
+      selectedSkills: [],
+      modelPolicy: "pinned",
+    });
     void setChatSettings({ provider, model: "", reasoningEffort: "", serviceTier: "" });
   }
 
@@ -50,8 +60,18 @@ export function useChatPreferences({
   }
 
   function changeModel(model: string) {
-    metaActions.applyMeta({ model });
+    // Picking a model by hand is how a chat leaves Auto: the operator just
+    // said which model they want, so the routing policy stands down for this
+    // chat until they ask for it back.
+    metaActions.applyMeta({ model, modelPolicy: "pinned" });
     void setChatSettings({ model });
+  }
+
+  // Switching to Auto keeps the stored model untouched, so turning routing
+  // back off returns the chat to the model it had rather than to Auto.
+  function changeModelPolicy(modelPolicy: ChatModelPolicy) {
+    if (modelPolicy === displayMeta.modelPolicy) return;
+    metaActions.applyMeta({ modelPolicy });
   }
 
   function changeMode(mode: ChatMode) {
@@ -78,6 +98,7 @@ export function useChatPreferences({
     applyMeta: metaActions.applyMeta,
     changeProvider,
     changeModel,
+    changeModelPolicy,
     changeMode,
     changeReasoningEffort,
     changeServiceTier,
