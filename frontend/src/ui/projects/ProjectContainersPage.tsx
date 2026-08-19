@@ -363,6 +363,7 @@ export function ProjectContainersPage({
                         onClone={github.clone}
                         onLoadPulls={github.loadPulls}
                         onCreatePR={github.createPullRequest}
+                        onSuggestCommitMessage={github.suggestCommitMessage}
                         onImportComments={github.importComments}
                         onOpenChat={onOpenChat}
                       />

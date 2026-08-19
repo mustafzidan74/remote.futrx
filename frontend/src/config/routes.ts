@@ -20,6 +20,7 @@ export const API_ROUTES = {
     read: (id: string) => `/api/chats/${encodeURIComponent(id)}/read`,
     unread: (id: string) => `/api/chats/${encodeURIComponent(id)}/unread`,
     fork: (id: string) => `/api/chats/${encodeURIComponent(id)}/fork`,
+    title: (id: string) => `/api/chats/${encodeURIComponent(id)}/title`,
     files: (id: string, path = "") =>
       `/api/chats/${encodeURIComponent(id)}/files${path ? `?path=${encodeURIComponent(path)}` : ""}`,
     filesSearch: (id: string, query: string) =>
@@ -114,6 +115,8 @@ export const API_ROUTES = {
     githubClone: (id: string) =>
       `/api/projects/${encodeURIComponent(id)}/github/clone`,
     githubPR: (id: string) => `/api/projects/${encodeURIComponent(id)}/github/pr`,
+    githubCommitMessage: (id: string) =>
+      `/api/projects/${encodeURIComponent(id)}/github/commit-message`,
     githubPullRequests: (id: string) =>
       `/api/projects/${encodeURIComponent(id)}/github/prs`,
     githubImportComments: (id: string, number: number) =>
@@ -162,6 +165,12 @@ export const API_ROUTES = {
   monitoring: {
     settings: "/api/admin/monitoring",
     ping: "/api/admin/monitoring/ping",
+  },
+  auxModel: {
+    config: "/api/aux-model/config",
+    translate: "/api/aux-model/translate",
+    settings: "/api/admin/aux-model",
+    test: "/api/admin/aux-model/test",
   },
   transcription: {
     transcribe: "/api/transcribe",

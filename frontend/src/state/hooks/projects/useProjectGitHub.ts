@@ -177,6 +177,16 @@ export function useProjectGitHub(project: ProjectMeta | null, enabled: boolean) 
     [project, load, loadPulls],
   );
 
+  /**
+   * Asks the server for a commit subject drafted from the shape of the
+   * uncommitted diff. The response always carries a usable message, so a
+   * caller never has to decide what to do when there is no model.
+   */
+  const suggestCommitMessage = useCallback(async () => {
+    if (!project) throw new Error("No project selected.");
+    return projectApi.suggestGitHubCommitMessage(project.id);
+  }, [project]);
+
   const importComments = useCallback(
     async (number: number, chatId: string): Promise<ImportGitHubCommentsResult> => {
       if (!project) throw new Error("No project selected.");
@@ -203,6 +213,7 @@ export function useProjectGitHub(project: ProjectMeta | null, enabled: boolean) 
     saveSettings,
     loadPulls,
     createPullRequest,
+    suggestCommitMessage,
     importComments,
   };
 }

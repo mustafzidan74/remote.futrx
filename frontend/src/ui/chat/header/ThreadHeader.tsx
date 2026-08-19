@@ -2,7 +2,10 @@ import type { ComponentChildren } from "preact";
 import type { ChatMeta } from "../../../models/chat";
 import type { AgentActivity } from "../../../state/chat/agentActivity";
 import type { ProjectMeta } from "../../../models/project";
-import { Menu, MessageSquare } from "../../primitives/icons";
+import { useState } from "preact/hooks";
+import { chatApi } from "../../../api/chatApi";
+import { useAuxModelJob } from "../../../state/hooks/settings/useAuxModelJobs";
+import { Loader, Menu, MessageSquare, RotateCcw } from "../../primitives/icons";
 import { ChatPreviewChip } from "../../preview/ChatPreviewChip";
 import type { ChatPolicies } from "../../../state/hooks/chat/useChatPolicies";
 import { TeamPanel } from "../team/TeamPanel";
@@ -69,10 +72,12 @@ export function ThreadHeader({
         <h1
           dir="auto"
           title={title}
-          class="bidi-auto min-w-0 flex-1 truncate text-[14px] font-semibold text-ink-50"
+          class="bidi-auto min-w-0 truncate text-[14px] font-semibold text-ink-50"
         >
           {title}
         </h1>
+        <RegenerateTitleButton chatId={chat.id} />
+        <span class="flex-1" />
       </div>
 
       <div class="flex w-full flex-none items-center justify-end gap-1.5 sm:ms-auto sm:w-auto">
@@ -102,5 +107,49 @@ export function ThreadHeader({
         )}
       </div>
     </header>
+  );
+}
+
+/**
+ * "Rename this chat" — one press, and the auxiliary model writes a 3–6 word
+ * title in the language the first prompt was written in.
+ *
+ * The button renders only where it can work: a server with no auxiliary model,
+ * or one whose chat-title job is switched off, simply does not have it. The
+ * refreshed title arrives through the workspace socket like every other chat
+ * change, so nothing here has to hold state beyond "am I waiting".
+ */
+function RegenerateTitleButton({ chatId }: { chatId: string }) {
+  const available = useAuxModelJob("chatTitle");
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+
+  if (!available) return null;
+
+  async function rename() {
+    setBusy(true);
+    setFailed(null);
+    try {
+      await chatApi.regenerateTitle(chatId);
+    } catch (cause) {
+      setFailed((cause as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => void rename()}
+      disabled={busy}
+      aria-label="Rename this chat with the auxiliary model"
+      title={failed ? `Rename failed: ${failed}` : "Rename with the auxiliary model"}
+      class={`grid h-7 w-7 flex-none place-items-center rounded-md text-ink-400 transition
+              hover:bg-white/[0.08] hover:text-ink-100 disabled:opacity-50
+              ${failed ? "text-accent-red" : ""}`}
+    >
+      {busy ? <Loader class="h-3.5 w-3.5 animate-spin" /> : <RotateCcw class="h-3.5 w-3.5" />}
+    </button>
   );
 }

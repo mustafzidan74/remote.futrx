@@ -10,6 +10,7 @@ import (
 	serviceagentprefs "github.com/futrx-com/remote.futrx.com/internal/service/agentprefs"
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
+	serviceauxmodel "github.com/futrx-com/remote.futrx.com/internal/service/auxmodel"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicetemplates "github.com/futrx-com/remote.futrx.com/internal/service/container/templates"
 	servicedashboard "github.com/futrx-com/remote.futrx.com/internal/service/dashboard"
@@ -127,7 +128,9 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		deps.Files,
 		deps.GitHistory,
 		deps.IDE,
-	).WithSchedules(scheduleHandler).WithAudit(auditLog)
+	).WithSchedules(scheduleHandler).
+		WithTitleGenerator(chatTitleGenerator(deps.Services.AuxJobs)).
+		WithAudit(auditLog)
 
 	return httptransport.NewHandler(httptransport.Handlers{
 		Sessions: httphandlers.NewTmuxHandler(deps.Services.Tmux).WithAudit(auditLog),
@@ -173,6 +176,14 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		// /ws, so the route reaches its own rate limiter untouched.
 		Monitoring: httphandlers.NewMonitoringHandler(
 			monitoringService(deps.Services.Monitoring),
+			deps.Services.Auth,
+		),
+		// The auxiliary text model: the platform's own small model for chat
+		// titles, notification summaries, commit subjects, and client-message
+		// translation. Every job it takes has a fallback, so a deployment
+		// without one loses nothing it had before.
+		AuxModel: httphandlers.NewAuxModelHandler(
+			auxModelService(deps.Services.AuxModel),
 			deps.Services.Auth,
 		),
 		// Voice input. The composer's browser path never reaches the server;
@@ -317,6 +328,26 @@ func monitoringService(service *servicemonitoring.Service) httphandlers.Monitori
 		return nil
 	}
 	return service
+}
+
+// auxModelService narrows the concrete auxiliary-model service to the
+// transport's interface while keeping a nil service nil, so a deployment
+// without a settings store reports 503 instead of panicking.
+func auxModelService(service *serviceauxmodel.Service) httphandlers.AuxModelService {
+	if service == nil {
+		return nil
+	}
+	return service
+}
+
+// chatTitleGenerator keeps a nil driver out of the chat handler, so the
+// "rename this chat" route is simply absent on a deployment with no
+// auxiliary model rather than present and always failing.
+func chatTitleGenerator(driver *service.AuxJobDriver) httphandlers.ChatTitleGenerator {
+	if driver == nil {
+		return nil
+	}
+	return driver
 }
 
 // transcriptionService narrows the concrete transcription service to the

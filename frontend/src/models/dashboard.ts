@@ -108,6 +108,8 @@ export interface DashboardRun {
   id: string;
   chatId: string;
   chatTitle: string;
+  /** The auxiliary model's one-line summary of the chat, when there is one. */
+  chatSummary?: string;
   projectId?: string;
   projectName?: string;
   provider?: string;

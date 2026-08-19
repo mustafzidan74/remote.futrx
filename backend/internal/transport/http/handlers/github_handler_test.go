@@ -41,9 +41,20 @@ type githubTestService struct {
 	deliveryOut  servicegithub.DeliveryOutcome
 	deliveryErr  error
 	lastDelivery servicegithub.DeliveryRequest
+	suggestion   servicegithub.CommitMessageSuggestion
+	suggestErr   error
+	suggestions  int
 }
 
 func (s *githubTestService) Available() bool { return s.available }
+
+func (s *githubTestService) SuggestCommitMessage(
+	context.Context,
+	serviceproject.ID,
+) (servicegithub.CommitMessageSuggestion, error) {
+	s.suggestions++
+	return s.suggestion, s.suggestErr
+}
 
 func (s *githubTestService) Status(context.Context, serviceproject.ID) (servicegithub.Status, error) {
 	return s.status, s.statusErr

@@ -16,6 +16,7 @@ import (
 	serviceagentprefs "github.com/futrx-com/remote.futrx.com/internal/service/agentprefs"
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
+	serviceauxmodel "github.com/futrx-com/remote.futrx.com/internal/service/auxmodel"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicedashboard "github.com/futrx-com/remote.futrx.com/internal/service/dashboard"
 	servicegithub "github.com/futrx-com/remote.futrx.com/internal/service/github"
@@ -89,6 +90,12 @@ type Dependencies struct {
 	// MonitoringLXD is the container daemon probe behind the "lxd" check of
 	// /healthz. Nil reports that check as skipped rather than degraded.
 	MonitoringLXD servicemonitoring.LXD
+	// AuxModel backs the optional auxiliary text model (a local Ollama or any
+	// OpenAI-compatible endpoint) that writes chat titles, notification
+	// summaries, commit subjects, and client-message translations. Nil leaves
+	// every one of those jobs doing exactly what it did before: the feature is
+	// a nice-to-have and is never load bearing.
+	AuxModel serviceauxmodel.Store
 	// Version is stamped into /healthz and the "Remote started" event. It is
 	// the only fact the public health endpoint reveals about this host.
 	Version       string
@@ -212,6 +219,11 @@ type Services struct {
 	UserSettings  *serviceusersettings.Service
 	Notifications *servicenotify.Service
 	Monitoring    *servicemonitoring.Service
+	AuxModel      *serviceauxmodel.Service
+	// AuxJobs drives the chat-shaped auxiliary jobs (a better title, the
+	// search subtitle) off settled runs, and serves the "rename this chat"
+	// action. Nil on a deployment with no auxiliary model store.
+	AuxJobs       *AuxJobDriver
 	Transcription *servicetranscribe.Service
 	Playbooks     *serviceplaybooks.Service
 	Snippets      *servicesnippets.Service
@@ -457,11 +469,26 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	// cached settings document, so it is built here and simply handed to the
 	// transcription handler.
 	transcription := servicetranscribe.New(ctx, deps.Transcription)
+	// The auxiliary model is built before the observers that may use it. It
+	// is the platform's own small text model — never a coding agent — and
+	// every one of its callers below installs it as an *option*: switched
+	// off, unreachable, or slow, each of them keeps doing what it did before.
+	var auxModel *serviceauxmodel.Service
+	var auxJobs *AuxJobDriver
+	if deps.AuxModel != nil {
+		auxModel = serviceauxmodel.New(ctx, deps.AuxModel)
+		auxJobs = newAuxJobDriver(auxModel, chats)
+	}
 	runNotifications := &notifyObserver{
 		notifications: notifications,
 		chats:         chats,
 		projects:      projectService,
 		baseURL:       deps.AuthBaseURL,
+	}
+	if auxModel != nil {
+		// One sentence in a phone notification instead of the raw tail of the
+		// agent's last message. A nil answer means the tail still goes out.
+		runNotifications.summarizer = auxRunSummarizer{aux: auxModel}
 	}
 	// The post-run driver both observes settled runs and starts follow-up runs
 	// through the same prompt service, and it has to keep out of chats the
@@ -511,6 +538,9 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		prompt.WithRunObserver(postRunDriver),
 		prompt.WithRunObserver(teamDriver),
 		prompt.WithAudit(auditLog),
+		// The auxiliary jobs observer schedules its work and returns; it never
+		// holds up a run. A nil driver is dropped by WithRunObserver itself.
+		prompt.WithRunObserver(auxRunObserver(auxJobs)),
 		prompt.WithReplyPreferences(replyPreferencePreamble{prefs: agentPreferences}),
 	}
 	if usageService != nil {
@@ -652,6 +682,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 			servicegithub.WithStarter(postRunStarter{prompts: &promptService}),
 			servicegithub.WithNotifier(gitHubNotifier{observer: runNotifications}),
 			servicegithub.WithBaseURL(deps.AuthBaseURL),
+			servicegithub.WithCommitSubjects(auxCommitMessages{aux: auxModel}),
 		)
 	}
 
@@ -700,6 +731,8 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		UserSettings:  userSettingsService,
 		Notifications: notifications,
 		Monitoring:    monitoringService,
+		AuxModel:      auxModel,
+		AuxJobs:       auxJobs,
 		Transcription: transcription,
 		Playbooks:     playbookService,
 		Snippets:      snippetService,

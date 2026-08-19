@@ -27,6 +27,7 @@ type Service struct {
 	chats    Chats
 	starter  Starter
 	notifier Notifier
+	subjects CommitSubjects
 	audit    audit.Recorder
 	baseURL  string
 	now      func() time.Time
@@ -60,6 +61,14 @@ func WithStarter(starter Starter) Option {
 // WithNotifier attaches the outbound notification port.
 func WithNotifier(notifier Notifier) Option {
 	return func(s *Service) { s.notifier = notifier }
+}
+
+// WithCommitSubjects attaches the optional commit-subject writer. Without it
+// SuggestCommitMessage reports that nothing better than the dated default is
+// available, which is precisely what a deployment without the auxiliary model
+// should say.
+func WithCommitSubjects(subjects CommitSubjects) Option {
+	return func(s *Service) { s.subjects = subjects }
 }
 
 // WithBaseURL supplies the public origin the webhook URL and the chat deep
@@ -258,6 +267,75 @@ func (s *Service) Status(ctx context.Context, projectID serviceproject.ID) (Stat
 		}
 	}
 	return status, nil
+}
+
+// CommitMessageSuggestion is what the "suggest a message" button gets back.
+// Fallback is always filled in, so a browser can use the answer without
+// checking whether Generated is true.
+type CommitMessageSuggestion struct {
+	// Message is what to put in the box: the generated subject when one was
+	// written, otherwise the deterministic dated default.
+	Message string `json:"message"`
+	// Generated reports whether a model wrote it, so the dialog can say so.
+	Generated bool `json:"generated"`
+	// Fallback is the dated default, always present.
+	Fallback string `json:"fallback"`
+	// Reason explains a non-generated answer in one phrase, for the dialog's
+	// hint line. Empty when Generated is true.
+	Reason string `json:"reason,omitempty"`
+}
+
+// SuggestCommitMessage proposes a conventional-commit subject for whatever is
+// uncommitted in /workspace.
+//
+// The model is shown the shape of the change and nothing else: per-file
+// insert/delete counts and the changed paths. No file contents cross this
+// boundary, which is what makes the feature safe to point at a remote
+// endpoint as well as at a local Ollama.
+//
+// This method never fails for want of a model. Every path that cannot produce
+// a generated subject returns the same dated default the dialog has always
+// pre-filled, with a one-phrase reason attached.
+func (s *Service) SuggestCommitMessage(
+	ctx context.Context,
+	projectID serviceproject.ID,
+) (CommitMessageSuggestion, error) {
+	if !s.Available() {
+		return CommitMessageSuggestion{}, ErrUnavailable
+	}
+	fallback := DefaultCommitMessage(s.now())
+	result := CommitMessageSuggestion{Message: fallback, Fallback: fallback}
+
+	if s.subjects == nil || !s.subjects.Available() {
+		result.Reason = "the auxiliary model is not available"
+		return result, nil
+	}
+	meta, err := s.runningProject(ctx, projectID)
+	if err != nil {
+		return CommitMessageSuggestion{}, err
+	}
+	shape, err := s.run(ctx, Command{
+		ContainerName: meta.ContainerName,
+		Argv:          diffShapeArgv(),
+		Timeout:       QuickTimeout,
+	})
+	if err != nil {
+		result.Reason = "the workspace diff could not be read"
+		return result, nil
+	}
+	shape = strings.TrimSpace(shape)
+	if shape == "" || shape == "PATHS" {
+		result.Reason = "there is nothing uncommitted to describe"
+		return result, nil
+	}
+	subject, err := s.subjects.Subject(ctx, shape)
+	if err != nil || strings.TrimSpace(subject) == "" {
+		result.Reason = "the auxiliary model did not answer"
+		return result, nil
+	}
+	result.Message = strings.TrimSpace(subject)
+	result.Generated = true
+	return result, nil
 }
 
 // applyWorkspaceProbe reads the three-line answer workspaceProbeArgv prints.

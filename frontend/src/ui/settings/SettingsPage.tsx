@@ -12,13 +12,14 @@ import type { ServerInfo } from "../../models/serverInfo";
 import type { FleetResourcesView, FleetSettings } from "../../models/resources";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import type { ComponentType } from "preact";
-import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Globe, Info, Key, Menu, Mic, Monitor, Search, Server, Trash, Users, X, Zap } from "../primitives/icons";
+import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Globe, Info, Key, MemoryStick, Menu, Mic, Monitor, Search, Server, Trash, Users, X, Zap } from "../primitives/icons";
 import { useState } from "preact/hooks";
 import {
   firstSettingsMatch,
   matchingSettingsTabIds,
 } from "../../state/settings/settingsNavState";
 import { AppearanceSettings } from "./AppearanceSettings";
+import { AuxModelSettings } from "./AuxModelSettings";
 import { ReplyLanguagePreference } from "./ReplyLanguagePreference";
 import { ReplyPreferencesSettings } from "./ReplyPreferencesSettings";
 import { AuditLogSettings } from "./AuditLogSettings";
@@ -51,6 +52,7 @@ export type SettingsTab =
   | "reply-preferences"
   | "playbooks"
   | "model-routing"
+  | "aux-model"
   | "voice"
   | "usage"
   | "resources"
@@ -127,6 +129,14 @@ const tabs: SettingsTabDescriptor[] = [
     description:
       "Send routine turns to a cheap model and hard ones to the expensive one, under a policy you control.",
     Icon: Zap,
+  },
+  {
+    id: "aux-model",
+    group: "agents",
+    label: "Local / auxiliary model",
+    description:
+      "Run a small local model for the platform's own text chores — chat titles, notification summaries, commit subjects, translation. It never replaces the coding agents.",
+    Icon: MemoryStick,
   },
   {
     id: "voice",
@@ -479,6 +489,16 @@ export function SettingsPage({
                 <SettingsNotice>
                   Automatic model routing is configured by server administrators. You can still
                   switch any chat between Auto and a pinned model from the composer's agent pill.
+                </SettingsNotice>
+              ))}
+
+            {activeTab === "aux-model" &&
+              (isAdmin ? (
+                <AuxModelSettings />
+              ) : (
+                <SettingsNotice>
+                  The auxiliary model is configured by server administrators. Nothing you do
+                  depends on it: every feature it improves works without it.
                 </SettingsNotice>
               ))}
 

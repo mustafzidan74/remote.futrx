@@ -340,3 +340,68 @@ func TestPlatformStartedIsSilentWhenSystemEventsAreOff(t *testing.T) {
 	case <-time.After(200 * time.Millisecond):
 	}
 }
+
+// stubSummarizer stands in for the auxiliary model on the notification path.
+type stubSummarizer struct {
+	summary string
+	calls   int
+}
+
+func (s *stubSummarizer) Summarize(context.Context, string) string {
+	s.calls++
+	return s.summary
+}
+
+func TestRunSettledPrefersTheAuxiliarySentenceAndFallsBackToTheRawTail(t *testing.T) {
+	rawTail := "I edited six files and reran the suite; see the diff above for the details."
+
+	tests := []struct {
+		name        string
+		summarizer  *stubSummarizer
+		outcome     prompt.RunOutcome
+		wantSummary string
+		wantCalls   int
+	}{
+		{
+			name:        "one useful sentence replaces the tail",
+			summarizer:  &stubSummarizer{summary: "Rewrote the checkout flow and the suite passes."},
+			outcome:     prompt.RunOutcome{ChatID: "abc123", RunID: 11, Output: rawTail},
+			wantSummary: "Rewrote the checkout flow and the suite passes.",
+			wantCalls:   1,
+		},
+		{
+			name:        "a model that cannot answer leaves today's behaviour in place",
+			summarizer:  &stubSummarizer{summary: ""},
+			outcome:     prompt.RunOutcome{ChatID: "abc123", RunID: 12, Output: rawTail},
+			wantSummary: rawTail,
+			wantCalls:   1,
+		},
+		{
+			name:       "a failure is never paraphrased",
+			summarizer: &stubSummarizer{summary: "should not be used"},
+			outcome: prompt.RunOutcome{
+				ChatID: "abc123", RunID: 13, Err: errors.New("claude exit: status 1"),
+			},
+			wantSummary: "claude exit: status 1",
+			wantCalls:   0,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			observer, sink := newObserver(t, servicechat.Meta{ID: "abc123", Title: "Fix login"})
+			observer.summarizer = test.summarizer
+
+			observer.RunSettled(context.Background(), test.outcome)
+			events := sink.waitFor(t, 1)
+
+			if events[0].Summary != test.wantSummary {
+				t.Fatalf("summary = %q, want %q", events[0].Summary, test.wantSummary)
+			}
+			if test.summarizer.calls != test.wantCalls {
+				t.Fatalf("the summarizer was asked %d times, want %d",
+					test.summarizer.calls, test.wantCalls)
+			}
+		})
+	}
+}

@@ -1,5 +1,9 @@
 import { useState } from "preact/hooks";
-import type { GitHubPullRequest, GitHubStatus } from "../../../models/github";
+import type {
+  CommitMessageSuggestion,
+  GitHubPullRequest,
+  GitHubStatus,
+} from "../../../models/github";
 import type {
   GitHubPullsRecord,
   GitHubRecord,
@@ -42,6 +46,7 @@ export function ProjectGitHubSection({
   onClone,
   onLoadPulls,
   onCreatePR,
+  onSuggestCommitMessage,
   onImportComments,
   onOpenChat,
 }: {
@@ -60,6 +65,8 @@ export function ProjectGitHubSection({
     commit: boolean;
     commitMessage: string;
   }) => Promise<{ url: string }>;
+  /** Drafts a commit subject with the auxiliary model; always answers. */
+  onSuggestCommitMessage: () => Promise<CommitMessageSuggestion>;
   onImportComments: (
     number: number,
     chatId: string,
@@ -213,6 +220,7 @@ export function ProjectGitHubSection({
         <ProjectGitHubPRDialog
           status={status}
           busy={busy}
+          onSuggestCommitMessage={onSuggestCommitMessage}
           onClose={() => setPROpen(false)}
           onSubmit={async (input) => {
             const created = await onCreatePR(input);

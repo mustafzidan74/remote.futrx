@@ -6,6 +6,7 @@ import (
 	serviceagentprefs "github.com/futrx-com/remote.futrx.com/internal/service/agentprefs"
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
+	serviceauxmodel "github.com/futrx-com/remote.futrx.com/internal/service/auxmodel"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicegithub "github.com/futrx-com/remote.futrx.com/internal/service/github"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
@@ -29,6 +30,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileagentprefs"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileaudit"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileauth"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/fileauxmodel"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filechat"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filegithub"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileglobalsecrets"
@@ -91,6 +93,7 @@ type Stores struct {
 	Usage         serviceusage.Repository
 	Transcription servicetranscribe.Store
 	Audit         serviceaudit.Store
+	AuxModel      serviceauxmodel.Store
 	// ScheduleHistory is the per-task run log; it lives beside the task
 	// catalog but is written append-only in its own files.
 	ScheduleHistory serviceschedule.HistoryRepository
@@ -166,6 +169,10 @@ func New(dataDir string) (Stores, error) {
 	if err != nil {
 		return Stores{}, fmt.Errorf("init monitoring settings store: %w", err)
 	}
+	auxModel, err := fileauxmodel.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init auxiliary model settings store: %w", err)
+	}
 	playbooks, err := fileplaybooks.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init playbooks store: %w", err)
@@ -219,6 +226,7 @@ func New(dataDir string) (Stores, error) {
 		UserSettings:     userSettings,
 		Notifications:    notifications,
 		Monitoring:       monitoring,
+		AuxModel:         auxModel,
 		Playbooks:        playbooks,
 		Snippets:         snippets,
 		GlobalSkills:     globalSkills,

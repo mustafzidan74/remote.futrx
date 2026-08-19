@@ -44,6 +44,12 @@ type Meta struct {
 	ProjectID      ProjectID  `json:"projectId,omitempty"`
 	ForkPending    bool       `json:"forkPending,omitempty"`
 	SelectedSkills []SkillRef `json:"selectedSkills,omitempty"`
+	// Summary is a one-line description of what this chat is about, written
+	// by the optional auxiliary model after a run settles (see
+	// internal/service/auxmodel). It is a search and scanning aid shown as a
+	// subtitle in the sidebar and on the dashboard; a deployment without the
+	// auxiliary model simply never has one, and nothing depends on it.
+	Summary string `json:"summary,omitempty"`
 	// Autopilot and AutoTest are the chat's post-run policies: what the
 	// platform does on its own once an agent turn settles. Both default off,
 	// and both are always serialized so the browser never has to guess

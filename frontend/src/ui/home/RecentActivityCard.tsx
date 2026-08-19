@@ -62,6 +62,15 @@ export function RecentActivityCard({
                       />
                     )}
                   </div>
+                  {run.chatSummary && (
+                    <div
+                      dir="auto"
+                      class="bidi-auto mt-0.5 truncate text-[11.5px] text-ink-200"
+                      title={run.chatSummary}
+                    >
+                      {run.chatSummary}
+                    </div>
+                  )}
                   <div class="mt-0.5 truncate text-[11.5px] text-ink-300">
                     {[run.projectName || "No project", run.provider, run.model]
                       .filter(Boolean)
