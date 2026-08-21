@@ -808,6 +808,10 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		deps.TrashRetention,
 	)
 	return Services{
+		Chats:          chatService,
+		Projects:       projectService,
+		Schedules:      scheduleService,
+		Runs:           runs,
 		Skills:         skillCatalog,
 		Access:         accessVerifier,
 		ChatAccess:     chatAccessService,
