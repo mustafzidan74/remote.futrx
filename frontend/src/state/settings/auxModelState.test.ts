@@ -7,9 +7,9 @@ import {
   formFromSettings,
   formatLatency,
   isLoopback,
-  jobEnabled,
+  jobSource,
   latencyVerdict,
-  toggleJob,
+  setJobSource,
   updateInputFromForm,
   validateAuxModelForm,
   type AuxModelForm,
@@ -28,11 +28,11 @@ function form(overrides: Partial<AuxModelForm> = {}): AuxModelForm {
     timeoutSeconds: defaults.timeoutSeconds,
     maxTokens: defaults.maxTokens,
     jobs: {
-      chatTitle: true,
-      runSummary: true,
-      commitMessage: true,
-      translate: true,
-      chatSummary: true,
+      chatTitle: "local",
+      runSummary: "local",
+      commitMessage: "local",
+      translate: "local",
+      chatSummary: "local",
     },
     ...overrides,
   };
@@ -49,14 +49,16 @@ function settings(overrides: Partial<AuxModelSettings> = {}): AuxModelSettings {
     timeoutSeconds: defaults.timeoutSeconds,
     maxTokens: defaults.maxTokens,
     jobs: {
-      chatTitle: true,
-      runSummary: true,
-      commitMessage: false,
-      translate: true,
-      chatSummary: true,
+      chatTitle: "local",
+      runSummary: "pool",
+      commitMessage: "off",
+      translate: "local",
+      chatSummary: "local",
     },
     jobLabels: [],
     providers: ["ollama", "openai-compatible"],
+    sources: ["local", "pool", "off"],
+    poolAvailable: false,
     defaults,
     ...overrides,
   };
@@ -68,7 +70,8 @@ test("formFromSettings never carries a key into the form", () => {
   );
   assert.equal(loaded.apiKey, "", "the masked key must not become the input's value");
   assert.equal(loaded.provider, "openai-compatible");
-  assert.equal(loaded.jobs.commitMessage, false, "a stored toggle survives the load");
+  assert.equal(loaded.jobs.commitMessage, "off", "a stored choice survives the load");
+  assert.equal(loaded.jobs.runSummary, "pool");
 });
 
 test("switching to Ollama fills the endpoint in, but never overwrites a typed one", () => {
@@ -184,18 +187,27 @@ test("updateInputFromForm trims, and an untouched key field means 'keep it'", ()
   );
 });
 
-test("toggling one job leaves the other four alone", () => {
-  const next = toggleJob(form(), "commitMessage", false);
-  assert.equal(next.jobs.commitMessage, false);
-  assert.equal(next.jobs.chatTitle, true);
-  assert.equal(next.jobs.translate, true);
-  assert.equal(jobEnabled(next.jobs, "commitMessage"), false);
-  assert.equal(jobEnabled(next.jobs, "chatSummary"), true);
+test("pointing one job at another source leaves the other four alone", () => {
+  const next = setJobSource(setJobSource(form(), "commitMessage", "off"), "runSummary", "pool");
+  assert.equal(jobSource(next.jobs, "commitMessage"), "off");
+  assert.equal(jobSource(next.jobs, "runSummary"), "pool");
+  assert.equal(jobSource(next.jobs, "chatTitle"), "local");
+  assert.equal(jobSource(next.jobs, "translate"), "local");
+});
+
+test("an unknown source reads as the local endpoint, never as the pool", () => {
   assert.equal(
-    jobEnabled({}, "chatTitle"),
-    true,
-    "a job the server has not published yet defaults to on, like the server's own rule",
+    jobSource({}, "chatTitle"),
+    "local",
+    "a job the server has not published yet runs locally, like the server's own rule",
   );
+  assert.equal(
+    jobSource({ chatTitle: "POOL" }, "chatTitle"),
+    "local",
+    "a typo must never silently start spending somebody's free tier",
+  );
+  assert.equal(jobSource({ chatTitle: "pool" }, "chatTitle"), "pool");
+  assert.equal(jobSource({ chatTitle: "off" }, "chatTitle"), "off");
 });
 
 test("the Test result reads as a sentence an operator can act on", () => {

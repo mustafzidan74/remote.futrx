@@ -96,7 +96,7 @@ func TestCompleteDegradesWhenDisabled(t *testing.T) {
 			name: "the service is on but this job's toggle is off",
 			config: func() Config {
 				cfg := activeConfig()
-				cfg.Jobs = JobSettings{JobChatTitle: false}
+				cfg.Jobs = JobSettings{JobChatTitle: SourceOff}
 				return cfg.Normalize()
 			},
 			job: JobChatTitle,

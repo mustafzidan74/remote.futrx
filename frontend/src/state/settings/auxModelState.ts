@@ -1,6 +1,7 @@
 import type {
   AuxModelDefaults,
   AuxModelJobId,
+  AuxModelJobSource,
   AuxModelProvider,
   AuxModelSettings,
   AuxModelTestResult,
@@ -25,7 +26,45 @@ export interface AuxModelForm {
   apiKey: string;
   timeoutSeconds: number;
   maxTokens: number;
-  jobs: Record<string, boolean>;
+  /** Each job id mapped onto "local", "pool", or "off". */
+  jobs: Record<string, string>;
+}
+
+/**
+ * The three places a job's text can come from, in the order the panel offers
+ * them, with the one line each needs to be chosen honestly.
+ */
+export const AUX_MODEL_JOB_SOURCES: Array<{
+  id: AuxModelJobSource;
+  label: string;
+  hint: string;
+}> = [
+  { id: "local", label: "Local", hint: "The endpoint configured above." },
+  { id: "pool", label: "Pool", hint: "A free-tier provider from the AI providers pool." },
+  { id: "off", label: "Off", hint: "Exactly what the platform did before this feature existed." },
+];
+
+/**
+ * The source a job runs from. An unknown or absent value reads as "local",
+ * which is the server's own rule: a typo must never silently start spending
+ * somebody's free tier, and a job written before sources existed meant the
+ * operator's own endpoint.
+ */
+export function jobSource(
+  jobs: Record<string, string>,
+  job: AuxModelJobId | string,
+): AuxModelJobSource {
+  const value = jobs[job];
+  return value === "pool" || value === "off" ? value : "local";
+}
+
+/** Points one job at a source without disturbing the others. */
+export function setJobSource(
+  form: AuxModelForm,
+  job: AuxModelJobId | string,
+  source: string,
+): AuxModelForm {
+  return { ...form, jobs: { ...form.jobs, [job]: source } };
 }
 
 export const AUX_MODEL_PROVIDER_LABELS: Record<AuxModelProvider, string> = {
@@ -150,20 +189,6 @@ export function updateInputFromForm(
     maxTokens: form.maxTokens,
     jobs: { ...form.jobs },
   };
-}
-
-/** Flips one job toggle without disturbing the others. */
-export function toggleJob(
-  form: AuxModelForm,
-  job: AuxModelJobId | string,
-  enabled: boolean,
-): AuxModelForm {
-  return { ...form, jobs: { ...form.jobs, [job]: enabled } };
-}
-
-/** Whether a job's own toggle is on. An unknown job defaults to on, like the server's. */
-export function jobEnabled(jobs: Record<string, boolean>, job: AuxModelJobId | string): boolean {
-  return jobs[job] !== false;
 }
 
 /** One line describing how the Test went, for the panel's result strip. */

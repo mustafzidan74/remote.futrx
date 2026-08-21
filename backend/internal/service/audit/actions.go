@@ -103,6 +103,20 @@ const (
 	ActionSettingsMCPTest    = "settings.mcp.test"
 	ActionSettingsMCPProject = "settings.mcp.project-update"
 
+	// Free-tier provider pool edits. The pool action covers the global policy
+	// — auto-switch, the preferred provider, and the priority order — because
+	// those are one setting from an operator's point of view.
+	ActionSettingsProviderCreate = "settings.provider.create"
+	ActionSettingsProviderUpdate = "settings.provider.update"
+	ActionSettingsProviderDelete = "settings.provider.delete"
+	ActionSettingsProviderTest   = "settings.provider.test"
+	ActionSettingsProviderPool   = "settings.provider.pool-update"
+
+	// ActionProviderComplete records one bulk-lane completion. Its meta
+	// carries the provider, the model and the token counts — never the
+	// prompt and never the answer.
+	ActionProviderComplete = "provider.complete"
+
 	ActionSelfUpdateTrigger = "self-update.trigger"
 
 	ActionWorkspaceFileUpload      = "workspace.file.upload"
@@ -129,4 +143,8 @@ const (
 	// TargetMCPServer is one entry in the MCP registry, named by its
 	// registry name — or, for a per-project override, by the project id.
 	TargetMCPServer = "mcp-server"
+	// TargetProvider is one entry in the free-tier provider pool, named by
+	// its registry id. An empty id means the pool's own policy rather than
+	// any single provider.
+	TargetProvider = "provider"
 )

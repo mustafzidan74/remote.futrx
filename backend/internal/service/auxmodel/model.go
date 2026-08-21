@@ -12,6 +12,7 @@
 package auxmodel
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -125,17 +126,86 @@ func maxOutputTokens(job Job) int {
 	}
 }
 
-// JobSettings is the per-job on/off map. A job that is absent from the
-// document is *on*: the toggles default to enabled once the service itself is
-// enabled, and a document written before a job existed must not silently
-// switch that job off for everybody.
-type JobSettings map[Job]bool
+// JobSource is where one job's text comes from. It replaced a plain on/off
+// toggle when the free-tier provider pool arrived: "off" is still off, and
+// what used to be "on" is now the explicit choice between the operator's own
+// endpoint and the pool.
+type JobSource string
 
-// DefaultJobSettings turns every known job on.
+const (
+	// SourceLocal sends the job to the endpoint configured below — the local
+	// Ollama on this host, or whatever OpenAI-compatible URL replaced it.
+	SourceLocal JobSource = "local"
+	// SourcePool sends the job through the free-tier provider pool, which
+	// picks a provider and fails over between them invisibly. A pool that
+	// cannot answer falls back to the local endpoint, and a local endpoint
+	// that cannot answer falls back to the job's original non-AI behaviour.
+	SourcePool JobSource = "pool"
+	// SourceOff restores exactly what the platform did before this feature
+	// existed.
+	SourceOff JobSource = "off"
+)
+
+// JobSources lists every source in the order the settings panel offers them.
+func JobSources() []JobSource { return []JobSource{SourceLocal, SourcePool, SourceOff} }
+
+// NormalizeSource maps anything a client sends onto a known source.
+// Unrecognized input becomes the local endpoint rather than the pool: a typo
+// must never silently start spending somebody's free tier.
+func NormalizeSource(source string) JobSource {
+	switch JobSource(strings.ToLower(strings.TrimSpace(source))) {
+	case SourcePool:
+		return SourcePool
+	case SourceOff:
+		return SourceOff
+	default:
+		return SourceLocal
+	}
+}
+
+// JobSettings is the per-job source map. A job that is absent from the
+// document runs locally: the toggles default to on once the service itself
+// is enabled, and a document written before a job existed must not silently
+// switch that job off for everybody.
+type JobSettings map[Job]JobSource
+
+// UnmarshalJSON accepts both shapes this document has had: the booleans
+// written before per-job sources existed, and the source strings written
+// since. A stored `true` becomes SourceLocal, which is exactly what it meant.
+func (s *JobSettings) UnmarshalJSON(data []byte) error {
+	var raw map[Job]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	out := make(JobSettings, len(raw))
+	for job, value := range raw {
+		var source string
+		if err := json.Unmarshal(value, &source); err == nil {
+			out[job] = NormalizeSource(source)
+			continue
+		}
+		var enabled bool
+		if err := json.Unmarshal(value, &enabled); err != nil {
+			// A value in neither shape is a corrupt document, not a reason to
+			// refuse to boot: the job falls back to running locally.
+			out[job] = SourceLocal
+			continue
+		}
+		if enabled {
+			out[job] = SourceLocal
+		} else {
+			out[job] = SourceOff
+		}
+	}
+	*s = out
+	return nil
+}
+
+// DefaultJobSettings points every known job at the local endpoint.
 func DefaultJobSettings() JobSettings {
 	settings := make(JobSettings, len(Jobs()))
 	for _, job := range Jobs() {
-		settings[job] = true
+		settings[job] = SourceLocal
 	}
 	return settings
 }
@@ -145,17 +215,29 @@ func DefaultJobSettings() JobSettings {
 func (s JobSettings) Normalize() JobSettings {
 	out := make(JobSettings, len(Jobs()))
 	for _, job := range Jobs() {
-		enabled, found := s[job]
-		out[job] = !found || enabled
+		source, found := s[job]
+		if !found {
+			out[job] = SourceLocal
+			continue
+		}
+		out[job] = NormalizeSource(string(source))
 	}
 	return out
 }
 
-// Enabled reports whether one job may run. An unknown job is never enabled:
-// a caller that invents a name gets the fallback, not the model.
+// Source reports where one job's text should come from. An unknown job is
+// always off: a caller that invents a name gets the fallback, not a model.
+func (s JobSettings) Source(job Job) JobSource {
+	source, found := s.Normalize()[job]
+	if !found {
+		return SourceOff
+	}
+	return source
+}
+
+// Enabled reports whether one job may run at all, by either route.
 func (s JobSettings) Enabled(job Job) bool {
-	enabled, found := s.Normalize()[job]
-	return found && enabled
+	return s.Source(job) != SourceOff
 }
 
 // Config is the auxiliary model configuration persisted at
@@ -239,20 +321,28 @@ func (c Config) Active() bool {
 // PublicConfig is the admin-facing view. The key is never echoed back: the
 // caller sees only whether one is stored and its masked tail.
 type PublicConfig struct {
-	Enabled        bool            `json:"enabled"`
-	Configured     bool            `json:"configured"`
-	Provider       string          `json:"provider"`
-	BaseURL        string          `json:"baseUrl"`
-	Model          string          `json:"model"`
-	APIKeyMasked   string          `json:"apiKeyMasked,omitempty"`
-	KeyConfigured  bool            `json:"keyConfigured"`
-	TimeoutSeconds int             `json:"timeoutSeconds"`
-	MaxTokens      int             `json:"maxTokens"`
-	Jobs           map[string]bool `json:"jobs"`
-	JobLabels      []JobDescriptor `json:"jobLabels"`
-	Providers      []string        `json:"providers"`
-	Defaults       Defaults        `json:"defaults"`
-	UpdatedAt      int64           `json:"updatedAt,omitempty"`
+	Enabled        bool   `json:"enabled"`
+	Configured     bool   `json:"configured"`
+	Provider       string `json:"provider"`
+	BaseURL        string `json:"baseUrl"`
+	Model          string `json:"model"`
+	APIKeyMasked   string `json:"apiKeyMasked,omitempty"`
+	KeyConfigured  bool   `json:"keyConfigured"`
+	TimeoutSeconds int    `json:"timeoutSeconds"`
+	MaxTokens      int    `json:"maxTokens"`
+	// Jobs maps each job id onto its source: "local", "pool", or "off".
+	Jobs      map[string]string `json:"jobs"`
+	JobLabels []JobDescriptor   `json:"jobLabels"`
+	Providers []string          `json:"providers"`
+	// Sources echoes the vocabulary of the Jobs map so the panel never
+	// hard-codes a second copy of it.
+	Sources []string `json:"sources"`
+	// PoolAvailable reports whether the free-tier provider pool could take a
+	// job right now. The panel uses it to warn that a job set to "pool" would
+	// currently fall back to the local endpoint.
+	PoolAvailable bool     `json:"poolAvailable"`
+	Defaults      Defaults `json:"defaults"`
+	UpdatedAt     int64    `json:"updatedAt,omitempty"`
 }
 
 // JobDescriptor names one toggle for the settings panel, so the label lives
@@ -278,11 +368,15 @@ type Defaults struct {
 // Public renders the admin-facing view of a configuration.
 func (c Config) Public() PublicConfig {
 	c = c.Normalize()
-	jobs := make(map[string]bool, len(c.Jobs))
+	jobs := make(map[string]string, len(c.Jobs))
 	labels := make([]JobDescriptor, 0, len(Jobs()))
 	for _, job := range Jobs() {
-		jobs[string(job)] = c.Jobs.Enabled(job)
+		jobs[string(job)] = string(c.Jobs.Source(job))
 		labels = append(labels, JobDescriptor{ID: string(job), Label: JobLabel(job)})
+	}
+	sources := make([]string, 0, len(JobSources()))
+	for _, source := range JobSources() {
+		sources = append(sources, string(source))
 	}
 	return PublicConfig{
 		Enabled:        c.Enabled,
@@ -297,6 +391,7 @@ func (c Config) Public() PublicConfig {
 		Jobs:           jobs,
 		JobLabels:      labels,
 		Providers:      []string{ProviderOllama, ProviderOpenAICompatible},
+		Sources:        sources,
 		Defaults: Defaults{
 			OllamaBaseURL:     DefaultOllamaBaseURL,
 			Model:             DefaultModel,
@@ -319,16 +414,38 @@ type ClientConfig struct {
 	Jobs    map[string]bool `json:"jobs"`
 }
 
-// Client renders the member-facing view. A job is reported available only
-// when the service is active *and* that job's own toggle is on, so a button
-// is never shown for something that would immediately fall back.
+// Client renders the member-facing view for a deployment with no provider
+// pool: a job is available only when the local endpoint could serve it.
 func (c Config) Client() ClientConfig {
+	return c.ClientWithPool(false)
+}
+
+// ClientWithPool renders the member-facing view. A job is reported available
+// only when the route it is set to could actually answer, so a button is
+// never shown for something that would immediately fall back:
+//
+//   - "off" is never available;
+//   - "local" needs the service switched on and an endpoint configured;
+//   - "pool" needs either the pool to be ready or the local endpoint to be
+//     configured, because a pool job falls back to local before it gives up.
+func (c Config) ClientWithPool(poolAvailable bool) ClientConfig {
 	c = c.Normalize()
 	jobs := make(map[string]bool, len(Jobs()))
+	anyAvailable := false
 	for _, job := range Jobs() {
-		jobs[string(job)] = c.Active() && c.Jobs.Enabled(job)
+		available := c.Enabled
+		switch c.Jobs.Source(job) {
+		case SourceOff:
+			available = false
+		case SourcePool:
+			available = available && (poolAvailable || c.Configured())
+		default:
+			available = available && c.Configured()
+		}
+		jobs[string(job)] = available
+		anyAvailable = anyAvailable || available
 	}
-	return ClientConfig{Enabled: c.Active(), Jobs: jobs}
+	return ClientConfig{Enabled: anyAvailable, Jobs: jobs}
 }
 
 const maskPrefix = "••••"
@@ -355,15 +472,18 @@ func MaskSecret(secret string) string {
 // Jobs is a partial map on purpose: a client may flip one toggle without
 // restating the other four.
 type UpdateInput struct {
-	Enabled        bool            `json:"enabled"`
-	Provider       string          `json:"provider"`
-	BaseURL        string          `json:"baseUrl"`
-	Model          string          `json:"model"`
-	APIKey         string          `json:"apiKey"`
-	ClearAPIKey    bool            `json:"clearApiKey"`
-	TimeoutSeconds int             `json:"timeoutSeconds"`
-	MaxTokens      int             `json:"maxTokens"`
-	Jobs           map[string]bool `json:"jobs"`
+	Enabled        bool   `json:"enabled"`
+	Provider       string `json:"provider"`
+	BaseURL        string `json:"baseUrl"`
+	Model          string `json:"model"`
+	APIKey         string `json:"apiKey"`
+	ClearAPIKey    bool   `json:"clearApiKey"`
+	TimeoutSeconds int    `json:"timeoutSeconds"`
+	MaxTokens      int    `json:"maxTokens"`
+	// Jobs maps a job id onto "local", "pool" or "off". It is partial on
+	// purpose: a client may change one job's route without restating the
+	// other four.
+	Jobs map[string]string `json:"jobs"`
 }
 
 // Apply folds an update onto the stored configuration, preserving the key the
@@ -394,10 +514,10 @@ func (c Config) Apply(input UpdateInput) Config {
 	}
 	if len(input.Jobs) > 0 {
 		jobs := next.Jobs.Normalize()
-		for name, enabled := range input.Jobs {
+		for name, source := range input.Jobs {
 			job := Job(strings.TrimSpace(name))
 			if _, known := jobs[job]; known {
-				jobs[job] = enabled
+				jobs[job] = NormalizeSource(source)
 			}
 		}
 		next.Jobs = jobs

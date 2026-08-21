@@ -1,10 +1,11 @@
 import { useAuxModel } from "../../state/hooks/settings/useAuxModel";
 import { refreshAuxModelJobs } from "../../state/hooks/settings/useAuxModelJobs";
 import {
+  AUX_MODEL_JOB_SOURCES,
   AUX_MODEL_PROVIDER_LABELS,
   formatLatency,
   isLoopback,
-  jobEnabled,
+  jobSource,
   latencyVerdict,
 } from "../../state/settings/auxModelState";
 import type { AuxModelProvider } from "../../models/auxModel";
@@ -229,29 +230,38 @@ export function AuxModelSettings() {
         <fieldset class="space-y-2">
           <legend class="text-xs font-semibold text-ink-200 uppercase tracking-wide">Jobs</legend>
           <p class="text-[11.5px] text-ink-400 leading-relaxed">
-            All on by default. Switching one off restores that feature's original behaviour exactly.
+            Each job picks where its text comes from. <span class="text-ink-300">Local</span> is
+            the endpoint above; <span class="text-ink-300">Pool</span> is a free tier from
+            Settings → AI providers; <span class="text-ink-300">Off</span> restores that feature's
+            original behaviour exactly. A pool job falls back to the local endpoint, and a local
+            one falls back to the plain behaviour — so no choice here can break anything.
           </p>
           <div class="space-y-1.5">
             {(settings?.jobLabels ?? []).map((job) => (
-              <label
+              <div
                 key={job.id}
-                class="flex items-center gap-2.5 rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-2 cursor-pointer"
+                class="flex flex-wrap items-center gap-2.5 rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-2"
               >
-                <input
-                  type="checkbox"
-                  checked={jobEnabled(form.jobs, job.id)}
-                  onChange={(event) =>
-                    editor.setJob(job.id, (event.currentTarget as HTMLInputElement).checked)
-                  }
-                  class="h-4 w-4 flex-none accent-accent-blue"
-                />
-                <span class="min-w-0 flex-1">
+                <span class="min-w-[12rem] flex-1">
                   <span class="block text-[13px] text-ink-100">{job.label}</span>
                   <span class="block text-[11.5px] text-ink-400 leading-snug">
                     {JOB_NOTES[job.id] ?? ""}
                   </span>
+                  {jobSource(form.jobs, job.id) === "pool" && settings?.poolAvailable === false && (
+                    <span class="mt-0.5 block text-[11.5px] text-accent-yellow leading-snug">
+                      No provider in the pool can take this yet — it falls back to the local
+                      endpoint until one is connected.
+                    </span>
+                  )}
                 </span>
-              </label>
+                <JobSourcePicker
+                  job={job.id}
+                  label={job.label}
+                  value={jobSource(form.jobs, job.id)}
+                  sources={settings?.sources}
+                  onChange={(source) => editor.setJob(job.id, source)}
+                />
+              </div>
             ))}
           </div>
         </fieldset>
@@ -342,7 +352,61 @@ export function AuxModelSettings() {
   );
 }
 
-/** One line per job, so the toggle says what it actually changes. */
+/**
+ * The three-way choice, as a segmented control rather than a select: three
+ * options is exactly the count where the whole vocabulary fits on screen, and
+ * seeing "Pool" without opening anything is what tells an operator the free
+ * tiers are an option at all.
+ */
+function JobSourcePicker({
+  job,
+  label,
+  value,
+  sources,
+  onChange,
+}: {
+  job: string;
+  label: string;
+  value: string;
+  /** The server's own vocabulary; the built-in order is the fallback. */
+  sources?: string[];
+  onChange: (source: string) => void;
+}) {
+  const options = AUX_MODEL_JOB_SOURCES.filter(
+    (source) => !sources || sources.includes(source.id),
+  );
+  return (
+    <div
+      role="radiogroup"
+      aria-label={`Where ${label} gets its text`}
+      class="inline-flex flex-none rounded-md border border-white/10 bg-black/30 p-0.5"
+    >
+      {options.map((source) => (
+        <label
+          key={source.id}
+          title={source.hint}
+          class={`cursor-pointer rounded px-2.5 py-1 text-[12px] transition ${
+            value === source.id
+              ? "bg-accent-blue/20 text-ink-50"
+              : "text-ink-300 hover:bg-white/[0.07] hover:text-ink-100"
+          }`}
+        >
+          <input
+            type="radio"
+            name={`aux-job-${job}`}
+            value={source.id}
+            checked={value === source.id}
+            onChange={() => onChange(source.id)}
+            class="sr-only"
+          />
+          {source.label}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+/** One line per job, so the choice says what it actually changes. */
 const JOB_NOTES: Record<string, string> = {
   chatTitle:
     "A 3–6 word name in your own language, instead of the first 60 characters of the prompt.",

@@ -54,7 +54,11 @@ type Service struct {
 	// completer, when set, replaces the provider client entirely. Tests use
 	// it; production leaves it nil and gets the client the provider names.
 	completer Completer
-	now       func() time.Time
+	// pool is the optional free-tier provider pool behind the "pool" job
+	// source. Nil is a deployment that has none, and every pool job then
+	// falls back to the local endpoint.
+	pool Pool
+	now  func() time.Time
 
 	mu     sync.RWMutex
 	config Config
@@ -150,7 +154,9 @@ func (s *Service) PublicConfig() PublicConfig {
 	if s == nil {
 		return DefaultConfig().Public()
 	}
-	return s.Config().Public()
+	public := s.Config().Public()
+	public.PoolAvailable = s.poolAvailable()
+	return public
 }
 
 // ClientConfig returns the member-facing view every signed-in user may read.
@@ -158,18 +164,34 @@ func (s *Service) ClientConfig() ClientConfig {
 	if s == nil {
 		return Config{}.Client()
 	}
-	return s.Config().Client()
+	return s.Config().ClientWithPool(s.poolAvailable())
 }
 
 // Available reports whether one job may be attempted right now. Callers use
 // it to decide whether to offer a button; Complete re-checks it anyway,
 // because the answer can change between the two.
+//
+// A pool job is available when either route could answer: the pool has a
+// provider, or the local endpoint is configured and not being left alone.
+// That mirrors what Complete actually does, so a button is never offered for
+// something that would immediately fall back to nothing.
 func (s *Service) Available(job Job) bool {
 	if s == nil {
 		return false
 	}
 	config := s.Config()
-	return config.Active() && config.Jobs.Enabled(job) && !s.breakerOpen()
+	if !config.Enabled {
+		return false
+	}
+	localReady := config.Configured() && !s.breakerOpen()
+	switch config.Jobs.Source(job) {
+	case SourceOff:
+		return false
+	case SourcePool:
+		return s.poolAvailable() || localReady
+	default:
+		return localReady
+	}
 }
 
 // Save validates and persists an update, then arms the new configuration. A
@@ -215,18 +237,16 @@ func (s *Service) Complete(
 		return "", ErrDisabled
 	}
 	config := s.Config()
-	if !config.Active() {
+	if !config.Enabled {
 		return "", ErrDisabled
 	}
-	if !config.Jobs.Enabled(job) {
+	source := config.Jobs.Source(job)
+	if source == SourceOff {
 		return "", fmt.Errorf("%w: %s are switched off", ErrDisabled, JobLabel(job))
 	}
 	userText = strings.TrimSpace(userText)
 	if userText == "" {
 		return "", ErrEmptyInput
-	}
-	if s.breakerOpen() {
-		return "", ErrBreakerOpen
 	}
 
 	// The caller's context may already be cancelled — a settled run hands the
@@ -236,6 +256,35 @@ func (s *Service) Complete(
 	parent := ctx
 	if parent == nil || parent.Err() != nil {
 		parent = context.Background()
+	}
+
+	// A pool job tries the pool first and silently drops to the local
+	// endpoint if the pool has nothing to offer. That ordering is what makes
+	// "never let this break a job" true: pool, then local, then the caller's
+	// own non-AI fallback.
+	if source == SourcePool && s.pool != nil {
+		answer, err := s.pool.Complete(parent, PoolRequest{
+			Job:          string(job),
+			Capability:   capabilityForJob(job),
+			SystemPrompt: systemPrompt,
+			UserText:     Truncate(userText, maxInputRunes),
+			MaxTokens:    tokenCap(config, job),
+		})
+		if err == nil {
+			return answer, nil
+		}
+		// The pool already logged which providers refused. Falling through is
+		// the point; there is nothing to say here that the pool has not said.
+		if !config.Configured() {
+			return "", fmt.Errorf("%w: %v", ErrDisabled, err)
+		}
+	}
+
+	if !config.Configured() {
+		return "", ErrDisabled
+	}
+	if s.breakerOpen() {
+		return "", ErrBreakerOpen
 	}
 	timeout := time.Duration(config.TimeoutSeconds) * time.Second
 	requestCtx, cancel := context.WithTimeout(parent, timeout)

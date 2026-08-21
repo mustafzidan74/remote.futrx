@@ -30,6 +30,7 @@ import (
 	servicepostrun "github.com/futrx-com/remote.futrx.com/internal/service/postrun"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	"github.com/futrx-com/remote.futrx.com/internal/service/prompt"
+	serviceproviderpool "github.com/futrx-com/remote.futrx.com/internal/service/providerpool"
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
 	servicerouting "github.com/futrx-com/remote.futrx.com/internal/service/routing"
 	"github.com/futrx-com/remote.futrx.com/internal/service/runhub"
@@ -98,6 +99,13 @@ type Dependencies struct {
 	// every one of those jobs doing exactly what it did before: the feature is
 	// a nice-to-have and is never load bearing.
 	AuxModel serviceauxmodel.Store
+	// Providers and ProviderUsage back the free-tier provider pool: the
+	// registry of connected API providers and the append-only usage ledger
+	// beside it. A nil registry leaves the pool unavailable, which means the
+	// /api/providers routes report 503 and every auxiliary job set to "pool"
+	// quietly falls back to the local endpoint.
+	Providers     serviceproviderpool.Store
+	ProviderUsage serviceproviderpool.UsageLog
 	// SiteWatch backs the always-on watcher for the operator's client
 	// websites. Nil leaves the Client sites page reporting 503 and schedules
 	// nothing.
@@ -234,6 +242,9 @@ type Services struct {
 	Notifications *servicenotify.Service
 	Monitoring    *servicemonitoring.Service
 	AuxModel      *serviceauxmodel.Service
+	// Providers is the free-tier provider pool. Nil on a deployment with no
+	// registry store.
+	Providers *serviceproviderpool.Service
 	// AuxJobs drives the chat-shaped auxiliary jobs (a better title, the
 	// search subtitle) off settled runs, and serves the "rename this chat"
 	// action. Nil on a deployment with no auxiliary model store.
@@ -497,10 +508,37 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	// is the platform's own small text model — never a coding agent — and
 	// every one of its callers below installs it as an *option*: switched
 	// off, unreachable, or slow, each of them keeps doing what it did before.
+	// The free-tier provider pool is built before the auxiliary model,
+	// because a job routed to "pool" needs it to exist. It reads its own
+	// registry, installs the shipped seed templates once, and rebuilds this
+	// month's usage counters from its ledger.
+	var providerPool *serviceproviderpool.Service
+	if deps.Providers != nil {
+		poolOptions := []serviceproviderpool.Option{
+			serviceproviderpool.WithAudit(auditLog),
+		}
+		if deps.ProviderUsage != nil {
+			poolOptions = append(poolOptions, serviceproviderpool.WithUsageLog(deps.ProviderUsage))
+		}
+		if globalSecrets != nil {
+			// A provider may name a Secrets-vault key instead of carrying an
+			// inline credential, which is the shape that keeps one key in one
+			// place. Without a vault only inline keys resolve.
+			poolOptions = append(
+				poolOptions,
+				serviceproviderpool.WithSecrets(vaultKeyReader{secrets: globalSecrets}),
+			)
+		}
+		providerPool = serviceproviderpool.New(ctx, deps.Providers, poolOptions...)
+	}
 	var auxModel *serviceauxmodel.Service
 	var auxJobs *AuxJobDriver
 	if deps.AuxModel != nil {
-		auxModel = serviceauxmodel.New(ctx, deps.AuxModel)
+		auxOptions := []serviceauxmodel.Option{}
+		if providerPool != nil {
+			auxOptions = append(auxOptions, serviceauxmodel.WithPool(auxPool{pool: providerPool}))
+		}
+		auxModel = serviceauxmodel.New(ctx, deps.AuxModel, auxOptions...)
 		auxJobs = newAuxJobDriver(auxModel, chats)
 	}
 	runNotifications := &notifyObserver{
@@ -753,6 +791,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Notifications: notifications,
 		Monitoring:    monitoringService,
 		AuxModel:      auxModel,
+		Providers:     providerPool,
 		AuxJobs:       auxJobs,
 		SiteWatch:     siteWatchService,
 		Transcription: transcription,
@@ -969,6 +1008,40 @@ func (t mcpProjectTargets) MCPTarget(ctx context.Context, projectID string) (ser
 		ContainerName: meta.ContainerName,
 		Running:       meta.Status == serviceproject.StatusRunning,
 	}, nil
+}
+
+// vaultKeyReader is the provider pool's view of the Secrets vault: one key
+// name in, one value out. It exists so the pool declares a port rather than
+// importing the vault, and so the *only* value-returning vault call the pool
+// can reach is this one.
+type vaultKeyReader struct {
+	secrets *serviceglobalsecrets.Service
+}
+
+func (r vaultKeyReader) Value(ctx context.Context, key string) (string, bool, error) {
+	return r.secrets.PlatformValue(ctx, key)
+}
+
+// auxPool is the provider pool seen from the auxiliary model. The two
+// packages describe the same request in their own vocabularies and neither
+// imports the other; this is where the two words meet.
+type auxPool struct {
+	pool *serviceproviderpool.Service
+}
+
+func (p auxPool) Available() bool { return p.pool.Available() }
+
+func (p auxPool) Complete(
+	ctx context.Context,
+	request serviceauxmodel.PoolRequest,
+) (string, error) {
+	return p.pool.CompleteAux(ctx, serviceproviderpool.AuxRequest{
+		Job:          request.Job,
+		Capability:   request.Capability,
+		SystemPrompt: request.SystemPrompt,
+		UserText:     request.UserText,
+		MaxTokens:    request.MaxTokens,
+	})
 }
 
 // globalSecretsAdapter translates between the vault's own vocabulary and the

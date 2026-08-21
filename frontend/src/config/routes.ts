@@ -173,6 +173,14 @@ export const API_ROUTES = {
     settings: "/api/admin/aux-model",
     test: "/api/admin/aux-model/test",
   },
+  aiProviders: {
+    collection: "/api/admin/providers",
+    item: (id: string) => `/api/admin/providers/${encodeURIComponent(id)}`,
+    test: (id: string) => `/api/admin/providers/${encodeURIComponent(id)}/test`,
+    reorder: "/api/admin/providers/reorder",
+    quota: "/api/providers/quota",
+    complete: "/api/providers/complete",
+  },
   sitewatch: {
     collection: "/api/sitewatch/sites",
     item: (id: string) => `/api/sitewatch/sites/${encodeURIComponent(id)}`,

@@ -13,13 +13,14 @@ import type { ServerInfo } from "../../models/serverInfo";
 import type { FleetResourcesView, FleetSettings } from "../../models/resources";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import type { ComponentType } from "preact";
-import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Globe, Info, Key, MemoryStick, Menu, Mic, Monitor, Package, Search, Server, Trash, Users, X, Zap } from "../primitives/icons";
+import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Globe, Info, Key, MemoryStick, Menu, Mic, Monitor, Network, Package, Search, Server, Trash, Users, X, Zap } from "../primitives/icons";
 import { useState } from "preact/hooks";
 import {
   firstSettingsMatch,
   matchingSettingsTabIds,
 } from "../../state/settings/settingsNavState";
 import { AppearanceSettings } from "./AppearanceSettings";
+import { AiProvidersSettings } from "./AiProvidersSettings";
 import { AuxModelSettings } from "./AuxModelSettings";
 import { ReplyLanguagePreference } from "./ReplyLanguagePreference";
 import { ReplyPreferencesSettings } from "./ReplyPreferencesSettings";
@@ -57,6 +58,7 @@ export type SettingsTab =
   | "playbooks"
   | "model-routing"
   | "aux-model"
+  | "ai-providers"
   | "voice"
   | "usage"
   | "client-sites"
@@ -150,6 +152,14 @@ const tabs: SettingsTabDescriptor[] = [
     description:
       "Run a small local model for the platform's own text chores — chat titles, notification summaries, commit subjects, translation. It never replaces the coding agents.",
     Icon: MemoryStick,
+  },
+  {
+    id: "ai-providers",
+    group: "agents",
+    label: "AI providers",
+    description:
+      "Connect several free-tier model APIs, switch automatically when one runs out of quota, and watch how much of each free tier is left.",
+    Icon: Network,
   },
   {
     id: "voice",
@@ -536,6 +546,15 @@ export function SettingsPage({
                 <SettingsNotice>
                   The auxiliary model is configured by server administrators. Nothing you do
                   depends on it: every feature it improves works without it.
+                </SettingsNotice>
+              ))}
+
+            {activeTab === "ai-providers" &&
+              (isAdmin ? (
+                <AiProvidersSettings />
+              ) : (
+                <SettingsNotice>
+                  AI providers are configured by server administrators.
                 </SettingsNotice>
               ))}
 

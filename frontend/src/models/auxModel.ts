@@ -23,6 +23,18 @@ export interface AuxModelJobDescriptor {
   label: string;
 }
 
+/**
+ * Where one job's text comes from.
+ *
+ * This replaced a plain on/off toggle when the free-tier provider pool
+ * arrived: "off" is still off, and what used to be "on" is now the explicit
+ * choice between the operator's own endpoint and the pool. A pool job that
+ * cannot be served falls back to the local endpoint, and a local endpoint that
+ * cannot answer falls back to the job's original non-AI behaviour — so no
+ * choice here can break a feature.
+ */
+export type AuxModelJobSource = "local" | "pool" | "off";
+
 /** The values the panel pre-fills and the bounds it validates against. */
 export interface AuxModelDefaults {
   ollamaBaseUrl: string;
@@ -46,9 +58,18 @@ export interface AuxModelSettings {
   keyConfigured: boolean;
   timeoutSeconds: number;
   maxTokens: number;
-  jobs: Record<string, boolean>;
+  /** Each job id mapped onto its source: "local", "pool", or "off". */
+  jobs: Record<string, string>;
   jobLabels: AuxModelJobDescriptor[];
   providers: AuxModelProvider[];
+  /** The vocabulary of `jobs`, echoed so the panel keeps no second copy. */
+  sources: string[];
+  /**
+   * Whether the free-tier provider pool could take a job right now. The panel
+   * uses it to warn that a job set to "pool" would currently fall through to
+   * the local endpoint instead.
+   */
+  poolAvailable: boolean;
   defaults: AuxModelDefaults;
   updatedAt?: number;
 }
@@ -68,7 +89,7 @@ export interface UpdateAuxModelInput {
   clearApiKey?: boolean;
   timeoutSeconds: number;
   maxTokens: number;
-  jobs: Record<string, boolean>;
+  jobs: Record<string, string>;
 }
 
 /** One real completion, run from the Test button. */

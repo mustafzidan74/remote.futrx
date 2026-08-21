@@ -102,6 +102,8 @@ func main() {
 		Notifications:     storeSet.Notifications,
 		Monitoring:        storeSet.Monitoring,
 		AuxModel:          storeSet.AuxModel,
+		Providers:         storeSet.Providers,
+		ProviderUsage:     storeSet.ProviderUsage,
 		MonitoringLXD:     lxcClient,
 		SiteWatch:         storeSet.SiteWatch,
 		Version:           version.Version,

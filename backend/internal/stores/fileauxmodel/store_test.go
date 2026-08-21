@@ -49,7 +49,7 @@ func TestSaveRoundTripsIncludingTheKeyAndTheToggles(t *testing.T) {
 		TimeoutSeconds: 15,
 		MaxTokens:      400,
 		Jobs: serviceauxmodel.JobSettings{
-			serviceauxmodel.JobCommitMessage: false,
+			serviceauxmodel.JobCommitMessage: serviceauxmodel.SourceOff,
 		},
 		UpdatedAt: 1723987200000,
 	}
