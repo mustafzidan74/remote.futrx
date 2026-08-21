@@ -52,6 +52,7 @@ h2 .n{font-size:12px;color:var(--ink-3);font-weight:600;font-variant-numeric:tab
 .tag.warn{background:var(--warn-soft);color:var(--warn)}
 .todo{background:var(--card);border:1px solid var(--line);border-inline-start:4px solid var(--warn);border-radius:var(--radius);padding:16px 20px}
 .todo ol{margin:8px 0 0;padding-inline-start:20px}
+.note{background:var(--card);border:1px solid var(--line);border-inline-start:4px solid var(--accent);border-radius:var(--radius);padding:14px 18px;font-size:13.5px;line-height:1.75;color:var(--ink-2)}
 .todo li{margin:6px 0}
 table{width:100%;border-collapse:collapse;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
 th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:start;vertical-align:top}
@@ -74,14 +75,14 @@ kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;paddi
     <p class="lede">كل ميزة: بتعمل إيه، فين تلاقيها في الواجهة، وإيه اللي تعمله الأول. المنصة الأساسية من FutrX (AGPL)، والإضافات دي على الـ fork بتاعنا ومرفوعة كـ Pull Requests للفريق الأصلي.</p>
   </div>
   <div class="stats">
-    <div class="stat"><b>28</b><span>ميزة</span></div>
+    <div class="stat"><b>36</b><span>ميزة</span></div>
     <div class="stat"><b>15</b><span>skill عامة</span></div>
     <div class="stat"><b>8</b><span>PR للـ upstream</span></div>
   </div>
 </header>
 
 <nav class="toc">
-  <a href="#safety">الأمان والحماية</a><a href="#work">الشغل اليومي</a><a href="#clients">العملاء</a><a href="#agents">الوكلاء والمهارات</a><a href="#ops">التشغيل والمراقبة</a><a href="#ux">الواجهة</a><a href="#pending">مستني منك</a><a href="#en">English</a>
+  <a href="#safety">الأمان والحماية</a><a href="#work">الشغل اليومي</a><a href="#clients">العملاء</a><a href="#agents">الوكلاء والمهارات</a><a href="#models">الموديلات والتكلفة</a><a href="#ops">التشغيل والمراقبة</a><a href="#ux">الواجهة</a><a href="#pending">مستني منك</a><a href="#en">English</a>
 </nav>
 
 <section id="safety">
@@ -115,6 +116,7 @@ kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;paddi
     <div class="card"><span class="tag">جديد</span><h3>Team mode 👥</h3><p>سويتش واحد: Claude ينفّذ → موديل تاني يراجع (VERDICT: SHIP/FIX) → Playwright يختبر → لو فيه ملاحظات ترجع للمنفّذ تلقائي، بحد أقصى دورتين. الشاتات المساعدة مخفية وتقدر تفتحها.</p><div class="where"><b>فين:</b> Run options → Who works on it</div></div>
     <div class="card"><span class="tag">جديد</span><h3>مكتبة Prompts + رسائل العملاء</h3><p>نصوصك المتكررة بضغطة (بحث، اختصار <code>/s-wpfix</code>، "Save as snippet" من أي رسالة)، وقوالب رسائل للعميل بالعربي/الإنجليزي (تسليم، بيانات دخول، الموقع شغال) تتبعت أو تتحط في الـ portal.</p><div class="where"><b>فين:</b> Snippets في شريط الشات، وProject → Sharing → Message client</div></div>
     <div class="card"><span class="tag">جديد</span><h3>تكامل GitHub</h3><p>اربط الريبو بالمشروع، افتح PR من الشات (<code>/pr</code>)، استورد تعليقات المراجعة كتاسك، وwebhook يفتح شات (أو يشغّل agent باختيارك) لما ييجي Issue بلابل معيّن أو تعليق <code>/remote</code>.</p><div class="where"><b>فين:</b> Project → GitHub</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>تعرف الوكيل بيعمل إيه دلوقتي</h3><p>بدل ما تستنى قدام شاشة ساكتة: سطر حي في المحادثة بيقول "بيقرأ <code>functions.php</code>"، "بيشغّل الاختبارات"، "بيفكر" — وشريط مختصر بعد ما التاسك يخلص يوريك مشى إزاي.</p><div class="where"><b>فين:</b> جوه أي شات، أثناء التشغيل</div></div>
     <div class="card"><span class="tag">جديد</span><h3>مهام مجدولة متقدمة</h3><p>سلاسل (تاسك بعد تاسك حسب النجاح/الفشل)، شروط قبل التشغيل (رد HTTP، أمر، أيام الأسبوع، نتيجة آخر تشغيل) بدون صرف توكنز، وسجل آخر 50 تشغيل بالملفات اللي اتغيرت والتكلفة.</p><div class="where"><b>فين:</b> Schedules في الشات → New/History</div></div>
   </div>
 </section>
@@ -141,19 +143,33 @@ kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;paddi
   </div>
 </section>
 
+<section id="models">
+  <h2>الموديلات والتكلفة <span class="n">05</span></h2>
+  <p class="sub">الشغل التقيل على Claude، والباقي على حاجة أرخص — من غير ما تقعد تبدّل بإيدك.</p>
+  <div class="grid">
+    <div class="card"><span class="tag">جديد</span><h3>توجيه تلقائي للموديل</h3><p>المنصة تقرأ التاسك وتختار Haiku للحاجات الصغيرة وSonnet/Opus للتقيلة، حسب سياسة إنت كاتبها. بتقولك قبل ما تبعت "دي رايحة Haiku — وفّرت كذا"، وتقدر ترفضها بضغطة. وتقرير شهري بالوفر الحقيقي.</p><div class="where"><b>فين:</b> Settings → Agents &amp; skills → Model routing، والاقتراح جوه الكومبوزر</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>موديل محلي صغير (Ollama)</h3><p>شغّال فعلاً على السيرفر: عناوين المحادثات، تلخيص الـ runs، اقتراح أسماء الفروع، وتنضيف نص الصوت — كلها بقت مجاناً بدل ما تصرف توكنز Claude. بيحترم لغتك (رسالة عربي = عنوان عربي)، وبيسيب الرام للكونتينرات بين المهام.</p><div class="where"><b>فين:</b> Settings → Agents &amp; skills → Local / auxiliary model</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>مزودين مجانيين + عدّادات استهلاك</h3><p>اربط Gemini وGroq وCerebras وOpenRouter وGLM وKimi بمفاتيحك، ورتّبهم بالأولوية. مفتاح <b>Auto-switch</b>: أول ما حصة تخلص أو مزود يقع، المنصة تنتقل للي بعده لوحدها — أو اقفله واختار إنت. وثلاث عدّادات لكل مزود (طلبات اليوم / توكنز اليوم / الشهر) مع لافتة بتقولك الرقم جاي من المزود نفسه ولا محسوب عندنا.</p><div class="where"><b>فين:</b> Settings → Agents &amp; skills → AI providers، وكارت "Free quota" في Home</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>شغّل الوكيل نفسه على موديل تاني</h3><p>للمواقع التعريفية والتعديلات الخفيفة: وجّه شات كامل لموديل رخيص عن طريق الـ endpoint <b>الرسمي المعلن من المزود نفسه</b> (GLM وKimi عندهم endpoint متوافق مع Claude Code، وOpenRouter/Gemini/Groq/Cerebras مع Codex) وبمفتاحك إنت. شارة حمرا في هيدر الشات بتفكّرك إن الكود ده مش من Claude، ومفتاح Anthropic بتاعك مستحيل يتكتب في إعدادات مزود تاني.</p><div class="where"><b>فين:</b> Settings → Agents &amp; skills → Agent endpoints، والاختيار من زر الموديل في الشات</div></div>
+  </div>
+  <div class="note" style="margin-top:14px"><b>مبدأ ثابت:</b> بنستخدم الـ endpoints اللي المزود نشرها بنفسه ومفتاحك إنت — مفيش انتحال شخصية CLI، ولا تزوير user agent، ولا استخدام كوكيز جلسة. المزود اللي مالوش طريق موثّق، مش مدعوم — بالبساطة دي.</div>
+</section>
+
 <section id="ops">
-  <h2>التشغيل والمراقبة <span class="n">05</span></h2>
+  <h2>التشغيل والمراقبة <span class="n">06</span></h2>
   <p class="sub">تعرف قبل ما العميل يعرف.</p>
   <div class="grid">
     <div class="card"><span class="tag">جديد</span><h3>إشعارات Telegram / Webhook / WhatsApp</h3><p>لما تاسك يخلص أو يفشل أو يحتاجك، وصحة المشاريع، والمهام المجدولة، وإعادة تشغيل المنصة. WhatsApp عبر Meta Cloud API أو CallMeBot.</p><div class="where"><b>فين:</b> Settings → Platform → Notifications</div></div>
     <div class="card"><span class="tag">جديد</span><h3>مؤشر صحة المشروع</h3><p>نقطة ملونة جنب كل مشروع: ذاكرة، الـ preview بيرد؟ مع تنبيه عند التغير (بدون spam).</p><div class="where"><b>فين:</b> القائمة الجانبية + هيدر المشروع</div></div>
     <div class="card"><span class="tag">جديد</span><h3><code>/healthz</code> + heartbeat</h3><p>نقطة صحة عامة للمراقبة الخارجية (UptimeRobot) وheartbeat لـ healthchecks.io — عشان لو السيرفر وقع تعرف من بره.</p><div class="where"><b>فين:</b> Settings → System → Monitoring</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>مراقبة مستمرة لمواقع العملاء</h3><p>ضيف مواقع عملائك بلينك، والمنصة تفحصها كل فترة: الموقع رد؟ الشهادة قربت تخلص؟ الصفحة اتغيرت؟ كلمة زي "Database error" ظهرت؟ — من غير ما تصرف توكن واحد، والتنبيه بيوصلك على Telegram/WhatsApp.</p><div class="where"><b>فين:</b> Settings → Insights → Client sites</div></div>
+    <div class="card"><span class="tag">جديد</span><h3>MCP servers للوكلاء</h3><p>سجل مركزي لأدوات MCP (ملفات، بحث، قواعد بيانات، APIs) تتحقن في كونتينرات المشاريع اللي تختارها، مع اختبار handshake وقيم من الـ Secrets vault — عشان الوكيل يشتغل بأدوات حقيقية مش نص بس.</p><div class="where"><b>فين:</b> Settings → Agents &amp; skills → MCP servers</div></div>
     <div class="card"><span class="tag">جديد</span><h3>إصلاحات على مستوى الاستضافة</h3><p>Playwright في الـ base image، حل انقطاع lxc عند قفل SSH (linger)، slugs آمنة للشهادات، WordPress خلف الـ proxy، swap تلقائي، وقت إنشاء الكونتينر قابل للضبط.</p><div class="where"><b>فين:</b> installer / base image</div></div>
   </div>
 </section>
 
 <section id="ux">
-  <h2>الواجهة <span class="n">06</span></h2>
+  <h2>الواجهة <span class="n">07</span></h2>
   <p class="sub">أبسط وأوضح، وعربي صح.</p>
   <div class="grid">
     <div class="card"><h3>RTL كامل</h3><p>الرسايل والجداول والعناوين والكومبوزر بتتجه حسب اللغة تلقائياً، والكود يفضل LTR.</p></div>
@@ -167,10 +183,10 @@ kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;paddi
   <div class="todo">
     <h2 style="font-size:18px">مستني منك عشان يشتغل بالكامل</h2>
     <ol>
-      <li><b>WhatsApp:</b> ابعت "I allow callmebot to send me messages" لرقم <span dir="ltr">+34 644 66 32 62</span> → apikey → Settings → Notifications → WhatsApp → CallMeBot.</li>
-      <li><b>Telegram:</b> bot token من @BotFather + chat id.</li>
+      <li><b>مفاتيح المزودين المجانيين:</b> اعمل حسابات على Google AI Studio (Gemini) وGroq وCerebras وOpenRouter، وحط كل مفتاح في Settings → AI providers واضغط Test. Gemini أسخى واحد فيهم.</li>
+      <li><b>Kimi:</b> مدعوم أصلاً كوكيل — اربطه من Settings → Agents (مش محتاج كود جديد).</li>
       <li><b>Secrets vault:</b> ضيف <code>GITHUB_TOKEN</code> وSSH target اسمه <code>hestia</code> واضغط Test.</li>
-      <li><b>Codex:</b> اربطه من Settings → Agents عشان المراجعة المتقاطعة.</li>
+      <li><b>Codex:</b> اربطه من Settings → Agents عشان المراجعة المتقاطعة ولاستخدام Gemini/Groq/OpenRouter كوكيل.</li>
       <li><b>WAF على Hestia:</b> allowlist للـ IP <span dir="ltr">191.215.42.26</span> عشان الفحص الأسبوعي يشوف مواقعك.</li>
       <li><b>الترقية:</b> السيرفر 1 vCPU — 2–4 vCPU / 8GB هتفرق مع Autopilot وAuto-test.</li>
     </ol>
@@ -183,17 +199,18 @@ kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;paddi
     <thead><tr><th>Area</th><th>Added</th></tr></thead>
     <tbody>
       <tr><td>Safety</td><td>Project trash (7-day soft delete + DB dump), per-project snapshots/restore, host backup/restore tooling with nightly timer, audit log, resource policy + aggregate memory guard, platform secrets vault with SSH targets</td></tr>
-      <tr><td>Workflow</td><td>Autopilot (keep-going loop with DONE/BLOCKED markers), Playwright auto-test + Test menu, playbooks, slash commands, preview quick access, voice input (Arabic), full-text chat search, command palette</td></tr>
+      <tr><td>Workflow</td><td>Autopilot (keep-going loop with DONE/BLOCKED markers), Playwright auto-test + Test menu, playbooks, slash commands, preview quick access, voice input (Arabic), full-text chat search, command palette, live agent-activity narration, home dashboard, team mode (implementer → reviewer → tester), snippet library + client message templates, GitHub integration, schedule chains with pre-run gates and run history</td></tr>
       <tr><td>Clients</td><td>Public share links, client portal, project templates (WordPress pre-installed, Laravel, Node, Python), usage &amp; cost dashboard + weekly digest, screenshot sharing</td></tr>
       <tr><td>Agents</td><td>Global skills library (guards, Hestia deploy/import, audit, review protocol, Playwright, delegate-skills), reply-language preferences, scheduled audit + reviewer chats</td></tr>
-      <tr><td>Operations</td><td>Telegram/webhook/WhatsApp notifications, project health monitor, /healthz + heartbeat, installer fixes (linger, launch timeout, IDNA-safe slugs, proxy-aware WordPress, swap, Playwright in base image)</td></tr>
+      <tr><td>Models &amp; cost</td><td>Automatic model routing with an operator policy and a savings report; an optional small local model (Ollama) for the platform's own text jobs; a free-tier provider pool (Gemini, Groq, Cerebras, OpenRouter, GLM, Kimi, Mistral, GitHub Models) with priority order, auto-switch on quota exhaustion and per-provider consumption meters; and third-party agent endpoints that point one chat's coding CLI at a vendor's <em>own published</em> compatibility API using the operator's key, isolated per run and badged in red so nobody mistakes whose model wrote the code</td></tr>
+      <tr><td>Operations</td><td>Telegram/webhook/WhatsApp notifications, project health monitor, client-site watch (uptime, TLS expiry, content drift, error strings — no tokens spent), MCP server registry, /healthz + heartbeat, installer fixes (linger, launch timeout, IDNA-safe slugs, proxy-aware WordPress, swap, Playwright in base image)</td></tr>
       <tr><td>UI</td><td>Full RTL, consolidated composer, grouped settings, onboarding, shortcuts overlay, contrast/focus pass</td></tr>
     </tbody>
   </table></div>
-  <p style="color:var(--ink-3);font-size:13px">Upstream PRs #41–#48 (futrx-com/remote.futrx). Everything else lives on the fork <code>mustafzidan74/remote.futrx</code> (branch <code>main</code>, feature branches <code>feat/f1</code>…<code>feat/f23</code>) and is offered as follow-up PRs once the first batch lands.</p>
+  <p style="color:var(--ink-3);font-size:13px">Upstream PRs #41–#48 (futrx-com/remote.futrx). Everything else lives on the fork <code>mustafzidan74/remote.futrx</code> (branch <code>main</code>, feature branches <code>feat/f1</code>…<code>feat/f36</code>) and is offered as follow-up PRs once the first batch lands.</p>
 </section>
 
-<footer>آخر تحديث: 18 أغسطس 2026 · المنصة: <a href="https://mz-ss.tech">mz-ss.tech</a> · الكود: <a href="https://github.com/mustafzidan74/remote.futrx">github.com/mustafzidan74/remote.futrx</a></footer>
+<footer>آخر تحديث: 22 أغسطس 2026 · المنصة: <a href="https://mz-ss.tech">mz-ss.tech</a> · الكود: <a href="https://github.com/mustafzidan74/remote.futrx">github.com/mustafzidan74/remote.futrx</a></footer>
 </div>
 </body>
 </html>
