@@ -6,6 +6,7 @@ import {
 } from "../../ui/settings/SettingsPage";
 import { useAuthContext } from "../../state/context/AuthContext";
 import { useUserSettingsContext } from "../../state/context/UserSettingsContext";
+import { useAntigravityAuth } from "../../state/hooks/auth/useAntigravityAuth";
 import { useUserDirectory } from "../../state/hooks/users/useUserDirectory";
 import { useGlobalSkills } from "../../state/hooks/settings/useGlobalSkills";
 import { usePlaybookLibrary } from "../../state/hooks/settings/usePlaybookLibrary";
@@ -31,6 +32,9 @@ export function SettingsContainer({
   onHamburger: () => void;
 }) {
   const { auth, codexAuth, kimiAuth } = useAuthContext();
+  // Not in the auth context with the others: antigravity has no login for the
+  // context to run, only a status, and only an admin can act on it.
+  const antigravityAuth = useAntigravityAuth(auth.isAdmin);
   const userSettings = useUserSettingsContext();
   const userDirectory = useUserDirectory(auth.isAdmin);
   const { projects, ui } = useWorkspaceContext();
@@ -145,6 +149,9 @@ export function SettingsContainer({
       onReplyLanguageChange={(language) => void userSettings.setReplyLanguage(language)}
       onStartCodexDeviceLogin={codexAuth.startDeviceLogin}
       kimiAuthenticated={kimiAuth.authenticated}
+      antigravityAuthenticated={antigravityAuth.authenticated}
+      antigravityLoading={antigravityAuth.loading}
+      antigravityHint={antigravityAuth.hint}
       kimiDeviceLogin={kimiAuth.deviceLogin}
       kimiLoading={kimiAuth.loading}
       kimiStarting={kimiAuth.starting}

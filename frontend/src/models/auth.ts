@@ -78,3 +78,13 @@ export type ClaudeLoginPhase =
   | "submitting"
   | "done"
   | "error";
+
+/**
+ * Antigravity's status. `external` marks a flow the platform does not drive,
+ * so a settings page renders instructions instead of a Connect button.
+ */
+export interface AntigravityAuthStatus {
+  authenticated: boolean;
+  external: boolean;
+  hint?: string;
+}

@@ -49,6 +49,43 @@ func NewCodeBinding(id agent.ProviderID, service *CodeService) Binding {
 	return binding
 }
 
+// ExternalStatus is what a binding reports for an agent whose sign-in this
+// platform does not drive. There is no login to start and nothing to poll, so
+// it carries the one fact a settings page needs — is there a usable credential
+// — plus the sentence telling an operator how to create one.
+type ExternalStatus struct {
+	Authenticated bool `json:"authenticated"`
+	// External marks the flow as the agent's own, so a UI renders instructions
+	// rather than a Connect button that could not work.
+	External bool   `json:"external"`
+	Hint     string `json:"hint,omitempty"`
+}
+
+// NewExternalBinding describes an agent that signs itself in.
+//
+// Antigravity is the case it exists for: `agy` signs in through a terminal UI
+// that never exits, so it cannot run under the code or device services the
+// other agents share. What the platform *can* do is answer whether a
+// credential has been captured, which is the difference between a settings
+// page that says "not connected" forever and one that tells the truth.
+//
+// authenticated is consulted per call rather than cached: the credential
+// appears on disk when a run in some container succeeds, and nothing notifies
+// this package when it does.
+func NewExternalBinding(id agent.ProviderID, authenticated func() bool, hint string) Binding {
+	binding := Binding{id: id, flow: FlowCode}
+	if authenticated == nil {
+		authenticated = func() bool { return false }
+	}
+	binding.authenticated = authenticated
+	binding.status = func() any {
+		return ExternalStatus{Authenticated: authenticated(), External: true, Hint: hint}
+	}
+	// Deliberately no subscribe: Available() stays false, so the routes that
+	// drive a login are never registered for this binding.
+	return binding
+}
+
 func NewDeviceBinding[S any](id agent.ProviderID, service *DeviceService[S]) Binding {
 	binding := Binding{id: id, flow: FlowDevice}
 	if service == nil {

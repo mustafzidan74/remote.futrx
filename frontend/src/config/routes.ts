@@ -68,6 +68,13 @@ export const API_ROUTES = {
     status: "/api/kimi/auth-status",
     startDeviceLogin: "/api/kimi/login/device",
   },
+  antigravityAuth: {
+    /**
+     * Read-only: antigravity signs itself in through its own terminal UI, so
+     * there is no start/submit route to expose here.
+     */
+    status: "/api/antigravity/auth-status",
+  },
   projects: {
     collection: "/api/projects",
     item: (id: string) => `/api/projects/${encodeURIComponent(id)}`,
