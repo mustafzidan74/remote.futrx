@@ -79,7 +79,14 @@ func NewExternalBinding(id agent.ProviderID, authenticated func() bool, hint str
 	}
 	binding.authenticated = authenticated
 	binding.status = func() any {
-		return ExternalStatus{Authenticated: authenticated(), External: true, Hint: hint}
+		signedIn := authenticated()
+		status := ExternalStatus{Authenticated: signedIn, External: true}
+		// The hint is the sign-in instruction. Sending it alongside
+		// authenticated:true would have the payload contradict itself.
+		if !signedIn {
+			status.Hint = hint
+		}
+		return status
 	}
 	// Deliberately no subscribe: Available() stays false, so the routes that
 	// drive a login are never registered for this binding.
