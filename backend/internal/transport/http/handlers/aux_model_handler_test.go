@@ -145,11 +145,11 @@ func TestAuxModelSettingsRoundTrip(t *testing.T) {
 
 	recorder = httptest.NewRecorder()
 	mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodPut, "/api/admin/aux-model",
-		strings.NewReader(`{"enabled":true,"provider":"ollama","baseUrl":"http://127.0.0.1:11434","model":"qwen2.5:3b","jobs":{"commitMessage":false}}`)))
+		strings.NewReader(`{"enabled":true,"provider":"ollama","baseUrl":"http://127.0.0.1:11434","model":"qwen2.5:3b","jobs":{"commitMessage":"off"}}`)))
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("PUT status = %d, body %s", recorder.Code, recorder.Body.String())
 	}
-	if service.lastInput.Model != "qwen2.5:3b" || service.lastInput.Jobs["commitMessage"] {
+	if service.lastInput.Model != "qwen2.5:3b" || service.lastInput.Jobs["commitMessage"] != "off" {
 		t.Fatalf("the handler forwarded %+v", service.lastInput)
 	}
 }

@@ -27,9 +27,17 @@ turned on without ceremony.
 | **Client message translation** | **Translate to العربية / English** buttons on a client message template | The buttons are not shown |
 | **Chat summaries** | A one-line subtitle under a chat in the sidebar and in the dashboard's Recent activity | No subtitle |
 
-Each job has its own toggle in **Settings → Agents & skills → Local /
-auxiliary model**, and all of them are on once the service itself is on.
-Switching one off restores that feature's original behaviour exactly.
+Each job picks its own route in **Settings → Agents & skills → Local /
+auxiliary model** — **Local**, **Pool**, or **Off** — and all of them start on
+**Local** once the service itself is on. Switching one **Off** restores that
+feature's original behaviour exactly.
+
+**Pool** sends that job through the [free-tier provider pool](26-ai-providers.md)
+instead of your own endpoint: the pool picks a provider, counts what it spent,
+and moves to the next one when a quota runs out. If the pool cannot serve the
+job it silently drops to the local endpoint, and if that cannot either the job
+falls back to the same non-AI behaviour as always. The failover is invisible —
+a chat title does not know which of eight providers wrote it.
 
 ### What the commit-message job is shown
 

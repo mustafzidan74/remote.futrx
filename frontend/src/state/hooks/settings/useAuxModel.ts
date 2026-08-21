@@ -10,7 +10,7 @@ import {
   AUX_MODEL_FALLBACK_DEFAULTS,
   applyProviderChange,
   formFromSettings,
-  toggleJob,
+  setJobSource,
   updateInputFromForm,
   validateAuxModelForm,
   type AuxModelForm,
@@ -28,7 +28,7 @@ export interface AuxModelEditor {
   testResult: AuxModelTestResult | null;
   patch: (next: Partial<AuxModelForm>) => void;
   setProvider: (provider: AuxModelProvider) => void;
-  setJob: (job: string, enabled: boolean) => void;
+  setJob: (job: string, source: string) => void;
   save: (event: Event) => Promise<void>;
   clearApiKey: () => Promise<void>;
   runTest: () => Promise<void>;
@@ -115,7 +115,7 @@ export function useAuxModel(active: boolean): AuxModelEditor {
     },
     setProvider: (provider) =>
       setForm((current) => applyProviderChange(current, provider, defaults)),
-    setJob: (job, enabled) => setForm((current) => toggleJob(current, job, enabled)),
+    setJob: (job, source) => setForm((current) => setJobSource(current, job, source)),
     save: async (event: Event) => {
       event.preventDefault();
       await submit();

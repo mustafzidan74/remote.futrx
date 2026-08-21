@@ -22,6 +22,7 @@ import (
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
 	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
+	serviceproviderpool "github.com/futrx-com/remote.futrx.com/internal/service/providerpool"
 	servicerouting "github.com/futrx-com/remote.futrx.com/internal/service/routing"
 	servicescreenshot "github.com/futrx-com/remote.futrx.com/internal/service/screenshot"
 	servicesearch "github.com/futrx-com/remote.futrx.com/internal/service/search"
@@ -196,6 +197,14 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			auxModelService(deps.Services.AuxModel),
 			deps.Services.Auth,
 		),
+		// The free-tier provider pool: the registry of connected API
+		// providers, their consumption meters, and the bulk lane. A
+		// deployment with no registry store reports 503 here rather than
+		// losing the routes.
+		Providers: httphandlers.NewProviderPoolHandler(
+			providerPoolService(deps.Services.Providers),
+			deps.Services.Auth,
+		).WithAudit(auditLog),
 		// The client-site watcher. Reads are open to any signed-in user and
 		// filtered by the service; every write is admin-only.
 		SiteWatch: httphandlers.NewSiteWatchHandler(
@@ -377,6 +386,16 @@ func chatTitleGenerator(driver *service.AuxJobDriver) httphandlers.ChatTitleGene
 		return nil
 	}
 	return driver
+}
+
+// providerPoolService narrows the concrete provider pool to the transport's
+// interface while keeping a nil service nil, so the routes report 503 instead
+// of panicking on a deployment without a registry store.
+func providerPoolService(service *serviceproviderpool.Service) httphandlers.ProviderPoolService {
+	if service == nil {
+		return nil
+	}
+	return service
 }
 
 // siteWatchService narrows the concrete client-site watcher to the

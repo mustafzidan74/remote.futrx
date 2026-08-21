@@ -336,6 +336,41 @@ func (s *Service) ValuesForProject(
 	return values, nil
 }
 
+// PlatformValue returns the value behind one `env` key for the platform
+// itself rather than for a project — today, the free-tier provider pool
+// resolving a provider's apiKeyRef.
+//
+// It is a different axis from ValuesForProject, not a wider version of it.
+// That one is reachable from the container-materialization path and is
+// therefore scoped to what a project may already read; this one is reachable
+// only from admin-gated platform code that never echoes a value back, so it
+// resolves a key whatever its project scope. Scope answers "which containers
+// get this", and a key the operator stored for the platform's own use may
+// legitimately be scoped to no project at all.
+//
+// A missing key is ("", false, nil): a provider whose vault entry has been
+// deleted is skipped like any other keyless provider, not an error.
+func (s *Service) PlatformValue(ctx context.Context, key string) (string, bool, error) {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return "", false, nil
+	}
+	secrets, err := s.load(ctx)
+	if err != nil {
+		return "", false, err
+	}
+	for _, secret := range secrets {
+		if secret.Kind != KindEnv || secret.Key != key {
+			continue
+		}
+		if secret.Value == "" {
+			return "", false, nil
+		}
+		return secret.Value, true, nil
+	}
+	return "", false, nil
+}
+
 // InheritedForProject lists what the vault contributes to one project.
 func (s *Service) InheritedForProject(
 	ctx context.Context,

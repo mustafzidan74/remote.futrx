@@ -102,7 +102,7 @@ func TestNormalizeFillsAndClamps(t *testing.T) {
 func TestJobSettingsDefaultToOn(t *testing.T) {
 	// A document written before a job existed must not switch that job off for
 	// everybody: an absent key means "on", not "false".
-	partial := JobSettings{JobChatTitle: false}
+	partial := JobSettings{JobChatTitle: SourceOff}
 	normalized := partial.Normalize()
 
 	if normalized.Enabled(JobChatTitle) {
@@ -204,7 +204,7 @@ func TestApplyPatchesOneJobToggleWithoutTouchingTheRest(t *testing.T) {
 		Provider: ProviderOllama,
 		BaseURL:  DefaultOllamaBaseURL,
 		Model:    DefaultModel,
-		Jobs:     map[string]bool{string(JobCommitMessage): false, "not-a-job": false},
+		Jobs:     map[string]string{string(JobCommitMessage): string(SourceOff), "not-a-job": string(SourceOff)},
 	})
 
 	if next.Jobs.Enabled(JobCommitMessage) {
@@ -321,7 +321,7 @@ func TestClientConfigHidesTheEndpointAndReportsPerJobAvailability(t *testing.T) 
 		BaseURL:  "https://api.example.com",
 		Model:    "gpt-4o-mini",
 		APIKey:   "sk-abcdefgh",
-		Jobs:     JobSettings{JobTranslate: false},
+		Jobs:     JobSettings{JobTranslate: SourceOff},
 	}.Normalize()
 
 	client := config.Client()

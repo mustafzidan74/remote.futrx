@@ -185,8 +185,8 @@ func TestRunSettledDoesNothingWhenTheModelCannotHelp(t *testing.T) {
 	const firstPrompt = "fix the login loop"
 	disabledTitles := auxEnabledConfig()
 	disabledTitles.Jobs = serviceauxmodel.JobSettings{
-		serviceauxmodel.JobChatTitle:   false,
-		serviceauxmodel.JobChatSummary: false,
+		serviceauxmodel.JobChatTitle:   serviceauxmodel.SourceOff,
+		serviceauxmodel.JobChatSummary: serviceauxmodel.SourceOff,
 	}
 
 	tests := []struct {

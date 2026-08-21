@@ -3,6 +3,7 @@ import type { Dashboard as DashboardData } from "../../state/hooks/home/useDashb
 import { formatBytes, formatRelative, type StatusTone } from "../../state/home/dashboardState";
 import { Meter } from "../primitives/Meter";
 import { TONE_DOT, TONE_TEXT } from "./DashboardCard";
+import { AiProvidersCard } from "./AiProvidersCard";
 import { AttentionCard } from "./AttentionCard";
 import { ClientSitesCard } from "./ClientSitesCard";
 import { KpiTiles } from "./KpiTiles";
@@ -176,6 +177,7 @@ export function Dashboard({
               now={now}
               onOpenSettings={() => handlers.openSettings("client-sites")}
             />
+            <AiProvidersCard onOpenSettings={() => handlers.openSettings("ai-providers")} />
           </div>
 
           <UsageCard

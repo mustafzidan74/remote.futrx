@@ -16,6 +16,7 @@ import (
 	serviceplaybooks "github.com/futrx-com/remote.futrx.com/internal/service/playbooks"
 	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
+	serviceproviderpool "github.com/futrx-com/remote.futrx.com/internal/service/providerpool"
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
 	servicerouting "github.com/futrx-com/remote.futrx.com/internal/service/routing"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
@@ -45,6 +46,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectaccess"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectsecrets"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectshares"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/fileproviderpool"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileresources"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filerouting"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileschedule"
@@ -98,6 +100,11 @@ type Stores struct {
 	Transcription servicetranscribe.Store
 	Audit         serviceaudit.Store
 	AuxModel      serviceauxmodel.Store
+	// Providers is the free-tier provider pool registry; ProviderUsage is the
+	// append-only ledger beside it. Either one nil leaves the pool
+	// unavailable rather than half-wired.
+	Providers     serviceproviderpool.Store
+	ProviderUsage serviceproviderpool.UsageLog
 	// SiteWatch backs the always-on watcher for the operator's client
 	// websites: the catalog plus one append-only check log per site.
 	SiteWatch servicesitewatch.Store
@@ -185,6 +192,14 @@ func New(dataDir string) (Stores, error) {
 	if err != nil {
 		return Stores{}, fmt.Errorf("init auxiliary model settings store: %w", err)
 	}
+	providers, err := fileproviderpool.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init provider pool registry store: %w", err)
+	}
+	providerUsage, err := fileproviderpool.NewUsageLog(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init provider pool usage store: %w", err)
+	}
 	siteWatch, err := filesitewatch.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init client site store: %w", err)
@@ -251,6 +266,8 @@ func New(dataDir string) (Stores, error) {
 		Notifications:    notifications,
 		Monitoring:       monitoring,
 		AuxModel:         auxModel,
+		Providers:        providers,
+		ProviderUsage:    providerUsage,
 		SiteWatch:        siteWatch,
 		Playbooks:        playbooks,
 		Snippets:         snippets,
