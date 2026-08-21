@@ -59,7 +59,7 @@ func NewProvisioner(
 
 // Provision applies launch-time capabilities in their stable order.
 func (p *Provisioner) Provision(ctx context.Context, containerName, displayName string) {
-	_ = p.credentials.EnsureRegistered(ctx, containerName)
+	p.ProvisionCredentials(ctx, containerName)
 	_ = p.workspace.EnsureSkillLinks(ctx, containerName)
 	_ = p.browser.EnsureScript(ctx, containerName)
 	_ = p.browser.EnsureSkill(ctx, containerName)
@@ -68,4 +68,23 @@ func (p *Provisioner) Provision(ctx context.Context, containerName, displayName 
 		_ = p.scheduleTools.Ensure(ctx, containerName)
 	}
 	_ = p.codeServer.Ensure(ctx, containerName, displayName)
+}
+
+// ProvisionCredentials seeds agent credentials alone.
+//
+// It is separate from Provision because the two answer different questions.
+// The rest of provisioning migrates a container's contents and only needs to
+// run when the container is new or its configuration changed; credentials
+// change *outside* any container, whenever an operator signs an agent in, and
+// a container that was already running when that happened would otherwise
+// never learn about it. Seeding on every start is what makes "sign in once"
+// true for projects that already exist.
+//
+// It is cheap to repeat: each file is pushed only when the host copy is newer
+// than the container's.
+func (p *Provisioner) ProvisionCredentials(ctx context.Context, containerName string) {
+	if p.credentials == nil {
+		return
+	}
+	_ = p.credentials.EnsureRegistered(ctx, containerName)
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
@@ -134,6 +135,10 @@ type recordingProvisioner struct{ events *[]string }
 
 func (p recordingProvisioner) Provision(_ context.Context, container, name string) {
 	*p.events = append(*p.events, "provision "+container+" "+name)
+}
+
+func (p recordingProvisioner) ProvisionCredentials(_ context.Context, container string) {
+	*p.events = append(*p.events, "provision-credentials "+container)
 }
 
 func testProject(t *testing.T) serviceproject.Meta {
@@ -319,5 +324,36 @@ func TestEnsureReportsProvisioningAndRollbackFailures(t *testing.T) {
 	err := newTestService(runtime, &events).Ensure(context.Background(), testProject(t))
 	if !errors.Is(err, attachErr) || !errors.Is(err, deleteErr) {
 		t.Fatalf("error = %v, want joined attachment and rollback failures", err)
+	}
+}
+
+// TestCredentialsAreSeededOnEveryStart covers the start that provisions
+// nothing else.
+//
+// A container that is already created and whose devices are unchanged skips
+// provisioning, which is right for migrations and wrong for credentials: an
+// agent signed in after that container was created has a credential the
+// container has never seen. Before this, "sign in once" only held for projects
+// created afterwards, and an operator was left recreating a project to pick up
+// a sign-in.
+func TestCredentialsAreSeededOnEveryStart(t *testing.T) {
+	var events []string
+	project := testProject(t)
+	runtime := &recordingRuntime{
+		events: &events, available: true, state: serviceproject.ContainerStateRunning,
+		devices: expectedDisks(project),
+	}
+
+	if err := newTestService(runtime, &events).Ensure(context.Background(), project); err != nil {
+		t.Fatalf("Ensure() = %v", err)
+	}
+
+	if !slices.Contains(events, "provision-credentials project-1") {
+		t.Errorf("credentials were not seeded on a start with no changes: %q", events)
+	}
+	for _, event := range events {
+		if strings.HasPrefix(event, "provision project-1") {
+			t.Errorf("full provisioning ran on an unchanged container: %q", events)
+		}
 	}
 }
