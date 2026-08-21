@@ -17,6 +17,7 @@ package agentendpoint
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -28,15 +29,21 @@ import (
 )
 
 const (
-	// probeTimeout bounds one probe. A third-party endpoint under load can be
-	// slow to first token, so this is more generous than the MCP handshake's
-	// budget but still short of a real turn.
-	probeTimeout = 120 * time.Second
-
 	// probeOutputLimit bounds what a misbehaving endpoint can push back
 	// through the Test action. The service truncates again after masking.
 	probeOutputLimit = 8000
 )
+
+// ErrProbeTimedOut says the probe hit its deadline rather than failing. It is
+// its own error so a caller can tell "no answer yet" from "the endpoint said
+// no", which read the same in a bare timeout message.
+var ErrProbeTimedOut = errors.New("the probe timed out")
+
+// probeTimeout bounds one probe. A third-party endpoint under load can be slow
+// to first token, so this is more generous than the MCP handshake's budget but
+// still short of a real turn. A var rather than a const so a test can shorten
+// it instead of sleeping through two real minutes.
+var probeTimeout = 120 * time.Second
 
 // Client runs probes through the container runtime CLI.
 type Client struct {
@@ -88,7 +95,22 @@ func (c *Client) Probe(
 	probeCtx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
 	out, err := c.runner.RunStdin(probeCtx, strings.NewReader(probe.Prompt), args...)
-	return output.TruncateTail(strings.TrimSpace(out), probeOutputLimit), err
+	text := output.TruncateTail(strings.TrimSpace(out), probeOutputLimit)
+
+	// A CLI that a third-party endpoint has rejected does not exit: it retries
+	// the refusal quietly until something kills it, so the probe hits its
+	// deadline having printed nothing useful. Saying "no answer in 2m" leaves
+	// the operator guessing at a network problem; naming the likely cause
+	// points them at the key, which is what it almost always is.
+	if probeCtx.Err() != nil && ctx.Err() == nil {
+		return text, fmt.Errorf(
+			"%w after %s — the CLI kept retrying instead of answering, "+
+				"which usually means the endpoint rejected the key or does not "+
+				"serve the requested model",
+			ErrProbeTimedOut, probeTimeout,
+		)
+	}
+	return text, err
 }
 
 // commandLine renders the CLI invocation for one probe.

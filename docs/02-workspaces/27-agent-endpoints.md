@@ -146,6 +146,35 @@ A project secret whose name collides with an endpoint variable is also
 dropped for that run, so a project cannot redirect a run the platform pointed
 somewhere specific, nor substitute its own credential.
 
+### Does the injected token really win over an existing login?
+
+For the `claude` CLI this was the one thing the design could not settle by
+reading code: `/root/.claude` is a per-project bind mount, so a container
+whose operator has already logged in carries a `.credentials.json`, and
+whether the CLI prefers that file or `ANTHROPIC_AUTH_TOKEN` is the vendor's
+own behaviour.
+
+Measured on this platform (claude CLI, container `wp-test`, endpoint pointed
+at Zhipu with a deliberately wrong key), the CLI answered:
+
+```
+⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another
+  auth source is set and takes precedence over your claude.ai login
+```
+
+So the injected token wins, which is what this feature needs: a chat pinned
+to an endpoint cannot silently fall back to spending the operator's Anthropic
+subscription. Re-check it after a CLI upgrade — if a future version reverses
+the order, the fix is a per-run `CLAUDE_CONFIG_DIR` pointing at a scratch
+directory, which keeps the login file out of reach entirely.
+
+Note what the same test showed about failures: a CLI whose key the endpoint
+rejects does **not** exit. It retries quietly, prints nothing useful, and is
+still going two minutes later. That is why Test reports a timeout as *"the
+CLI kept retrying instead of answering, which usually means the endpoint
+rejected the key or does not serve the requested model"* rather than as a
+network error.
+
 ## Selection precedence
 
 A chat stores one field: `endpointId` in its meta (empty = the vendor's own
