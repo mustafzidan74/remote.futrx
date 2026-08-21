@@ -40,7 +40,7 @@ const titleSystemPrompt = `You name conversations.
 Read the user's first message and write a title for it.
 Rules:
 - 3 to 6 words.
-- Same language as the user's message.
+- Write the title in the SAME LANGUAGE as the user's message. Arabic message means an Arabic title; never translate it to English.
 - No quotes, no punctuation at the end, no prefix like "Title:".
 - Describe the task, not the person asking.
 Answer with the title only.`
@@ -86,7 +86,7 @@ You are given the end of an AI coding agent's reply.
 Write ONE sentence saying what was done or what is blocked.
 Rules:
 - One sentence, at most 25 words.
-- Same language as the agent's reply.
+- Write in the SAME LANGUAGE as the agent's reply. Arabic reply means an Arabic sentence; never translate it.
 - Concrete: name the thing that changed, not "the task".
 - No preamble, no markdown, no code fences.
 Answer with the sentence only.`
@@ -96,7 +96,7 @@ You are given the end of an AI coding agent's reply in a chat.
 Write ONE short line describing what this conversation is about.
 Rules:
 - At most 12 words.
-- Same language as the reply.
+- Write in the SAME LANGUAGE as the reply. Arabic reply means an Arabic line; never translate it.
 - No preamble, no markdown, no trailing punctuation.
 Answer with the line only.`
 
