@@ -29,6 +29,7 @@ import { ClientSitesSettings } from "./ClientSitesSettings";
 import { ClaudeAuthSettings } from "./ClaudeAuthSettings";
 import { CodexAuthSettings } from "./CodexAuthSettings";
 import { KimiAuthSettings } from "./KimiAuthSettings";
+import { AntigravityAuthSettings } from "./AntigravityAuthSettings";
 import { GoogleOAuthSettings } from "./GoogleOAuthSettings";
 import { MonitoringSettings } from "./MonitoringSettings";
 import { NotificationsSettings } from "./NotificationsSettings";
@@ -317,6 +318,9 @@ export function SettingsPage({
   codexStarting,
   codexError,
   kimiAuthenticated,
+  antigravityAuthenticated,
+  antigravityLoading,
+  antigravityHint,
   kimiDeviceLogin,
   kimiLoading,
   kimiStarting,
@@ -379,6 +383,9 @@ export function SettingsPage({
   codexStarting: boolean;
   codexError: string | null;
   kimiAuthenticated: boolean;
+  antigravityAuthenticated: boolean;
+  antigravityLoading: boolean;
+  antigravityHint?: string;
   kimiDeviceLogin?: KimiDeviceLogin;
   kimiLoading: boolean;
   kimiStarting: boolean;
@@ -491,6 +498,11 @@ export function SettingsPage({
                       starting={kimiStarting}
                       error={kimiError}
                       onStartDeviceLogin={onStartKimiDeviceLogin}
+                    />
+                    <AntigravityAuthSettings
+                      authenticated={antigravityAuthenticated}
+                      loading={antigravityLoading}
+                      hint={antigravityHint}
                     />
                   </div>
                 </div>

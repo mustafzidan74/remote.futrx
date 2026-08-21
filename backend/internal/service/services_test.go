@@ -86,11 +86,10 @@ func TestNewRejectsPartialAgentContainerDependencies(t *testing.T) {
 }
 
 func TestAgentProfilesComeFromRegistrationCatalog(t *testing.T) {
-	// antigravity's CLI owns its auth (OS keyring / per-home token fallback
-	// with no stable token path), so it is the one profile allowed to ship
-	// without a credential sync policy — sign-in happens in the chat terminal.
-	credentialExempt := map[string]bool{"antigravity": true}
-
+	// Every agent now carries a credential policy, antigravity included: its
+	// sign-in still happens in a chat terminal, but the resulting token is
+	// pulled to the host and seeded into the other containers, so there is no
+	// longer a profile that ships without one.
 	profiles := AgentProfiles()
 	ids := make([]string, 0, len(profiles))
 	for _, profile := range profiles {
@@ -105,7 +104,7 @@ func TestAgentProfilesComeFromRegistrationCatalog(t *testing.T) {
 		} else if profile.CLI.PackageName == "" {
 			t.Fatalf("profile %q has incomplete CLI policy: %#v", profile.ID, profile.CLI)
 		}
-		if profile.Credentials.Empty() && !credentialExempt[profile.ID] {
+		if profile.Credentials.Empty() {
 			t.Fatalf("profile %q has no credential policy", profile.ID)
 		}
 	}

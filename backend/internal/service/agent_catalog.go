@@ -55,11 +55,17 @@ func agentDefinitions() []agentDefinition {
 				return antigravityagent.New(projects, containerDeps)
 			},
 			// agy's bare-launch sign-in never exits its TUI, so it cannot run
-			// under the shared code/device auth services. The binding is
-			// registered without a service (reports unavailable); sign-in is a
-			// one-time `agy` run in the chat terminal per workspace.
+			// under the shared code/device auth services: there is no Connect
+			// button this platform could honour. Sign-in is a one-time `agy`
+			// run in a chat terminal — one, not one per project, because the
+			// credential is pulled to the host afterwards and seeded into every
+			// container. The binding reports whether that has happened.
 			authBinding: func() agentauth.Binding {
-				return agentauth.NewCodeBinding(agent.ProviderAntigravity, nil)
+				return agentauth.NewExternalBinding(
+					agent.ProviderAntigravity,
+					antigravityagent.Authenticated,
+					antigravityagent.SignInHint,
+				)
 			},
 		},
 	}
