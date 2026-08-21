@@ -22,6 +22,7 @@ export function ChatThread({
   error,
   composer,
   policies,
+  endpointBadge,
   showJump,
   scrollRef,
   contentRef,
@@ -50,6 +51,11 @@ export function ChatThread({
   error: string | null;
   composer: ChatComposerProps;
   policies: ChatPolicies;
+  /**
+   * Set when this chat runs against a third-party agent endpoint, so the
+   * header can say whose model is answering. Null on every ordinary chat.
+   */
+  endpointBadge?: { short: string; title: string } | null;
   showJump: boolean;
   scrollRef: RefObject<HTMLDivElement>;
   contentRef: RefObject<HTMLDivElement>;
@@ -76,6 +82,7 @@ export function ChatThread({
           streaming={composer.streaming}
           activity={activity}
           policies={policies}
+          endpointBadge={endpointBadge}
           onHamburger={onHamburger}
           onOpenAgentBrowser={onOpenAgentBrowser}
           onOpenCompanionChat={onOpenCompanionChat}

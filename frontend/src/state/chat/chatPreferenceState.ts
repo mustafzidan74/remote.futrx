@@ -17,6 +17,8 @@ export interface ResolvedChatMeta extends ChatMeta {
   reasoningEffort: ReasoningEffort;
   serviceTier: ServiceTier;
   modelPolicy: ChatModelPolicy;
+  /** "" when the chat runs on its vendor's own endpoint, which is the default. */
+  endpointId: string;
 }
 
 class ChatPreferenceState {
@@ -48,6 +50,10 @@ class ChatPreferenceState {
       // is the default for a new one: the model the user picked is the model
       // that runs until they ask for Auto.
       modelPolicy: baseMeta.modelPolicy === "auto" ? "auto" : "pinned",
+      // Deliberately not defaulted from the user's chat settings: pointing a
+      // chat at a third party is a decision about one piece of work, never
+      // something a new chat should inherit silently.
+      endpointId: baseMeta.endpointId ?? "",
     };
   }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/googleoauth"
 	agentauth "github.com/futrx-com/remote.futrx.com/internal/service/agent/auth"
+	serviceendpoints "github.com/futrx-com/remote.futrx.com/internal/service/agentendpoints"
 	serviceagentprefs "github.com/futrx-com/remote.futrx.com/internal/service/agentprefs"
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
@@ -142,6 +143,12 @@ type Dependencies struct {
 	// MCPContainers is the container port the registry materializes and
 	// probes through. Nil leaves entries stored but never pushed anywhere.
 	MCPContainers servicemcp.Containers
+	// AgentEndpoints is the register of third-party, vendor-published agent
+	// endpoints, and AgentEndpointContainers the port its Test probe runs
+	// through. A nil store leaves every chat on its vendor's own endpoint,
+	// which is what the platform did before the register existed.
+	AgentEndpoints          serviceendpoints.Store
+	AgentEndpointContainers serviceendpoints.Containers
 	// SSHProber runs the host-side connectivity check for an SSH target.
 	SSHProber        serviceglobalsecrets.SSHProber
 	Usage            serviceusage.Repository
@@ -248,30 +255,31 @@ type Services struct {
 	// AuxJobs drives the chat-shaped auxiliary jobs (a better title, the
 	// search subtitle) off settled runs, and serves the "rename this chat"
 	// action. Nil on a deployment with no auxiliary model store.
-	AuxJobs       *AuxJobDriver
-	SiteWatch     *servicesitewatch.Service
-	Transcription *servicetranscribe.Service
-	Playbooks     *serviceplaybooks.Service
-	Snippets      *servicesnippets.Service
-	AgentPrefs    *serviceagentprefs.Service
-	Search        *servicesearch.Service
-	GlobalSecrets *serviceglobalsecrets.Service
-	MCP           *servicemcp.Service
-	GitHub        *servicegithub.Service
-	Skills        *serviceskills.Catalog
-	Tmux          *servicetmux.Service
-	Access        *serviceauth.AccessVerifier
-	GlobalSkills  *serviceskills.GlobalService
-	Usage         *serviceusage.Service
-	Resources     *serviceresources.Service
-	ModelRouting  *servicerouting.Service
-	Audit         *serviceaudit.Service
-	Health        *servicehealth.Service
-	Snapshots     *servicesnapshot.Service
-	Screenshots   *servicescreenshot.Service
-	PostRun       *servicepostrun.Driver
-	Team          *serviceteam.Driver
-	Dashboard     *servicedashboard.Service
+	AuxJobs        *AuxJobDriver
+	SiteWatch      *servicesitewatch.Service
+	Transcription  *servicetranscribe.Service
+	Playbooks      *serviceplaybooks.Service
+	Snippets       *servicesnippets.Service
+	AgentPrefs     *serviceagentprefs.Service
+	Search         *servicesearch.Service
+	GlobalSecrets  *serviceglobalsecrets.Service
+	MCP            *servicemcp.Service
+	AgentEndpoints *serviceendpoints.Service
+	GitHub         *servicegithub.Service
+	Skills         *serviceskills.Catalog
+	Tmux           *servicetmux.Service
+	Access         *serviceauth.AccessVerifier
+	GlobalSkills   *serviceskills.GlobalService
+	Usage          *serviceusage.Service
+	Resources      *serviceresources.Service
+	ModelRouting   *servicerouting.Service
+	Audit          *serviceaudit.Service
+	Health         *servicehealth.Service
+	Snapshots      *servicesnapshot.Service
+	Screenshots    *servicescreenshot.Service
+	PostRun        *servicepostrun.Driver
+	Team           *serviceteam.Driver
+	Dashboard      *servicedashboard.Service
 }
 
 func New(ctx context.Context, deps Dependencies) (Services, error) {
@@ -419,6 +427,24 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		}
 		mcpService = servicemcp.New(deps.MCPServers, deps.ProjectMCP, mcpOptions...)
 		deps.AgentContainers.MCP = mcpProvisioner{mcp: mcpService}
+	}
+	// The third-party agent endpoint register is built here too, for the same
+	// reason: the prompt service resolves a chat's endpoint on the run path,
+	// so the register has to exist before that service is composed.
+	var agentEndpointService *serviceendpoints.Service
+	if deps.AgentEndpoints != nil {
+		endpointOptions := []serviceendpoints.Option{
+			serviceendpoints.WithAudit(auditLog),
+			serviceendpoints.WithContainers(deps.AgentEndpointContainers),
+			serviceendpoints.WithProjects(agentEndpointTargets{projects: projectService}),
+		}
+		if globalSecrets != nil {
+			endpointOptions = append(
+				endpointOptions,
+				serviceendpoints.WithSecrets(agentEndpointSecrets{secrets: globalSecrets}),
+			)
+		}
+		agentEndpointService = serviceendpoints.New(deps.AgentEndpoints, endpointOptions...)
 	}
 	agents := agent.NewRegistry()
 	agentAuth := agentauth.NewRegistry()
@@ -605,6 +631,12 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	if routingService != nil {
 		promptOptions = append(promptOptions, prompt.WithModelRouter(routingService))
 	}
+	if agentEndpointService != nil {
+		promptOptions = append(
+			promptOptions,
+			prompt.WithAgentEndpoints(agentEndpointRuntime{endpoints: agentEndpointService}),
+		)
+	}
 	promptService = prompt.New(
 		chats,
 		deps.TmuxClient,
@@ -776,44 +808,45 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		deps.TrashRetention,
 	)
 	return Services{
-		Skills:        skillCatalog,
-		Access:        accessVerifier,
-		ChatAccess:    chatAccessService,
-		Shares:        shareService,
-		Portals:       portalService,
-		Prompt:        promptService,
-		ScheduleCaps:  scheduleCaps,
-		AgentAuth:     agentAuth,
-		Workspace:     workspace,
-		Auth:          authService,
-		Users:         userService,
-		UserSettings:  userSettingsService,
-		Notifications: notifications,
-		Monitoring:    monitoringService,
-		AuxModel:      auxModel,
-		Providers:     providerPool,
-		AuxJobs:       auxJobs,
-		SiteWatch:     siteWatchService,
-		Transcription: transcription,
-		Playbooks:     playbookService,
-		Snippets:      snippetService,
-		AgentPrefs:    agentPreferences,
-		Search:        searchService,
-		GlobalSecrets: globalSecrets,
-		MCP:           mcpService,
-		GitHub:        gitHubService,
-		Tmux:          tmuxService,
-		GlobalSkills:  globalSkillService,
-		Usage:         usageService,
-		ModelRouting:  routingService,
-		Resources:     resourceService,
-		Audit:         auditLog,
-		Health:        healthService,
-		Snapshots:     snapshotService,
-		Screenshots:   screenshotService,
-		PostRun:       postRunDriver,
-		Team:          teamDriver,
-		Dashboard:     dashboardService,
+		Skills:         skillCatalog,
+		Access:         accessVerifier,
+		ChatAccess:     chatAccessService,
+		Shares:         shareService,
+		Portals:        portalService,
+		Prompt:         promptService,
+		ScheduleCaps:   scheduleCaps,
+		AgentAuth:      agentAuth,
+		Workspace:      workspace,
+		Auth:           authService,
+		Users:          userService,
+		UserSettings:   userSettingsService,
+		Notifications:  notifications,
+		Monitoring:     monitoringService,
+		AuxModel:       auxModel,
+		Providers:      providerPool,
+		AuxJobs:        auxJobs,
+		SiteWatch:      siteWatchService,
+		Transcription:  transcription,
+		Playbooks:      playbookService,
+		Snippets:       snippetService,
+		AgentPrefs:     agentPreferences,
+		Search:         searchService,
+		GlobalSecrets:  globalSecrets,
+		MCP:            mcpService,
+		AgentEndpoints: agentEndpointService,
+		GitHub:         gitHubService,
+		Tmux:           tmuxService,
+		GlobalSkills:   globalSkillService,
+		Usage:          usageService,
+		ModelRouting:   routingService,
+		Resources:      resourceService,
+		Audit:          auditLog,
+		Health:         healthService,
+		Snapshots:      snapshotService,
+		Screenshots:    screenshotService,
+		PostRun:        postRunDriver,
+		Team:           teamDriver,
+		Dashboard:      dashboardService,
 	}, nil
 }
 
@@ -991,6 +1024,65 @@ func (a mcpSecretsAdapter) ValuesForProject(
 	keys []string,
 ) (map[string]string, error) {
 	return a.secrets.ValuesForProject(ctx, projectID, keys)
+}
+
+// agentEndpointRuntime is the run path's face of the endpoint register:
+// the prompt service asks only "render this profile for this run", never how
+// a vendor's compatibility mode is spelled.
+type agentEndpointRuntime struct {
+	endpoints *serviceendpoints.Service
+}
+
+func (a agentEndpointRuntime) RuntimeFor(
+	ctx context.Context,
+	endpointID, model string,
+) (agent.Endpoint, error) {
+	runtime, err := a.endpoints.RuntimeFor(ctx, endpointID, model)
+	if err != nil {
+		return agent.Endpoint{}, err
+	}
+	return agent.Endpoint{
+		ID:    runtime.ID,
+		Label: runtime.Label,
+		CLI:   agent.ProviderID(runtime.CLI),
+		Model: runtime.Model,
+		Env:   runtime.Env,
+		Args:  runtime.Args,
+	}, nil
+}
+
+// agentEndpointSecrets narrows the vault to the one read the endpoint
+// register makes: the value behind a platform-wide key, on the run and probe
+// paths only.
+type agentEndpointSecrets struct {
+	secrets *serviceglobalsecrets.Service
+}
+
+func (a agentEndpointSecrets) PlatformValues(
+	ctx context.Context,
+	keys []string,
+) (map[string]string, error) {
+	return a.secrets.PlatformValues(ctx, keys)
+}
+
+// agentEndpointTargets resolves a project to its container for the Test probe.
+type agentEndpointTargets struct {
+	projects *serviceproject.Service
+}
+
+func (t agentEndpointTargets) EndpointTarget(
+	ctx context.Context,
+	projectID string,
+) (serviceendpoints.Target, error) {
+	meta, err := t.projects.Get(ctx, serviceproject.ID(projectID))
+	if err != nil {
+		return serviceendpoints.Target{}, err
+	}
+	return serviceendpoints.Target{
+		ProjectID:     projectID,
+		ContainerName: meta.ContainerName,
+		Running:       meta.Status == serviceproject.StatusRunning,
+	}, nil
 }
 
 // mcpProjectTargets resolves a project to its container for the Test probe.

@@ -12,6 +12,7 @@ import { usePlaybookLibrary } from "../../state/hooks/settings/usePlaybookLibrar
 import { useAgentPreferences } from "../../state/hooks/settings/useAgentPreferences";
 import { useSecretsVault } from "../../state/hooks/settings/useSecretsVault";
 import { useMCPServers } from "../../state/hooks/settings/useMCPServers";
+import { useAgentEndpoints } from "../../state/hooks/settings/useAgentEndpoints";
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
 import { useAuditLog } from "../../state/hooks/admin/useAuditLog";
 import { useProjectTrash } from "../../state/hooks/admin/useProjectTrash";
@@ -50,10 +51,14 @@ export function SettingsContainer({
   const modelRouting = useModelRouting(activeTab === "model-routing" && auth.isAdmin);
   // The vault is also read on the MCP tab: an MCP entry references a vault
   // key, so the secret-ref picker needs the same list the vault screen shows.
+  // An agent endpoint references a vault key the same way an MCP entry does,
+  // so its editor needs the same list.
   const secretsVault = useSecretsVault(
-    (activeTab === "secrets" || activeTab === "mcp") && auth.isAdmin,
+    (activeTab === "secrets" || activeTab === "mcp" || activeTab === "agent-endpoints") &&
+      auth.isAdmin,
   );
   const mcpServers = useMCPServers(activeTab === "mcp" && auth.isAdmin);
+  const agentEndpoints = useAgentEndpoints(activeTab === "agent-endpoints" && auth.isAdmin);
   const serverInfo = useServerInfo(activeTab === "info");
   const selfUpdate = useSelfUpdate(activeTab === "updates" && auth.isAdmin);
   const usageDashboard = useUsageDashboard(activeTab === "usage");
@@ -111,6 +116,7 @@ export function SettingsContainer({
       secretsVault={secretsVault}
       modelRouting={modelRouting}
       mcpServers={mcpServers}
+      agentEndpoints={agentEndpoints}
       projects={projects}
       usageDashboard={usageDashboard}
       usageRebuilding={usageRebuilding}

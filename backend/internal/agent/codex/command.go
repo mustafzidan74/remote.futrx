@@ -33,6 +33,11 @@ func (p *Provider) args(req agent.RunRequest) []string {
 	if req.EnableBrowser {
 		common = append(common, browserMCPConfigArgs()...)
 	}
+	// A third-party endpoint's `[model_providers.<id>]` table travels as `-c`
+	// overrides on this command line rather than as a config file, because
+	// /root/.codex is bind-mounted and shared by every chat in the project.
+	// Nothing this run configures can reach the next one.
+	common = append(common, agent.EndpointArgs(req.Endpoint)...)
 	if req.ResumeID != "" {
 		args := append([]string{"exec", "resume"}, common...)
 		args = append(args, req.ResumeID, "-")
@@ -114,12 +119,18 @@ func (p *Provider) buildCmd(
 	}
 
 	if req.ProjectID == "" || p.projects == nil {
-		if err := ensureHostSubscriptionAuth(); err != nil {
-			return nil, "", err
+		// The subscription-auth precondition asks whether the operator's own
+		// ChatGPT login is usable. A run pointed at a third-party endpoint
+		// never touches that login, so the question does not apply.
+		if req.Endpoint == nil {
+			if err := ensureHostSubscriptionAuth(); err != nil {
+				return nil, "", err
+			}
 		}
 		cmd := exec.CommandContext(ctx, "codex", args...)
 		cmd.Dir = cwd
 		cmd.Env = agent.WithRuntimeEnvironment(codexEnv(os.Environ()), req.RuntimeEnv)
+		cmd.Env = agent.WithEndpointEnvironment(cmd.Env, req.Endpoint)
 		cmd.Stdin = strings.NewReader(req.Prompt)
 		return cmd, "", nil
 	}
@@ -151,8 +162,13 @@ func (p *Provider) buildCmd(
 		if err := p.containerDeps.CLI.Ensure(ctx, project.ContainerName, p.profile.CLI); err != nil {
 			return nil, "", fmt.Errorf("codex CLI unavailable in container: %w", err)
 		}
-		if err := p.ensureCredentials(ctx, project.ContainerName); err != nil {
-			return nil, "", fmt.Errorf("seed codex auth in container: %w", err)
+		// As on the claude path: a run authenticating to a third party with
+		// the operator's key for that vendor has no business also carrying
+		// the operator's ChatGPT credentials into the container.
+		if req.Endpoint == nil {
+			if err := p.ensureCredentials(ctx, project.ContainerName); err != nil {
+				return nil, "", fmt.Errorf("seed codex auth in container: %w", err)
+			}
 		}
 		if err := p.containerDeps.Workspace.EnsureAgentInstructions(ctx, project.ContainerName); err != nil {
 			return nil, "", fmt.Errorf("push agent instructions to container: %w", err)
@@ -220,12 +236,23 @@ func (p *Provider) buildCmd(
 				if _, backendIssued := req.RuntimeEnv[sec.Key]; backendIssued {
 					continue
 				}
+				// A project secret must not be able to redirect a run the
+				// platform pointed at a named endpoint, nor substitute its
+				// own credential for the operator's.
+				if agent.EndpointIssued(req.Endpoint, sec.Key) {
+					continue
+				}
 				lxcArgs = append(lxcArgs, "--env", sec.Key+"="+sec.Value)
 			}
 		}
 	}
 	lxcArgs = append(lxcArgs, "--env", "OPENAI_API_KEY=")
 	for _, entry := range agent.RuntimeEnvironment(req.RuntimeEnv) {
+		lxcArgs = append(lxcArgs, "--env", entry)
+	}
+	// Last word, and passed as `--env` rather than written anywhere. It also
+	// re-blanks OPENAI_API_KEY, so the ordering above is belt and braces.
+	for _, entry := range agent.EndpointEnvironment(req.Endpoint) {
 		lxcArgs = append(lxcArgs, "--env", entry)
 	}
 	lxcArgs = append(lxcArgs, project.ContainerName, "--", "codex")

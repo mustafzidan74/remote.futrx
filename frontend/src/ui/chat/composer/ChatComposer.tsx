@@ -1,6 +1,7 @@
 import type { RefObject } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { useVoiceInput } from "../../../state/hooks/chat/useVoiceInput";
+import type { AgentEndpointChoice } from "../../../models/agentEndpoints";
 import type { QueuedPrompt, SelectedSkill } from "../../../models/chat";
 import type { RegisteredSkill } from "../../../models/skill";
 import type { Attachment } from "../../../models/upload";
@@ -38,6 +39,8 @@ export interface ChatComposerProps {
   preferenceActions: ComposerPreferenceActions;
   /** The model routing would pick for the next turn, for the Auto pill. */
   routing: ComposerRoutingHint;
+  /** Enabled third-party agent endpoints; empty hides the pill's section. */
+  endpointChoices: AgentEndpointChoice[];
   queuedPrompts: QueuedPrompt[];
   selectedSkills: SelectedSkill[];
   playbooks: PlaybookLibrary;
@@ -74,6 +77,7 @@ export function ChatComposer({
   preferences,
   preferenceActions,
   routing,
+  endpointChoices,
   queuedPrompts,
   selectedSkills,
   playbooks,
@@ -272,6 +276,8 @@ export function ChatComposer({
             model={preferences.model}
             provider={preferences.provider}
             modelPolicy={preferences.modelPolicy}
+            endpointId={preferences.endpointId}
+            endpointChoices={endpointChoices}
             routing={routing}
             streaming={streaming}
             selectedSkills={selectedSkills}
@@ -288,6 +294,7 @@ export function ChatComposer({
             onProviderChange={preferenceActions.changeProvider}
             onModelChange={preferenceActions.changeModel}
             onModelPolicyChange={preferenceActions.changeModelPolicy}
+            onEndpointChange={preferenceActions.changeEndpoint}
           />
 
           <RunOptionsPopover

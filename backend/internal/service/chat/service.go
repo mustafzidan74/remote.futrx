@@ -156,6 +156,7 @@ func (s *Service) create(ctx context.Context, in CreateInput) (Meta, error) {
 		ReasoningEffort: NormalizeReasoningEffort(in.ReasoningEffort),
 		ServiceTier:     NormalizeServiceTier(in.ServiceTier),
 		ModelPolicy:     NormalizeModelPolicy(in.ModelPolicy),
+		EndpointID:      NormalizeEndpointID(in.EndpointID),
 		ProjectID:       in.ProjectID,
 		SelectedSkills:  NormalizeSelectedSkills(s.withDefaultSkills(ctx, in, provider), provider),
 		CompanionOf:     in.CompanionOf,
@@ -219,6 +220,8 @@ func (s *Service) Fork(ctx context.Context, id ID) (Meta, error) {
 		Mode:            src.Mode,
 		ReasoningEffort: src.ReasoningEffort,
 		ServiceTier:     src.ServiceTier,
+		ModelPolicy:     src.ModelPolicy,
+		EndpointID:      src.EndpointID,
 		ProjectID:       src.ProjectID,
 		SelectedSkills:  src.SelectedSkills,
 		ForkPending:     forkPending,
@@ -262,6 +265,13 @@ func (s *Service) Update(ctx context.Context, id ID, in UpdateInput) (Meta, erro
 			nextProvider := NormalizeProvider(*in.Provider)
 			if nextProvider != m.Provider {
 				m.SelectedSkills = nil
+				// An endpoint is a profile for one CLI. Switching the agent
+				// out from under it would leave the chat pointed at models
+				// the new CLI has never heard of, so the pin is released and
+				// the caller re-states it if that is what they meant. A
+				// composer that changes both in one patch still wins:
+				// EndpointID is applied below.
+				m.EndpointID = ""
 			}
 			m.Provider = nextProvider
 		}
@@ -279,6 +289,9 @@ func (s *Service) Update(ctx context.Context, id ID, in UpdateInput) (Meta, erro
 		}
 		if in.ModelPolicy != nil {
 			m.ModelPolicy = NormalizeModelPolicy(*in.ModelPolicy)
+		}
+		if in.EndpointID != nil {
+			m.EndpointID = NormalizeEndpointID(*in.EndpointID)
 		}
 		if in.SelectedSkills != nil {
 			m.SelectedSkills = NormalizeSelectedSkills(*in.SelectedSkills, m.Provider)

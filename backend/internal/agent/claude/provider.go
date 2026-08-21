@@ -57,7 +57,11 @@ func (p *Provider) Run(ctx context.Context, req agent.RunRequest, emit func(agen
 		Provider:       agent.ProviderClaude,
 		ConversationID: req.ConversationID,
 	})
-	if err == nil && containerName != "" && p.containerDeps.Credentials != nil {
+	// The credential sync exists to carry a refreshed Anthropic token back to
+	// the host. A run that talked to a third party has no such token to carry
+	// — and pulling that container's credential file back would overwrite the
+	// operator's with whatever the run left behind.
+	if err == nil && containerName != "" && req.Endpoint == nil && p.containerDeps.Credentials != nil {
 		syncCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		if syncErr := p.containerDeps.Credentials.SyncFromContainer(syncCtx, containerName, p.profile.Credentials); syncErr != nil {

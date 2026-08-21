@@ -46,6 +46,8 @@ import { ModelRoutingSettings } from "./ModelRoutingSettings";
 import { UsersPanel } from "../account/UsersPanel";
 import type { UsageDashboard } from "../../state/hooks/usage/useUsageDashboard";
 import type { ModelRoutingEditor } from "../../state/hooks/settings/useModelRouting";
+import type { AgentEndpointsEditor } from "../../state/hooks/settings/useAgentEndpoints";
+import { AgentEndpointsSettings } from "./AgentEndpointsSettings";
 
 export type SettingsTab =
   | "appearance"
@@ -54,6 +56,7 @@ export type SettingsTab =
   | "notifications"
   | "skills"
   | "mcp"
+  | "agent-endpoints"
   | "reply-preferences"
   | "playbooks"
   | "model-routing"
@@ -122,6 +125,14 @@ const tabs: SettingsTabDescriptor[] = [
     description:
       "Give agents real tools — a client database, Figma, a store API — instead of guesses.",
     Icon: Package,
+  },
+  {
+    id: "agent-endpoints",
+    group: "agents",
+    label: "Agent endpoints",
+    description:
+      "Run a chat's agent on a cheaper vendor you have an account with, using that vendor's own compatibility endpoint.",
+    Icon: Network,
   },
   {
     id: "reply-preferences",
@@ -286,6 +297,7 @@ export function SettingsPage({
   secretsVault,
   modelRouting,
   mcpServers,
+  agentEndpoints,
   projects,
   usageDashboard,
   usageRebuilding,
@@ -346,6 +358,8 @@ export function SettingsPage({
   secretsVault: SecretsVault;
   modelRouting: ModelRoutingEditor;
   mcpServers: MCPRegistryEditor;
+  /** The third-party agent endpoint register (admin only). */
+  agentEndpoints: AgentEndpointsEditor;
   projects: ProjectMeta[];
   usageDashboard: UsageDashboard;
   usageRebuilding: boolean;
@@ -506,6 +520,20 @@ export function SettingsPage({
                 <SettingsNotice>
                   MCP servers are curated by server administrators. You can switch the ones your
                   project inherits on or off under Project → Settings → MCP servers.
+                </SettingsNotice>
+              ))}
+
+            {activeTab === "agent-endpoints" &&
+              (isAdmin ? (
+                <AgentEndpointsSettings
+                  register={agentEndpoints}
+                  projects={projects}
+                  vaultKeys={secretsVault.secrets}
+                />
+              ) : (
+                <SettingsNotice>
+                  Agent endpoints are curated by server administrators. Once one is enabled you can
+                  point any chat at it from the composer's agent pill.
                 </SettingsNotice>
               ))}
 

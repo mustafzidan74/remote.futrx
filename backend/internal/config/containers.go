@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
+	containeragentendpoint "github.com/futrx-com/remote.futrx.com/internal/integration/containers/agentendpoint"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/containers/assets"
 	containerbaseimage "github.com/futrx-com/remote.futrx.com/internal/integration/containers/baseimage"
 	containerbrowser "github.com/futrx-com/remote.futrx.com/internal/integration/containers/browser"
@@ -55,10 +56,13 @@ type ContainerStack struct {
 	// MCP writes the per-provider MCP server configuration into a container
 	// and runs the Test probe. Like Secrets it is reached from two places:
 	// the agent run path and the admin Test action.
-	MCP           *containermcp.Client
-	CLI           *servicecli.Provisioner
-	Browser       *servicebrowser.Service
-	ScheduleTools *containerscheduletools.Adapter
+	MCP *containermcp.Client
+	// AgentEndpoints runs the third-party endpoint Test probe: one two-word
+	// prompt through the real agent CLI inside a project's container.
+	AgentEndpoints *containeragentendpoint.Client
+	CLI            *servicecli.Provisioner
+	Browser        *servicebrowser.Service
+	ScheduleTools  *containerscheduletools.Adapter
 	// ScheduleWork runs the in-container probes scheduled tasks need: the
 	// commandExitCode gate and the before/after git capture of run history.
 	ScheduleWork *containerschedulework.Adapter
@@ -197,23 +201,24 @@ func NewContainerStack(
 	})
 
 	return ContainerStack{
-		Lifecycle:     lifecycle,
-		Resources:     resources,
-		Inspection:    inspection,
-		Credentials:   credentials,
-		Environment:   environment,
-		Secrets:       vaultSecrets,
-		MCP:           mcpServers,
-		CLI:           cli,
-		Browser:       browser,
-		ScheduleTools: scheduleTools,
-		ScheduleWork:  containerschedulework.NewAdapter(runner),
-		Listeners:     listeners,
-		Network:       network,
-		Workspace:     workspace,
-		Images:        images,
-		Templates:     templates,
-		Database:      containerdatabase.NewAdapter(runner),
-		Preparer:      preparer,
+		Lifecycle:      lifecycle,
+		Resources:      resources,
+		Inspection:     inspection,
+		Credentials:    credentials,
+		Environment:    environment,
+		Secrets:        vaultSecrets,
+		MCP:            mcpServers,
+		AgentEndpoints: containeragentendpoint.NewClient(runner),
+		CLI:            cli,
+		Browser:        browser,
+		ScheduleTools:  scheduleTools,
+		ScheduleWork:   containerschedulework.NewAdapter(runner),
+		Listeners:      listeners,
+		Network:        network,
+		Workspace:      workspace,
+		Images:         images,
+		Templates:      templates,
+		Database:       containerdatabase.NewAdapter(runner),
+		Preparer:       preparer,
 	}
 }

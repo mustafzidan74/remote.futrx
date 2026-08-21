@@ -40,7 +40,16 @@ type Meta struct {
 	// default) uses the Provider/Model above exactly as the user chose them,
 	// "auto" hands the choice to the platform's model-routing policy. Always
 	// serialized so the browser never has to guess what an absent key means.
-	ModelPolicy    string     `json:"modelPolicy"`
+	ModelPolicy string `json:"modelPolicy"`
+	// EndpointID points this chat's agent at one of the platform's
+	// third-party agent endpoints (see internal/service/agentendpoints).
+	// Empty — the default, and what every chat had before the register
+	// existed — means the vendor's own endpoint: today's behaviour exactly.
+	//
+	// An endpoint pins the chat. It decides which CLI runs, and its model
+	// list is what Model is chosen from, so a chat carrying one is not
+	// offered to the automatic model router: there is nothing left to route.
+	EndpointID     string     `json:"endpointId,omitempty"`
 	ProjectID      ProjectID  `json:"projectId,omitempty"`
 	ForkPending    bool       `json:"forkPending,omitempty"`
 	SelectedSkills []SkillRef `json:"selectedSkills,omitempty"`
@@ -173,6 +182,7 @@ type CreateInput struct {
 	ReasoningEffort string     `json:"reasoningEffort,omitempty"`
 	ServiceTier     string     `json:"serviceTier,omitempty"`
 	ModelPolicy     string     `json:"modelPolicy,omitempty"`
+	EndpointID      string     `json:"endpointId,omitempty"`
 	ProjectID       ProjectID  `json:"projectId,omitempty"`
 	SelectedSkills  []SkillRef `json:"selectedSkills,omitempty"`
 	// CompanionOf and CompanionRole are set only by the team service when it
@@ -194,7 +204,11 @@ type UpdateInput struct {
 	ServiceTier     *string   `json:"serviceTier,omitempty"`
 	// ModelPolicy switches this chat between its pinned model and automatic
 	// routing. Absent leaves the stored choice alone.
-	ModelPolicy    *string     `json:"modelPolicy,omitempty"`
+	ModelPolicy *string `json:"modelPolicy,omitempty"`
+	// EndpointID repoints the chat at a third-party agent endpoint, or at the
+	// vendor's own default when set to "". Absent leaves the stored choice
+	// alone.
+	EndpointID     *string     `json:"endpointId,omitempty"`
 	SelectedSkills *[]SkillRef `json:"selectedSkills,omitempty"`
 	// Autopilot and AutoTest patch the post-run policies. Absent leaves the
 	// stored policy alone; present replaces only the fields it names.
@@ -268,6 +282,14 @@ const (
 	// ModelPolicyAuto hands the choice to the platform routing policy.
 	ModelPolicyAuto = "auto"
 )
+
+// NormalizeEndpointID trims a third-party endpoint reference. The register
+// decides whether the id exists and whether it is enabled; a chat only stores
+// the handle, so a profile deleted after a chat was pointed at it simply
+// stops resolving and the run says so.
+func NormalizeEndpointID(id string) string {
+	return strings.ToLower(strings.TrimSpace(id))
+}
 
 // NormalizeModelPolicy collapses anything unrecognized onto "pinned", so a
 // document written before this field existed, or a client that sends noise,

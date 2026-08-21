@@ -74,6 +74,34 @@ export function useChatPreferences({
     metaActions.applyMeta({ modelPolicy });
   }
 
+  /**
+   * Points the chat at a third-party agent endpoint, or back at the vendor's
+   * own with an empty id.
+   *
+   * All three fields move together because they are one choice: the endpoint
+   * decides which CLI runs and which model ids that CLI may be asked for, and
+   * a chat left on a first-party model id would ask the endpoint for a name
+   * it has never heard of. The policy is pinned for the same reason it is
+   * pinned when a model is chosen by hand — the operator just answered the
+   * question routing was there to answer.
+   *
+   * Unlike changeProvider and changeModel this is deliberately *not* written
+   * to the user's own defaults: a third-party endpoint is a per-chat choice
+   * about one piece of work, not the setting every new chat should inherit.
+   */
+  function changeEndpoint(endpointId: string, cli: ChatProvider, model: string) {
+    const nextProvider = endpointId ? cli : displayProvider;
+    metaActions.applyMeta({
+      endpointId,
+      provider: nextProvider,
+      model,
+      modelPolicy: "pinned",
+      // A skill list is provider-specific, and pointing a chat at another
+      // CLI invalidates it exactly as changeProvider does.
+      ...(nextProvider === displayProvider ? {} : { selectedSkills: [] }),
+    });
+  }
+
   function changeMode(mode: ChatMode) {
     metaActions.applyMeta({ mode });
     void setChatSettings({ mode });
@@ -99,6 +127,7 @@ export function useChatPreferences({
     changeProvider,
     changeModel,
     changeModelPolicy,
+    changeEndpoint,
     changeMode,
     changeReasoningEffort,
     changeServiceTier,

@@ -75,6 +75,10 @@ type RunRequest struct {
 	// RuntimeEnv carries short-lived, backend-issued capabilities into a run.
 	// Provider adapters must not persist these values in project configuration.
 	RuntimeEnv map[string]string
+	// Endpoint points this run at a vendor's own published compatibility
+	// endpoint instead of the vendor's default — see endpoint.go. Nil is
+	// today's behaviour exactly: the CLI talks to whoever it is logged in to.
+	Endpoint *Endpoint
 }
 
 // Event is the normalized backend event shape emitted by headless agent

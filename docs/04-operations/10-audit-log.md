@@ -80,10 +80,11 @@ every project action, `project.secret.` only the secret ones.
 | `project.` | `screenshot` — one headless capture of a preview port; `meta` carries the port, path, size in bytes, and whether it was pushed to a notification sink ([Previews](../02-user-guide/06-previews-and-inspector.md#share-a-screenshot)) |
 | `portal.` | `enable`, `rotate`, `disable` — client portal lifecycle, target is the project ([Client portal](../02-workspaces/14-client-portal.md)) |
 | `chat.` | `create`, `delete`, `transcribe` — `transcribe` records one server-side voice dictation, and its `meta` carries the clip duration only ([Voice input](../02-workspaces/17-voice-input.md)) |
-| `agent.run.` | `start`, `cancel` — `meta` carries `provider`, `chatId`, `projectId`, and the scheduled task/run ids for unattended turns |
+| `agent.run.` | `start`, `cancel` — `meta` carries `provider`, `chatId`, `projectId`, the scheduled task/run ids for unattended turns, and `endpointId` when the turn ran against a [third-party agent endpoint](../02-workspaces/27-agent-endpoints.md) |
 | `schedule.` | `create`, `update`, `arm`, `delete`, `run-now` |
 | `settings.` | `google-oauth.configure`, `playbooks.update`, `agent-preferences.update` ([Reply preferences](../02-workspaces/18-reply-preferences-and-search.md)), `agent.connect`, `agent.disconnect`, `secret.create`, `secret.update`, `secret.delete`, `secret.test` |
 | `settings.` | `google-oauth.configure`, `playbooks.update`, `agent.connect`, `agent.disconnect`, `transcription.configure` |
+| `settings.agent-endpoint.` | `create`, `update`, `delete`, `test` — the third-party agent endpoint register; `meta` carries the CLI and the enabled state, never an API key ([Agent endpoints](../02-workspaces/27-agent-endpoints.md)) |
 | `self-update.` | `trigger` |
 | `workspace.file.` | `upload`, `download`, `archive-download` |
 | `workspace.` | `git.checkout`, `ide.open`, `terminal.open`, `terminal.close` |

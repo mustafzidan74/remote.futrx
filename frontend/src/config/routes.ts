@@ -207,6 +207,14 @@ export const API_ROUTES = {
     item: (key: string) => `/api/admin/secrets/${encodeURIComponent(key)}`,
     test: (key: string) => `/api/admin/secrets/${encodeURIComponent(key)}/test`,
   },
+  agentEndpoints: {
+    /** Readable by any signed-in user: labels and model ids only. */
+    choices: "/api/agent-endpoints",
+    collection: "/api/admin/agent-endpoints",
+    item: (id: string) => `/api/admin/agent-endpoints/${encodeURIComponent(id)}`,
+    enabled: (id: string) => `/api/admin/agent-endpoints/${encodeURIComponent(id)}/enabled`,
+    test: (id: string) => `/api/admin/agent-endpoints/${encodeURIComponent(id)}/test`,
+  },
   mcpServers: {
     collection: "/api/admin/mcp-servers",
     item: (name: string) => `/api/admin/mcp-servers/${encodeURIComponent(name)}`,

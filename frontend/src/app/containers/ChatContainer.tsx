@@ -19,6 +19,8 @@ import { useChatDrawerController } from "../../state/hooks/chat/useChatDrawerCon
 import { useChatKeyboardShortcuts } from "../../state/hooks/chat/useChatKeyboardShortcuts";
 import { useChatPolicies } from "../../state/hooks/chat/useChatPolicies";
 import { useChatPreferences } from "../../state/hooks/chat/useChatPreferences";
+import { useAgentEndpointChoices } from "../../state/hooks/chat/useAgentEndpointChoices";
+import { endpointBadge } from "../../state/settings/agentEndpointsState";
 import { useModelRoutingPreview } from "../../state/hooks/chat/useModelRoutingPreview";
 import { useChatReadMarker } from "../../state/hooks/chat/useChatReadMarker";
 import { usePlaybooks } from "../../state/hooks/chat/usePlaybooks";
@@ -239,10 +241,20 @@ export function ChatContainer({
     });
   }, [activePane]);
 
+  // The third-party endpoints a chat may be pointed at. One fetch serves
+  // every chat: the register changes only when an administrator edits it.
+  const endpointChoices = useAgentEndpointChoices(true);
+  const endpointBadgeText = endpointBadge(
+    endpointChoices,
+    displayMeta.endpointId,
+    displayMeta.model,
+  );
+
   // The routed-model hint for the next turn. It is only asked for while the
-  // chat is actually on Auto, so a pinned chat costs nothing.
+  // chat is actually on Auto, so a pinned chat costs nothing. A chat pointed
+  // at an endpoint is pinned to it, so the hint is not asked for either.
   const routingPreview = useModelRoutingPreview({
-    enabled: displayMeta.modelPolicy === "auto",
+    enabled: displayMeta.modelPolicy === "auto" && !displayMeta.endpointId,
     draft: composer.text,
     mode: displayMode,
     provider: displayMeta.provider || "codex",
@@ -263,16 +275,19 @@ export function ChatContainer({
       reasoningEffort: displayMeta.reasoningEffort || "",
       serviceTier: displayMeta.serviceTier || "",
       modelPolicy: displayMeta.modelPolicy,
+      endpointId: displayMeta.endpointId,
     },
     preferenceActions: {
       changeProvider: preferences.changeProvider,
       changeModel: preferences.changeModel,
       changeModelPolicy: preferences.changeModelPolicy,
+      changeEndpoint: preferences.changeEndpoint,
       changeMode: preferences.changeMode,
       changeReasoningEffort: preferences.changeReasoningEffort,
       changeServiceTier: preferences.changeServiceTier,
     },
     routing: { decision: routingPreview.decision, available: !routingPreview.unavailable },
+    endpointChoices,
     queuedPrompts: composer.queue.queuedPrompts,
     selectedSkills,
     playbooks,
@@ -314,6 +329,7 @@ export function ChatContainer({
             error={error}
             composer={composerView}
             policies={policies}
+            endpointBadge={endpointBadgeText}
             showJump={composer.scroll.showJump}
             scrollRef={composer.scroll.scrollRef}
             contentRef={composer.scroll.contentRef}

@@ -183,6 +183,28 @@ func WithModelRouter(router ModelRouter) Option {
 	}
 }
 
+// AgentEndpoints resolves the third-party endpoint a chat is pointed at into
+// the environment and CLI arguments one run needs. It is the prompt service's
+// only view of that register: which vendors are configured, which vault key
+// each uses, and how each CLI's compatibility mode is spelled all live in
+// internal/service/agentendpoints.
+//
+// A nil resolver is today's behaviour exactly — no chat can be pointed
+// anywhere, so every run reaches the vendor the CLI is logged in to.
+type AgentEndpoints interface {
+	// RuntimeFor resolves one profile for one run. The model is the chat's
+	// own choice; the register substitutes its default when the profile does
+	// not offer that id. An error here fails the run before the CLI starts.
+	RuntimeFor(ctx context.Context, endpointID, model string) (agent.Endpoint, error)
+}
+
+// WithAgentEndpoints installs the third-party endpoint resolver.
+func WithAgentEndpoints(endpoints AgentEndpoints) Option {
+	return func(service *Service) {
+		service.endpoints = endpoints
+	}
+}
+
 // WithAudit records the start and cancellation of every agent run.
 func WithAudit(recorder audit.Recorder) Option {
 	return func(service *Service) {
@@ -202,6 +224,7 @@ type Service struct {
 	audit         audit.Recorder
 	replyPrefs    ReplyPreferenceResolver
 	router        ModelRouter
+	endpoints     AgentEndpoints
 }
 
 func New(
@@ -329,6 +352,12 @@ func (rnr *Service) recordRun(ctx context.Context, action string, input StartInp
 		if chat.ProjectID != "" {
 			meta["projectId"] = string(chat.ProjectID)
 		}
+		// Which third-party endpoint answered is the one fact that makes a
+		// run attributable to a vendor other than the one the provider name
+		// implies. The endpoint id is a handle, never a key.
+		if endpointID := servicechat.NormalizeEndpointID(chat.EndpointID); endpointID != "" {
+			meta["endpointId"] = endpointID
+		}
 	}
 	if input.ScheduledTaskID != "" {
 		meta["scheduledTaskId"] = input.ScheduledTaskID
@@ -406,15 +435,44 @@ func (rnr *Service) runPromptAs(
 
 	priorEvents, _ := rnr.store.ReadEvents(ctx, id)
 
+	// A chat pointed at a third-party endpoint is resolved first, because the
+	// endpoint decides which CLI answers. Resolving it can fail — a deleted
+	// profile, one switched off, a vault key nobody set — and every one of
+	// those must stop the turn here with a sentence about the configuration
+	// rather than reach a vendor and come back as an opaque 401.
+	runEndpoint, err := rnr.resolveEndpoint(ctx, meta)
+	if err != nil {
+		emit(ChatEvent{T: time.Now().UnixMilli(), Type: "error", Message: err.Error()})
+		return err
+	}
+
 	// Automatic model routing is applied here, before anything else reads the
 	// provider: the decision can change which agent answers, and the provider
 	// selects the resume session, the skill trigger syntax, and the adapter
 	// this turn runs through. Without a router the decision repeats the
 	// chat's own provider and model, which is what every turn did before
 	// routing existed.
-	routed := rnr.route(ctx, meta, input, prompt)
+	//
+	// An endpoint wins over routing rather than extending it. The two would
+	// otherwise have to agree about something they cannot: a routing rule
+	// names a model from the platform's own catalog, and an endpoint offers a
+	// vendor's model ids under a specific CLI, so a routed decision landing
+	// on a chat pinned to GLM could only ever produce a model name the
+	// endpoint has never heard of. Pointing a chat at an endpoint is
+	// therefore a pin, exactly like choosing a model by hand.
+	routed := ownDecision(meta)
+	if runEndpoint != nil {
+		routed.Provider = string(runEndpoint.CLI)
+	} else {
+		routed = rnr.route(ctx, meta, input, prompt)
+	}
 	providerID := providerIDFromChatProvider(servicechat.Provider(routed.Provider))
 	runModel := routed.Model
+	if runEndpoint != nil {
+		// The register resolved which of the endpoint's models this turn asks
+		// for; the chat's stored model is only a request.
+		runModel = runEndpoint.Model
+	}
 
 	// Persist the user message before spawning the selected agent. A
 	// synthetic label rides along so the transcript shows who asked, and the
@@ -522,6 +580,7 @@ func (rnr *Service) runPromptAs(
 			EnableBrowser:       enableBrowser,
 			EnableScheduleTools: enableScheduleTools,
 			RuntimeEnv:          runtimeEnv,
+			Endpoint:            runEndpoint,
 		}, func(ev agent.Event) {
 			rnr.emitAgentEvent(ctx, id, ev, emit)
 			rnr.recordRunUsage(ctx, ledger, ev)
@@ -555,11 +614,7 @@ func (rnr *Service) route(
 	input StartInput,
 	prompt string,
 ) servicerouting.Decision {
-	own := servicerouting.Decision{
-		Provider:        string(servicechat.NormalizeProvider(meta.Provider)),
-		Model:           meta.Model,
-		ReasoningEffort: meta.ReasoningEffort,
-	}
+	own := ownDecision(meta)
 	if rnr.router == nil {
 		return own
 	}
@@ -581,6 +636,45 @@ func (rnr *Service) route(
 		return own
 	}
 	return decision
+}
+
+// ownDecision is the chat's own choice, expressed as a decision that routed
+// nowhere. It is what a deployment without a router produces, and what a chat
+// pinned to an endpoint produces.
+func ownDecision(meta ChatMeta) servicerouting.Decision {
+	return servicerouting.Decision{
+		Provider:        string(servicechat.NormalizeProvider(meta.Provider)),
+		Model:           meta.Model,
+		ReasoningEffort: meta.ReasoningEffort,
+	}
+}
+
+// resolveEndpoint turns the chat's stored endpoint handle into the rendered
+// configuration one run needs, or nil when the chat names none — which is
+// every chat by default and the behaviour the platform had before the
+// register existed.
+//
+// The failures are all configuration failures and all of them are worth a
+// sentence: a chat pointed at a profile an admin deleted, a profile switched
+// off, or a Secrets-vault key nobody has set yet. Reporting them here costs
+// the operator nothing; discovering them from a vendor's error body costs
+// them the prompt.
+func (rnr *Service) resolveEndpoint(ctx context.Context, meta ChatMeta) (*agent.Endpoint, error) {
+	endpointID := servicechat.NormalizeEndpointID(meta.EndpointID)
+	if endpointID == "" {
+		return nil, nil
+	}
+	if rnr.endpoints == nil {
+		return nil, errors.New(
+			"this chat is pointed at agent endpoint " + endpointID +
+				", which this deployment does not have configured",
+		)
+	}
+	resolved, err := rnr.endpoints.RuntimeFor(ctx, endpointID, meta.Model)
+	if err != nil {
+		return nil, err
+	}
+	return &resolved, nil
 }
 
 // projectSlug resolves the readable name a `projectIs` rule may be written

@@ -45,6 +45,8 @@ This documentation maps the complete `remote.futrx` application: how to use ever
 | [24-auxiliary-model.md](../02-workspaces/24-auxiliary-model.md) | The optional small local model (Ollama or any OpenAI-compatible endpoint) behind chat titles, notification summaries, commit subjects, and client-message translation — with the fallback each job keeps |
 | [25-mcp-servers.md](../02-workspaces/25-mcp-servers.md) | MCP server registry: platform entries and per-project overrides, container materialization for Claude Code and Codex, vault-backed secret references, manifest cleanup, the in-container probe, and the API |
 | [26-ai-providers.md](../02-workspaces/26-ai-providers.md) | The free-tier provider pool: connecting Gemini, Groq, Cerebras, OpenRouter and friends, automatic failover when a quota runs out, the consumption meters and where their numbers come from, per-job routing for the auxiliary model, and the bulk lane |
+
+| [27-agent-endpoints.md](../02-workspaces/27-agent-endpoints.md) | Third-party agent endpoints: pointing one chat's CLI at a vendor's own published compatibility endpoint with the operator's key, per-run env/config isolation, vault-backed key resolution, the red "not Anthropic" badge, and the in-container test |
 | [06-previews-and-browser.md](../03-platform/06-previews-and-browser.md) | App discovery, HTTPS preview URLs, element inspection, and Agent Browser |
 | [07-data-and-frontend-state.md](../03-platform/07-data-and-frontend-state.md) | File-backed persistence, workspace files, entities, and UI state |
 | [08-api-and-realtime.md](../03-platform/08-api-and-realtime.md) | HTTP endpoints, WebSockets, events, and access gates |

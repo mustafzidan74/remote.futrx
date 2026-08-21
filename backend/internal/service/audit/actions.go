@@ -117,6 +117,13 @@ const (
 	// prompt and never the answer.
 	ActionProviderComplete = "provider.complete"
 
+	// Third-party agent endpoint edits. The register names vendors, base
+	// URLs, and vault key *references*; no action here ever records a key.
+	ActionSettingsAgentEndpointCreate = "settings.agent-endpoint.create"
+	ActionSettingsAgentEndpointUpdate = "settings.agent-endpoint.update"
+	ActionSettingsAgentEndpointDelete = "settings.agent-endpoint.delete"
+	ActionSettingsAgentEndpointTest   = "settings.agent-endpoint.test"
+
 	ActionSelfUpdateTrigger = "self-update.trigger"
 
 	ActionWorkspaceFileUpload      = "workspace.file.upload"
@@ -147,4 +154,8 @@ const (
 	// its registry id. An empty id means the pool's own policy rather than
 	// any single provider.
 	TargetProvider = "provider"
+
+	// TargetAgentEndpoint is one third-party agent endpoint profile, named
+	// by its register id.
+	TargetAgentEndpoint = "agent-endpoint"
 )
