@@ -420,8 +420,8 @@ func (s *Service) test(ctx context.Context, id, projectID, model string) (TestRe
 		Output:   truncate(MaskValue(strings.TrimSpace(output), key), probeOutputLimit),
 		Duration: s.now().Sub(started).Milliseconds(),
 	}
-	if probeErr != nil && result.Output == "" {
-		result.Output = MaskValue(probeErr.Error(), key)
+	if probeErr != nil {
+		result.Error = MaskValue(probeErr.Error(), key)
 	}
 	s.recordTest(ctx, endpoint.ID, TestRecord{
 		At:        s.now().UnixMilli(),
@@ -440,7 +440,12 @@ func failureMessage(result TestResult) string {
 	if result.OK {
 		return ""
 	}
-	line := strings.TrimSpace(result.Output)
+	// Prefer the reason over the transcript: the first line the CLI printed
+	// is frequently a warning that has nothing to do with the failure.
+	line := strings.TrimSpace(result.Error)
+	if line == "" {
+		line = strings.TrimSpace(result.Output)
+	}
 	if index := strings.IndexAny(line, "\r\n"); index >= 0 {
 		line = strings.TrimSpace(line[:index])
 	}

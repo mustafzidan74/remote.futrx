@@ -205,8 +205,14 @@ type TestRecord struct {
 // TestResult is one probe's full outcome. Output is raw CLI output with the
 // resolved vault value masked out of it.
 type TestResult struct {
-	OK       bool   `json:"ok"`
-	Output   string `json:"output"`
+	OK     bool   `json:"ok"`
+	Output string `json:"output"`
+	// Error is why the probe failed, kept apart from Output because the two
+	// answer different questions and a failing CLI often supplies both. A
+	// rejected key, for instance, makes the claude CLI print an unrelated
+	// warning about connectors and then hang: reporting only what it printed
+	// tells the operator nothing about why Test failed.
+	Error    string `json:"error,omitempty"`
 	Duration int64  `json:"durationMs"`
 }
 

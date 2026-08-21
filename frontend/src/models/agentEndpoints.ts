@@ -87,6 +87,12 @@ export interface AgentEndpointChoices {
 export interface AgentEndpointTestResult {
   ok: boolean;
   output: string;
+  /**
+   * Why the probe failed, kept apart from `output`. A CLI whose key the
+   * endpoint rejected often prints an unrelated warning and then hangs, so
+   * what it printed and why the test failed are two different things.
+   */
+  error?: string;
   durationMs: number;
 }
 

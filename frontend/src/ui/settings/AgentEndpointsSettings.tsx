@@ -375,9 +375,17 @@ function EndpointRow({
                 {result.ok ? "The endpoint answered" : "The endpoint refused"} · {result.durationMs}
                 ms
               </div>
-              <pre class="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all text-[11px] leading-relaxed text-ink-300">
-                {result.output || "(no output)"}
-              </pre>
+              {result.error && (
+                <p class="mt-1 text-[11.5px] leading-relaxed text-accent-red">{result.error}</p>
+              )}
+              {result.output && (
+                <pre class="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all text-[11px] leading-relaxed text-ink-300">
+                  {result.output}
+                </pre>
+              )}
+              {!result.error && !result.output && (
+                <p class="mt-1 text-[11.5px] text-ink-400">The CLI printed nothing.</p>
+              )}
             </div>
           )}
         </td>
