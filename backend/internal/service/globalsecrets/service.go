@@ -336,6 +336,48 @@ func (s *Service) ValuesForProject(
 	return values, nil
 }
 
+// PlatformValues returns the values behind the named keys for a caller with
+// no project of its own — today, the third-party agent endpoint register
+// resolving the key one endpoint profile names.
+//
+// It is narrower than ValuesForProject in the one way that matters: only
+// `env` entries scoped to **all** projects resolve. A platform-level profile
+// may be used by a chat with no project at all, so there is no project whose
+// scope could authorize the read; requiring an all-projects entry keeps this
+// from becoming a way to read a project-scoped secret from outside that
+// project.
+//
+// Like ValuesForProject this is reachable from the run and probe paths only;
+// no HTTP handler calls it, and the value it returns is never rendered into a
+// response.
+func (s *Service) PlatformValues(
+	ctx context.Context,
+	keys []string,
+) (map[string]string, error) {
+	if len(keys) == 0 {
+		return nil, nil
+	}
+	secrets, err := s.load(ctx)
+	if err != nil {
+		return nil, err
+	}
+	wanted := make(map[string]bool, len(keys))
+	for _, key := range keys {
+		wanted[key] = true
+	}
+	values := make(map[string]string, len(keys))
+	for _, secret := range secrets {
+		if secret.Kind != KindEnv || !secret.Scope.All || !wanted[secret.Key] {
+			continue
+		}
+		if secret.Value == "" {
+			continue
+		}
+		values[secret.Key] = secret.Value
+	}
+	return values, nil
+}
+
 // InheritedForProject lists what the vault contributes to one project.
 func (s *Service) InheritedForProject(
 	ctx context.Context,

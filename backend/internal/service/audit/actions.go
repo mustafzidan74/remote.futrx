@@ -103,6 +103,13 @@ const (
 	ActionSettingsMCPTest    = "settings.mcp.test"
 	ActionSettingsMCPProject = "settings.mcp.project-update"
 
+	// Third-party agent endpoint edits. The register names vendors, base
+	// URLs, and vault key *references*; no action here ever records a key.
+	ActionSettingsAgentEndpointCreate = "settings.agent-endpoint.create"
+	ActionSettingsAgentEndpointUpdate = "settings.agent-endpoint.update"
+	ActionSettingsAgentEndpointDelete = "settings.agent-endpoint.delete"
+	ActionSettingsAgentEndpointTest   = "settings.agent-endpoint.test"
+
 	ActionSelfUpdateTrigger = "self-update.trigger"
 
 	ActionWorkspaceFileUpload      = "workspace.file.upload"
@@ -129,4 +136,7 @@ const (
 	// TargetMCPServer is one entry in the MCP registry, named by its
 	// registry name — or, for a per-project override, by the project id.
 	TargetMCPServer = "mcp-server"
+	// TargetAgentEndpoint is one third-party agent endpoint profile, named
+	// by its register id.
+	TargetAgentEndpoint = "agent-endpoint"
 )

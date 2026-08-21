@@ -33,6 +33,9 @@ test("preserves normalized skill identity and chat defaults", () => {
       // A chat stored before automatic routing existed reads back as pinned,
       // which is the behaviour it already had.
       modelPolicy: "pinned",
+      // Likewise for a chat stored before third-party agent endpoints: no
+      // endpoint means the vendor's own, which is what it always ran on.
+      endpointId: "",
     }
   );
 });

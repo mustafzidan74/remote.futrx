@@ -77,7 +77,10 @@ func (p *Provider) Run(ctx context.Context, req agent.RunRequest, emit func(agen
 	if err != nil && req.ResumeID != "" && strings.Contains(strings.ToLower(agentruntime.ErrorStderr(err)), "no rollout found") {
 		return fmt.Errorf("%w: %s", agent.ErrSessionNotFound, strings.TrimSpace(agentruntime.ErrorStderr(err)))
 	}
-	if err == nil && containerName != "" && p.containerDeps.Credentials != nil {
+	// A run that talked to a third party has no ChatGPT token to carry back,
+	// and pulling that container's auth.json onto the host would overwrite
+	// the operator's own.
+	if err == nil && containerName != "" && req.Endpoint == nil && p.containerDeps.Credentials != nil {
 		syncCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		if syncErr := p.syncCredentialsFromContainer(syncCtx, containerName); syncErr != nil {

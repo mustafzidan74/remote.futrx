@@ -1,4 +1,5 @@
 import type { ChatModelPolicy, ChatProvider, SelectedSkill } from "../../../models/chat";
+import type { AgentEndpointChoice } from "../../../models/agentEndpoints";
 import type { ComposerRoutingHint } from "./preferences";
 import type { RegisteredSkill } from "../../../models/skill";
 import type { PlaybookLibrary } from "../../../state/hooks/chat/usePlaybooks";
@@ -22,6 +23,8 @@ export function ComposerAgentControls({
   model,
   provider,
   modelPolicy,
+  endpointId,
+  endpointChoices,
   routing,
   streaming,
   selectedSkills,
@@ -38,11 +41,16 @@ export function ComposerAgentControls({
   onProviderChange,
   onModelChange,
   onModelPolicyChange,
+  onEndpointChange,
 }: {
   projectId?: string;
   model: string;
   provider: ChatProvider;
   modelPolicy: ChatModelPolicy;
+  /** The third-party endpoint this chat is pointed at, "" for the default. */
+  endpointId: string;
+  /** Enabled third-party endpoints; empty hides the pill's section. */
+  endpointChoices: AgentEndpointChoice[];
   /** What the next turn would be routed to, and whether Auto is on offer. */
   routing: ComposerRoutingHint;
   streaming: boolean;
@@ -64,6 +72,7 @@ export function ComposerAgentControls({
   onProviderChange: (provider: ChatProvider) => void;
   onModelChange: (model: string) => void;
   onModelPolicyChange: (policy: ChatModelPolicy) => void;
+  onEndpointChange: (endpointId: string, cli: ChatProvider, model: string) => void;
 }) {
   return (
     <div class="codex-composer-agent-controls flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
@@ -71,12 +80,15 @@ export function ComposerAgentControls({
         provider={provider}
         model={model}
         modelPolicy={modelPolicy}
+        endpointId={endpointId}
+        endpointChoices={endpointChoices}
         routedNext={routing.decision}
         routingAvailable={routing.available}
         streaming={streaming}
         onProviderChange={onProviderChange}
         onModelChange={onModelChange}
         onModelPolicyChange={onModelPolicyChange}
+        onEndpointChange={onEndpointChange}
       />
 
       <div

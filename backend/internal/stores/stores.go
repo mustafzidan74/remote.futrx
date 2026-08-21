@@ -3,6 +3,7 @@ package stores
 import (
 	"fmt"
 
+	serviceendpoints "github.com/futrx-com/remote.futrx.com/internal/service/agentendpoints"
 	serviceagentprefs "github.com/futrx-com/remote.futrx.com/internal/service/agentprefs"
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
@@ -29,6 +30,7 @@ import (
 	serviceusage "github.com/futrx-com/remote.futrx.com/internal/service/usage"
 	serviceuser "github.com/futrx-com/remote.futrx.com/internal/service/user"
 	serviceusersettings "github.com/futrx-com/remote.futrx.com/internal/service/usersettings"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/fileagentendpoints"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileagentprefs"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileaudit"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileauth"
@@ -106,6 +108,10 @@ type Stores struct {
 	// unavailable rather than half-wired.
 	MCPServers servicemcp.Store
 	ProjectMCP servicemcp.ProjectStore
+	// AgentEndpoints is the register of third-party, vendor-published agent
+	// endpoints one chat may be pointed at. Nil leaves the admin routes
+	// reporting 503 and every chat on its vendor's own endpoint.
+	AgentEndpoints serviceendpoints.Store
 	// ScheduleHistory is the per-task run log; it lives beside the task
 	// catalog but is written append-only in its own files.
 	ScheduleHistory serviceschedule.HistoryRepository
@@ -213,6 +219,10 @@ func New(dataDir string) (Stores, error) {
 	if err != nil {
 		return Stores{}, fmt.Errorf("init project MCP store: %w", err)
 	}
+	agentEndpoints, err := fileagentendpoints.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init agent endpoints store: %w", err)
+	}
 	gitHub, err := filegithub.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init github settings store: %w", err)
@@ -258,6 +268,7 @@ func New(dataDir string) (Stores, error) {
 		GlobalSecrets:    globalSecrets,
 		MCPServers:       mcpServers,
 		ProjectMCP:       projectMCP,
+		AgentEndpoints:   agentEndpoints,
 		Usage:            usage,
 		Transcription:    transcription,
 		Audit:            auditLog,

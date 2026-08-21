@@ -7,6 +7,7 @@ import (
 	"time"
 
 	service "github.com/futrx-com/remote.futrx.com/internal/service"
+	serviceendpoints "github.com/futrx-com/remote.futrx.com/internal/service/agentendpoints"
 	serviceagentprefs "github.com/futrx-com/remote.futrx.com/internal/service/agentprefs"
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
@@ -248,6 +249,13 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		// The admin half of the MCP registry. Its project half is mounted by
 		// the project handler, which has already resolved membership.
 		MCPServers: mcpHandler,
+		// Third-party agent endpoints: an admin-only register under
+		// /api/admin/agent-endpoints, plus one route any signed-in user may
+		// read so the composer can list what a chat may be pointed at.
+		AgentEndpoints: httphandlers.NewAgentEndpointsHandler(
+			agentEndpointsService(deps.Services.AgentEndpoints),
+			deps.Services.Auth,
+		),
 		AdminResources: httphandlers.NewAdminResourcesHandler(
 			deps.Services.Resources,
 			httptransport.NewPrincipalResolver(deps.Services.Auth),
@@ -323,6 +331,16 @@ func agentPreferencesService(service *serviceagentprefs.Service) httphandlers.Ag
 }
 
 func searchService(service *servicesearch.Service) httphandlers.SearchService {
+	if service == nil {
+		return nil
+	}
+	return service
+}
+
+// agentEndpointsService narrows the concrete endpoint register to the
+// transport's interface without letting a nil service become a non-nil
+// interface value, which would turn every 503 into a panic.
+func agentEndpointsService(service *serviceendpoints.Service) httphandlers.AgentEndpointsService {
 	if service == nil {
 		return nil
 	}

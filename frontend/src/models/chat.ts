@@ -43,6 +43,14 @@ export interface ChatMeta {
    * model above; "auto" hands the choice to the platform routing policy.
    */
   modelPolicy?: ChatModelPolicy;
+  /**
+   * Points this chat's agent at one of the platform's third-party agent
+   * endpoints. Absent — the default — means the vendor's own endpoint, which
+   * is what every chat did before the register existed. An endpoint pins the
+   * chat: it decides which CLI runs and which models are on offer, so a chat
+   * carrying one is not routed.
+   */
+  endpointId?: string;
   projectId?: string;
   selectedSkills?: SelectedSkill[];
   /** Post-run policies: what the platform does on its own once a turn settles. */
@@ -238,6 +246,7 @@ export interface CreateChatInput {
   reasoningEffort?: ReasoningEffort;
   serviceTier?: ServiceTier;
   modelPolicy?: ChatModelPolicy;
+  endpointId?: string;
   projectId?: string;
   selectedSkills?: SelectedSkill[];
 }
@@ -251,6 +260,8 @@ export interface UpdateChatInput {
   reasoningEffort?: ReasoningEffort;
   serviceTier?: ServiceTier;
   modelPolicy?: ChatModelPolicy;
+  /** "" points the chat back at the vendor's own endpoint. */
+  endpointId?: string;
   selectedSkills?: SelectedSkill[];
   autopilot?: AutopilotPatch;
   autoTest?: AutoTestPatch;

@@ -119,6 +119,9 @@ func (p *Provider) buildCmd(
 		// uid 0. The box is single-user and the UI is auto-approve.
 		cmd.Env = append(os.Environ(), "IS_SANDBOX=1")
 		cmd.Env = agent.WithRuntimeEnvironment(cmd.Env, req.RuntimeEnv)
+		// A third-party endpoint is applied last so its base URL and token
+		// displace anything the host environment happens to carry.
+		cmd.Env = agent.WithEndpointEnvironment(cmd.Env, req.Endpoint)
 		cmd.Stdin = strings.NewReader(req.Prompt)
 		return cmd, "", nil
 	}
@@ -150,8 +153,15 @@ func (p *Provider) buildCmd(
 		if err := p.containerDeps.CLI.Ensure(ctx, project.ContainerName, p.profile.CLI); err != nil {
 			return nil, "", fmt.Errorf("install claude in container: %w", err)
 		}
-		if err := p.containerDeps.Credentials.Ensure(ctx, project.ContainerName, p.profile.Credentials); err != nil {
-			return nil, "", fmt.Errorf("seed claude auth in container: %w", err)
+		// A run pointed at a third-party endpoint authenticates with the
+		// operator's key for *that vendor*, published in the environment
+		// below. Pushing the platform's Anthropic credentials for it would
+		// put a first-party token in a container whose agent is about to talk
+		// to somebody else, for no benefit at all.
+		if req.Endpoint == nil {
+			if err := p.containerDeps.Credentials.Ensure(ctx, project.ContainerName, p.profile.Credentials); err != nil {
+				return nil, "", fmt.Errorf("seed claude auth in container: %w", err)
+			}
 		}
 		if err := p.containerDeps.Workspace.EnsureAgentInstructions(ctx, project.ContainerName); err != nil {
 			return nil, "", fmt.Errorf("push agent instructions to container: %w", err)
@@ -221,11 +231,22 @@ func (p *Provider) buildCmd(
 				if _, backendIssued := req.RuntimeEnv[sec.Key]; backendIssued {
 					continue
 				}
+				// A project secret must not be able to redirect a run the
+				// platform pointed at a named endpoint, nor substitute its
+				// own credential for the operator's.
+				if agent.EndpointIssued(req.Endpoint, sec.Key) {
+					continue
+				}
 				lxcArgs = append(lxcArgs, "--env", sec.Key+"="+sec.Value)
 			}
 		}
 	}
 	for _, entry := range agent.RuntimeEnvironment(req.RuntimeEnv) {
+		lxcArgs = append(lxcArgs, "--env", entry)
+	}
+	// The endpoint's environment is the last word, and it is passed as
+	// `--env` rather than written anywhere: nothing about this run survives it.
+	for _, entry := range agent.EndpointEnvironment(req.Endpoint) {
 		lxcArgs = append(lxcArgs, "--env", entry)
 	}
 	lxcArgs = append(lxcArgs, project.ContainerName, "--", "claude")

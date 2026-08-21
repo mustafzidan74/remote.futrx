@@ -5,7 +5,7 @@ import type { ProjectMeta } from "../../../models/project";
 import { useState } from "preact/hooks";
 import { chatApi } from "../../../api/chatApi";
 import { useAuxModelJob } from "../../../state/hooks/settings/useAuxModelJobs";
-import { Loader, Menu, MessageSquare, RotateCcw } from "../../primitives/icons";
+import { Globe, Loader, Menu, MessageSquare, RotateCcw } from "../../primitives/icons";
 import { ChatPreviewChip } from "../../preview/ChatPreviewChip";
 import type { ChatPolicies } from "../../../state/hooks/chat/useChatPolicies";
 import { TeamPanel } from "../team/TeamPanel";
@@ -32,6 +32,7 @@ export function ThreadHeader({
   streaming,
   activity,
   policies,
+  endpointBadge,
   actions,
   onHamburger,
   onOpenAgentBrowser,
@@ -43,6 +44,11 @@ export function ThreadHeader({
   /** What the running turn is doing; the pill says the same thing the strip does. */
   activity?: AgentActivity;
   policies?: ChatPolicies;
+  /**
+   * Set when this chat runs against a third-party agent endpoint. Null — the
+   * default — means the vendor's own, and the header says nothing.
+   */
+  endpointBadge?: { short: string; title: string } | null;
   /** Optional extra header controls, right-aligned next to the preview chip. */
   actions?: ComponentChildren;
   onHamburger: () => void;
@@ -81,6 +87,7 @@ export function ThreadHeader({
       </div>
 
       <div class="flex w-full flex-none items-center justify-end gap-1.5 sm:ms-auto sm:w-auto">
+        {endpointBadge && <ThirdPartyBadge badge={endpointBadge} />}
         <ChatStatusPill
           provider={chat.provider}
           streaming={streaming}
@@ -107,6 +114,32 @@ export function ThreadHeader({
         )}
       </div>
     </header>
+  );
+}
+
+/**
+ * The red badge on a chat running against a third-party endpoint.
+ *
+ * It exists so nobody mistakes whose model produced a piece of client code.
+ * That is a commercial fact, not a technical one: a landing page written by
+ * GLM must not be handed over as Claude's work, and the person who opens the
+ * chat two weeks later has no other way to know. It is therefore loud, it
+ * carries the word "not Anthropic" in full, and it sits first in the header
+ * group rather than behind an overflow.
+ */
+function ThirdPartyBadge({ badge }: { badge: { short: string; title: string } }) {
+  return (
+    <span
+      class="flex h-8 flex-none items-center gap-1.5 rounded-full border border-accent-red/40
+             bg-accent-red/[0.14] px-2.5 text-[11.5px] font-semibold text-accent-red"
+      title={badge.title}
+      role="status"
+    >
+      <Globe class="h-3.5 w-3.5 flex-none" aria-hidden="true" />
+      <span class="hidden max-w-[11rem] truncate sm:inline">{badge.short}</span>
+      <span class="sm:hidden">3rd-party</span>
+      <span class="sr-only">{badge.title}</span>
+    </span>
   );
 }
 
