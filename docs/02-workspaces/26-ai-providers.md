@@ -72,9 +72,14 @@ are set, the vault reference wins.
 | **Google Gemini** | [aistudio.google.com](https://aistudio.google.com/apikey) | Around 10 requests/min, 250/day and 250,000 tokens/min on Flash; Flash-Lite is documented more generously. Huge context windows. Uses Google's OpenAI-compatible surface at `/v1beta/openai/`. |
 | **OpenRouter** | [openrouter.ai/keys](https://openrouter.ai/keys) | Only model ids ending in `:free` are free. Around 20 requests/min and 50/day, documented as rising once credits have been purchased. One key, many vendors behind it. |
 | **Mistral** | [console.mistral.ai](https://console.mistral.ai) → activate the experiment plan | Documented as a per-second request rate plus a large monthly token allowance rather than a daily cap. |
-| **Zhipu GLM** | [open.bigmodel.cn](https://open.bigmodel.cn) | The `glm-4-flash` / `glm-4.5-flash` models are free. The published throttle is a **concurrency** ceiling rather than a request or token cap, so **no limits are seeded** — the meters show raw counts until you enter your own. |
-| **Moonshot (Kimi)** | [platform.moonshot.cn](https://platform.moonshot.cn) | Trial credit rather than a standing free tier, with a tier-dependent concurrency limit. **No limits are seeded**; set your own once you know them. |
-| **GitHub Models** | A GitHub personal access token with the `models` scope | Around 15 requests/min and 150/day on the low model tier; the high tier is tighter. Free for GitHub users. |
+| **Zhipu GLM** | [z.ai/manage-apikey/apikey-list](https://z.ai/manage-apikey/apikey-list) | The published throttle is a **concurrency** ceiling rather than a request or token cap, so **no limits are seeded** — the meters show raw counts until you enter your own. Note the two hosts: `api.z.ai` is international, `open.bigmodel.cn` is mainland China, and a key from one is rejected by the other. A **Coding Plan** key needs `https://api.z.ai/api/coding/paas/v4` instead of the general root. |
+| **Moonshot (Kimi)** | [platform.kimi.ai/console/api-keys](https://platform.kimi.ai/console/api-keys) | Trial credit rather than a standing free tier, with a tier-dependent concurrency limit. **No limits are seeded**; set your own once you know them. `api.moonshot.ai` is international, `api.moonshot.cn` is mainland China. |
+
+**GitHub Models is gone.** It shipped as a template and was removed: GitHub
+retired the playground, catalog and inference API for every customer on 30
+July 2026 and points users at Azure AI Foundry. Nothing in this platform
+resurrects a deleted template, so an operator who had already connected it
+keeps their row until they delete it — but it will only return errors.
 
 You can add any other provider that speaks one of three wire shapes:
 

@@ -238,7 +238,7 @@ operator who deletes them keeps an empty register.
 
 | Profile | CLI | Base URL | Notes |
 | --- | --- | --- | --- |
-| Zhipu GLM | claude | `https://open.bigmodel.cn/api/anthropic` | Z.ai serves the same API at `https://api.z.ai/api/anthropic` |
+| Zhipu GLM | claude | `https://api.z.ai/api/anthropic` | the international host; mainland accounts use `open.bigmodel.cn` and the keys are not interchangeable |
 | Moonshot Kimi | claude | `https://api.moonshot.ai/anthropic` | mainland accounts use `api.moonshot.cn` |
 | OpenRouter | codex | `https://openrouter.ai/api/v1` | `wire_api = responses`; model ids carry the vendor prefix |
 | Google Gemini | codex | `https://generativelanguage.googleapis.com/v1beta/openai/` | Chat Completions only |

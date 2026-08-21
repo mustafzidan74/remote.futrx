@@ -217,8 +217,12 @@ func TestTheQuotaCardCarriesNoEndpointAndNoKeyState(t *testing.T) {
 
 func TestEverySeedIsValidDisabledAndKeyless(t *testing.T) {
 	seeds := Seeds()
-	if len(seeds) < 8 {
-		t.Fatalf("shipped %d seeds, want one per documented free tier", len(seeds))
+	// A floor rather than an exact count: a vendor that retires its API gets
+	// its template deleted, and that should not fail the suite. GitHub Models
+	// was the first — retired 30 July 2026 — and the shape of that change is
+	// removing a row, not editing this number every time.
+	if len(seeds) < 5 {
+		t.Fatalf("shipped %d seeds, want the documented free tiers", len(seeds))
 	}
 	ids := map[string]bool{}
 	for _, seed := range seeds {
@@ -245,16 +249,21 @@ func TestEverySeedIsValidDisabledAndKeyless(t *testing.T) {
 		})
 	}
 
-	// The eight the feature promises, by the base URLs they are documented at.
+	// Every shipped template, by the base URL its vendor documents.
+	//
+	// Zhipu and Moonshot both run two hosts — one international, one for
+	// mainland China — and a key issued on one is rejected by the other. The
+	// international host is what this platform seeds, and pinning it here is
+	// the point of the assertion: a paste from the wrong half of a vendor's
+	// docs is a plausible edit and an unhelpful failure to debug live.
 	wantBaseURLs := map[string]string{
-		"gemini":        "https://generativelanguage.googleapis.com/v1beta/openai",
-		"groq":          "https://api.groq.com/openai/v1",
-		"cerebras":      "https://api.cerebras.ai/v1",
-		"openrouter":    "https://openrouter.ai/api/v1",
-		"zhipu-glm":     "https://open.bigmodel.cn/api/paas/v4",
-		"mistral":       "https://api.mistral.ai/v1",
-		"moonshot":      "https://api.moonshot.cn/v1",
-		"github-models": "https://models.inference.ai.azure.com",
+		"gemini":     "https://generativelanguage.googleapis.com/v1beta/openai",
+		"groq":       "https://api.groq.com/openai/v1",
+		"cerebras":   "https://api.cerebras.ai/v1",
+		"openrouter": "https://openrouter.ai/api/v1",
+		"zhipu-glm":  "https://api.z.ai/api/paas/v4",
+		"mistral":    "https://api.mistral.ai/v1",
+		"moonshot":   "https://api.moonshot.ai/v1",
 	}
 	for id, wantURL := range wantBaseURLs {
 		found := false

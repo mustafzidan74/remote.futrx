@@ -29,14 +29,16 @@ func Seed() []Endpoint {
 			ID:      "zhipu-glm",
 			Label:   "Zhipu GLM",
 			CLI:     CLIClaude,
-			BaseURL: "https://open.bigmodel.cn/api/anthropic",
+			BaseURL: "https://api.z.ai/api/anthropic",
 			Models: []Model{
-				{ID: "glm-4.6", Label: "GLM-4.6"},
+				{ID: "glm-4.7", Label: "GLM-4.7"},
 				{ID: "glm-4.5-air", Label: "GLM-4.5 Air"},
 			},
 			Notes: "Zhipu's own Anthropic-compatible endpoint, published for Claude Code. " +
 				"Uses ANTHROPIC_BASE_URL + ANTHROPIC_AUTH_TOKEN. " +
-				"The international Z.ai platform serves the same API at https://api.z.ai/api/anthropic.",
+				"This is the international host; mainland-China accounts use " +
+				"https://open.bigmodel.cn/api/anthropic and a key from one host is " +
+				"rejected by the other.",
 		},
 		{
 			ID:      "moonshot-kimi",
@@ -44,8 +46,8 @@ func Seed() []Endpoint {
 			CLI:     CLIClaude,
 			BaseURL: "https://api.moonshot.ai/anthropic",
 			Models: []Model{
-				{ID: "kimi-k2-turbo-preview", Label: "Kimi K2 Turbo"},
-				{ID: "kimi-k2-0905-preview", Label: "Kimi K2"},
+				{ID: "kimi-k3", Label: "Kimi K3"},
+				{ID: "kimi-k2.7-code-highspeed", Label: "Kimi K2.7 Code"},
 			},
 			Notes: "Moonshot's own Anthropic-compatible endpoint, published for Claude Code. " +
 				"Uses ANTHROPIC_BASE_URL + ANTHROPIC_AUTH_TOKEN. " +
@@ -58,7 +60,7 @@ func Seed() []Endpoint {
 			BaseURL: "https://openrouter.ai/api/v1",
 			WireAPI: WireResponses,
 			Models: []Model{
-				{ID: "z-ai/glm-4.6", Label: "GLM-4.6"},
+				{ID: "z-ai/glm-4.7", Label: "GLM-4.7"},
 				{ID: "moonshotai/kimi-k2", Label: "Kimi K2"},
 				{ID: "deepseek/deepseek-chat", Label: "DeepSeek Chat"},
 			},
