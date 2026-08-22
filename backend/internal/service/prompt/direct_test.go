@@ -42,6 +42,7 @@ func TestTheModelIsToldItHasNoTools(t *testing.T) {
 		ChatMeta{DirectModel: servicechat.DirectModel{Source: servicechat.DirectSourceLocal, Model: "qwen3:1.7b"}},
 		"fix the login bug",
 		Actor{},
+		"",
 		nil,
 		func(e ChatEvent) { events = append(events, e) },
 	)
@@ -72,20 +73,26 @@ func TestTheAnswerLooksLikeAnyOtherTurn(t *testing.T) {
 		ChatMeta{DirectModel: servicechat.DirectModel{Source: servicechat.DirectSourcePool, ProviderID: "gemini"}},
 		"is this regex greedy?",
 		Actor{},
+		"",
 		nil,
 		func(e ChatEvent) { events = append(events, e) },
 	); err != nil {
 		t.Fatalf("answerDirectly() = %v", err)
 	}
 
-	if len(events) != 2 {
-		t.Fatalf("emitted %d events, want the answer and a completion: %+v", len(events), events)
+	if len(events) != 3 {
+		t.Fatalf("emitted %d events, want the question, the answer and a completion: %+v", len(events), events)
 	}
-	if events[0].Type != "assistant_text" || events[0].Text != "Yes — that regex is greedy." {
-		t.Errorf("first event = %+v, want the answer as assistant_text", events[0])
+	// The question is persisted here and nowhere else: there is no CLI on this
+	// path to echo it, so without this a reloaded chat shows answers alone.
+	if events[0].Type != "user" || events[0].Text != "is this regex greedy?" {
+		t.Errorf("first event = %+v, want the user's question", events[0])
 	}
-	if events[1].Type != "complete" {
-		t.Errorf("last event = %q, want the turn marked complete", events[1].Type)
+	if events[1].Type != "assistant_text" || events[1].Text != "Yes — that regex is greedy." {
+		t.Errorf("second event = %+v, want the answer as assistant_text", events[1])
+	}
+	if events[2].Type != "complete" {
+		t.Errorf("last event = %q, want the turn marked complete", events[2].Type)
 	}
 }
 
@@ -104,18 +111,19 @@ func TestAFailureNamesTheModel(t *testing.T) {
 		}},
 		"hello",
 		Actor{},
+		"",
 		nil,
 		func(e ChatEvent) { events = append(events, e) },
 	)
 	if err == nil {
 		t.Fatal("a refused turn must return an error")
 	}
-	if len(events) != 1 || events[0].Type != "error" {
-		t.Fatalf("events = %+v, want one error", events)
+	if len(events) != 2 || events[1].Type != "error" {
+		t.Fatalf("events = %+v, want the question then an error", events)
 	}
 	for _, want := range []string{"gemini-flash-latest", "quota exhausted"} {
-		if !strings.Contains(events[0].Message, want) {
-			t.Errorf("message %q should mention %q", events[0].Message, want)
+		if !strings.Contains(events[1].Message, want) {
+			t.Errorf("message %q should mention %q", events[1].Message, want)
 		}
 	}
 }
@@ -134,13 +142,14 @@ func TestNoResponderFailsLoudly(t *testing.T) {
 		ChatMeta{DirectModel: servicechat.DirectModel{Source: servicechat.DirectSourceLocal}},
 		"hello",
 		Actor{},
+		"",
 		nil,
 		func(e ChatEvent) { events = append(events, e) },
 	)
 	if !errors.Is(err, ErrNoDirectResponder) {
 		t.Fatalf("err = %v, want ErrNoDirectResponder", err)
 	}
-	if len(events) != 1 || events[0].Type != "error" {
-		t.Fatalf("events = %+v, want one error", events)
+	if len(events) != 2 || events[1].Type != "error" {
+		t.Fatalf("events = %+v, want the question then an error", events)
 	}
 }

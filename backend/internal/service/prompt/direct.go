@@ -124,9 +124,20 @@ func (rnr *Service) answerDirectly(
 	meta ChatMeta,
 	prompt string,
 	actor Actor,
+	synthetic string,
 	priorEvents []servicechat.Event,
 	emit func(ChatEvent),
 ) error {
+	// Persist the user message first, exactly as the agent path does. Without
+	// it a reloaded direct chat shows answers with no questions: nothing else
+	// on this path writes what was asked, because there is no CLI to echo it.
+	emit(ChatEvent{
+		T:         time.Now().UnixMilli(),
+		Type:      "user",
+		Text:      prompt,
+		Synthetic: servicechat.NormalizeSynthetic(synthetic),
+	})
+
 	if rnr.direct == nil {
 		emit(ChatEvent{T: time.Now().UnixMilli(), Type: "error", Message: ErrNoDirectResponder.Error()})
 		return ErrNoDirectResponder
