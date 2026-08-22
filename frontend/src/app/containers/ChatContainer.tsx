@@ -28,6 +28,8 @@ import { useSnippets } from "../../state/hooks/chat/useSnippets";
 import { useSlashCommands } from "../../state/hooks/chat/useSlashCommands";
 import { useTerminalOverlayController } from "../../state/hooks/chat/useTerminalOverlayController";
 import { useWorkspaceGitRepos } from "../../state/hooks/chat/useWorkspaceGitRepos";
+import { useDirectModelChoices } from "../../state/hooks/chat/useDirectModelChoices";
+import { directBadge, isDirect, NO_DIRECT_MODEL } from "../../models/directModels";
 
 export function ChatContainer({
   chat,
@@ -244,6 +246,10 @@ export function ChatContainer({
   // The third-party endpoints a chat may be pointed at. One fetch serves
   // every chat: the register changes only when an administrator edits it.
   const endpointChoices = useAgentEndpointChoices(true);
+  // Completion-API models: the enabled free-tier providers and the local one.
+  // Same reasoning as the endpoints — one fetch serves every chat.
+  const directChoices = useDirectModelChoices(true);
+  const directBadgeText = directBadge(displayMeta.directModel, directChoices);
   const endpointBadgeText = endpointBadge(
     endpointChoices,
     displayMeta.endpointId,
@@ -254,7 +260,10 @@ export function ChatContainer({
   // chat is actually on Auto, so a pinned chat costs nothing. A chat pointed
   // at an endpoint is pinned to it, so the hint is not asked for either.
   const routingPreview = useModelRoutingPreview({
-    enabled: displayMeta.modelPolicy === "auto" && !displayMeta.endpointId,
+    enabled:
+      displayMeta.modelPolicy === "auto" &&
+      !displayMeta.endpointId &&
+      !isDirect(displayMeta.directModel),
     draft: composer.text,
     mode: displayMode,
     provider: displayMeta.provider || "codex",
@@ -288,6 +297,9 @@ export function ChatContainer({
     },
     routing: { decision: routingPreview.decision, available: !routingPreview.unavailable },
     endpointChoices,
+    directModel: displayMeta.directModel ?? NO_DIRECT_MODEL,
+    directChoices,
+    onDirectModelChange: preferences.changeDirectModel,
     queuedPrompts: composer.queue.queuedPrompts,
     selectedSkills,
     playbooks,
@@ -330,6 +342,7 @@ export function ChatContainer({
             composer={composerView}
             policies={policies}
             endpointBadge={endpointBadgeText}
+            directBadge={directBadgeText}
             showJump={composer.scroll.showJump}
             scrollRef={composer.scroll.scrollRef}
             contentRef={composer.scroll.contentRef}

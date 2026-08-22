@@ -1,3 +1,4 @@
+import type { DirectModelRef } from "./directModels";
 import type {
   ChatMode,
   ChatProvider,
@@ -51,6 +52,8 @@ export interface ChatMeta {
    * carrying one is not routed.
    */
   endpointId?: string;
+  /** A completion-API model answering this chat instead of an agent. */
+  directModel?: DirectModelRef;
   projectId?: string;
   selectedSkills?: SelectedSkill[];
   /** Post-run policies: what the platform does on its own once a turn settles. */
@@ -247,6 +250,8 @@ export interface CreateChatInput {
   serviceTier?: ServiceTier;
   modelPolicy?: ChatModelPolicy;
   endpointId?: string;
+  /** A completion-API model answering this chat instead of an agent. */
+  directModel?: DirectModelRef;
   projectId?: string;
   selectedSkills?: SelectedSkill[];
 }
@@ -262,6 +267,8 @@ export interface UpdateChatInput {
   modelPolicy?: ChatModelPolicy;
   /** "" points the chat back at the vendor's own endpoint. */
   endpointId?: string;
+  /** A completion-API model answering this chat instead of an agent. */
+  directModel?: DirectModelRef;
   selectedSkills?: SelectedSkill[];
   autopilot?: AutopilotPatch;
   autoTest?: AutoTestPatch;

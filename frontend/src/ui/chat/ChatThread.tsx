@@ -23,6 +23,7 @@ export function ChatThread({
   composer,
   policies,
   endpointBadge,
+  directBadge,
   showJump,
   scrollRef,
   contentRef,
@@ -56,6 +57,7 @@ export function ChatThread({
    * header can say whose model is answering. Null on every ordinary chat.
    */
   endpointBadge?: { short: string; title: string } | null;
+  directBadge?: { short: string; title: string } | null;
   showJump: boolean;
   scrollRef: RefObject<HTMLDivElement>;
   contentRef: RefObject<HTMLDivElement>;
@@ -83,6 +85,7 @@ export function ChatThread({
           activity={activity}
           policies={policies}
           endpointBadge={endpointBadge}
+          directBadge={directBadge}
           onHamburger={onHamburger}
           onOpenAgentBrowser={onOpenAgentBrowser}
           onOpenCompanionChat={onOpenCompanionChat}

@@ -225,6 +225,7 @@ type Service struct {
 	replyPrefs    ReplyPreferenceResolver
 	router        ModelRouter
 	endpoints     AgentEndpoints
+	direct        DirectResponder
 }
 
 func New(
@@ -434,6 +435,15 @@ func (rnr *Service) runPromptAs(
 	}
 
 	priorEvents, _ := rnr.store.ReadEvents(ctx, id)
+
+	// A chat pointed at a completion-API model never reaches a container.
+	// This is checked before anything else in the run path — the endpoint
+	// register, the model router, the skill selection, the browser and
+	// schedule grants all describe an agent run, and none of them means
+	// anything to a model that has no tools.
+	if meta.DirectModel.Set() {
+		return rnr.answerDirectly(ctx, id, meta, prompt, input.Actor, priorEvents, emit)
+	}
 
 	// A chat pointed at a third-party endpoint is resolved first, because the
 	// endpoint decides which CLI answers. Resolving it can fail — a deleted

@@ -157,6 +157,7 @@ func (s *Service) create(ctx context.Context, in CreateInput) (Meta, error) {
 		ServiceTier:     NormalizeServiceTier(in.ServiceTier),
 		ModelPolicy:     NormalizeModelPolicy(in.ModelPolicy),
 		EndpointID:      NormalizeEndpointID(in.EndpointID),
+		DirectModel:     NormalizeDirectModel(in.DirectModel),
 		ProjectID:       in.ProjectID,
 		SelectedSkills:  NormalizeSelectedSkills(s.withDefaultSkills(ctx, in, provider), provider),
 		CompanionOf:     in.CompanionOf,
@@ -222,6 +223,7 @@ func (s *Service) Fork(ctx context.Context, id ID) (Meta, error) {
 		ServiceTier:     src.ServiceTier,
 		ModelPolicy:     src.ModelPolicy,
 		EndpointID:      src.EndpointID,
+		DirectModel:     src.DirectModel,
 		ProjectID:       src.ProjectID,
 		SelectedSkills:  src.SelectedSkills,
 		ForkPending:     forkPending,
@@ -292,6 +294,19 @@ func (s *Service) Update(ctx context.Context, id ID, in UpdateInput) (Meta, erro
 		}
 		if in.EndpointID != nil {
 			m.EndpointID = NormalizeEndpointID(*in.EndpointID)
+			if m.EndpointID != "" {
+				m.DirectModel = DirectModel{}
+			}
+		}
+		if in.DirectModel != nil {
+			m.DirectModel = NormalizeDirectModel(*in.DirectModel)
+			// The two are mutually exclusive by construction: an endpoint
+			// chooses which agent CLI runs, and a direct model runs no CLI at
+			// all. Picking one clears the other so a chat can never carry a
+			// contradiction that some later reader has to break a tie over.
+			if m.DirectModel.Set() {
+				m.EndpointID = ""
+			}
 		}
 		if in.SelectedSkills != nil {
 			m.SelectedSkills = NormalizeSelectedSkills(*in.SelectedSkills, m.Provider)

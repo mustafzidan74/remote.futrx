@@ -214,6 +214,10 @@ export const API_ROUTES = {
     item: (key: string) => `/api/admin/secrets/${encodeURIComponent(key)}`,
     test: (key: string) => `/api/admin/secrets/${encodeURIComponent(key)}/test`,
   },
+  directModels: {
+    /** Readable by any signed-in user: labels and model ids only. */
+    choices: "/api/direct-models",
+  },
   agentEndpoints: {
     /** Readable by any signed-in user: labels and model ids only. */
     choices: "/api/agent-endpoints",

@@ -15,6 +15,7 @@ import (
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicetemplates "github.com/futrx-com/remote.futrx.com/internal/service/container/templates"
 	servicedashboard "github.com/futrx-com/remote.futrx.com/internal/service/dashboard"
+	servicedirect "github.com/futrx-com/remote.futrx.com/internal/service/directmodels"
 	servicegithistory "github.com/futrx-com/remote.futrx.com/internal/service/githistory"
 	servicegithub "github.com/futrx-com/remote.futrx.com/internal/service/github"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
@@ -263,6 +264,12 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		// read so the composer can list what a chat may be pointed at.
 		AgentEndpoints: httphandlers.NewAgentEndpointsHandler(
 			agentEndpointsService(deps.Services.AgentEndpoints),
+			deps.Services.Auth,
+		),
+		// The composer's list of completion-API models: the enabled pool
+		// providers and the local model, readable by any signed-in user.
+		DirectModels: httphandlers.NewDirectModelsHandler(
+			directModelsService(deps.Services.DirectModels),
 			deps.Services.Auth,
 		),
 		AdminResources: httphandlers.NewAdminResourcesHandler(
@@ -560,4 +567,13 @@ func (g *accessGate) CanUploadToChat(ctx context.Context, r *http.Request, chatI
 		return true, nil
 	}
 	return g.HasAccess(ctx, serviceproject.ID(meta.ProjectID), email)
+}
+
+// directModelsService keeps a nil service out of the handler's interface, the
+// same narrowing every other optional service gets here.
+func directModelsService(direct *servicedirect.Service) httphandlers.DirectModelsService {
+	if direct == nil {
+		return nil
+	}
+	return direct
 }

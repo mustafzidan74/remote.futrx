@@ -1,4 +1,5 @@
 import type { ChatModelPolicy, ChatProvider, SelectedSkill } from "../../../models/chat";
+import type { DirectModelChoice, DirectModelRef } from "../../../models/directModels";
 import type { AgentEndpointChoice } from "../../../models/agentEndpoints";
 import type { ComposerRoutingHint } from "./preferences";
 import type { RegisteredSkill } from "../../../models/skill";
@@ -25,6 +26,9 @@ export function ComposerAgentControls({
   modelPolicy,
   endpointId,
   endpointChoices,
+  directModel,
+  directChoices,
+  onDirectModelChange,
   routing,
   streaming,
   selectedSkills,
@@ -51,6 +55,9 @@ export function ComposerAgentControls({
   endpointId: string;
   /** Enabled third-party endpoints; empty hides the pill's section. */
   endpointChoices: AgentEndpointChoice[];
+  directModel: DirectModelRef;
+  directChoices: DirectModelChoice[];
+  onDirectModelChange: (choice: DirectModelChoice | null) => void;
   /** What the next turn would be routed to, and whether Auto is on offer. */
   routing: ComposerRoutingHint;
   streaming: boolean;
@@ -82,6 +89,9 @@ export function ComposerAgentControls({
         modelPolicy={modelPolicy}
         endpointId={endpointId}
         endpointChoices={endpointChoices}
+        directModel={directModel}
+        directChoices={directChoices}
+        onDirectModelChange={onDirectModelChange}
         routedNext={routing.decision}
         routingAvailable={routing.available}
         streaming={streaming}
