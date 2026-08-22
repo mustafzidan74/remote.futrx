@@ -122,6 +122,31 @@ a credential out of the configuration itself, and this platform uses it.
 Every interpolated value is rendered as a TOML basic string, so a label
 containing a quote is data rather than syntax.
 
+### Measured against codex-cli 0.145.0 — no codex templates ship
+
+The codex side was tested on the pinned CLI version and does not work, so the
+templates for it were removed rather than shipped broken:
+
+| What was tried | Result |
+|---|---|
+| `wire_api = "chat"` (Gemini, Groq, Cerebras publish Chat Completions only) | Config refused at load: *"`wire_api = "chat"` is no longer supported"* |
+| `wire_api = "responses"` + `env_key`, from a real `config.toml` | Reaches the provider, sends no credential: *401 Missing Authentication header* |
+| Same, via `-c model_providers.x.env_key=...` overrides | Identical |
+| `env_http_headers.Authorization` | Identical |
+
+`codex doctor` reports *"auth is provided by the active model provider"* and
+*"model provider requires OpenAI auth false"*, so codex accepts the
+configuration — it simply never puts the key on the wire.
+
+One useful thing the same test settled: **codex does not need its own ChatGPT
+login to drive a custom provider.** It went straight to the third-party host.
+So when the credential path works, these endpoints will not require a Codex
+subscription.
+
+`codex` remains a supported CLI so an operator with a working recipe can add a
+profile by hand. What changed is that the platform no longer ships templates
+that cannot authenticate.
+
 ### Wire protocol
 
 Recent codex builds require the OpenAI **Responses** API and no longer speak

@@ -585,7 +585,12 @@ func TestSeedTemplatesShipDisabledAndKeyless(t *testing.T) {
 			t.Errorf("%s names unsupported CLI %q", endpoint.ID, endpoint.CLI)
 		}
 	}
-	if claude == 0 || codex == 0 {
-		t.Errorf("seeds cover %d claude and %d codex profiles, want both", claude, codex)
+	// Only the claude side is asserted. codex-cli 0.145.0 refuses a Chat
+	// Completions provider outright and sends no credential for a Responses
+	// one, so there is nothing honest to ship for it — see the comment on
+	// Seed. If a codex template ever comes back, it comes back with a passing
+	// Test behind it, not with this assertion loosened.
+	if claude == 0 {
+		t.Errorf("seeds cover %d claude profiles, want at least one", claude)
 	}
 }

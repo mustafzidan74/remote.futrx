@@ -23,6 +23,29 @@ package agentendpoints
 
 // Seed returns the template profiles, in the order the admin table shows
 // them. The slice is freshly built on every call, so a caller may modify it.
+// Seed ships templates only for endpoints that were verified to work.
+//
+// There are no codex templates, and that is a finding rather than an
+// oversight. Measured against codex-cli 0.145.0, the version this platform
+// pins, on 2026-08-22:
+//
+//   - `wire_api = "chat"` is refused when the config loads — "no longer
+//     supported ... set wire_api = \"responses\"". Google Gemini, Groq and
+//     Cerebras publish Chat Completions only, so their configs never load.
+//   - With `wire_api = "responses"`, codex reaches the provider but sends no
+//     credential: OpenRouter answers "Missing Authentication header". Neither
+//     `env_key` nor `env_http_headers` put the key on the wire, from a real
+//     config.toml or from `-c` overrides. `codex doctor` reports "auth is
+//     provided by the active model provider" and "requires OpenAI auth false",
+//     so codex believes it is configured — it just does not authenticate.
+//
+// The good news in the same test: codex does **not** need its own ChatGPT
+// login to drive a custom provider. Once the credential path works, an
+// operator can use these endpoints without a Codex subscription.
+//
+// CLICodex stays supported so an operator with a working recipe can add a
+// profile by hand. Shipping templates that cannot authenticate would only send
+// someone chasing their own key.
 func Seed() []Endpoint {
 	return []Endpoint{
 		{
@@ -52,61 +75,6 @@ func Seed() []Endpoint {
 			Notes: "Moonshot's own Anthropic-compatible endpoint, published for Claude Code. " +
 				"Uses ANTHROPIC_BASE_URL + ANTHROPIC_AUTH_TOKEN. " +
 				"Mainland China accounts use https://api.moonshot.cn/anthropic instead.",
-		},
-		{
-			ID:      "openrouter",
-			Label:   "OpenRouter",
-			CLI:     CLICodex,
-			BaseURL: "https://openrouter.ai/api/v1",
-			WireAPI: WireResponses,
-			Models: []Model{
-				{ID: "z-ai/glm-4.7", Label: "GLM-4.7"},
-				{ID: "moonshotai/kimi-k2", Label: "Kimi K2"},
-				{ID: "deepseek/deepseek-chat", Label: "DeepSeek Chat"},
-			},
-			Notes: "OpenRouter's OpenAI-compatible gateway, configured the way the Codex CLI " +
-				"documents a custom provider: base_url + env_key + wire_api. " +
-				"Model ids carry the vendor prefix OpenRouter's model page shows.",
-		},
-		{
-			ID:      "google-gemini",
-			Label:   "Google Gemini",
-			CLI:     CLICodex,
-			BaseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
-			WireAPI: WireChat,
-			Models: []Model{
-				{ID: "gemini-2.5-pro", Label: "Gemini 2.5 Pro"},
-				{ID: "gemini-2.5-flash", Label: "Gemini 2.5 Flash"},
-			},
-			Notes: "Google's own OpenAI-compatibility layer for the Gemini API. " +
-				"It speaks Chat Completions, not the Responses API, so a codex build that " +
-				"requires wire_api=responses will need a translating proxy — run Test first.",
-		},
-		{
-			ID:      "groq",
-			Label:   "Groq",
-			CLI:     CLICodex,
-			BaseURL: "https://api.groq.com/openai/v1",
-			WireAPI: WireChat,
-			Models: []Model{
-				{ID: "moonshotai/kimi-k2-instruct", Label: "Kimi K2 Instruct"},
-				{ID: "llama-3.3-70b-versatile", Label: "Llama 3.3 70B"},
-			},
-			Notes: "Groq's own OpenAI-compatible endpoint. Chat Completions only — see the " +
-				"Gemini note about wire_api.",
-		},
-		{
-			ID:      "cerebras",
-			Label:   "Cerebras",
-			CLI:     CLICodex,
-			BaseURL: "https://api.cerebras.ai/v1",
-			WireAPI: WireChat,
-			Models: []Model{
-				{ID: "qwen-3-coder-480b", Label: "Qwen3 Coder 480B"},
-				{ID: "llama-3.3-70b", Label: "Llama 3.3 70B"},
-			},
-			Notes: "Cerebras Inference's own OpenAI-compatible endpoint. Chat Completions only — " +
-				"see the Gemini note about wire_api.",
 		},
 	}
 }
