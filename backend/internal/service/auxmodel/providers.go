@@ -65,6 +65,17 @@ type ollamaRequest struct {
 	Messages []ollamaMessage `json:"messages"`
 	Stream   bool            `json:"stream"`
 	Options  ollamaOptions   `json:"options"`
+	// Think turns off a reasoning model's thinking phase.
+	//
+	// Qwen3 and its relatives reason before answering, out of the same token
+	// budget, and these jobs allow a few hundred tokens for what is usually a
+	// six-word title. Left on, qwen3:1.7b spent the whole budget thinking and
+	// returned an empty string in 16s; turned off, it answered correctly in
+	// 2.2s. None of these jobs wants deliberation — they want a label.
+	//
+	// A pointer so the field is omitted for the models and Ollama builds that
+	// do not understand it, rather than sent as a false they might reject.
+	Think *bool `json:"think,omitempty"`
 }
 
 type ollamaMessage struct {
@@ -96,6 +107,7 @@ func (c ollamaClient) Complete(ctx context.Context, req Completion) (string, err
 		},
 		Stream:  false,
 		Options: ollamaOptions{NumPredict: req.MaxTokens, Temperature: 0.2},
+		Think:   thinkingOff(req.Model),
 	})
 	if err != nil {
 		return "", err
@@ -238,4 +250,36 @@ func transportError(err error) error {
 func collapse(text string) string {
 	fields := strings.Fields(text)
 	return strings.Join(fields, " ")
+}
+
+// reasoningModelPrefixes name the local model families that think before they
+// answer. The list is prefixes rather than exact tags because a family ships
+// under many of them — qwen3:1.7b, qwen3:4b-instruct, qwen3.5:8b-q4_K_M.
+//
+// Being wrong in either direction is cheap: a model that does not understand
+// `think` ignores an omitted field, and one that does gets a faster answer.
+var reasoningModelPrefixes = []string{
+	"qwen3",
+	"deepseek-r1",
+	"magistral",
+	"granite3.1-moe", // hybrid reasoning, same budget problem
+}
+
+// thinkingOff returns a pointer to false for a model known to reason, and nil
+// for everything else so the field is left out of the request entirely.
+//
+// The jobs this package runs — a chat title, a one-line summary, a commit
+// message — want a label, not deliberation, and they allow a few hundred
+// tokens for it. A reasoning model spends that budget thinking and returns
+// nothing at all. Measured on this platform against qwen3:1.7b: empty after
+// 16s with thinking on, a correct Arabic title in 2.2s with it off.
+func thinkingOff(model string) *bool {
+	name := strings.ToLower(strings.TrimSpace(model))
+	for _, prefix := range reasoningModelPrefixes {
+		if strings.HasPrefix(name, prefix) {
+			off := false
+			return &off
+		}
+	}
+	return nil
 }

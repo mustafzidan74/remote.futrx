@@ -173,3 +173,64 @@ func TestClientForPicksTheProviderShape(t *testing.T) {
 		}
 	}
 }
+
+// TestThinkingIsTurnedOffForReasoningModels covers the failure that made a
+// working local model look broken.
+//
+// These jobs allow a few hundred tokens for what is usually a six-word title.
+// A reasoning model spends that budget thinking and returns an empty string —
+// measured on qwen3:1.7b, empty after 16s with thinking on and a correct
+// Arabic title in 2.2s with it off.
+func TestThinkingIsTurnedOffForReasoningModels(t *testing.T) {
+	tests := []struct {
+		model string
+		want  bool // true = the request should carry think:false
+	}{
+		{model: "qwen3:1.7b", want: true},
+		{model: "qwen3:4b-instruct-q4_K_M", want: true},
+		{model: "QWEN3:8B", want: true},
+		{model: "deepseek-r1:7b", want: true},
+		{model: "granite3.1-moe:3b", want: true},
+		{model: "qwen2.5:1.5b-instruct-q4_K_M", want: false},
+		{model: "llama3.2:3b", want: false},
+		{model: "", want: false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.model, func(t *testing.T) {
+			got := thinkingOff(test.model)
+			if !test.want {
+				if got != nil {
+					t.Fatalf("thinkingOff(%q) = %v, want nil so the field is omitted", test.model, *got)
+				}
+				return
+			}
+			if got == nil {
+				t.Fatalf("thinkingOff(%q) = nil: the model would think its whole budget away", test.model)
+			}
+			if *got {
+				t.Fatalf("thinkingOff(%q) = true, want false", test.model)
+			}
+		})
+	}
+}
+
+// TestTheFieldIsOmittedRatherThanSentFalse checks the wire, not just the
+// helper: an Ollama build that does not know `think` should not receive it.
+func TestTheFieldIsOmittedRatherThanSentFalse(t *testing.T) {
+	encoded, err := json.Marshal(ollamaRequest{Model: "llama3.2:3b", Think: thinkingOff("llama3.2:3b")})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if strings.Contains(string(encoded), "think") {
+		t.Fatalf("request carries a think field for a non-reasoning model: %s", encoded)
+	}
+
+	encoded, err = json.Marshal(ollamaRequest{Model: "qwen3:1.7b", Think: thinkingOff("qwen3:1.7b")})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !strings.Contains(string(encoded), `"think":false`) {
+		t.Fatalf("request should carry think:false for qwen3: %s", encoded)
+	}
+}
