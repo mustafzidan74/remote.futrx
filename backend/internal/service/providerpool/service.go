@@ -90,6 +90,18 @@ type TestResult struct {
 const (
 	TestSystemPrompt = "You are a terse assistant. Answer in exactly one short sentence."
 	TestUserText     = "In one sentence, say that you are working and name the model you are."
+
+	// TestMaxTokens is generous for a one-sentence answer on purpose.
+	//
+	// Reasoning models spend the completion budget on thinking *before* they
+	// write anything, and the budget is shared. With 64 tokens, Gemini's
+	// current flash models returned HTTP 200, finish_reason "length",
+	// completion_tokens 0 and no text at all — a working provider reported as
+	// broken. Measured against gemini-flash-latest: 64 fails, 300 answers.
+	//
+	// Overshooting costs nothing that matters. The probe runs when an operator
+	// presses Test, and an unused budget is not billed.
+	TestMaxTokens = 512
 )
 
 // Defaults for one call.
@@ -803,7 +815,7 @@ func (s *Service) Test(ctx context.Context, id string) TestResult {
 		APIKey:       key,
 		SystemPrompt: TestSystemPrompt,
 		UserText:     TestUserText,
-		MaxTokens:    64,
+		MaxTokens:    TestMaxTokens,
 	})
 	result.DurationMS = s.now().Sub(started).Milliseconds()
 

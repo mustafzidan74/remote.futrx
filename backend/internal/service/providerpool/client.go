@@ -123,6 +123,9 @@ type openAIResponse struct {
 		Message struct {
 			Content string `json:"content"`
 		} `json:"message"`
+		// FinishReason separates "the model had nothing to say" from "the
+		// model ran out of room to say it", which look identical in the body.
+		FinishReason string `json:"finish_reason"`
 	} `json:"choices"`
 	Usage struct {
 		PromptTokens     int `json:"prompt_tokens"`
@@ -186,7 +189,20 @@ func (c httpCompleter) openAI(ctx context.Context, call Call) (CallResult, error
 	}
 	text := strings.TrimSpace(decoded.Choices[0].Message.Content)
 	if text == "" {
-		return CallResult{}, &CallError{Status: response.StatusCode, Header: response.Header, Message: "the model returned no text"}
+		// A reasoning model spends the completion budget on thinking before it
+		// writes a word, and the two share one allowance. Run out and the
+		// answer comes back HTTP 200, empty, with finish_reason "length" — a
+		// working provider that looks broken. Say which it was: one is fixed
+		// by raising max tokens, the other is not fixable at all.
+		message := "the model returned no text"
+		if strings.EqualFold(decoded.Choices[0].FinishReason, "length") {
+			message = fmt.Sprintf(
+				"the model used its whole %d-token budget before writing an answer "+
+					"(finish_reason \"length\") — reasoning models need a larger one",
+				call.MaxTokens,
+			)
+		}
+		return CallResult{}, &CallError{Status: response.StatusCode, Header: response.Header, Message: message}
 	}
 	return withTokens(CallResult{
 		Text:             text,
