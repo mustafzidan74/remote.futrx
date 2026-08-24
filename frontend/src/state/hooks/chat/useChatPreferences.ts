@@ -11,6 +11,7 @@ import type { RegisteredSkill } from "../../../models/skill";
 import { useUserSettingsContext } from "../../context/UserSettingsContext";
 import { chatPreferenceState } from "../../chat/chatPreferenceState";
 import { useChatMetaActions } from "./useChatMetaActions";
+import { NO_DIRECT_MODEL, type DirectModelChoice } from "../../../models/directModels";
 
 export function useChatPreferences({
   chat,
@@ -102,6 +103,23 @@ export function useChatPreferences({
     });
   }
 
+  /**
+   * Points the chat at a completion-API model, or back at an agent with null.
+   *
+   * Like changeEndpoint this is per-chat and never written to the user's own
+   * defaults: answering without tools is a choice about one conversation, not
+   * the setting every new chat should start from. It also clears any endpoint,
+   * because the two describe different run paths and a chat can only take one.
+   */
+  function changeDirectModel(choice: DirectModelChoice | null) {
+    metaActions.applyMeta({
+      directModel: choice
+        ? { source: choice.source, providerId: choice.providerId || "", model: choice.model }
+        : NO_DIRECT_MODEL,
+      ...(choice ? { endpointId: "" } : {}),
+    });
+  }
+
   function changeMode(mode: ChatMode) {
     metaActions.applyMeta({ mode });
     void setChatSettings({ mode });
@@ -128,6 +146,7 @@ export function useChatPreferences({
     changeModel,
     changeModelPolicy,
     changeEndpoint,
+    changeDirectModel,
     changeMode,
     changeReasoningEffort,
     changeServiceTier,

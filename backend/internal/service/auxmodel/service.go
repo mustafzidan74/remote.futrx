@@ -306,6 +306,65 @@ func (s *Service) Complete(
 	return answer, nil
 }
 
+// CompleteLocal answers from the configured local endpoint and nowhere else.
+//
+// Complete routes by job — a job set to "pool" goes out to the free-tier
+// providers and only falls back here. That is right for a chat title, whose
+// caller wants a sentence and does not care who wrote it, and wrong for a chat
+// an operator deliberately pointed at the local model: silently answering from
+// a hosted provider would defeat both reasons to choose local, which are that
+// it works with no internet and that nothing leaves the server.
+//
+// It also takes its own token budget, because a conversation needs far more
+// room than a six-word title and, on a reasoning model, has to cover the
+// thinking that comes out of the same allowance.
+func (s *Service) CompleteLocal(
+	ctx context.Context,
+	systemPrompt string,
+	userText string,
+	maxTokens int,
+) (string, error) {
+	if s == nil {
+		return "", ErrDisabled
+	}
+	config := s.Config()
+	if !config.Enabled || !config.Configured() {
+		return "", ErrDisabled
+	}
+	userText = strings.TrimSpace(userText)
+	if userText == "" {
+		return "", ErrEmptyInput
+	}
+	if s.breakerOpen() {
+		return "", ErrBreakerOpen
+	}
+
+	parent := ctx
+	if parent == nil || parent.Err() != nil {
+		parent = context.Background()
+	}
+	// A conversation is a longer generation than any background job, so the
+	// per-job timeout is too tight to reuse unchanged.
+	timeout := time.Duration(config.TimeoutSeconds) * time.Second * 3
+	requestCtx, cancel := context.WithTimeout(parent, timeout)
+	defer cancel()
+
+	answer, err := s.completerFor(config).Complete(requestCtx, Completion{
+		BaseURL:      config.BaseURL,
+		Model:        config.Model,
+		APIKey:       config.APIKey,
+		SystemPrompt: systemPrompt,
+		UserText:     Truncate(userText, maxInputRunes),
+		MaxTokens:    maxTokens,
+	})
+	if err != nil {
+		s.recordFailure(err)
+		return "", err
+	}
+	s.recordSuccess()
+	return answer, nil
+}
+
 // Test runs a real one-sentence completion so an operator can prove the
 // endpoint, the model, and the key all work, and see what the round trip
 // costs in wall-clock time.

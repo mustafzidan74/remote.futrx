@@ -49,10 +49,20 @@ type Meta struct {
 	// An endpoint pins the chat. It decides which CLI runs, and its model
 	// list is what Model is chosen from, so a chat carrying one is not
 	// offered to the automatic model router: there is nothing left to route.
-	EndpointID     string     `json:"endpointId,omitempty"`
-	ProjectID      ProjectID  `json:"projectId,omitempty"`
-	ForkPending    bool       `json:"forkPending,omitempty"`
-	SelectedSkills []SkillRef `json:"selectedSkills,omitempty"`
+	EndpointID string `json:"endpointId,omitempty"`
+	// DirectModel answers this chat with a plain completion API — one of the
+	// free-tier pool providers, or the local auxiliary model — instead of an
+	// agent CLI in the project's container.
+	//
+	// Those models have no tools: no files, no shell, no repository. A chat
+	// carrying one can answer questions and draft text and cannot change
+	// anything, which is why it is a separate field rather than another value
+	// of Provider. The zero value means the chat runs an agent, which is what
+	// every chat did before this existed.
+	DirectModel    DirectModel `json:"directModel,omitempty"`
+	ProjectID      ProjectID   `json:"projectId,omitempty"`
+	ForkPending    bool        `json:"forkPending,omitempty"`
+	SelectedSkills []SkillRef  `json:"selectedSkills,omitempty"`
 	// Summary is a one-line description of what this chat is about, written
 	// by the optional auxiliary model after a run settles (see
 	// internal/service/auxmodel). It is a search and scanning aid shown as a
@@ -173,18 +183,19 @@ type EventPage struct {
 }
 
 type CreateInput struct {
-	Title           string     `json:"title,omitempty"`
-	TmuxSession     string     `json:"tmuxSession,omitempty"`
-	Cwd             string     `json:"cwd,omitempty"`
-	Provider        Provider   `json:"provider,omitempty"`
-	Model           string     `json:"model,omitempty"`
-	Mode            string     `json:"mode,omitempty"`
-	ReasoningEffort string     `json:"reasoningEffort,omitempty"`
-	ServiceTier     string     `json:"serviceTier,omitempty"`
-	ModelPolicy     string     `json:"modelPolicy,omitempty"`
-	EndpointID      string     `json:"endpointId,omitempty"`
-	ProjectID       ProjectID  `json:"projectId,omitempty"`
-	SelectedSkills  []SkillRef `json:"selectedSkills,omitempty"`
+	Title           string      `json:"title,omitempty"`
+	TmuxSession     string      `json:"tmuxSession,omitempty"`
+	Cwd             string      `json:"cwd,omitempty"`
+	Provider        Provider    `json:"provider,omitempty"`
+	Model           string      `json:"model,omitempty"`
+	Mode            string      `json:"mode,omitempty"`
+	ReasoningEffort string      `json:"reasoningEffort,omitempty"`
+	ServiceTier     string      `json:"serviceTier,omitempty"`
+	ModelPolicy     string      `json:"modelPolicy,omitempty"`
+	EndpointID      string      `json:"endpointId,omitempty"`
+	DirectModel     DirectModel `json:"directModel,omitempty"`
+	ProjectID       ProjectID   `json:"projectId,omitempty"`
+	SelectedSkills  []SkillRef  `json:"selectedSkills,omitempty"`
 	// CompanionOf and CompanionRole are set only by the team service when it
 	// creates a reviewer or tester thread. They are decoded from a request
 	// body like every other field, but the chat handler never reaches this
@@ -208,8 +219,11 @@ type UpdateInput struct {
 	// EndpointID repoints the chat at a third-party agent endpoint, or at the
 	// vendor's own default when set to "". Absent leaves the stored choice
 	// alone.
-	EndpointID     *string     `json:"endpointId,omitempty"`
-	SelectedSkills *[]SkillRef `json:"selectedSkills,omitempty"`
+	EndpointID *string `json:"endpointId,omitempty"`
+	// DirectModel repoints the chat at a completion-API model, or back at an
+	// agent when set to the zero value. Absent leaves the stored choice alone.
+	DirectModel    *DirectModel `json:"directModel,omitempty"`
+	SelectedSkills *[]SkillRef  `json:"selectedSkills,omitempty"`
 	// Autopilot and AutoTest patch the post-run policies. Absent leaves the
 	// stored policy alone; present replaces only the fields it names.
 	Autopilot *AutopilotInput `json:"autopilot,omitempty"`
@@ -387,4 +401,65 @@ func TitleFromPrompt(prompt string) string {
 		t = fmt.Sprintf("Chat %s", time.Now().Format("Jan 2 15:04"))
 	}
 	return t
+}
+
+// DirectSource names where a chat's direct model comes from. The two differ in
+// what an operator fixes when one stops answering — a pool provider's key and
+// quota, or the local model's daemon — so the chat stores which it is rather
+// than inferring it from a model id.
+type DirectSource string
+
+const (
+	// DirectSourcePool is one provider in the free-tier pool.
+	DirectSourcePool DirectSource = "pool"
+	// DirectSourceLocal is the local auxiliary model.
+	DirectSourceLocal DirectSource = "local"
+)
+
+// DirectModel is a chat's completion-API model. The zero value means the chat
+// runs an agent.
+type DirectModel struct {
+	Source DirectSource `json:"source,omitempty"`
+	// ProviderID is the pool provider's registry id, empty for the local
+	// model since there is only one of those.
+	ProviderID string `json:"providerId,omitempty"`
+	Model      string `json:"model,omitempty"`
+}
+
+// Set reports whether this chat answers from a completion API.
+func (m DirectModel) Set() bool { return m.Source != "" }
+
+// Valid reports whether a stored choice is coherent enough to act on. An
+// incoherent one is treated as unset, so a hand-edited document degrades to
+// "this chat runs an agent" rather than to a run that cannot start.
+func (m DirectModel) Valid() bool {
+	switch m.Source {
+	case "":
+		return true
+	case DirectSourceLocal:
+		return true
+	case DirectSourcePool:
+		return strings.TrimSpace(m.ProviderID) != ""
+	default:
+		return false
+	}
+}
+
+// NormalizeDirectModel trims a stored or submitted choice and drops one that
+// makes no sense. An incoherent value becomes the zero value — "this chat runs
+// an agent" — because that is the behaviour every chat already has and the one
+// that cannot fail to start.
+func NormalizeDirectModel(m DirectModel) DirectModel {
+	m.Source = DirectSource(strings.ToLower(strings.TrimSpace(string(m.Source))))
+	m.ProviderID = strings.ToLower(strings.TrimSpace(m.ProviderID))
+	m.Model = strings.TrimSpace(m.Model)
+	if !m.Valid() {
+		return DirectModel{}
+	}
+	if m.Source == DirectSourceLocal {
+		// The local model has one provider by definition; carrying an id
+		// would just be something else to keep in sync.
+		m.ProviderID = ""
+	}
+	return m
 }

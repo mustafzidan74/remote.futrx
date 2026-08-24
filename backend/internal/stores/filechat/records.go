@@ -7,31 +7,32 @@ import (
 )
 
 type metaRecord struct {
-	ID              string           `json:"id"`
-	Title           string           `json:"title"`
-	Provider        string           `json:"provider,omitempty"`
-	ClaudeSessionID string           `json:"claudeSessionId,omitempty"`
-	CodexSessionID  string           `json:"codexSessionId,omitempty"`
-	KimiSessionID   string           `json:"kimiSessionId,omitempty"`
-	TmuxSession     string           `json:"tmuxSession,omitempty"`
-	Cwd             string           `json:"cwd,omitempty"`
-	CreatedAt       int64            `json:"createdAt"`
-	LastMessageAt   int64            `json:"lastMessageAt"`
-	LastReadAt      int64            `json:"lastReadAt,omitempty"`
-	Model           string           `json:"model,omitempty"`
-	Mode            string           `json:"mode,omitempty"`
-	ReasoningEffort string           `json:"reasoningEffort,omitempty"`
-	ServiceTier     string           `json:"serviceTier,omitempty"`
-	ModelPolicy     string           `json:"modelPolicy,omitempty"`
-	EndpointID      string           `json:"endpointId,omitempty"`
-	ProjectID       string           `json:"projectId,omitempty"`
-	ForkPending     bool             `json:"forkPending,omitempty"`
-	SelectedSkills  []skillRefRecord `json:"selectedSkills,omitempty"`
-	Autopilot       autopilotRecord  `json:"autopilot,omitempty"`
-	AutoTest        autoTestRecord   `json:"autoTest,omitempty"`
-	Team            teamRecord       `json:"team,omitempty"`
-	CompanionOf     string           `json:"companionOf,omitempty"`
-	CompanionRole   string           `json:"companionRole,omitempty"`
+	ID              string                  `json:"id"`
+	Title           string                  `json:"title"`
+	Provider        string                  `json:"provider,omitempty"`
+	ClaudeSessionID string                  `json:"claudeSessionId,omitempty"`
+	CodexSessionID  string                  `json:"codexSessionId,omitempty"`
+	KimiSessionID   string                  `json:"kimiSessionId,omitempty"`
+	TmuxSession     string                  `json:"tmuxSession,omitempty"`
+	Cwd             string                  `json:"cwd,omitempty"`
+	CreatedAt       int64                   `json:"createdAt"`
+	LastMessageAt   int64                   `json:"lastMessageAt"`
+	LastReadAt      int64                   `json:"lastReadAt,omitempty"`
+	Model           string                  `json:"model,omitempty"`
+	Mode            string                  `json:"mode,omitempty"`
+	ReasoningEffort string                  `json:"reasoningEffort,omitempty"`
+	ServiceTier     string                  `json:"serviceTier,omitempty"`
+	ModelPolicy     string                  `json:"modelPolicy,omitempty"`
+	EndpointID      string                  `json:"endpointId,omitempty"`
+	DirectModel     servicechat.DirectModel `json:"directModel,omitempty"`
+	ProjectID       string                  `json:"projectId,omitempty"`
+	ForkPending     bool                    `json:"forkPending,omitempty"`
+	SelectedSkills  []skillRefRecord        `json:"selectedSkills,omitempty"`
+	Autopilot       autopilotRecord         `json:"autopilot,omitempty"`
+	AutoTest        autoTestRecord          `json:"autoTest,omitempty"`
+	Team            teamRecord              `json:"team,omitempty"`
+	CompanionOf     string                  `json:"companionOf,omitempty"`
+	CompanionRole   string                  `json:"companionRole,omitempty"`
 }
 
 // teamRecord is the persisted shape of a chat's multi-agent workflow. It
@@ -113,6 +114,7 @@ func metaRecordFromDomain(m servicechat.Meta) metaRecord {
 		ServiceTier:     m.ServiceTier,
 		ModelPolicy:     m.ModelPolicy,
 		EndpointID:      m.EndpointID,
+		DirectModel:     m.DirectModel,
 		ProjectID:       string(m.ProjectID),
 		ForkPending:     m.ForkPending,
 		SelectedSkills:  skillRefRecordsFromDomain(m.SelectedSkills),
@@ -252,6 +254,7 @@ func (r metaRecord) toDomain() servicechat.Meta {
 		ServiceTier:     servicechat.NormalizeServiceTier(r.ServiceTier),
 		ModelPolicy:     servicechat.NormalizeModelPolicy(r.ModelPolicy),
 		EndpointID:      servicechat.NormalizeEndpointID(r.EndpointID),
+		DirectModel:     servicechat.NormalizeDirectModel(r.DirectModel),
 		ProjectID:       servicechat.ProjectID(r.ProjectID),
 		ForkPending:     r.ForkPending,
 		SelectedSkills:  servicechat.NormalizeSelectedSkills(skillRefRecordsToDomain(r.SelectedSkills), provider),

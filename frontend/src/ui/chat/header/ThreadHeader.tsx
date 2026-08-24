@@ -33,6 +33,7 @@ export function ThreadHeader({
   activity,
   policies,
   endpointBadge,
+  directBadge,
   actions,
   onHamburger,
   onOpenAgentBrowser,
@@ -49,6 +50,13 @@ export function ThreadHeader({
    * default — means the vendor's own, and the header says nothing.
    */
   endpointBadge?: { short: string; title: string } | null;
+  /**
+   * Set when this chat is answered by a completion-API model rather than an
+   * agent. It reads as information, not as a warning: nothing is wrong, the
+   * chat simply cannot touch files, and an operator who asked for an edit
+   * needs to see why they got an explanation instead.
+   */
+  directBadge?: { short: string; title: string } | null;
   /** Optional extra header controls, right-aligned next to the preview chip. */
   actions?: ComponentChildren;
   onHamburger: () => void;
@@ -88,6 +96,7 @@ export function ThreadHeader({
 
       <div class="flex w-full flex-none items-center justify-end gap-1.5 sm:ms-auto sm:w-auto">
         {endpointBadge && <ThirdPartyBadge badge={endpointBadge} />}
+        {directBadge && <AnswerOnlyBadge badge={directBadge} />}
         <ChatStatusPill
           provider={chat.provider}
           streaming={streaming}
@@ -138,6 +147,27 @@ function ThirdPartyBadge({ badge }: { badge: { short: string; title: string } })
       <Globe class="h-3.5 w-3.5 flex-none" aria-hidden="true" />
       <span class="hidden max-w-[11rem] truncate sm:inline">{badge.short}</span>
       <span class="sm:hidden">3rd-party</span>
+      <span class="sr-only">{badge.title}</span>
+    </span>
+  );
+}
+
+/**
+ * The answer-only badge. Green rather than red on purpose: a chat pointed at a
+ * free model is working as chosen, and the badge is telling the operator what
+ * it can do, not warning them about it.
+ */
+function AnswerOnlyBadge({ badge }: { badge: { short: string; title: string } }) {
+  return (
+    <span
+      class="flex h-8 flex-none items-center gap-1.5 rounded-full border border-accent-green/40
+             bg-accent-green/[0.12] px-2.5 text-[11.5px] font-semibold text-accent-green"
+      title={badge.title}
+      role="status"
+    >
+      <MessageSquare class="h-3.5 w-3.5 flex-none" aria-hidden="true" />
+      <span class="hidden max-w-[12rem] truncate sm:inline">{badge.short}</span>
+      <span class="sm:hidden">no tools</span>
       <span class="sr-only">{badge.title}</span>
     </span>
   );

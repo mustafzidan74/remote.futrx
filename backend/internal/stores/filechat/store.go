@@ -89,6 +89,7 @@ func (s *Store) Create(ctx context.Context, meta servicechat.Meta) (servicechat.
 	meta.ServiceTier = servicechat.NormalizeServiceTier(meta.ServiceTier)
 	meta.ModelPolicy = servicechat.NormalizeModelPolicy(meta.ModelPolicy)
 	meta.EndpointID = servicechat.NormalizeEndpointID(meta.EndpointID)
+	meta.DirectModel = servicechat.NormalizeDirectModel(meta.DirectModel)
 	meta.SelectedSkills = servicechat.NormalizeSelectedSkills(meta.SelectedSkills, meta.Provider)
 	if meta.Mode == "" {
 		meta.Mode = "code"
@@ -159,6 +160,7 @@ func (s *Store) Update(
 	meta.ServiceTier = servicechat.NormalizeServiceTier(meta.ServiceTier)
 	meta.ModelPolicy = servicechat.NormalizeModelPolicy(meta.ModelPolicy)
 	meta.EndpointID = servicechat.NormalizeEndpointID(meta.EndpointID)
+	meta.DirectModel = servicechat.NormalizeDirectModel(meta.DirectModel)
 	meta.SelectedSkills = servicechat.NormalizeSelectedSkills(meta.SelectedSkills, meta.Provider)
 	if err := s.writeMeta(meta); err != nil {
 		return meta, err

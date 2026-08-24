@@ -1,6 +1,7 @@
 import type { RefObject } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { useVoiceInput } from "../../../state/hooks/chat/useVoiceInput";
+import type { DirectModelChoice, DirectModelRef } from "../../../models/directModels";
 import type { AgentEndpointChoice } from "../../../models/agentEndpoints";
 import type { QueuedPrompt, SelectedSkill } from "../../../models/chat";
 import type { RegisteredSkill } from "../../../models/skill";
@@ -41,6 +42,9 @@ export interface ChatComposerProps {
   routing: ComposerRoutingHint;
   /** Enabled third-party agent endpoints; empty hides the pill's section. */
   endpointChoices: AgentEndpointChoice[];
+  directModel: DirectModelRef;
+  directChoices: DirectModelChoice[];
+  onDirectModelChange: (choice: DirectModelChoice | null) => void;
   queuedPrompts: QueuedPrompt[];
   selectedSkills: SelectedSkill[];
   playbooks: PlaybookLibrary;
@@ -78,6 +82,9 @@ export function ChatComposer({
   preferenceActions,
   routing,
   endpointChoices,
+  directModel,
+  directChoices,
+  onDirectModelChange,
   queuedPrompts,
   selectedSkills,
   playbooks,
@@ -278,6 +285,9 @@ export function ChatComposer({
             modelPolicy={preferences.modelPolicy}
             endpointId={preferences.endpointId}
             endpointChoices={endpointChoices}
+            directModel={directModel}
+            directChoices={directChoices}
+            onDirectModelChange={onDirectModelChange}
             routing={routing}
             streaming={streaming}
             selectedSkills={selectedSkills}

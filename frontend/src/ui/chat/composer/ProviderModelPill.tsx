@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { ChatModelPolicy, ChatProvider } from "../../../models/chat";
+import {
+  directModelLabel,
+  isDirect,
+  sameDirectModel,
+  type DirectModelChoice,
+  type DirectModelRef,
+} from "../../../models/directModels";
 import type { AgentEndpointChoice } from "../../../models/agentEndpoints";
 import {
   endpointOptions,
@@ -12,7 +19,7 @@ import {
   modelOptionsForProvider,
   providerDisplayLabel,
 } from "../../../config/chat";
-import { Bot, ChevronDown, Globe, Zap } from "../../primitives/icons";
+import { Bot, ChevronDown, Globe, MessageSquare, Zap } from "../../primitives/icons";
 
 /**
  * Agent and model in one pill: "Claude · Opus".
@@ -40,6 +47,9 @@ export function ProviderModelPill({
   modelPolicy,
   endpointId,
   endpointChoices,
+  directModel,
+  directChoices,
+  onDirectModelChange,
   routedNext,
   routingAvailable,
   streaming,
@@ -55,6 +65,12 @@ export function ProviderModelPill({
   endpointId: string;
   /** Enabled third-party endpoints. Empty hides the section entirely. */
   endpointChoices: AgentEndpointChoice[];
+  /** The completion-API model this chat answers from, if any. */
+  directModel: DirectModelRef;
+  /** Completion-API models on offer. Empty hides that section entirely. */
+  directChoices: DirectModelChoice[];
+  /** Points the chat at a completion-API model, or back at an agent with null. */
+  onDirectModelChange: (choice: DirectModelChoice | null) => void;
   /** What routing would pick for the next turn, when the chat is on Auto. */
   routedNext?: RoutingDecision | null;
   /** False on a deployment with no routing policy: the Auto entry is hidden. */
@@ -73,14 +89,21 @@ export function ProviderModelPill({
   const activeEndpoint = (endpointId || "").trim();
   const activeChoice = endpointChoices.find((choice) => choice.id === activeEndpoint);
   // An endpoint pins the chat, so Auto is not on offer while one is in force.
-  const auto = modelPolicy === "auto" && !activeEndpoint;
+  const direct = isDirect(directModel);
+  // A direct model overrides everything below it: there is no agent, no
+  // endpoint and nothing to route.
+  const auto = modelPolicy === "auto" && !activeEndpoint && !direct;
   const pinnedLabel = `${providerDisplayLabel(provider)} · ${modelDisplayLabel(model, provider)}`;
-  const label = activeEndpoint
+  const label = direct
+    ? `${directModelLabel(directModel)} · no tools`
+    : activeEndpoint
     ? endpointPillLabel(activeChoice?.label ?? activeEndpoint, model)
     : auto
       ? `Auto → ${routedLabel(routedNext)}`
       : pinnedLabel;
-  const title = activeEndpoint
+  const title = direct
+    ? `${directModelLabel(directModel)} answers this chat. It cannot read files, run commands, or see the repository.`
+    : activeEndpoint
     ? `Running on ${model || "the endpoint default"} via ${activeChoice?.label ?? activeEndpoint} — not Anthropic`
     : auto
       ? routedNext?.reason || "The platform picks the model for each turn"
@@ -294,6 +317,50 @@ export function ProviderModelPill({
                         </span>
                       </span>
                       {active && <span class="h-2 w-2 flex-none rounded-full bg-accent-red" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {directChoices.length > 0 && (
+            <div class="popover-section max-h-[13rem] overflow-y-auto touch-scroll scrollbar-thin">
+              <div class="popover-label flex items-center gap-1.5">
+                <MessageSquare class="h-3 w-3 flex-none text-accent-green" aria-hidden="true" />
+                Answer only — no tools
+              </div>
+              <p class="mt-1 text-[11px] leading-snug text-ink-300">
+                Free models that talk but cannot touch the repository: no files, no commands.
+                Good for questions, drafting and translation — not for changing code.
+              </p>
+              <div class="mt-1 space-y-0.5" role="listbox" aria-label="Answer-only models">
+                {directChoices.map((choice) => {
+                  const active = sameDirectModel(directModel, choice);
+                  return (
+                    <button
+                      key={`${choice.source}:${choice.providerId || ""}:${choice.model}`}
+                      type="button"
+                      onClick={() => {
+                        onDirectModelChange(active ? null : choice);
+                        setOpen(false);
+                      }}
+                      class={`flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left transition
+                              ${active
+                                ? "bg-accent-green/[0.14] text-accent-green"
+                                : "text-ink-100 hover:bg-white/[0.07]"}`}
+                      role="option"
+                      aria-selected={active}
+                    >
+                      <span class="min-w-0">
+                        <span class="block truncate text-[12.5px] font-semibold">
+                          {choice.modelLabel || choice.model}
+                        </span>
+                        <span class="block truncate text-[11.5px] text-ink-300">
+                          {choice.providerLabel || choice.providerId}
+                        </span>
+                      </span>
+                      {active && <span class="h-2 w-2 flex-none rounded-full bg-accent-green" />}
                     </button>
                   );
                 })}

@@ -20,6 +20,7 @@ import (
 	serviceauxmodel "github.com/futrx-com/remote.futrx.com/internal/service/auxmodel"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicedashboard "github.com/futrx-com/remote.futrx.com/internal/service/dashboard"
+	servicedirect "github.com/futrx-com/remote.futrx.com/internal/service/directmodels"
 	servicegithub "github.com/futrx-com/remote.futrx.com/internal/service/github"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	servicehealth "github.com/futrx-com/remote.futrx.com/internal/service/health"
@@ -252,6 +253,9 @@ type Services struct {
 	// Providers is the free-tier provider pool. Nil on a deployment with no
 	// registry store.
 	Providers *serviceproviderpool.Service
+	// DirectModels answers a chat from a completion API — a pool provider or
+	// the local model — for chats an operator pointed at one.
+	DirectModels *servicedirect.Service
 	// AuxJobs drives the chat-shaped auxiliary jobs (a better title, the
 	// search subtitle) off settled runs, and serves the "rename this chat"
 	// action. Nil on a deployment with no auxiliary model store.
@@ -567,6 +571,11 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		auxModel = serviceauxmodel.New(ctx, deps.AuxModel, auxOptions...)
 		auxJobs = newAuxJobDriver(auxModel, chats)
 	}
+	// The direct-model responder joins the pool and the local model behind one
+	// list. It is built even when both are absent — it simply offers nothing,
+	// and every chat runs an agent as before.
+	directModels := servicedirect.New(directPool(providerPool), directLocal(auxModel))
+
 	runNotifications := &notifyObserver{
 		notifications: notifications,
 		chats:         chats,
@@ -615,6 +624,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Skills:      globalSkillNames{global: globalSkillService},
 	})
 	promptOptions := []prompt.Option{
+		prompt.WithDirectResponder(directModels),
 		prompt.WithScheduleToolIssuer(scheduleCaps),
 		prompt.WithRunObserver(runNotifications),
 		prompt.WithRunObserver(postRunDriver),
@@ -828,6 +838,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Monitoring:     monitoringService,
 		AuxModel:       auxModel,
 		Providers:      providerPool,
+		DirectModels:   directModels,
 		AuxJobs:        auxJobs,
 		SiteWatch:      siteWatchService,
 		Transcription:  transcription,
@@ -1723,4 +1734,24 @@ func (i *chatSearchIndexer) RemoveChat(id servicechat.ID) {
 		return
 	}
 	i.search.RemoveChat(id)
+}
+
+// directPool and directLocal keep a nil service out of an interface.
+//
+// A nil *Service assigned to an interface is not a nil interface, so the
+// responder would call through it and panic. Both sides are genuinely optional
+// — a deployment may have no providers, or no local model — so the conversion
+// has to be explicit rather than incidental.
+func directPool(pool *serviceproviderpool.Service) servicedirect.Pool {
+	if pool == nil {
+		return nil
+	}
+	return pool
+}
+
+func directLocal(local *serviceauxmodel.Service) servicedirect.Local {
+	if local == nil {
+		return nil
+	}
+	return local
 }
