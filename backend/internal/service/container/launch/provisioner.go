@@ -22,6 +22,12 @@ type CodeServerProvisioner interface {
 	Ensure(ctx context.Context, containerName, displayName string) error
 }
 
+// FilePreviewProvisioner installs the read-only static server that makes a
+// file an agent wrote viewable without a dev server.
+type FilePreviewProvisioner interface {
+	Ensure(ctx context.Context, containerName string) error
+}
+
 type ScheduleToolsProvisioner interface {
 	Ensure(ctx context.Context, containerName string) error
 }
@@ -34,7 +40,15 @@ type Provisioner struct {
 	workspace     WorkspaceProvisioner
 	browser       BrowserProvisioner
 	codeServer    CodeServerProvisioner
+	filePreview   FilePreviewProvisioner
 	scheduleTools ScheduleToolsProvisioner
+}
+
+// WithFilePreview attaches the workspace file preview. Optional so a
+// deployment that has not migrated its containers keeps launching.
+func (p *Provisioner) WithFilePreview(preview FilePreviewProvisioner) *Provisioner {
+	p.filePreview = preview
+	return p
 }
 
 func NewProvisioner(
@@ -68,6 +82,9 @@ func (p *Provisioner) Provision(ctx context.Context, containerName, displayName 
 		_ = p.scheduleTools.Ensure(ctx, containerName)
 	}
 	_ = p.codeServer.Ensure(ctx, containerName, displayName)
+	if p.filePreview != nil {
+		_ = p.filePreview.Ensure(ctx, containerName)
+	}
 }
 
 // ProvisionCredentials seeds agent credentials alone.

@@ -12,6 +12,7 @@ import (
 	containercredentials "github.com/futrx-com/remote.futrx.com/internal/integration/containers/credentials"
 	containerdatabase "github.com/futrx-com/remote.futrx.com/internal/integration/containers/database"
 	containerenvironment "github.com/futrx-com/remote.futrx.com/internal/integration/containers/environment"
+	containerfilepreview "github.com/futrx-com/remote.futrx.com/internal/integration/containers/filepreview"
 	containerinspection "github.com/futrx-com/remote.futrx.com/internal/integration/containers/inspection"
 	containerlifecycle "github.com/futrx-com/remote.futrx.com/internal/integration/containers/lifecycle"
 	containerlisteners "github.com/futrx-com/remote.futrx.com/internal/integration/containers/listeners"
@@ -175,7 +176,7 @@ func NewContainerStack(
 		browser,
 		codeServer,
 		scheduleTools,
-	)
+	).WithFilePreview(containerfilepreview.NewProvisioner(runner))
 	resources := containerresources.NewManager(runner)
 	preparer := hostfs.NewWorkspacePreparer(HostMappedUID, HostMappedUID)
 	lifecycle := servicelifecycle.NewService(
