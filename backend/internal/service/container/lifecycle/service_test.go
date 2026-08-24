@@ -137,8 +137,8 @@ func (p recordingProvisioner) Provision(_ context.Context, container, name strin
 	*p.events = append(*p.events, "provision "+container+" "+name)
 }
 
-func (p recordingProvisioner) ProvisionCredentials(_ context.Context, container string) {
-	*p.events = append(*p.events, "provision-credentials "+container)
+func (p recordingProvisioner) ProvisionEveryStart(_ context.Context, container string) {
+	*p.events = append(*p.events, "provision-every-start "+container)
 }
 
 func testProject(t *testing.T) serviceproject.Meta {
@@ -336,7 +336,7 @@ func TestEnsureReportsProvisioningAndRollbackFailures(t *testing.T) {
 // container has never seen. Before this, "sign in once" only held for projects
 // created afterwards, and an operator was left recreating a project to pick up
 // a sign-in.
-func TestCredentialsAreSeededOnEveryStart(t *testing.T) {
+func TestPerStartProvisioningRunsOnEveryStart(t *testing.T) {
 	var events []string
 	project := testProject(t)
 	runtime := &recordingRuntime{
@@ -348,8 +348,8 @@ func TestCredentialsAreSeededOnEveryStart(t *testing.T) {
 		t.Fatalf("Ensure() = %v", err)
 	}
 
-	if !slices.Contains(events, "provision-credentials project-1") {
-		t.Errorf("credentials were not seeded on a start with no changes: %q", events)
+	if !slices.Contains(events, "provision-every-start project-1") {
+		t.Errorf("per-start provisioning did not run on a start with no changes: %q", events)
 	}
 	for _, event := range events {
 		if strings.HasPrefix(event, "provision project-1") {

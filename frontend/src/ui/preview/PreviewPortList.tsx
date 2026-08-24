@@ -11,6 +11,7 @@ import {
   isPreviewLinkDone,
   issuedShareUrl,
   previewLinkError,
+  platformPortLabel,
   previewLinkFeedbackInitial,
   previewLinkFeedbackReduce,
   type PreviewPortRow,
@@ -207,10 +208,16 @@ function PortRow({
     <div class="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-2">
       <div class="flex items-center gap-2">
         <span class="font-mono text-[12.5px] font-semibold text-ink-50">:{row.port}</span>
-        {row.process && (
-          <span class="min-w-0 truncate text-[11px] text-ink-400" title={row.process}>
-            {row.process}
+        {platformPortLabel(row.port) ? (
+          <span class="min-w-0 truncate text-[11px] text-ink-200" title={row.process}>
+            {platformPortLabel(row.port)}
           </span>
+        ) : (
+          row.process && (
+            <span class="min-w-0 truncate text-[11px] text-ink-400" title={row.process}>
+              {row.process}
+            </span>
+          )
         )}
         <span class="ml-auto flex flex-none items-center gap-1">
           {!row.shareable && (

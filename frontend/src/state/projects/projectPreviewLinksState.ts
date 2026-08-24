@@ -202,3 +202,22 @@ export function previewLinkError(
 export function issuedShareUrl(state: PreviewLinkFeedback): string | undefined {
   return state.status === "done" && state.action === "share" ? state.url : undefined;
 }
+
+/**
+ * Ports the platform itself puts in every container, and what they are for.
+ *
+ * Without this the file preview shows up as an anonymous `:8843 python3`,
+ * which is exactly the row an operator ignores — and it is the one that
+ * answers "where do I look at the page the agent just wrote".
+ */
+const PLATFORM_PORT_LABELS: Readonly<Record<number, string>> = {
+  8843: "Files & designs",
+  8842: "IDE",
+  6080: "Agent browser",
+  9222: "Browser debug",
+};
+
+/** A human name for a port the platform provisions, or "" for the app's own. */
+export function platformPortLabel(port: number): string {
+  return PLATFORM_PORT_LABELS[port] ?? "";
+}

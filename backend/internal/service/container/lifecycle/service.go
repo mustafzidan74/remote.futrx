@@ -48,11 +48,10 @@ type ResourceEnsurer interface {
 
 type LaunchProvisioner interface {
 	Provision(ctx context.Context, containerName, displayName string)
-	// ProvisionCredentials runs on every start, not only on the starts that
-	// provision everything else. An agent signed in after a container was
-	// created has a credential that container has never seen, and the operator
-	// has no reason to expect they must recreate it.
-	ProvisionCredentials(ctx context.Context, containerName string)
+	// ProvisionEveryStart runs on every start, not only on the starts that
+	// provision everything else — agent credentials, and the platform services
+	// a container created before them would otherwise never receive.
+	ProvisionEveryStart(ctx context.Context, containerName string)
 }
 
 // TemplateProvisioner applies a project's stack preset. It is optional: a
@@ -310,10 +309,10 @@ func (s *Service) Ensure(ctx context.Context, project serviceproject.Meta) error
 	if created || len(changes) > 0 {
 		s.provisioner.Provision(ctx, project.ContainerName, project.Name)
 	} else {
-		// Nothing about the container changed, so the migrations are skipped —
-		// but credentials live on the host and may have changed since this
-		// container last started.
-		s.provisioner.ProvisionCredentials(ctx, project.ContainerName)
+		// Nothing about the container changed, so the content migrations are
+		// skipped — but credentials and platform services live outside the
+		// container and may have changed since it last started.
+		s.provisioner.ProvisionEveryStart(ctx, project.ContainerName)
 	}
 	s.provisionTemplate(ctx, project)
 	return nil
