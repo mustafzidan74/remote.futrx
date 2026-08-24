@@ -15,6 +15,7 @@ import (
 	agentauth "github.com/futrx-com/remote.futrx.com/internal/service/agent/auth"
 	serviceendpoints "github.com/futrx-com/remote.futrx.com/internal/service/agentendpoints"
 	serviceagentprefs "github.com/futrx-com/remote.futrx.com/internal/service/agentprefs"
+	serviceagentquota "github.com/futrx-com/remote.futrx.com/internal/service/agentquota"
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	serviceauxmodel "github.com/futrx-com/remote.futrx.com/internal/service/auxmodel"
@@ -107,6 +108,7 @@ type Dependencies struct {
 	// /api/providers routes report 503 and every auxiliary job set to "pool"
 	// quietly falls back to the local endpoint.
 	Providers     serviceproviderpool.Store
+	AgentQuota    serviceagentquota.Store
 	ProviderUsage serviceproviderpool.UsageLog
 	// SiteWatch backs the always-on watcher for the operator's client
 	// websites. Nil leaves the Client sites page reporting 503 and schedules
@@ -256,6 +258,8 @@ type Services struct {
 	// DirectModels answers a chat from a completion API — a pool provider or
 	// the local model — for chats an operator pointed at one.
 	DirectModels *servicedirect.Service
+	// AgentQuota holds the last subscription window each agent CLI reported.
+	AgentQuota *serviceagentquota.Service
 	// AuxJobs drives the chat-shaped auxiliary jobs (a better title, the
 	// search subtitle) off settled runs, and serves the "rename this chat"
 	// action. Nil on a deployment with no auxiliary model store.
@@ -576,6 +580,10 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	// and every chat runs an agent as before.
 	directModels := servicedirect.New(directPool(providerPool), directLocal(auxModel))
 
+	// The agent CLIs mention their plan windows mid-run; this keeps the last
+	// one so the dashboard has something to show between runs.
+	agentQuota := serviceagentquota.New(ctx, deps.AgentQuota)
+
 	runNotifications := &notifyObserver{
 		notifications: notifications,
 		chats:         chats,
@@ -625,6 +633,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	})
 	promptOptions := []prompt.Option{
 		prompt.WithDirectResponder(directModels),
+		prompt.WithQuotaRecorder(agentQuota),
 		prompt.WithScheduleToolIssuer(scheduleCaps),
 		prompt.WithRunObserver(runNotifications),
 		prompt.WithRunObserver(postRunDriver),
@@ -839,6 +848,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		AuxModel:       auxModel,
 		Providers:      providerPool,
 		DirectModels:   directModels,
+		AgentQuota:     agentQuota,
 		AuxJobs:        auxJobs,
 		SiteWatch:      siteWatchService,
 		Transcription:  transcription,

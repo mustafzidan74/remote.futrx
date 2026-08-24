@@ -176,6 +176,18 @@ type ModelRouter interface {
 	Route(ctx context.Context, input servicerouting.Input) servicerouting.Decision
 }
 
+// QuotaRecorder files the subscription windows the agent CLIs volunteer. It is
+// optional: without one the readings are dropped and the dashboard has no plan
+// card, which is the behaviour before this existed.
+type QuotaRecorder interface {
+	Record(ctx context.Context, provider agent.ProviderID, quota agent.Quota)
+}
+
+// WithQuotaRecorder installs it.
+func WithQuotaRecorder(recorder QuotaRecorder) Option {
+	return func(s *Service) { s.quota = recorder }
+}
+
 // WithModelRouter installs the automatic model router.
 func WithModelRouter(router ModelRouter) Option {
 	return func(service *Service) {
@@ -226,6 +238,7 @@ type Service struct {
 	router        ModelRouter
 	endpoints     AgentEndpoints
 	direct        DirectResponder
+	quota         QuotaRecorder
 }
 
 func New(
@@ -594,6 +607,7 @@ func (rnr *Service) runPromptAs(
 		}, func(ev agent.Event) {
 			rnr.emitAgentEvent(ctx, id, ev, emit)
 			rnr.recordRunUsage(ctx, ledger, ev)
+			rnr.recordQuota(ctx, ledger, ev)
 		})
 	}
 

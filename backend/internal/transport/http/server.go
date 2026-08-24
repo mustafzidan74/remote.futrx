@@ -51,6 +51,7 @@ type Handlers struct {
 	MCPServers       RouteRegistrar
 	AgentEndpoints   RouteRegistrar
 	DirectModels     RouteRegistrar
+	AgentQuota       RouteRegistrar
 	Templates        RouteRegistrar
 	BrowserInspector RouteRegistrar
 	Schedules        RouteRegistrar
@@ -107,6 +108,7 @@ func NewHandler(handlers Handlers) http.Handler {
 	register(handlers.MCPServers)
 	register(handlers.AgentEndpoints)
 	register(handlers.DirectModels)
+	register(handlers.AgentQuota)
 	register(handlers.Templates)
 	register(handlers.BrowserInspector)
 	register(handlers.Schedules)
