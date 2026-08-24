@@ -214,6 +214,8 @@ export const API_ROUTES = {
     item: (key: string) => `/api/admin/secrets/${encodeURIComponent(key)}`,
     test: (key: string) => `/api/admin/secrets/${encodeURIComponent(key)}/test`,
   },
+  /** The home screen's plan card: what the agent CLIs last reported. */
+  agentQuota: "/api/agent-quota",
   directModels: {
     /** Readable by any signed-in user: labels and model ids only. */
     choices: "/api/direct-models",

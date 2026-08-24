@@ -31,6 +31,10 @@ const (
 	EventToolStarted        EventType = "tool.started"
 	EventToolCompleted      EventType = "tool.completed"
 	EventUsageUpdated       EventType = "usage.updated"
+	// EventQuotaUpdated carries a subscription window the CLI volunteered
+	// mid-run. It is not a request this platform can make, so it arrives
+	// when it arrives — see agent/quota.go.
+	EventQuotaUpdated EventType = "quota.updated"
 	EventError              EventType = "error"
 )
 
@@ -104,6 +108,8 @@ type Event struct {
 	IsError        bool            `json:"isError,omitempty"`
 	Data           json.RawMessage `json:"data,omitempty"`
 	Usage          json.RawMessage `json:"usage,omitempty"`
+	// Quota is set only on EventQuotaUpdated.
+	Quota *Quota `json:"quota,omitempty"`
 	Raw            json.RawMessage `json:"raw,omitempty"`
 }
 

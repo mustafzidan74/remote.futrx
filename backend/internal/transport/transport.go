@@ -9,6 +9,7 @@ import (
 	service "github.com/futrx-com/remote.futrx.com/internal/service"
 	serviceendpoints "github.com/futrx-com/remote.futrx.com/internal/service/agentendpoints"
 	serviceagentprefs "github.com/futrx-com/remote.futrx.com/internal/service/agentprefs"
+	serviceagentquota "github.com/futrx-com/remote.futrx.com/internal/service/agentquota"
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	serviceauxmodel "github.com/futrx-com/remote.futrx.com/internal/service/auxmodel"
@@ -270,6 +271,12 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		// providers and the local model, readable by any signed-in user.
 		DirectModels: httphandlers.NewDirectModelsHandler(
 			directModelsService(deps.Services.DirectModels),
+			deps.Services.Auth,
+		),
+		// The home screen's subscription-plan card: the last rolling window
+		// each agent CLI volunteered during a run.
+		AgentQuota: httphandlers.NewAgentQuotaHandler(
+			agentQuotaService(deps.Services.AgentQuota),
 			deps.Services.Auth,
 		),
 		AdminResources: httphandlers.NewAdminResourcesHandler(
@@ -576,4 +583,12 @@ func directModelsService(direct *servicedirect.Service) httphandlers.DirectModel
 		return nil
 	}
 	return direct
+}
+
+// agentQuotaService keeps a nil service out of the handler's interface.
+func agentQuotaService(quota *serviceagentquota.Service) httphandlers.AgentQuotaService {
+	if quota == nil {
+		return nil
+	}
+	return quota
 }

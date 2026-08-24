@@ -4,6 +4,7 @@ import { formatBytes, formatRelative, type StatusTone } from "../../state/home/d
 import { Meter } from "../primitives/Meter";
 import { TONE_DOT, TONE_TEXT } from "./DashboardCard";
 import { AiProvidersCard } from "./AiProvidersCard";
+import { PlanQuotaCard } from "./PlanQuotaCard";
 import { AttentionCard } from "./AttentionCard";
 import { ClientSitesCard } from "./ClientSitesCard";
 import { KpiTiles } from "./KpiTiles";
@@ -177,6 +178,7 @@ export function Dashboard({
               now={now}
               onOpenSettings={() => handlers.openSettings("client-sites")}
             />
+            <PlanQuotaCard />
             <AiProvidersCard onOpenSettings={() => handlers.openSettings("ai-providers")} />
           </div>
 

@@ -126,7 +126,9 @@ func main() {
 		ProjectMCP:    storeSet.ProjectMCP,
 		MCPContainers: containerStack.MCP,
 
-		AgentEndpoints:          storeSet.AgentEndpoints,
+		AgentEndpoints: storeSet.AgentEndpoints,
+
+		AgentQuota:              storeSet.AgentQuota,
 		AgentEndpointContainers: containerStack.AgentEndpoints,
 		SSHProber:               sshprobe.New(),
 		Usage:                   storeSet.Usage,

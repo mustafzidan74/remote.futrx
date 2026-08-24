@@ -136,6 +136,27 @@ type ledgerRun struct {
 // runs are recorded: a failed turn's token counts are not persisted in the
 // chat event log, so counting them here would make the ledger impossible to
 // rebuild from disk.
+// recordQuota files a subscription window the CLI mentioned mid-run.
+//
+// It is separate from recordRunUsage because the two measure different things:
+// the ledger counts what this platform spent, and this is the vendor saying
+// how much of the operator's plan is left across everywhere they work.
+func (rnr *Service) recordQuota(ctx context.Context, run ledgerRun, ev agent.Event) {
+	if rnr.quota == nil || ev.Type != agent.EventQuotaUpdated || ev.Quota == nil {
+		return
+	}
+	provider := ev.Provider
+	if provider == "" {
+		provider = run.provider
+	}
+	// A cancelled request context must not throw away a reading that arrived
+	// before the cancel: the window is real whether or not the turn finished.
+	if ctx == nil || ctx.Err() != nil {
+		ctx = context.Background()
+	}
+	rnr.quota.Record(ctx, provider, *ev.Quota)
+}
+
 func (rnr *Service) recordRunUsage(ctx context.Context, run ledgerRun, ev agent.Event) {
 	if rnr.usage == nil || ev.Type != agent.EventRunCompleted {
 		return
