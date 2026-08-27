@@ -265,3 +265,118 @@ func sameLimits(a, b Limits) bool {
 		same(a.TPM, b.TPM) && same(a.TPD, b.TPD) &&
 		same(a.MonthlyTokens, b.MonthlyTokens)
 }
+
+// Discover asks one provider what it serves and reports the gap against what
+// this registry has configured.
+//
+// It reports rather than rewrites. A provider listing a model does not mean
+// the operator's key may call it, and quietly replacing a curated list with a
+// discovery response would overrule a choice the platform cannot see the
+// reasons for. AdoptModels is the deliberate second step.
+func (s *Service) Discover(ctx context.Context, id string) Discovery {
+	result := Discovery{ProviderID: strings.ToLower(strings.TrimSpace(id))}
+	if s == nil {
+		result.Error = "the provider pool is unavailable"
+		return result
+	}
+	provider, found := s.Registry().Find(result.ProviderID)
+	if !found {
+		result.Error = "no such provider"
+		return result
+	}
+	result.Label = provider.Label
+
+	key, err := s.credential(ctx, provider)
+	if err != nil || strings.TrimSpace(key) == "" {
+		// Most providers refuse an unauthenticated /models, so an empty key is
+		// reported as the cause rather than left to surface as a 401.
+		result.Error = "add an API key first, so the provider will answer /models"
+		return result
+	}
+
+	available, err := s.lister.ListModels(ctx, provider.BaseURL, key)
+	if err != nil {
+		result.Error = collapse(err.Error())
+		s.record(ctx, audit.ActionSettingsProviderTest, provider.ID, audit.Meta{"action": "discover"}, err)
+		return result
+	}
+
+	result.Available = available
+	result.Missing, result.Unlisted = compare(configuredModelIDs(provider), available)
+	s.record(ctx, audit.ActionSettingsProviderTest, provider.ID, audit.Meta{
+		"action":    "discover",
+		"available": len(available),
+		"missing":   len(result.Missing),
+	}, nil)
+	return result
+}
+
+// configuredModelIDs lists the ids this registry offers for one provider.
+func configuredModelIDs(provider Provider) []string {
+	ids := make([]string, 0, len(provider.Models))
+	for _, model := range provider.Models {
+		ids = append(ids, model.ID)
+	}
+	return ids
+}
+
+// AdoptModels replaces a provider's model list with ids it actually serves.
+//
+// The second half of Discover, kept separate because it is the destructive
+// one. It only ever writes ids the provider just listed, so a typo or a stale
+// discovery cannot introduce a model that answers 404 — which is the failure
+// this whole file exists to end.
+//
+// Capability tags survive for any id that is staying: a model an operator
+// marked as good for code should not lose that because the list was refreshed.
+func (s *Service) AdoptModels(ctx context.Context, id string, ids []string, actor string) (PoolView, error) {
+	if s == nil {
+		return PoolView{}, ErrNoProvider
+	}
+	registry := s.Registry()
+	provider, found := registry.Find(strings.ToLower(strings.TrimSpace(id)))
+	if !found {
+		return PoolView{}, ErrUnknownProvider
+	}
+
+	previous := make(map[string]Model, len(provider.Models))
+	for _, model := range provider.Models {
+		previous[model.ID] = model
+	}
+
+	adopted := make([]Model, 0, len(ids))
+	seen := map[string]bool{}
+	for _, raw := range ids {
+		modelID := strings.TrimSpace(raw)
+		if modelID == "" || seen[modelID] {
+			continue
+		}
+		seen[modelID] = true
+		if kept, ok := previous[modelID]; ok {
+			adopted = append(adopted, kept)
+			continue
+		}
+		adopted = append(adopted, Model{ID: modelID})
+	}
+	if len(adopted) == 0 {
+		return PoolView{}, fmt.Errorf("%w: a provider needs at least one model", ErrInvalidProvider)
+	}
+
+	view, err := s.Save(ctx, ProviderInput{
+		ID:        provider.ID,
+		Label:     provider.Label,
+		Kind:      string(provider.Kind),
+		BaseURL:   provider.BaseURL,
+		APIKeyRef: provider.APIKeyRef,
+		Models:    adopted,
+		Limits:    provider.Limits,
+		Priority:  provider.Priority,
+		Enabled:   provider.Enabled,
+		Notes:     provider.Notes,
+	}, actor)
+	s.record(ctx, audit.ActionSettingsProviderUpdate, provider.ID, audit.Meta{
+		"action": "adopt-models",
+		"models": len(adopted),
+	}, err)
+	return view, err
+}

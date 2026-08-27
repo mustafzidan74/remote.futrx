@@ -27,6 +27,7 @@ import {
   type ProviderForm,
   type ProviderLimitsForm,
 } from "../../state/settings/aiProvidersState";
+import type { ProviderDiscovery } from "../../models/aiProviders";
 import type { StatusTone } from "../../state/home/dashboardState";
 import { EmptyState, ErrorBanner } from "../primitives/Feedback";
 import {
@@ -38,6 +39,7 @@ import {
   Loader,
   Network,
   Plus,
+  RotateCcw,
   Trash,
   Zap,
 } from "../primitives/icons";
@@ -178,6 +180,9 @@ export function AiProvidersSettings() {
                   }
                   onDelete={() => void editor.deleteProvider(provider.id)}
                   onTest={() => void editor.runTest(provider.id)}
+                  onDiscover={() => void editor.discoverModels(provider.id)}
+                  discovery={editor.discovery?.providerId === provider.id ? editor.discovery : null}
+                  onAdopt={(models) => void editor.adoptModels(provider.id, models)}
                 />
               ))}
             </tbody>
@@ -285,6 +290,9 @@ function ProviderRow({
   onToggle,
   onDelete,
   onTest,
+  onDiscover,
+  discovery,
+  onAdopt,
 }: {
   provider: ProviderView;
   index: number;
@@ -298,6 +306,11 @@ function ProviderRow({
   onToggle: (enabled: boolean) => void;
   onDelete: () => void;
   onTest: () => void;
+  /** Asks the provider what it serves. */
+  onDiscover: () => void;
+  /** The last listing for this row, or null. */
+  discovery: ProviderDiscovery | null;
+  onAdopt: (models: string[]) => void;
 }) {
   const tone = PROVIDER_STATUS_TONE[provider.status];
   const statusLabel = PROVIDER_STATUS_LABELS[provider.status];
@@ -418,6 +431,16 @@ function ProviderRow({
             </button>
             <button
               type="button"
+              onClick={onDiscover}
+              disabled={testing}
+              title="Ask this provider which models it serves right now, and compare with the ones configured here"
+              class="inline-flex h-8 items-center gap-1 rounded px-2 text-[11px] text-ink-300 hover:bg-white/[0.08] hover:text-ink-100 disabled:opacity-50"
+            >
+              <RotateCcw class="h-3 w-3" />
+              models
+            </button>
+            <button
+              type="button"
               onClick={onEdit}
               class="h-8 rounded px-2 text-[11px] text-ink-300 hover:bg-white/[0.08] hover:text-ink-100"
             >
@@ -485,10 +508,76 @@ function ProviderRow({
                 )}
               </div>
             )}
+            {discovery && <DiscoveryPanel discovery={discovery} onAdopt={onAdopt} />}
           </td>
         </tr>
       )}
     </>
+  );
+}
+
+/**
+ * What the provider says it serves, next to what is configured here.
+ *
+ * The whole point is the "no longer served" line. A configured model the
+ * provider has dropped answers 404 mid-job, and until now the only way to find
+ * out was to hit it. Adoption is a button rather than automatic: a provider
+ * listing a model does not mean this key may call it, so the operator decides.
+ */
+function DiscoveryPanel({
+  discovery,
+  onAdopt,
+}: {
+  discovery: ProviderDiscovery;
+  onAdopt: (models: string[]) => void;
+}) {
+  if (discovery.error) {
+    return (
+      <div
+        role="status"
+        class="mt-1.5 rounded-md border border-accent-red/30 bg-accent-red/[0.08] px-2.5 py-2 leading-relaxed text-ink-100"
+      >
+        Could not read the model list: {discovery.error}
+      </div>
+    );
+  }
+
+  const broken = discovery.missing.length > 0;
+  return (
+    <div
+      role="status"
+      class={`mt-1.5 rounded-md border px-2.5 py-2 leading-relaxed ${
+        broken
+          ? "border-accent-orange/30 bg-accent-orange/[0.08] text-ink-100"
+          : "border-white/10 bg-white/[0.04] text-ink-100"
+      }`}
+    >
+      {broken ? (
+        <>
+          <div>
+            <span class="text-accent-orange">No longer served:</span>{" "}
+            <span class="font-mono text-[11px] text-ink-50">{discovery.missing.join(", ")}</span>
+          </div>
+          <div class="mt-0.5 text-ink-300">
+            These answer 404 when a job reaches them.
+          </div>
+          <button
+            type="button"
+            onClick={() => onAdopt(discovery.available.filter((id) => !discovery.missing.includes(id)))}
+            class="mt-1.5 h-8 rounded-md bg-accent-blue px-2.5 text-[11.5px] font-medium text-ink-900 hover:bg-accent-blue/85"
+          >
+            Drop them
+          </button>
+        </>
+      ) : (
+        <div>
+          Every configured model is still served.{" "}
+          <span class="text-ink-300">
+            {discovery.available.length} available, {discovery.unlisted.length} not offered here.
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 

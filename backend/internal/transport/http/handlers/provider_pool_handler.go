@@ -35,6 +35,8 @@ type ProviderPoolService interface {
 	Reorder(ctx context.Context, ids []string, actor string) (serviceproviderpool.PoolView, error)
 	SaveSettings(ctx context.Context, input serviceproviderpool.SettingsInput, actor string) (serviceproviderpool.PoolView, error)
 	Test(ctx context.Context, id string) serviceproviderpool.TestResult
+	Discover(ctx context.Context, id string) serviceproviderpool.Discovery
+	AdoptModels(ctx context.Context, id string, ids []string, actor string) (serviceproviderpool.PoolView, error)
 	Bulk(ctx context.Context, input serviceproviderpool.BulkInput) (serviceproviderpool.Result, error)
 }
 
@@ -209,6 +211,32 @@ func (h *ProviderPoolHandler) handleItem(w http.ResponseWriter, r *http.Request)
 		// the failure inside the body: "your provider refused us" is the
 		// answer an operator wants to read, not a 500.
 		httptransport.SendJSON(w, http.StatusOK, h.pool.Test(r.Context(), id))
+		return
+	}
+
+	if len(parts) == 2 && strings.Trim(parts[1], "/") == "models" {
+		switch r.Method {
+		case http.MethodGet:
+			// A provider that will not list is an answer, not a server fault,
+			// so the failure rides inside a 200 like the probe's does.
+			httptransport.SendJSON(w, http.StatusOK, h.pool.Discover(r.Context(), id))
+		case http.MethodPut:
+			var body struct {
+				Models []string `json:"models"`
+			}
+			if err := readJSONBody(r, &body); err != nil {
+				httptransport.SendErr(w, http.StatusBadRequest, "invalid json")
+				return
+			}
+			view, err := h.pool.AdoptModels(r.Context(), id, body.Models, email)
+			if err != nil {
+				sendProviderPoolError(w, err)
+				return
+			}
+			httptransport.SendJSON(w, http.StatusOK, view)
+		default:
+			httptransport.SendErr(w, http.StatusMethodNotAllowed, "method not allowed")
+		}
 		return
 	}
 

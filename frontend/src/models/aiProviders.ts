@@ -180,3 +180,21 @@ export interface QuotaView {
   providers: QuotaRow[];
   month: string;
 }
+
+/**
+ * What a provider says it actually serves right now.
+ *
+ * `missing` is the reason this exists: a configured model the provider no
+ * longer lists is one that will answer 404 in the middle of a job, and the
+ * only way to find out used to be hitting it.
+ */
+export interface ProviderDiscovery {
+  providerId: string;
+  label: string;
+  available: string[];
+  /** Configured here, not served there. These are the broken ones. */
+  missing: string[];
+  /** Served there, not configured here. Informational. */
+  unlisted: string[];
+  error?: string;
+}
