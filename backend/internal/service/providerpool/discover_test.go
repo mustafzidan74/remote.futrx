@@ -111,3 +111,39 @@ func TestModelsURLMatchesTheCompletionsURL(t *testing.T) {
 		}
 	}
 }
+
+// TestARoutingVariantIsNotARetirement is the false alarm this nearly shipped
+// with, taken from OpenRouter's live catalog: it lists lfm-2.5-2.6b:free with
+// the suffix and nemotron-3-nano-30b-a3b without, while serving both through
+// the :free route. Reporting the second as retired would have had an operator
+// drop a model that works.
+func TestARoutingVariantIsNotARetirement(t *testing.T) {
+	configured := []string{
+		"nvidia/nemotron-3-nano-30b-a3b:free", // listed without the suffix
+		"liquid/lfm-2.5-2.6b:free",            // listed with it
+		"nvidia/nemotron-nano-9b-v2:free",     // genuinely gone
+	}
+	available := []string{
+		"nvidia/nemotron-3-nano-30b-a3b",
+		"liquid/lfm-2.5-2.6b:free",
+	}
+
+	missing, _ := compare(configured, available)
+
+	if !slices.Equal(missing, []string{"nvidia/nemotron-nano-9b-v2:free"}) {
+		t.Fatalf("missing = %v, want only the model that is actually gone", missing)
+	}
+}
+
+// The reverse: a variant on offer that the registry already carries in another
+// form is not something to suggest adopting.
+func TestAVariantAlreadyConfiguredIsNotOffered(t *testing.T) {
+	_, unlisted := compare([]string{"z-ai/glm-4.7"}, []string{"z-ai/glm-4.7:free", "other/model"})
+
+	if slices.Contains(unlisted, "z-ai/glm-4.7:free") {
+		t.Errorf("unlisted = %v, want the already-configured model left out", unlisted)
+	}
+	if !slices.Contains(unlisted, "other/model") {
+		t.Errorf("unlisted = %v, want the genuinely new model offered", unlisted)
+	}
+}

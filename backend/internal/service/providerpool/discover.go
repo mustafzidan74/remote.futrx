@@ -144,21 +144,45 @@ func (l httpModelLister) ListModels(ctx context.Context, baseURL, apiKey string)
 	return ids, nil
 }
 
+// baseModelID drops a routing variant from an id.
+//
+// OpenRouter is inconsistent about this in its own catalog: it lists
+// liquid/lfm-2.5-2.6b:free with the suffix and nvidia/nemotron-3-nano-30b-a3b
+// without, while serving both through the :free route. Comparing the strings
+// literally reported a working model as retired, which is worse than not
+// reporting at all: an operator would have dropped a model that works.
+//
+// The colon only ever separates a variant here. Model ids that legitimately
+// contain one, such as a vendor's provider:model form, keep their left half as
+// the identity, which is the same thing this needs.
+func baseModelID(id string) string {
+	if cut := strings.IndexByte(id, ':'); cut > 0 {
+		return id[:cut]
+	}
+	return id
+}
+
 // compare works out which configured models have gone and what is on offer.
+//
+// Matching is on the base id so a routing variant is not mistaken for a
+// retirement, but the output keeps the exact strings, because those are what
+// an operator has configured and what they would have to change.
 func compare(configured, available []string) (missing, unlisted []string) {
-	live := make(map[string]bool, len(available))
+	live := make(map[string]bool, len(available)*2)
 	for _, id := range available {
 		live[id] = true
+		live[baseModelID(id)] = true
 	}
-	known := make(map[string]bool, len(configured))
+	known := make(map[string]bool, len(configured)*2)
 	for _, id := range configured {
 		known[id] = true
-		if !live[id] {
+		known[baseModelID(id)] = true
+		if !live[id] && !live[baseModelID(id)] {
 			missing = append(missing, id)
 		}
 	}
 	for _, id := range available {
-		if !known[id] {
+		if !known[id] && !known[baseModelID(id)] {
 			unlisted = append(unlisted, id)
 		}
 	}
