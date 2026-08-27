@@ -1,6 +1,7 @@
 import { requestJson } from "./apiRequest";
 import { API_ROUTES } from "../config/routes";
 import type {
+  ProviderDiscovery,
   PoolView,
   ProviderInput,
   ProviderTestResult,
@@ -44,6 +45,17 @@ export const aiProvidersApi = {
   /** Runs one real completion. A refusal comes back 200 with `ok: false`. */
   test: (id: string) =>
     requestJson<ProviderTestResult>("POST", API_ROUTES.aiProviders.test(id)),
+
+  /**
+   * Asks the provider what it serves. A provider that will not answer comes
+   * back 200 with `error` set, like the probe does.
+   */
+  discoverModels: (id: string) =>
+    requestJson<ProviderDiscovery>("GET", API_ROUTES.aiProviders.models(id)),
+
+  /** Replaces the provider's model list with ids it just listed. */
+  adoptModels: (id: string, models: string[]) =>
+    requestJson<PoolView>("PUT", API_ROUTES.aiProviders.models(id), { models }),
 
   /** The member-facing card: labels and meters, no endpoint and no key. */
   quota: () => requestJson<QuotaView>("GET", API_ROUTES.aiProviders.quota),

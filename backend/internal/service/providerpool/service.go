@@ -126,6 +126,7 @@ type Service struct {
 	usageLog  UsageLog
 	secrets   SecretResolver
 	completer Completer
+	lister    ModelLister
 	audit     audit.Recorder
 	now       func() time.Time
 	timeout   time.Duration
@@ -148,6 +149,16 @@ func WithHTTPClient(client *http.Client) Option {
 
 // WithCompleter replaces the provider client outright, so a test can assert
 // what was asked for without speaking any vendor's wire format.
+// WithModelLister replaces the catalog reader, for tests and for a deployment
+// that fronts its providers with something that lists differently.
+func WithModelLister(lister ModelLister) Option {
+	return func(s *Service) {
+		if lister != nil {
+			s.lister = lister
+		}
+	}
+}
+
 func WithCompleter(completer Completer) Option {
 	return func(s *Service) {
 		if completer != nil {
@@ -212,6 +223,7 @@ func New(ctx context.Context, store Store, options ...Option) *Service {
 	service := &Service{
 		store:     store,
 		completer: NewHTTPCompleter(nil),
+		lister:    NewHTTPModelLister(nil),
 		audit:     audit.Nop{},
 		now:       time.Now,
 		timeout:   DefaultTimeout,

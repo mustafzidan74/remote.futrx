@@ -14,17 +14,20 @@ import (
 
 // providerPoolTestService is the pool, scripted.
 type providerPoolTestService struct {
-	view      serviceproviderpool.PoolView
-	quota     serviceproviderpool.QuotaView
-	result    serviceproviderpool.Result
-	bulkErr   error
-	saveErr   error
-	lastBulk  serviceproviderpool.BulkInput
-	lastInput serviceproviderpool.ProviderInput
-	lastIDs   []string
-	deleted   string
-	tested    string
-	bulkCalls int
+	discovered    string
+	adopted       string
+	adoptedModels []string
+	view          serviceproviderpool.PoolView
+	quota         serviceproviderpool.QuotaView
+	result        serviceproviderpool.Result
+	bulkErr       error
+	saveErr       error
+	lastBulk      serviceproviderpool.BulkInput
+	lastInput     serviceproviderpool.ProviderInput
+	lastIDs       []string
+	deleted       string
+	tested        string
+	bulkCalls     int
 }
 
 func (s *providerPoolTestService) View() serviceproviderpool.PoolView   { return s.view }
@@ -70,6 +73,26 @@ func (s *providerPoolTestService) SaveSettings(
 func (s *providerPoolTestService) Test(_ context.Context, id string) serviceproviderpool.TestResult {
 	s.tested = id
 	return serviceproviderpool.TestResult{ProviderID: id, OK: true, Answer: "I am working."}
+}
+
+func (s *providerPoolTestService) Discover(_ context.Context, id string) serviceproviderpool.Discovery {
+	s.discovered = id
+	return serviceproviderpool.Discovery{
+		ProviderID: id,
+		Available:  []string{"model-a"},
+		Missing:    []string{"model-gone"},
+	}
+}
+
+func (s *providerPoolTestService) AdoptModels(
+	_ context.Context,
+	id string,
+	models []string,
+	_ string,
+) (serviceproviderpool.PoolView, error) {
+	s.adopted = id
+	s.adoptedModels = models
+	return serviceproviderpool.PoolView{}, nil
 }
 
 func (s *providerPoolTestService) Bulk(

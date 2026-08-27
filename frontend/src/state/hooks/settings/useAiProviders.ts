@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 import { aiProvidersApi } from "../../../api/aiProvidersApi";
-import type { PoolView, ProviderTestResult } from "../../../models/aiProviders";
+import type {
+  ProviderDiscovery, PoolView, ProviderTestResult } from "../../../models/aiProviders";
 import {
   moveProvider,
   providerIds,
@@ -16,6 +17,8 @@ export interface AiProvidersEditor {
   testing: string | null;
   error: string | null;
   testResult: ProviderTestResult | null;
+  /** The last model listing, so the row can show what is broken. */
+  discovery: ProviderDiscovery | null;
   refresh: () => Promise<void>;
   /** Resolves true when the entry landed, so a dialog knows whether to close. */
   saveProvider: (form: ProviderForm) => Promise<boolean>;
@@ -23,6 +26,10 @@ export interface AiProvidersEditor {
   reorder: (id: string, offset: number) => Promise<void>;
   saveSettings: (autoSwitch: boolean, preferredProviderId: string) => Promise<void>;
   runTest: (id: string) => Promise<void>;
+  /** Asks the provider what it serves. */
+  discoverModels: (id: string) => Promise<void>;
+  /** Replaces the provider's list with the ids it just reported. */
+  adoptModels: (id: string, models: string[]) => Promise<void>;
 }
 
 /**
@@ -41,6 +48,7 @@ export function useAiProviders(active: boolean): AiProvidersEditor {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
+  const [discovery, setDiscovery] = useState<ProviderDiscovery | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<ProviderTestResult | null>(null);
 
@@ -129,6 +137,26 @@ export function useAiProviders(active: boolean): AiProvidersEditor {
       } finally {
         setTesting(null);
       }
+    },
+    discovery,
+    discoverModels: async (id) => {
+      // Shares the `testing` spinner: both are one round trip to the same
+      // provider from the same row, and two spinners in one row is noise.
+      setTesting(id);
+      setError(null);
+      setTestResult(null);
+      setDiscovery(null);
+      try {
+        setDiscovery(await aiProvidersApi.discoverModels(id));
+      } catch (cause) {
+        setError((cause as Error).message);
+      } finally {
+        setTesting(null);
+      }
+    },
+    adoptModels: async (id, models) => {
+      setDiscovery(null);
+      await write(() => aiProvidersApi.adoptModels(id, models));
     },
   };
 }

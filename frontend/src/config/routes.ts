@@ -184,6 +184,8 @@ export const API_ROUTES = {
     collection: "/api/admin/providers",
     item: (id: string) => `/api/admin/providers/${encodeURIComponent(id)}`,
     test: (id: string) => `/api/admin/providers/${encodeURIComponent(id)}/test`,
+    /** GET lists what the provider actually serves; PUT adopts a list. */
+    models: (id: string) => `/api/admin/providers/${encodeURIComponent(id)}/models`,
     reorder: "/api/admin/providers/reorder",
     quota: "/api/providers/quota",
     complete: "/api/providers/complete",
