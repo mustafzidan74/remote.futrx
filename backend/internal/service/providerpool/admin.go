@@ -320,12 +320,18 @@ func configuredModelIDs(provider Provider) []string {
 	return ids
 }
 
-// AdoptModels replaces a provider's model list with ids it actually serves.
+// AdoptModels prunes a provider's model list. It cannot extend it.
 //
-// The second half of Discover, kept separate because it is the destructive
-// one. It only ever writes ids the provider just listed, so a typo or a stale
-// discovery cannot introduce a model that answers 404 — which is the failure
-// this whole file exists to end.
+// The rule is the important part: an id that is not already configured is
+// ignored. Adoption exists to drop models the provider has retired, and every
+// other change to the list is a deliberate edit.
+//
+// That restriction is not tidiness. A discovery response is the provider's
+// whole catalog, and on a gateway like OpenRouter that is hundreds of paid
+// models next to the handful of free ones an operator chose. Letting adoption
+// write from it turns one click into a configuration that quietly spends money
+// on an account the platform does not own — the operator here keeps paid credit
+// on OpenRouter for work done elsewhere. Pruning cannot do that; extending can.
 //
 // Capability tags survive for any id that is staying: a model an operator
 // marked as good for code should not lose that because the list was refreshed.
@@ -346,17 +352,20 @@ func (s *Service) AdoptModels(ctx context.Context, id string, ids []string, acto
 
 	adopted := make([]Model, 0, len(ids))
 	seen := map[string]bool{}
+	var refused []string
 	for _, raw := range ids {
 		modelID := strings.TrimSpace(raw)
 		if modelID == "" || seen[modelID] {
 			continue
 		}
 		seen[modelID] = true
-		if kept, ok := previous[modelID]; ok {
-			adopted = append(adopted, kept)
+		kept, ok := previous[modelID]
+		if !ok {
+			// Not configured, so not this action's business.
+			refused = append(refused, modelID)
 			continue
 		}
-		adopted = append(adopted, Model{ID: modelID})
+		adopted = append(adopted, kept)
 	}
 	if len(adopted) == 0 {
 		return PoolView{}, fmt.Errorf("%w: a provider needs at least one model", ErrInvalidProvider)
@@ -375,8 +384,9 @@ func (s *Service) AdoptModels(ctx context.Context, id string, ids []string, acto
 		Notes:     provider.Notes,
 	}, actor)
 	s.record(ctx, audit.ActionSettingsProviderUpdate, provider.ID, audit.Meta{
-		"action": "adopt-models",
-		"models": len(adopted),
+		"action":  "adopt-models",
+		"models":  len(adopted),
+		"refused": len(refused),
 	}, err)
 	return view, err
 }

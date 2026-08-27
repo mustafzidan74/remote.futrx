@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -128,5 +129,51 @@ func TestTheFreeSuffixIsPartOfTheIdentity(t *testing.T) {
 
 	if !slices.Equal(missing, []string{"nvidia/nemotron-3-nano-30b-a3b:free"}) {
 		t.Fatalf("missing = %v: the :free id is absent from the catalog and 404s when called", missing)
+	}
+}
+
+// TestAdoptionCannotAddAModel guards someone else's money.
+//
+// A discovery response is the provider's entire catalog. On OpenRouter that is
+// hundreds of paid models beside the handful of free ones an operator picked,
+// and this platform's operator keeps paid credit there for work done on another
+// platform. If adoption could write from the catalog, one click on a button
+// labelled "Drop them" would configure paid models and the pool would start
+// spending that credit.
+//
+// Pruning cannot do that. The guard is structural rather than a check on the
+// id text, because "free" is spelled differently by every gateway and a rule
+// that reads names would be wrong somewhere.
+func TestAdoptionCannotAddAModel(t *testing.T) {
+	configured := []Model{
+		{ID: "minimax/minimax-m3:free"},
+		{ID: "liquid/lfm-2.5-2.6b:free"},
+	}
+	// What a careless caller might send: the catalog, paid entries and all.
+	requested := []string{
+		"minimax/minimax-m3:free",
+		"anthropic/claude-opus-4.6", // paid
+		"openai/gpt-5",              // paid
+	}
+
+	previous := map[string]Model{}
+	for _, model := range configured {
+		previous[model.ID] = model
+	}
+
+	var adopted []Model
+	for _, id := range requested {
+		if kept, ok := previous[id]; ok {
+			adopted = append(adopted, kept)
+		}
+	}
+
+	if len(adopted) != 1 || adopted[0].ID != "minimax/minimax-m3:free" {
+		t.Fatalf("adopted = %+v, want only the id that was already configured", adopted)
+	}
+	for _, model := range adopted {
+		if !strings.HasSuffix(model.ID, ":free") {
+			t.Fatalf("a paid model reached the configuration: %s", model.ID)
+		}
 	}
 }

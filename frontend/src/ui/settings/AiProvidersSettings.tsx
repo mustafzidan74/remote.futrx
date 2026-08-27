@@ -508,7 +508,13 @@ function ProviderRow({
                 )}
               </div>
             )}
-            {discovery && <DiscoveryPanel discovery={discovery} onAdopt={onAdopt} />}
+            {discovery && (
+              <DiscoveryPanel
+                discovery={discovery}
+                configured={provider.models.map((model) => model.id)}
+                onAdopt={onAdopt}
+              />
+            )}
           </td>
         </tr>
       )}
@@ -526,9 +532,12 @@ function ProviderRow({
  */
 function DiscoveryPanel({
   discovery,
+  configured,
   onAdopt,
 }: {
   discovery: ProviderDiscovery;
+  /** The ids this provider is configured with, which is what Drop prunes. */
+  configured: string[];
   onAdopt: (models: string[]) => void;
 }) {
   if (discovery.error) {
@@ -563,7 +572,7 @@ function DiscoveryPanel({
           </div>
           <button
             type="button"
-            onClick={() => onAdopt(discovery.available.filter((id) => !discovery.missing.includes(id)))}
+            onClick={() => onAdopt(configured.filter((id) => !discovery.missing.includes(id)))}
             class="mt-1.5 h-8 rounded-md bg-accent-blue px-2.5 text-[11.5px] font-medium text-ink-900 hover:bg-accent-blue/85"
           >
             Drop them
@@ -573,7 +582,8 @@ function DiscoveryPanel({
         <div>
           Every configured model is still served.{" "}
           <span class="text-ink-300">
-            {discovery.available.length} available, {discovery.unlisted.length} not offered here.
+            {discovery.available.length} available at the provider. Adding one is an edit, not a
+            refresh: this button only drops.
           </span>
         </div>
       )}
