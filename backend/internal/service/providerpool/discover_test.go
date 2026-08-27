@@ -112,38 +112,21 @@ func TestModelsURLMatchesTheCompletionsURL(t *testing.T) {
 	}
 }
 
-// TestARoutingVariantIsNotARetirement is the false alarm this nearly shipped
-// with, taken from OpenRouter's live catalog: it lists lfm-2.5-2.6b:free with
-// the suffix and nemotron-3-nano-30b-a3b without, while serving both through
-// the :free route. Reporting the second as retired would have had an operator
-// drop a model that works.
-func TestARoutingVariantIsNotARetirement(t *testing.T) {
-	configured := []string{
-		"nvidia/nemotron-3-nano-30b-a3b:free", // listed without the suffix
-		"liquid/lfm-2.5-2.6b:free",            // listed with it
-		"nvidia/nemotron-nano-9b-v2:free",     // genuinely gone
-	}
-	available := []string{
-		"nvidia/nemotron-3-nano-30b-a3b",
-		"liquid/lfm-2.5-2.6b:free",
-	}
+// TestTheFreeSuffixIsPartOfTheIdentity pins the call I got wrong.
+//
+// OpenRouter lists liquid/lfm-2.5-2.6b:free with the suffix and
+// nvidia/nemotron-3-nano-30b-a3b without, which looks like an inconsistency to
+// smooth over. Calling both proves otherwise: the :free route answers for the
+// first and 404s for the second. Matching on a base id hid a dead model that
+// was configured and in use, which is the exact failure this feature exists to
+// catch.
+func TestTheFreeSuffixIsPartOfTheIdentity(t *testing.T) {
+	configured := []string{"liquid/lfm-2.5-2.6b:free", "nvidia/nemotron-3-nano-30b-a3b:free"}
+	available := []string{"liquid/lfm-2.5-2.6b:free", "nvidia/nemotron-3-nano-30b-a3b"}
 
 	missing, _ := compare(configured, available)
 
-	if !slices.Equal(missing, []string{"nvidia/nemotron-nano-9b-v2:free"}) {
-		t.Fatalf("missing = %v, want only the model that is actually gone", missing)
-	}
-}
-
-// The reverse: a variant on offer that the registry already carries in another
-// form is not something to suggest adopting.
-func TestAVariantAlreadyConfiguredIsNotOffered(t *testing.T) {
-	_, unlisted := compare([]string{"z-ai/glm-4.7"}, []string{"z-ai/glm-4.7:free", "other/model"})
-
-	if slices.Contains(unlisted, "z-ai/glm-4.7:free") {
-		t.Errorf("unlisted = %v, want the already-configured model left out", unlisted)
-	}
-	if !slices.Contains(unlisted, "other/model") {
-		t.Errorf("unlisted = %v, want the genuinely new model offered", unlisted)
+	if !slices.Equal(missing, []string{"nvidia/nemotron-3-nano-30b-a3b:free"}) {
+		t.Fatalf("missing = %v: the :free id is absent from the catalog and 404s when called", missing)
 	}
 }

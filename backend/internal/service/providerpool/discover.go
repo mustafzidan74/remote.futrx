@@ -144,45 +144,33 @@ func (l httpModelLister) ListModels(ctx context.Context, baseURL, apiKey string)
 	return ids, nil
 }
 
-// baseModelID drops a routing variant from an id.
-//
-// OpenRouter is inconsistent about this in its own catalog: it lists
-// liquid/lfm-2.5-2.6b:free with the suffix and nvidia/nemotron-3-nano-30b-a3b
-// without, while serving both through the :free route. Comparing the strings
-// literally reported a working model as retired, which is worse than not
-// reporting at all: an operator would have dropped a model that works.
-//
-// The colon only ever separates a variant here. Model ids that legitimately
-// contain one, such as a vendor's provider:model form, keep their left half as
-// the identity, which is the same thing this needs.
-func baseModelID(id string) string {
-	if cut := strings.IndexByte(id, ':'); cut > 0 {
-		return id[:cut]
-	}
-	return id
-}
-
 // compare works out which configured models have gone and what is on offer.
 //
-// Matching is on the base id so a routing variant is not mistaken for a
-// retirement, but the output keeps the exact strings, because those are what
-// an operator has configured and what they would have to change.
+// Ids are matched literally, suffix and all. That looked wrong at first:
+// OpenRouter lists liquid/lfm-2.5-2.6b:free with its :free suffix and
+// nvidia/nemotron-3-nano-30b-a3b without one, which reads like an
+// inconsistency worth smoothing over. It is not. Calling each of them proves
+// the catalog is exact — the :free route answers only for the ids listed with
+// :free, and 404s for the ones listed without. The suffix is part of the
+// model's identity here, not an alias for it.
+//
+// Treating them as the same model hid a genuinely dead id that was configured
+// and in use. A false negative in this direction is the expensive one: the
+// whole feature exists to catch exactly that.
 func compare(configured, available []string) (missing, unlisted []string) {
-	live := make(map[string]bool, len(available)*2)
+	live := make(map[string]bool, len(available))
 	for _, id := range available {
 		live[id] = true
-		live[baseModelID(id)] = true
 	}
-	known := make(map[string]bool, len(configured)*2)
+	known := make(map[string]bool, len(configured))
 	for _, id := range configured {
 		known[id] = true
-		known[baseModelID(id)] = true
-		if !live[id] && !live[baseModelID(id)] {
+		if !live[id] {
 			missing = append(missing, id)
 		}
 	}
 	for _, id := range available {
-		if !known[id] && !known[baseModelID(id)] {
+		if !known[id] {
 			unlisted = append(unlisted, id)
 		}
 	}
