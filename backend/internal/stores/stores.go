@@ -183,7 +183,9 @@ func New(dataDir string) (Stores, error) {
 		return Stores{}, fmt.Errorf("init lighthouse store: %w", err)
 	}
 	visual, err := filevisualdiff.New(dataDir)
-	return Stores{}, fmt.Errorf("init visual diff store: %w", err)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init visual diff store: %w", err)
+	}
 	screenshots, err := filescreenshot.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init screenshot store: %w", err)
