@@ -47,6 +47,7 @@ This documentation maps the complete `remote.futrx` application: how to use ever
 | [26-ai-providers.md](../02-workspaces/26-ai-providers.md) | The free-tier provider pool: connecting Gemini, Groq, Cerebras, OpenRouter and friends, automatic failover when a quota runs out, the consumption meters and where their numbers come from, per-job routing for the auxiliary model, and the bulk lane |
 
 | [27-agent-endpoints.md](../02-workspaces/27-agent-endpoints.md) | Third-party agent endpoints: pointing one chat's CLI at a vendor's own published compatibility endpoint with the operator's key, per-run env/config isolation, vault-backed key resolution, the red "not Anthropic" badge, and the in-container test |
+| [28-visual-comparison-and-lighthouse.md](../02-workspaces/28-visual-comparison-and-lighthouse.md) | Checking work with a headless browser in the container: before/after page comparison with a perceptual pixel diff, and local Lighthouse audits with Core Web Vitals and category scores, neither needing a published site or an API key |
 | [06-previews-and-browser.md](../03-platform/06-previews-and-browser.md) | App discovery, HTTPS preview URLs, element inspection, and Agent Browser |
 | [07-data-and-frontend-state.md](../03-platform/07-data-and-frontend-state.md) | File-backed persistence, workspace files, entities, and UI state |
 | [08-api-and-realtime.md](../03-platform/08-api-and-realtime.md) | HTTP endpoints, WebSockets, events, and access gates |

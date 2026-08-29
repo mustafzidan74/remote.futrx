@@ -1,6 +1,6 @@
 # Project settings
 
-Open a project's settings with the gear icon beside its name in the sidebar. The page has four tabs: **Info**, **Settings**, **Secrets**, and **Sharing**.
+Open a project's settings with the gear icon beside its name in the sidebar. The tabs are **Info**, **Settings**, **GitHub**, **Snapshots**, **Lighthouse**, **Visual**, **Secrets**, and **Sharing**.
 
 ![Project container information, agent versions, and credential-bundle state](/assets/docs/screenshots/01-project-container-info-00m37s.webp "The Info tab exposes the project computer rather than hiding it: runtime identity, tools, mounts, resources, network, and provider state are inspectable.")
 
@@ -121,6 +121,32 @@ Propagation after a change is best-effort. A stale copy can remain after a parti
 > Project members can read, reveal, change, and delete project secrets. Agents can read them during execution. Sharing the project shares this authority.
 
 The current Secrets UI contains older helper text claiming values never land in the container filesystem. That statement is no longer accurate; the behavior above reflects the current backend.
+
+## Lighthouse
+
+Use **Lighthouse** to measure this project's own pages — the real Lighthouse, running inside the container, with no API key and no rate limit.
+
+1. Pick a preview port and list up to six page paths.
+2. Choose **mobile** or **desktop**. Mobile is the default because it is what Google ranks on.
+3. Choose **Audit now**.
+
+Each page reports the four category scores, the Core Web Vitals, and the failing audits worth acting on — with the change since the last run of the same page at the same form factor beside each score. A dash means Lighthouse could not compute that category; it is not a zero.
+
+A container built before Lighthouse shipped in the base image offers a one-off **Install Lighthouse here** button. It takes about a minute and only has to happen once.
+
+## Visual
+
+Use **Visual** to see what a change actually did to the pages you were not looking at.
+
+1. Before the work, list up to twelve page paths and choose **Take baseline**.
+2. Make your change.
+3. Choose **Compare now**.
+
+Every page reports how far it moved, worst first, with **before**, **after**, and a **diff** overlay that paints the changed pixels red over a faded copy of the page. A page nobody touched reports 0%.
+
+Taking a new baseline discards the comparisons below it: they measure against the old pictures. Re-baseline when you have accepted the change as correct.
+
+> Dynamic content — a carousel, a relative timestamp, a randomised testimonial — differs between any two page loads and will show as changed. Leave those pages out, or read the diff image rather than the number.
 
 ## Sharing
 
