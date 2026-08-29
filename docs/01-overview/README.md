@@ -54,6 +54,7 @@ This documentation maps the complete `remote.futrx` application: how to use ever
 | [10-audit-log.md](../04-operations/10-audit-log.md) | Append-only audit trail: entry format, action names, admin API, and retention |
 | [11-uptime-monitoring.md](../04-operations/11-uptime-monitoring.md) | External uptime monitoring: the public `/healthz` endpoint, the outbound heartbeat, restart notifications, and free monitor setups |
 | [12-client-site-monitoring.md](../04-operations/12-client-site-monitoring.md) | Always-on watcher for the operator's client websites: HEAD/keyword/TLS/latency checks, the two-consecutive-checks rule, uptime windows, bulk import, and the `siteWatch` alerts |
+| [13-whatsapp-on-this-install.md](../04-operations/13-whatsapp-on-this-install.md) | What this deployment actually runs for WhatsApp alerts: the CallMeBot gateway, why its activation number must be read fresh every time, why messages are capped at 900 characters, and what must never be sent through a third-party relay |
 
 ## Cross-cutting references
 
