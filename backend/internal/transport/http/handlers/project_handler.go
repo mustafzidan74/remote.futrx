@@ -21,6 +21,7 @@ import (
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
 	servicesnapshot "github.com/futrx-com/remote.futrx.com/internal/service/snapshot"
 	serviceuser "github.com/futrx-com/remote.futrx.com/internal/service/user"
+	servicevisualdiff "github.com/futrx-com/remote.futrx.com/internal/service/visualdiff"
 	httptransport "github.com/futrx-com/remote.futrx.com/internal/transport/http"
 )
 
@@ -31,6 +32,7 @@ type ProjectHandler struct {
 	shares             *serviceshare.Service
 	snapshots          *servicesnapshot.Service
 	screenshots        *servicescreenshot.Service
+	visual             *servicevisualdiff.Service
 	trashRetention     time.Duration
 	portal             PortalService
 	clientMessages     ClientMessageService
@@ -87,6 +89,13 @@ func (h *ProjectHandler) WithSnapshots(
 // report 503.
 func (h *ProjectHandler) WithScreenshots(screenshots *servicescreenshot.Service) *ProjectHandler {
 	h.screenshots = screenshots
+	return h
+}
+
+// WithVisualDiff enables the before/after routes under
+// /api/projects/{id}/visual. Without it those routes report 503.
+func (h *ProjectHandler) WithVisualDiff(visual *servicevisualdiff.Service) *ProjectHandler {
+	h.visual = visual
 	return h
 }
 
@@ -282,6 +291,11 @@ func (h *ProjectHandler) HandleResource(w http.ResponseWriter, r *http.Request) 
 
 	if len(parts) >= 2 && parts[1] == "screenshots" {
 		h.handleScreenshots(w, r, id, parts)
+		return
+	}
+
+	if len(parts) >= 2 && parts[1] == "visual" {
+		h.handleVisual(w, r, id, parts, email)
 		return
 	}
 

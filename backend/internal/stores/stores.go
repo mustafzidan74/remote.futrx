@@ -32,6 +32,7 @@ import (
 	serviceusage "github.com/futrx-com/remote.futrx.com/internal/service/usage"
 	serviceuser "github.com/futrx-com/remote.futrx.com/internal/service/user"
 	serviceusersettings "github.com/futrx-com/remote.futrx.com/internal/service/usersettings"
+	servicevisualdiff "github.com/futrx-com/remote.futrx.com/internal/service/visualdiff"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileagentendpoints"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileagentprefs"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileagentquota"
@@ -63,6 +64,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileusage"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileusers"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileusersettings"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filevisualdiff"
 )
 
 type AuthStore interface {
@@ -76,6 +78,16 @@ type ScreenshotStore interface {
 	servicescreenshot.Blobs
 }
 
+// VisualStore is the same pairing for before/after comparison: the project's
+// baseline and comparison record, and the page images beside it. It is a
+// separate store from ScreenshotStore because the two hold different things —
+// one is an archive of moments an operator chose to keep, the other is a
+// reference the platform overwrites whenever the operator re-baselines.
+type VisualStore interface {
+	servicevisualdiff.Repository
+	servicevisualdiff.Blobs
+}
+
 type Stores struct {
 	Chats          servicechat.Repository
 	Projects       serviceproject.Repository
@@ -85,7 +97,10 @@ type Stores struct {
 	Snapshots      servicesnapshot.Repository
 	// Screenshots is both the per-project capture index and the PNG blob
 	// store; one file-backed type satisfies both ports.
-	Screenshots    ScreenshotStore
+	Screenshots ScreenshotStore
+	// Visual is the before/after baseline, its comparisons, and the page
+	// images for both.
+	Visual         VisualStore
 	ProjectPortals serviceportal.Repository
 	Schedules      serviceschedule.Repository
 	Resources      serviceresources.Repository
@@ -156,6 +171,10 @@ func New(dataDir string) (Stores, error) {
 	snapshots, err := filesnapshot.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init snapshot store: %w", err)
+	}
+	visual, err := filevisualdiff.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init visual diff store: %w", err)
 	}
 	screenshots, err := filescreenshot.New(dataDir)
 	if err != nil {
@@ -273,6 +292,7 @@ func New(dataDir string) (Stores, error) {
 		ProjectShares:    projectShares,
 		Snapshots:        snapshots,
 		Screenshots:      screenshots,
+		Visual:           visual,
 		ProjectPortals:   projectPortals,
 		Schedules:        schedules,
 		Resources:        resources,

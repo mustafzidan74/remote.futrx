@@ -40,6 +40,12 @@ const (
 	// ActionProjectScreenshot records a headless capture of one preview port,
 	// including whether it was pushed out through a notification sink.
 	ActionProjectScreenshot = "project.screenshot"
+	// ActionProjectVisualDiff records taking a visual baseline or running a
+	// comparison against one. It is separate from the screenshot action
+	// because the two answer different questions in an audit trail: one is
+	// "somebody photographed the preview", the other is "somebody decided what
+	// this project is supposed to look like".
+	ActionProjectVisualDiff = "project.visualdiff"
 	ActionSnapshotCreate    = "snapshot.create"
 	ActionSnapshotRestore   = "snapshot.restore"
 	ActionSnapshotDelete    = "snapshot.delete"

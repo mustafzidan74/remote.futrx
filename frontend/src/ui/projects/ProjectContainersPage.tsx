@@ -24,6 +24,8 @@ import {
 import { ProjectSecretsSection } from "./project-containers/ProjectSecretsSection";
 import { ProjectMCPSection } from "./project-containers/ProjectMCPSection";
 import { ProjectSnapshotsSection } from "./project-containers/ProjectSnapshotsSection";
+import { ProjectVisualSection } from "./project-containers/ProjectVisualSection";
+import type { ProjectVisualState } from "../../state/hooks/projects/useProjectVisual";
 import { ProjectClientMessageSection } from "./project-containers/ProjectClientMessageSection";
 import { ProjectClientPortalSection } from "./project-containers/ProjectClientPortalSection";
 import {
@@ -59,6 +61,7 @@ import {
   GitFork,
   Info,
   Key,
+  Layers,
   Loader,
   Globe,
   Menu,
@@ -81,6 +84,7 @@ export type ProjectSettingsTab =
   | "settings"
   | "github"
   | "snapshots"
+  | "visual"
   | "secrets"
   | "sharing";
 
@@ -118,6 +122,14 @@ const tabs: Array<{
     Icon: Archive,
   },
   {
+    id: "visual",
+    label: "Visual",
+    description:
+      "Photograph this project's pages before a change and again after, and see which ones moved " +
+      "— including the ones nobody touched.",
+    Icon: Layers,
+  },
+  {
     id: "secrets",
     label: "Secrets",
     description: "Configure environment secrets passed to agents in this project.",
@@ -147,6 +159,8 @@ export function ProjectContainersPage({
   sharesRecord,
   snapshotsRecord,
   snapshotsRunning,
+  visual,
+  visualPorts,
   portalRecord,
   portalIssuedUrl,
   github,
@@ -193,6 +207,10 @@ export function ProjectContainersPage({
   sharesRecord: SharesRecord;
   snapshotsRecord: SnapshotsRecord;
   snapshotsRunning: boolean;
+  /** Everything the Visual tab reads and does, from useProjectVisual. */
+  visual: ProjectVisualState;
+  /** The project's listening application ports, so the tab offers a choice. */
+  visualPorts: number[];
   portalRecord: PortalRecord;
   portalIssuedUrl: string | null;
   /** Everything the GitHub tab reads and does, from useProjectGitHub. */
@@ -418,6 +436,24 @@ export function ProjectContainersPage({
                       onCreate={onCreateSnapshot}
                       onRestore={onRestoreSnapshot}
                       onDelete={onDeleteSnapshot}
+                    />
+                  </ProjectSettingsPanel>
+                )}
+
+                {activeTab === "visual" && (
+                  <ProjectSettingsPanel
+                    title="Before and after"
+                    description={
+                      visual.overview?.baseline
+                        ? "Compare the project against its baseline."
+                        : "Take a baseline first; comparisons measure against it."
+                    }
+                    Icon={Layers}
+                  >
+                    <ProjectVisualSection
+                      state={visual}
+                      ports={visualPorts}
+                      running={project?.status === "running"}
                     />
                   </ProjectSettingsPanel>
                 )}

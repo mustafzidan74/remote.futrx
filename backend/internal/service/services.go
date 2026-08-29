@@ -53,6 +53,7 @@ import (
 	serviceusage "github.com/futrx-com/remote.futrx.com/internal/service/usage"
 	serviceuser "github.com/futrx-com/remote.futrx.com/internal/service/user"
 	serviceusersettings "github.com/futrx-com/remote.futrx.com/internal/service/usersettings"
+	servicevisualdiff "github.com/futrx-com/remote.futrx.com/internal/service/visualdiff"
 	"github.com/futrx-com/remote.futrx.com/internal/service/workspacehub"
 )
 
@@ -74,7 +75,11 @@ type Dependencies struct {
 	SnapshotArchive servicesnapshot.Archive
 	// Screenshots groups the three ports behind preview captures. Any of them
 	// missing leaves the screenshot routes reporting 503.
-	Screenshots       ScreenshotDependencies
+	Screenshots ScreenshotDependencies
+	// Visual groups what before/after comparison needs. It reuses the
+	// screenshot capturer rather than owning a second browser adapter: both
+	// point the same headless Chromium at the same loopback preview.
+	Visual            VisualDependencies
 	ProjectStorage    serviceproject.ProjectStorage
 	WorkspacePreparer servicesnapshot.Preparer
 	Database          servicesnapshot.Database
@@ -208,6 +213,15 @@ type ScreenshotDependencies struct {
 	Capturer servicescreenshot.Capturer
 }
 
+// VisualDependencies groups what before/after comparison needs: the per-project
+// baseline record, the page images, and the in-container browser. Like
+// screenshots, a deployment either has all three or has none.
+type VisualDependencies struct {
+	Records  servicevisualdiff.Repository
+	Blobs    servicevisualdiff.Blobs
+	Capturer servicevisualdiff.Capturer
+}
+
 // ScheduleWorkspaceCommands is the container-shaped half of the scheduled-task
 // workspace port. The composition root pairs it with the project catalog so
 // the schedule service only ever names a project, never a container.
@@ -285,6 +299,7 @@ type Services struct {
 	Health         *servicehealth.Service
 	Snapshots      *servicesnapshot.Service
 	Screenshots    *servicescreenshot.Service
+	Visual         *servicevisualdiff.Service
 	PostRun        *servicepostrun.Driver
 	Team           *serviceteam.Driver
 	Dashboard      *servicedashboard.Service
@@ -532,6 +547,18 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 			servicescreenshot.WithAudit(auditLog),
 			servicescreenshot.WithBaseURL(deps.AuthBaseURL),
 			servicescreenshot.WithNotifier(screenshotNotifier{notifications: notifications}),
+		)
+	}
+	// Before/after comparison needs the same three things screenshots do, and
+	// is switched off the same way when any of them is absent.
+	var visualService *servicevisualdiff.Service
+	if deps.Visual.Records != nil && deps.Visual.Blobs != nil && deps.Visual.Capturer != nil {
+		visualService = servicevisualdiff.New(
+			deps.Visual.Records,
+			deps.Visual.Blobs,
+			deps.Visual.Capturer,
+			projectService,
+			servicevisualdiff.WithAudit(auditLog),
 		)
 	}
 	// Voice dictation's optional server fallback. It holds no state beyond the
@@ -869,6 +896,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Health:         healthService,
 		Snapshots:      snapshotService,
 		Screenshots:    screenshotService,
+		Visual:         visualService,
 		PostRun:        postRunDriver,
 		Team:           teamDriver,
 		Dashboard:      dashboardService,

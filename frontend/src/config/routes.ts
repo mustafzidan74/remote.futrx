@@ -100,6 +100,11 @@ export const API_ROUTES = {
       `/api/projects/${encodeURIComponent(id)}/repair-network`,
     apps: (id: string) => `/api/projects/${encodeURIComponent(id)}/apps`,
     screenshot: (id: string) => `/api/projects/${encodeURIComponent(id)}/screenshot`,
+    visual: (id: string) => `/api/projects/${encodeURIComponent(id)}/visual`,
+    visualBaseline: (id: string) => `/api/projects/${encodeURIComponent(id)}/visual/baseline`,
+    visualCompare: (id: string) => `/api/projects/${encodeURIComponent(id)}/visual/compare`,
+    visualComparison: (id: string, comparisonId: string) =>
+      `/api/projects/${encodeURIComponent(id)}/visual/${encodeURIComponent(comparisonId)}`,
     screenshots: (id: string) => `/api/projects/${encodeURIComponent(id)}/screenshots`,
     screenshotSend: (id: string, screenshotId: string) =>
       `/api/projects/${encodeURIComponent(id)}/screenshots/${encodeURIComponent(screenshotId)}/send`,

@@ -9,6 +9,8 @@ import { useProjectContainersController } from "../../state/hooks/projects/usePr
 import { useProjectUsage } from "../../state/hooks/usage/useProjectUsage";
 import { useProjectResources } from "../../state/hooks/projects/useProjectResources";
 import { useProjectMCP } from "../../state/hooks/projects/useProjectMCP";
+import { useProjectVisual } from "../../state/hooks/projects/useProjectVisual";
+import { useProjectPreviewLinks } from "../../state/hooks/projects/useProjectPreviewLinks";
 import type { ProjectHealthMap } from "../../state/workspace/projectHealthState";
 import { useAuthContext } from "../../state/context/AuthContext";
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
@@ -55,6 +57,19 @@ export function ProjectContainersContainer({
   // The MCP panel lives on the Settings tab and is only read while it is open:
   // the list is cheap, but there is no reason to fetch it behind another tab.
   const mcp = useProjectMCP(selectedProject, activeTab === "settings");
+  // The Visual tab needs the project's own listening ports so the operator
+  // picks one rather than remembering it. Both this and the comparison state
+  // are scoped to the tab: neither is worth a request behind another one.
+  const visual = useProjectVisual(selectedProject?.id ?? "");
+  const previewPorts = useProjectPreviewLinks({
+    project: activeTab === "visual" ? selectedProject : null,
+    enabled: activeTab === "visual",
+    polling: false,
+  });
+  const visualPorts = useMemo(
+    () => previewPorts.rows.filter((row) => row.shareable).map((row) => row.port),
+    [previewPorts.rows],
+  );
 
   const githubChats = useMemo(
     () =>
@@ -81,6 +96,8 @@ export function ProjectContainersContainer({
       sharesRecord={shares.record}
       snapshotsRecord={snapshots.record}
       snapshotsRunning={snapshots.running}
+      visual={visual}
+      visualPorts={visualPorts}
       portalRecord={portal.record}
       portalIssuedUrl={portal.issuedUrl}
       github={controller.github}

@@ -156,6 +156,7 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		).WithShares(deps.Services.Shares).
 			WithSnapshots(deps.Services.Snapshots, deps.TrashRetention).
 			WithScreenshots(deps.Services.Screenshots).
+			WithVisualDiff(deps.Services.Visual).
 			WithPortal(portalService(deps.Services.Portals)).
 			WithClientMessages(clientMessageService(deps.Services.Notifications)).
 			WithGitHub(gitHubHandler).

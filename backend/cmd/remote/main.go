@@ -160,6 +160,14 @@ func main() {
 			Blobs:    storeSet.Screenshots,
 			Capturer: containerscreenshot.NewAdapter(lxcClient),
 		},
+		// Before/after comparison keeps its own records and images but shares
+		// the browser: one adapter, so the two features can never disagree
+		// about what a page looks like.
+		Visual: service.VisualDependencies{
+			Records:  storeSet.Visual,
+			Blobs:    storeSet.Visual,
+			Capturer: containerscreenshot.NewAdapter(lxcClient),
+		},
 	})
 	if err != nil {
 		log.Fatalf("init services: %v", err)
