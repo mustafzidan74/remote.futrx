@@ -100,6 +100,11 @@ export const API_ROUTES = {
       `/api/projects/${encodeURIComponent(id)}/repair-network`,
     apps: (id: string) => `/api/projects/${encodeURIComponent(id)}/apps`,
     screenshot: (id: string) => `/api/projects/${encodeURIComponent(id)}/screenshot`,
+    lighthouse: (id: string) => `/api/projects/${encodeURIComponent(id)}/lighthouse`,
+    lighthouseInstall: (id: string) =>
+      `/api/projects/${encodeURIComponent(id)}/lighthouse/install`,
+    lighthouseRun: (id: string, runId: string) =>
+      `/api/projects/${encodeURIComponent(id)}/lighthouse/${encodeURIComponent(runId)}`,
     screenshots: (id: string) => `/api/projects/${encodeURIComponent(id)}/screenshots`,
     screenshotSend: (id: string, screenshotId: string) =>
       `/api/projects/${encodeURIComponent(id)}/screenshots/${encodeURIComponent(screenshotId)}/send`,

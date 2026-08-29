@@ -40,6 +40,11 @@ const (
 	// ActionProjectScreenshot records a headless capture of one preview port,
 	// including whether it was pushed out through a notification sink.
 	ActionProjectScreenshot = "project.screenshot"
+	// ActionProjectLighthouse records a local Lighthouse audit, and the one-off
+	// install of the CLI into a container that predates it. The install is
+	// recorded because it changes what is inside a project's container, which
+	// is exactly the kind of thing an operator later wants to find.
+	ActionProjectLighthouse = "project.lighthouse"
 	ActionSnapshotCreate    = "snapshot.create"
 	ActionSnapshotRestore   = "snapshot.restore"
 	ActionSnapshotDelete    = "snapshot.delete"

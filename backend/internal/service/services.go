@@ -25,6 +25,7 @@ import (
 	servicegithub "github.com/futrx-com/remote.futrx.com/internal/service/github"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	servicehealth "github.com/futrx-com/remote.futrx.com/internal/service/health"
+	servicelighthouse "github.com/futrx-com/remote.futrx.com/internal/service/lighthouse"
 	servicemcp "github.com/futrx-com/remote.futrx.com/internal/service/mcp"
 	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
@@ -74,7 +75,10 @@ type Dependencies struct {
 	SnapshotArchive servicesnapshot.Archive
 	// Screenshots groups the three ports behind preview captures. Any of them
 	// missing leaves the screenshot routes reporting 503.
-	Screenshots       ScreenshotDependencies
+	Screenshots ScreenshotDependencies
+	// Lighthouse groups what local page audits need: the history and the CLI
+	// runner inside the container.
+	Lighthouse        LighthouseDependencies
 	ProjectStorage    serviceproject.ProjectStorage
 	WorkspacePreparer servicesnapshot.Preparer
 	Database          servicesnapshot.Database
@@ -208,6 +212,13 @@ type ScreenshotDependencies struct {
 	Capturer servicescreenshot.Capturer
 }
 
+// LighthouseDependencies groups what local Lighthouse audits need. There is no
+// blob port: the stored summary is small enough to live in the history itself.
+type LighthouseDependencies struct {
+	Records servicelighthouse.Repository
+	Runner  servicelighthouse.Runner
+}
+
 // ScheduleWorkspaceCommands is the container-shaped half of the scheduled-task
 // workspace port. The composition root pairs it with the project catalog so
 // the schedule service only ever names a project, never a container.
@@ -285,6 +296,7 @@ type Services struct {
 	Health         *servicehealth.Service
 	Snapshots      *servicesnapshot.Service
 	Screenshots    *servicescreenshot.Service
+	Lighthouse     *servicelighthouse.Service
 	PostRun        *servicepostrun.Driver
 	Team           *serviceteam.Driver
 	Dashboard      *servicedashboard.Service
@@ -532,6 +544,18 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 			servicescreenshot.WithAudit(auditLog),
 			servicescreenshot.WithBaseURL(deps.AuthBaseURL),
 			servicescreenshot.WithNotifier(screenshotNotifier{notifications: notifications}),
+		)
+	}
+	// Local page audits need the project directory to find a container and
+	// nothing else, and are switched off the same way screenshots are when
+	// either half is absent.
+	var lighthouseService *servicelighthouse.Service
+	if deps.Lighthouse.Records != nil && deps.Lighthouse.Runner != nil {
+		lighthouseService = servicelighthouse.New(
+			deps.Lighthouse.Records,
+			deps.Lighthouse.Runner,
+			projectService,
+			servicelighthouse.WithAudit(auditLog),
 		)
 	}
 	// Voice dictation's optional server fallback. It holds no state beyond the
@@ -869,6 +893,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Health:         healthService,
 		Snapshots:      snapshotService,
 		Screenshots:    screenshotService,
+		Lighthouse:     lighthouseService,
 		PostRun:        postRunDriver,
 		Team:           teamDriver,
 		Dashboard:      dashboardService,

@@ -24,6 +24,8 @@ import {
 import { ProjectSecretsSection } from "./project-containers/ProjectSecretsSection";
 import { ProjectMCPSection } from "./project-containers/ProjectMCPSection";
 import { ProjectSnapshotsSection } from "./project-containers/ProjectSnapshotsSection";
+import { ProjectLighthouseSection } from "./project-containers/ProjectLighthouseSection";
+import type { ProjectLighthouseState } from "../../state/hooks/projects/useProjectLighthouse";
 import { ProjectClientMessageSection } from "./project-containers/ProjectClientMessageSection";
 import { ProjectClientPortalSection } from "./project-containers/ProjectClientPortalSection";
 import {
@@ -58,6 +60,7 @@ import {
   ExternalLink,
   GitFork,
   Info,
+  Activity,
   Key,
   Loader,
   Globe,
@@ -81,6 +84,7 @@ export type ProjectSettingsTab =
   | "settings"
   | "github"
   | "snapshots"
+  | "lighthouse"
   | "secrets"
   | "sharing";
 
@@ -118,6 +122,14 @@ const tabs: Array<{
     Icon: Archive,
   },
   {
+    id: "lighthouse",
+    label: "Lighthouse",
+    description:
+      "Audit this project's pages with the real Lighthouse, running inside the container. No API " +
+      "key, no rate limit, and it reaches pages that are not published yet.",
+    Icon: Activity,
+  },
+  {
     id: "secrets",
     label: "Secrets",
     description: "Configure environment secrets passed to agents in this project.",
@@ -147,6 +159,8 @@ export function ProjectContainersPage({
   sharesRecord,
   snapshotsRecord,
   snapshotsRunning,
+  lighthouse,
+  lighthousePorts,
   portalRecord,
   portalIssuedUrl,
   github,
@@ -193,6 +207,10 @@ export function ProjectContainersPage({
   sharesRecord: SharesRecord;
   snapshotsRecord: SnapshotsRecord;
   snapshotsRunning: boolean;
+  /** Everything the Lighthouse tab reads and does, from useProjectLighthouse. */
+  lighthouse: ProjectLighthouseState;
+  /** The project's listening application ports, so the tab offers a choice. */
+  lighthousePorts: number[];
   portalRecord: PortalRecord;
   portalIssuedUrl: string | null;
   /** Everything the GitHub tab reads and does, from useProjectGitHub. */
@@ -418,6 +436,20 @@ export function ProjectContainersPage({
                       onCreate={onCreateSnapshot}
                       onRestore={onRestoreSnapshot}
                       onDelete={onDeleteSnapshot}
+                    />
+                  </ProjectSettingsPanel>
+                )}
+
+                {activeTab === "lighthouse" && (
+                  <ProjectSettingsPanel
+                    title="Lighthouse"
+                    description="Core Web Vitals and the four category scores, measured locally."
+                    Icon={Activity}
+                  >
+                    <ProjectLighthouseSection
+                      state={lighthouse}
+                      ports={lighthousePorts}
+                      running={project?.status === "running"}
                     />
                   </ProjectSettingsPanel>
                 )}
