@@ -124,7 +124,9 @@ export function comparisonHeadline(comparison: VisualComparison): string {
   const compared = comparison.pages.length;
   if (compared === 0) return "no pages were compared";
   if (comparison.changedPages === 0) return `nothing moved across ${compared} pages`;
-  const noun = comparison.changedPages === 1 ? "page" : "pages";
+  // The noun belongs to the total, not to the count that moved: "1 of 2 pages
+  // changed", never "1 of 2 page changed".
+  const noun = compared === 1 ? "page" : "pages";
   return `${comparison.changedPages} of ${compared} ${noun} changed`;
 }
 
