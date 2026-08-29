@@ -25,6 +25,7 @@ import (
 	servicegithub "github.com/futrx-com/remote.futrx.com/internal/service/github"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	servicehealth "github.com/futrx-com/remote.futrx.com/internal/service/health"
+	servicelighthouse "github.com/futrx-com/remote.futrx.com/internal/service/lighthouse"
 	servicemcp "github.com/futrx-com/remote.futrx.com/internal/service/mcp"
 	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
@@ -79,7 +80,10 @@ type Dependencies struct {
 	// Visual groups what before/after comparison needs. It reuses the
 	// screenshot capturer rather than owning a second browser adapter: both
 	// point the same headless Chromium at the same loopback preview.
-	Visual            VisualDependencies
+	Visual VisualDependencies
+	// Lighthouse groups what local page audits need: the history and the CLI
+	// runner inside the container.
+	Lighthouse        LighthouseDependencies
 	ProjectStorage    serviceproject.ProjectStorage
 	WorkspacePreparer servicesnapshot.Preparer
 	Database          servicesnapshot.Database
@@ -213,6 +217,13 @@ type ScreenshotDependencies struct {
 	Capturer servicescreenshot.Capturer
 }
 
+// LighthouseDependencies groups what local Lighthouse audits need. There is no
+// blob port: the stored summary is small enough to live in the history itself.
+type LighthouseDependencies struct {
+	Records servicelighthouse.Repository
+	Runner  servicelighthouse.Runner
+}
+
 // VisualDependencies groups what before/after comparison needs: the per-project
 // baseline record, the page images, and the in-container browser. Like
 // screenshots, a deployment either has all three or has none.
@@ -299,6 +310,7 @@ type Services struct {
 	Health         *servicehealth.Service
 	Snapshots      *servicesnapshot.Service
 	Screenshots    *servicescreenshot.Service
+	Lighthouse     *servicelighthouse.Service
 	Visual         *servicevisualdiff.Service
 	PostRun        *servicepostrun.Driver
 	Team           *serviceteam.Driver
@@ -547,6 +559,18 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 			servicescreenshot.WithAudit(auditLog),
 			servicescreenshot.WithBaseURL(deps.AuthBaseURL),
 			servicescreenshot.WithNotifier(screenshotNotifier{notifications: notifications}),
+		)
+	}
+	// Local page audits need the project directory to find a container and
+	// nothing else, and are switched off the same way screenshots are when
+	// either half is absent.
+	var lighthouseService *servicelighthouse.Service
+	if deps.Lighthouse.Records != nil && deps.Lighthouse.Runner != nil {
+		lighthouseService = servicelighthouse.New(
+			deps.Lighthouse.Records,
+			deps.Lighthouse.Runner,
+			projectService,
+			servicelighthouse.WithAudit(auditLog),
 		)
 	}
 	// Before/after comparison needs the same three things screenshots do, and
@@ -896,6 +920,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Health:         healthService,
 		Snapshots:      snapshotService,
 		Screenshots:    screenshotService,
+		Lighthouse:     lighthouseService,
 		Visual:         visualService,
 		PostRun:        postRunDriver,
 		Team:           teamDriver,

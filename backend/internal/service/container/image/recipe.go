@@ -43,9 +43,14 @@ apt-get install -y -qq gh`
 // browsers live outside any project so /workspace stays clean; NODE_PATH lets
 // project specs import "@playwright/test" from the global install without a
 // local node_modules.
+//
+// Lighthouse rides along because it needs exactly the Chromium installed here
+// and nothing else. It is pure JavaScript and a few megabytes, so it costs
+// nothing next to the browser; installing it separately at audit time would
+// mean a network fetch in the middle of a measurement.
 const playwrightInstallScript = `# Playwright test runner + headless Chromium for in-workspace e2e tests.
 export PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
-npm install -g @playwright/test playwright --silent 2>&1 | tail -3
+npm install -g @playwright/test playwright lighthouse --silent 2>&1 | tail -3
 npx --yes playwright install --with-deps chromium 2>&1 | tail -3
 chmod -R a+rX /opt/pw-browsers
 cat > /etc/profile.d/playwright.sh <<'PWENV'
@@ -54,7 +59,8 @@ export NODE_PATH=/usr/lib/node_modules
 PWENV
 grep -q PLAYWRIGHT_BROWSERS_PATH /etc/environment || echo 'PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers' >> /etc/environment
 grep -q NODE_PATH /etc/environment || echo 'NODE_PATH=/usr/lib/node_modules' >> /etc/environment
-npx playwright --version`
+npx playwright --version
+lighthouse --version`
 
 // InstallScript generates the provider-neutral base recipe plus every
 // configured agent CLI at its configured version. npm-packaged CLIs install in

@@ -9,8 +9,9 @@ import { useProjectContainersController } from "../../state/hooks/projects/usePr
 import { useProjectUsage } from "../../state/hooks/usage/useProjectUsage";
 import { useProjectResources } from "../../state/hooks/projects/useProjectResources";
 import { useProjectMCP } from "../../state/hooks/projects/useProjectMCP";
-import { useProjectVisual } from "../../state/hooks/projects/useProjectVisual";
+import { useProjectLighthouse } from "../../state/hooks/projects/useProjectLighthouse";
 import { useProjectPreviewLinks } from "../../state/hooks/projects/useProjectPreviewLinks";
+import { useProjectVisual } from "../../state/hooks/projects/useProjectVisual";
 import type { ProjectHealthMap } from "../../state/workspace/projectHealthState";
 import { useAuthContext } from "../../state/context/AuthContext";
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
@@ -57,19 +58,22 @@ export function ProjectContainersContainer({
   // The MCP panel lives on the Settings tab and is only read while it is open:
   // the list is cheap, but there is no reason to fetch it behind another tab.
   const mcp = useProjectMCP(selectedProject, activeTab === "settings");
-  // The Visual tab needs the project's own listening ports so the operator
-  // picks one rather than remembering it. Both this and the comparison state
-  // are scoped to the tab: neither is worth a request behind another one.
-  const visual = useProjectVisual(selectedProject?.id ?? "");
+  // Both the Visual and Lighthouse tabs point a browser at one of the
+  // project's own listening ports, so they share one scan rather than running
+  // two identical ones. It is scoped to those tabs: the scan runs `ss` inside
+  // the container, which is not worth doing behind a tab nobody opened.
+  const browserTab = activeTab === "visual" || activeTab === "lighthouse";
   const previewPorts = useProjectPreviewLinks({
-    project: activeTab === "visual" ? selectedProject : null,
-    enabled: activeTab === "visual",
+    project: browserTab ? selectedProject : null,
+    enabled: browserTab,
     polling: false,
   });
-  const visualPorts = useMemo(
+  const previewablePorts = useMemo(
     () => previewPorts.rows.filter((row) => row.shareable).map((row) => row.port),
     [previewPorts.rows],
   );
+  const visual = useProjectVisual(selectedProject?.id ?? "");
+  const lighthouse = useProjectLighthouse(selectedProject?.id ?? "", activeTab === "lighthouse");
 
   const githubChats = useMemo(
     () =>
@@ -96,8 +100,10 @@ export function ProjectContainersContainer({
       sharesRecord={shares.record}
       snapshotsRecord={snapshots.record}
       snapshotsRunning={snapshots.running}
+      lighthouse={lighthouse}
+      lighthousePorts={previewablePorts}
       visual={visual}
-      visualPorts={visualPorts}
+      visualPorts={previewablePorts}
       portalRecord={portal.record}
       portalIssuedUrl={portal.issuedUrl}
       github={controller.github}

@@ -19,6 +19,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
 	"github.com/futrx-com/remote.futrx.com/internal/config"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/containers/githubcli"
+	containerlighthouse "github.com/futrx-com/remote.futrx.com/internal/integration/containers/lighthouse"
 	containerscreenshot "github.com/futrx-com/remote.futrx.com/internal/integration/containers/screenshot"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/gitcli"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/hostarchive"
@@ -159,6 +160,12 @@ func main() {
 			Records:  storeSet.Screenshots,
 			Blobs:    storeSet.Screenshots,
 			Capturer: containerscreenshot.NewAdapter(lxcClient),
+		},
+		// Local page audits run the Lighthouse CLI in the project's own
+		// container, against the same loopback preview the screenshots use.
+		Lighthouse: service.LighthouseDependencies{
+			Records: storeSet.Lighthouse,
+			Runner:  containerlighthouse.NewAdapter(lxcClient),
 		},
 		// Before/after comparison keeps its own records and images but shares
 		// the browser: one adapter, so the two features can never disagree

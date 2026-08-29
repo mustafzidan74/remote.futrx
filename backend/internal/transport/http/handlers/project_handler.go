@@ -15,6 +15,7 @@ import (
 	"time"
 
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
+	servicelighthouse "github.com/futrx-com/remote.futrx.com/internal/service/lighthouse"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
 	servicescreenshot "github.com/futrx-com/remote.futrx.com/internal/service/screenshot"
@@ -32,6 +33,7 @@ type ProjectHandler struct {
 	shares             *serviceshare.Service
 	snapshots          *servicesnapshot.Service
 	screenshots        *servicescreenshot.Service
+	lighthouse         *servicelighthouse.Service
 	visual             *servicevisualdiff.Service
 	trashRetention     time.Duration
 	portal             PortalService
@@ -89,6 +91,13 @@ func (h *ProjectHandler) WithSnapshots(
 // report 503.
 func (h *ProjectHandler) WithScreenshots(screenshots *servicescreenshot.Service) *ProjectHandler {
 	h.screenshots = screenshots
+	return h
+}
+
+// WithLighthouse enables the local audit routes under
+// /api/projects/{id}/lighthouse. Without it those routes report 503.
+func (h *ProjectHandler) WithLighthouse(lighthouse *servicelighthouse.Service) *ProjectHandler {
+	h.lighthouse = lighthouse
 	return h
 }
 
@@ -294,6 +303,10 @@ func (h *ProjectHandler) HandleResource(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if len(parts) >= 2 && parts[1] == "lighthouse" {
+		h.handleLighthouse(w, r, id, parts, email)
+		return
+	}
 	if len(parts) >= 2 && parts[1] == "visual" {
 		h.handleVisual(w, r, id, parts, email)
 		return

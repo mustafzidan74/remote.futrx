@@ -24,6 +24,8 @@ import {
 import { ProjectSecretsSection } from "./project-containers/ProjectSecretsSection";
 import { ProjectMCPSection } from "./project-containers/ProjectMCPSection";
 import { ProjectSnapshotsSection } from "./project-containers/ProjectSnapshotsSection";
+import { ProjectLighthouseSection } from "./project-containers/ProjectLighthouseSection";
+import type { ProjectLighthouseState } from "../../state/hooks/projects/useProjectLighthouse";
 import { ProjectVisualSection } from "./project-containers/ProjectVisualSection";
 import type { ProjectVisualState } from "../../state/hooks/projects/useProjectVisual";
 import { ProjectClientMessageSection } from "./project-containers/ProjectClientMessageSection";
@@ -60,6 +62,7 @@ import {
   ExternalLink,
   GitFork,
   Info,
+  Activity,
   Key,
   Layers,
   Loader,
@@ -84,6 +87,7 @@ export type ProjectSettingsTab =
   | "settings"
   | "github"
   | "snapshots"
+  | "lighthouse"
   | "visual"
   | "secrets"
   | "sharing";
@@ -120,6 +124,14 @@ const tabs: Array<{
     description:
       "Archive this project's files and database, and roll back to an earlier copy.",
     Icon: Archive,
+  },
+  {
+    id: "lighthouse",
+    label: "Lighthouse",
+    description:
+      "Audit this project's pages with the real Lighthouse, running inside the container. No API " +
+      "key, no rate limit, and it reaches pages that are not published yet.",
+    Icon: Activity,
   },
   {
     id: "visual",
@@ -159,6 +171,8 @@ export function ProjectContainersPage({
   sharesRecord,
   snapshotsRecord,
   snapshotsRunning,
+  lighthouse,
+  lighthousePorts,
   visual,
   visualPorts,
   portalRecord,
@@ -207,9 +221,12 @@ export function ProjectContainersPage({
   sharesRecord: SharesRecord;
   snapshotsRecord: SnapshotsRecord;
   snapshotsRunning: boolean;
+  /** Everything the Lighthouse tab reads and does, from useProjectLighthouse. */
+  lighthouse: ProjectLighthouseState;
+  /** The project's listening application ports, so the tab offers a choice. */
+  lighthousePorts: number[];
   /** Everything the Visual tab reads and does, from useProjectVisual. */
   visual: ProjectVisualState;
-  /** The project's listening application ports, so the tab offers a choice. */
   visualPorts: number[];
   portalRecord: PortalRecord;
   portalIssuedUrl: string | null;
@@ -440,6 +457,19 @@ export function ProjectContainersPage({
                   </ProjectSettingsPanel>
                 )}
 
+                {activeTab === "lighthouse" && (
+                  <ProjectSettingsPanel
+                    title="Lighthouse"
+                    description="Core Web Vitals and the four category scores, measured locally."
+                    Icon={Activity}
+                  >
+                    <ProjectLighthouseSection
+                      state={lighthouse}
+                      ports={lighthousePorts}
+                      running={project?.status === "running"}
+                    />
+                  </ProjectSettingsPanel>
+                )}
                 {activeTab === "visual" && (
                   <ProjectSettingsPanel
                     title="Before and after"

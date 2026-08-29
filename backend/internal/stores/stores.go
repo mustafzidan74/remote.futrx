@@ -12,6 +12,7 @@ import (
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicegithub "github.com/futrx-com/remote.futrx.com/internal/service/github"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
+	servicelighthouse "github.com/futrx-com/remote.futrx.com/internal/service/lighthouse"
 	servicemcp "github.com/futrx-com/remote.futrx.com/internal/service/mcp"
 	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
 	servicenotify "github.com/futrx-com/remote.futrx.com/internal/service/notify"
@@ -42,6 +43,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filechat"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filegithub"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileglobalsecrets"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filelighthouse"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filemcp"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filemonitoring"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filenotify"
@@ -100,7 +102,11 @@ type Stores struct {
 	Screenshots ScreenshotStore
 	// Visual is the before/after baseline, its comparisons, and the page
 	// images for both.
-	Visual         VisualStore
+	Visual VisualStore
+	// Lighthouse is the per-project audit history. It needs no blob store:
+	// the parsed summary lives in the index, and Lighthouse's own report is
+	// deliberately not kept.
+	Lighthouse     servicelighthouse.Repository
 	ProjectPortals serviceportal.Repository
 	Schedules      serviceschedule.Repository
 	Resources      serviceresources.Repository
@@ -172,10 +178,12 @@ func New(dataDir string) (Stores, error) {
 	if err != nil {
 		return Stores{}, fmt.Errorf("init snapshot store: %w", err)
 	}
-	visual, err := filevisualdiff.New(dataDir)
+	lighthouse, err := filelighthouse.New(dataDir)
 	if err != nil {
-		return Stores{}, fmt.Errorf("init visual diff store: %w", err)
+		return Stores{}, fmt.Errorf("init lighthouse store: %w", err)
 	}
+	visual, err := filevisualdiff.New(dataDir)
+	return Stores{}, fmt.Errorf("init visual diff store: %w", err)
 	screenshots, err := filescreenshot.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init screenshot store: %w", err)
@@ -292,6 +300,7 @@ func New(dataDir string) (Stores, error) {
 		ProjectShares:    projectShares,
 		Snapshots:        snapshots,
 		Screenshots:      screenshots,
+		Lighthouse:       lighthouse,
 		Visual:           visual,
 		ProjectPortals:   projectPortals,
 		Schedules:        schedules,
