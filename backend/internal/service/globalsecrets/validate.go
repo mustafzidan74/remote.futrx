@@ -35,9 +35,12 @@ var (
 	ErrUnavailable = errors.New("secrets vault is unavailable")
 	// ErrProbeUnavailable reports a deployment that cannot run ssh.
 	ErrProbeUnavailable = errors.New("ssh probing is unavailable on this host")
-	// ErrInvalidScope rejects a scope that selects no project at all, which
-	// is a mis-submitted form rather than an intent.
-	ErrInvalidScope = errors.New("scope must be all projects or at least one project")
+	// ErrInvalidScope rejects a scope that selects no project at all, for the
+	// kinds that only exist to be written into one. An `env` entry with no
+	// project is the platform's own credential and is allowed.
+	ErrInvalidScope = errors.New(
+		"file and ssh entries must be scoped to all projects or at least one project",
+	)
 	// ErrValueTooLarge rejects an oversized value.
 	ErrValueTooLarge = errors.New("secret value is too large")
 )

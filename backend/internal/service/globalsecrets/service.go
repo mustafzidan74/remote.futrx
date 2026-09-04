@@ -682,7 +682,16 @@ func normalizeInput(input Input) (Secret, error) {
 		Scope:       input.Scope.Normalize(),
 		Description: normalizeDescription(input.Description),
 	}
-	if !secret.Scope.All && len(secret.Scope.ProjectIDs) == 0 {
+	// An entry scoped to no project is deliberate, not a mis-submitted form:
+	// it is the platform's own credential — a provider key the pool resolves
+	// through PlatformValue — and it is the one scope that never reaches a
+	// container. Refusing it here made the state PlatformValue documents
+	// unreachable through the only path that can create it.
+	//
+	// Kinds that exist purely to be materialized into a container are a
+	// different matter: a file or an ssh target with no project would be
+	// written nowhere, which really is a mistake.
+	if !secret.Scope.All && len(secret.Scope.ProjectIDs) == 0 && input.Kind != KindEnv {
 		return Secret{}, ErrInvalidScope
 	}
 	switch input.Kind {

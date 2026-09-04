@@ -93,7 +93,10 @@ class SecretsVaultState {
     if (!KEY_PATTERN.test(key)) {
       return "Key must match [A-Za-z_][A-Za-z0-9_]*";
     }
-    if (!draft.scopeAll && draft.projectIds.length === 0) {
+    // An env entry with no project is the platform's own credential: the
+    // provider pool reads it and no container ever sees it. The other kinds
+    // exist only to be written into a container, so they need somewhere to go.
+    if (!draft.scopeAll && draft.projectIds.length === 0 && draft.kind !== "env") {
       return "Pick at least one project, or scope the entry to all projects.";
     }
     if (draft.kind === "env") {

@@ -62,15 +62,30 @@ test("a value is required on create and optional on edit", () => {
   assert.equal(secretsVaultState.validate(draft, { creating: false }), null);
 });
 
-test("a scope must select something", () => {
+test("a file entry must be scoped somewhere, because it is written into a container", () => {
   const draft = {
     ...secretsVaultState.emptyDraft(),
     key: "K",
+    kind: "file" as const,
+    path: "/root/.k",
     value: "x",
     scopeAll: false,
     projectIds: [],
   };
   assert.match(secretsVaultState.validate(draft, { creating: true }) ?? "", /at least one project/);
+});
+
+test("an env entry with no project is the platform's own credential, not an error", () => {
+  // The provider pool reads it; no container ever sees it. Refusing this was
+  // what made a platform-only key impossible to create from the UI.
+  const draft = {
+    ...secretsVaultState.emptyDraft(),
+    key: "OPENROUTER_API_KEY",
+    value: "sk-test",
+    scopeAll: false,
+    projectIds: [],
+  };
+  assert.equal(secretsVaultState.validate(draft, { creating: true }), null);
 });
 
 test("file paths are confined to the two container roots", () => {

@@ -256,8 +256,9 @@ func TestServiceRejectsInvalidInput(t *testing.T) {
 			want:  ErrInvalidKind,
 		},
 		{
-			name:  "scope selecting nothing",
-			input: Input{Key: "K", Kind: KindEnv, Scope: Scope{}},
+			// A file entry has nowhere to be written without a project.
+			name:  "file entry scoped to nothing",
+			input: Input{Key: "K", Kind: KindFile, Path: "/root/.k", Value: "v", Scope: Scope{}},
 			want:  ErrInvalidScope,
 		},
 		{
@@ -550,5 +551,37 @@ func TestServiceWithoutAStoreReportsUnavailable(t *testing.T) {
 	}
 	if err := service.Delete(ctx, "K"); !errors.Is(err, ErrUnavailable) {
 		t.Fatalf("Delete() error = %v", err)
+	}
+}
+
+// An env entry scoped to no project is the platform's own credential: the
+// provider pool resolves it through PlatformValue, and no container ever sees
+// it. PlatformValue's contract has always said so; Create used to refuse to
+// produce that state, which left it reachable only by editing the store by
+// hand.
+func TestPlatformOnlyEnvSecretIsAllowedAndReachesNoProject(t *testing.T) {
+	ctx := context.Background()
+	service := New(&memoryStore{}, WithClock(fixedClock()))
+
+	if _, err := service.Create(ctx, Input{
+		Key:   "OPENROUTER_API_KEY",
+		Kind:  KindEnv,
+		Value: "sk-test",
+		Scope: Scope{},
+	}, "admin@example.com"); err != nil {
+		t.Fatalf("Create platform-only secret: %v", err)
+	}
+
+	value, ok, err := service.PlatformValue(ctx, "OPENROUTER_API_KEY")
+	if err != nil || !ok || value != "sk-test" {
+		t.Fatalf("PlatformValue = %q, %v, %v; want the stored value", value, ok, err)
+	}
+
+	values, err := service.ValuesForProject(ctx, "abc123", []string{"OPENROUTER_API_KEY"})
+	if err != nil {
+		t.Fatalf("ValuesForProject: %v", err)
+	}
+	if len(values) != 0 {
+		t.Fatalf("a platform-only secret reached a project: %v", values)
 	}
 }

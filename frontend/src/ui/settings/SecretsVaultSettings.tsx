@@ -611,6 +611,12 @@ function ScopePicker({
           Selected projects
         </label>
       </div>
+      {!draft.scopeAll && draft.kind === "env" && draft.projectIds.length === 0 && (
+        <p class="text-[11.5px] text-ink-400">
+          No project selected: this key stays on the platform. It is readable by
+          the provider pool and is never written into a container.
+        </p>
+      )}
       {!draft.scopeAll && (
         <div class="max-h-40 space-y-1 overflow-y-auto rounded-md border border-white/10 bg-black/20 p-2">
           {projects.length === 0 && (
