@@ -7,6 +7,8 @@ import { chatApi } from "../../../api/chatApi";
 import { useAuxModelJob } from "../../../state/hooks/settings/useAuxModelJobs";
 import { Globe, Loader, Menu, MessageSquare, RotateCcw } from "../../primitives/icons";
 import { ChatPreviewChip } from "../../preview/ChatPreviewChip";
+import { DeployChip } from "./DeployChip";
+import { useProjectDeploy } from "../../../state/hooks/projects/useProjectDeploy";
 import type { ChatPolicies } from "../../../state/hooks/chat/useChatPolicies";
 import { TeamPanel } from "../team/TeamPanel";
 import { ChatStatusPill } from "./ChatStatusPill";
@@ -66,6 +68,16 @@ export function ThreadHeader({
 }) {
   const title = chat.title || "Untitled chat";
 
+  // Scoped to this chat's project. The hook does not poll: the state
+
+  // only changes when somebody flips a switch, and that call answers
+
+  // with the result after the container has converged.
+
+  const deploy = useProjectDeploy(project?.id ?? null);
+
+  
+
   return (
     <header class="codex-header top-chrome z-20 flex flex-none flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-white/10 bg-[#101318] px-3 py-2 md:bg-[#101318]/95 md:backdrop-blur">
       <div class="codex-thread-heading flex min-h-9 min-w-0 flex-1 basis-full items-center gap-2 sm:basis-0">
@@ -114,6 +126,7 @@ export function ThreadHeader({
           />
         )}
         {actions}
+        {project && <DeployChip state={deploy} />}
         {project && (
           <ChatPreviewChip
             project={project}

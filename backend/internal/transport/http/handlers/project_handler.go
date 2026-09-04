@@ -15,6 +15,7 @@ import (
 	"time"
 
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
+	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	servicelighthouse "github.com/futrx-com/remote.futrx.com/internal/service/lighthouse"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
@@ -33,6 +34,7 @@ type ProjectHandler struct {
 	shares             *serviceshare.Service
 	snapshots          *servicesnapshot.Service
 	screenshots        *servicescreenshot.Service
+	deploy             *serviceglobalsecrets.Service
 	lighthouse         *servicelighthouse.Service
 	visual             *servicevisualdiff.Service
 	trashRetention     time.Duration
@@ -91,6 +93,13 @@ func (h *ProjectHandler) WithSnapshots(
 // report 503.
 func (h *ProjectHandler) WithScreenshots(screenshots *servicescreenshot.Service) *ProjectHandler {
 	h.screenshots = screenshots
+	return h
+}
+
+// WithDeploy enables the per-project deploy switch under
+// /api/projects/{id}/deploy. Without it that route reports 503.
+func (h *ProjectHandler) WithDeploy(vault *serviceglobalsecrets.Service) *ProjectHandler {
+	h.deploy = vault
 	return h
 }
 
@@ -295,6 +304,11 @@ func (h *ProjectHandler) HandleResource(w http.ResponseWriter, r *http.Request) 
 
 	if len(parts) >= 2 && parts[1] == "screenshot" {
 		h.handleScreenshot(w, r, id, email)
+		return
+	}
+
+	if len(parts) >= 2 && parts[1] == "deploy" {
+		h.handleDeploy(w, r, id, email)
 		return
 	}
 

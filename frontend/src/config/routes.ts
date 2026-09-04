@@ -110,6 +110,7 @@ export const API_ROUTES = {
     visualCompare: (id: string) => `/api/projects/${encodeURIComponent(id)}/visual/compare`,
     visualComparison: (id: string, comparisonId: string) =>
       `/api/projects/${encodeURIComponent(id)}/visual/${encodeURIComponent(comparisonId)}`,
+    deploy: (id: string) => `/api/projects/${encodeURIComponent(id)}/deploy`,
     screenshots: (id: string) => `/api/projects/${encodeURIComponent(id)}/screenshots`,
     screenshotSend: (id: string, screenshotId: string) =>
       `/api/projects/${encodeURIComponent(id)}/screenshots/${encodeURIComponent(screenshotId)}/send`,

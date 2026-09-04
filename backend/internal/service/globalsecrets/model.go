@@ -89,10 +89,15 @@ func (s Scope) Normalize() Scope {
 // SSHTarget is the connection detail of a `ssh` entry. PrivateKey is the only
 // secret field and never leaves the backend.
 type SSHTarget struct {
-	Name           string `json:"name"`
-	Host           string `json:"host"`
-	Port           int    `json:"port"`
-	User           string `json:"user"`
+	Name string `json:"name"`
+	Host string `json:"host"`
+	Port int    `json:"port"`
+	User string `json:"user"`
+	// Domain is the site this target publishes, for the operator's benefit
+	// only: nothing connects to it. An IP answers "which machine"; a domain
+	// answers "whose site am I about to deploy to", which is the question
+	// being asked when the deploy switch is thrown.
+	Domain         string `json:"domain,omitempty"`
 	PrivateKey     string `json:"privateKey,omitempty"`
 	KnownHostsLine string `json:"knownHostsLine,omitempty"`
 }
