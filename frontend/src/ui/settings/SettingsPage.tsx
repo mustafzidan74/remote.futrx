@@ -13,7 +13,31 @@ import type { ServerInfo } from "../../models/serverInfo";
 import type { FleetResourcesView, FleetSettings } from "../../models/resources";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import type { ComponentType } from "preact";
-import { Activity, Bell, Bot, ChevronLeft, Code, Cpu, Download, Globe, Info, Key, MemoryStick, Menu, Mic, Monitor, Network, Package, Search, Server, Trash, Users, X, Zap } from "../primitives/icons";
+import {
+  Activity,
+  Bell,
+  Bot,
+  ChevronLeft,
+  Code,
+  Cpu,
+  Download,
+  Globe,
+  Info,
+  Key,
+  MemoryStick,
+  Menu,
+  Mic,
+  Monitor,
+  Network,
+  Package,
+  Search,
+  Server,
+  ShieldCheck,
+  Trash,
+  Users,
+  X,
+  Zap,
+} from "../primitives/icons";
 import { useState } from "preact/hooks";
 import {
   firstSettingsMatch,
@@ -44,6 +68,8 @@ import { PlaybooksSettings } from "./PlaybooksSettings";
 import { VoiceInputSettings } from "./VoiceInputSettings";
 import { UsageSettings } from "./UsageSettings";
 import { ModelRoutingSettings } from "./ModelRoutingSettings";
+import { SecuritySettings } from "./SecuritySettings";
+import { useSecuritySettings } from "../../state/hooks/auth/useSecuritySettings";
 import { UsersPanel } from "../account/UsersPanel";
 import type { UsageDashboard } from "../../state/hooks/usage/useUsageDashboard";
 import type { ModelRoutingEditor } from "../../state/hooks/settings/useModelRouting";
@@ -54,6 +80,7 @@ export type SettingsTab =
   | "appearance"
   | "agents"
   | "users"
+  | "security"
   | "notifications"
   | "skills"
   | "mcp"
@@ -201,6 +228,13 @@ const tabs: SettingsTabDescriptor[] = [
     label: "Users",
     description: "Control who can access this server.",
     Icon: Users,
+  },
+  {
+    id: "security",
+    group: "personal",
+    label: "Security",
+    description: "Manage two-factor authentication, sessions, and sign-in history.",
+    Icon: ShieldCheck,
   },
   {
     id: "notifications",
@@ -401,6 +435,9 @@ export function SettingsPage({
   onStartCodexDeviceLogin: () => Promise<void>;
   onStartKimiDeviceLogin: () => Promise<void>;
 }) {
+  // Scoped to the tab: the hook fetches the account's security summary, and
+  // there is no reason to ask for it behind a panel nobody opened.
+  const security = useSecuritySettings(activeTab === "security");
   const activeTabDetails = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
 
   return (
@@ -621,6 +658,8 @@ export function SettingsPage({
             {activeTab === "client-sites" && (
               <ClientSitesSettings isAdmin={isAdmin} projects={projects} />
             )}
+
+            {activeTab === "security" && <SecuritySettings controller={security} />}
 
             {activeTab === "users" && (
               <div class="space-y-4">

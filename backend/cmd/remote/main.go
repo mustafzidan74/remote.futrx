@@ -98,6 +98,8 @@ func main() {
 		ScheduleHistory:   storeSet.ScheduleHistory,
 		ScheduleWorkspace: containerStack.ScheduleWork,
 		Auth:              storeSet.Auth,
+		TwoFactor:         storeSet.TwoFactor,
+		SessionRegistry:   storeSet.SessionRegistry,
 		Users:             storeSet.Users,
 		UserSettings:      storeSet.UserSettings,
 		Notifications:     storeSet.Notifications,

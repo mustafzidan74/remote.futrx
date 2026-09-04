@@ -95,6 +95,16 @@ func (globalSkillAuthStore) SaveOAuthConfig(context.Context, serviceauth.OAuthCo
 	return nil
 }
 
+// The setup-token half of auth.Store. This stub never gates a claim, so the
+// record is always absent and saving it is a no-op.
+func (globalSkillAuthStore) SetupToken(context.Context) (*serviceauth.SetupTokenRecord, error) {
+	return nil, nil
+}
+
+func (globalSkillAuthStore) SaveSetupToken(context.Context, serviceauth.SetupTokenRecord) error {
+	return nil
+}
+
 func (globalSkillAuthStore) LocalAdmin(context.Context) (*serviceauth.LocalAdminCredential, error) {
 	return nil, nil
 }
@@ -139,6 +149,9 @@ func newGlobalSkillTestAuth(t *testing.T, admins map[string]bool) *serviceauth.S
 		func(string, string, string) serviceauth.OAuthProvider { return nil },
 		"https://remote.example.test",
 		bytes.Repeat([]byte{7}, 32),
+		twoFactorStoreForTest(t),
+		sessionRegistryStoreForTest(t),
+		serviceauth.DefaultOptions(),
 	)
 	if err != nil {
 		t.Fatalf("build auth service: %v", err)
@@ -174,7 +187,7 @@ func globalSkillRequest(
 	if email != "" {
 		request.AddCookie(&http.Cookie{
 			Name:  serviceauth.SessionCookieName,
-			Value: auth.SignSession(serviceauth.User{Email: email, Sub: "test"}),
+			Value: issueTestSession(t, auth, serviceauth.User{Email: email, Sub: "test"}),
 		})
 	}
 	return request

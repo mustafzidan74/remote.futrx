@@ -58,11 +58,13 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filerouting"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileschedule"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filescreenshot"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filesessions"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filesitewatch"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileskillsglobal"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filesnapshot"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filesnippets"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filetranscribe"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filetwofactor"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileusage"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileusers"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileusersettings"
@@ -111,20 +113,24 @@ type Stores struct {
 	Schedules      serviceschedule.Repository
 	Resources      serviceresources.Repository
 	// ModelRouting backs the automatic model routing policy.
-	ModelRouting  servicerouting.Repository
-	Auth          AuthStore
-	Users         serviceuser.Repository
-	UserSettings  serviceusersettings.Repository
-	Notifications servicenotify.Store
-	Monitoring    servicemonitoring.Store
-	Playbooks     serviceplaybooks.Repository
-	Snippets      servicesnippets.Repository
-	GlobalSkills  serviceskills.GlobalRepository
-	GlobalSecrets serviceglobalsecrets.Store
-	Usage         serviceusage.Repository
-	Transcription servicetranscribe.Store
-	Audit         serviceaudit.Store
-	AuxModel      serviceauxmodel.Store
+	ModelRouting servicerouting.Repository
+	Auth         AuthStore
+	// TwoFactor holds enrolled second factors; SessionRegistry holds the
+	// signed-in device list behind Settings -> Security.
+	TwoFactor       serviceauth.TwoFactorStore
+	SessionRegistry serviceauth.SessionRegistryStore
+	Users           serviceuser.Repository
+	UserSettings    serviceusersettings.Repository
+	Notifications   servicenotify.Store
+	Monitoring      servicemonitoring.Store
+	Playbooks       serviceplaybooks.Repository
+	Snippets        servicesnippets.Repository
+	GlobalSkills    serviceskills.GlobalRepository
+	GlobalSecrets   serviceglobalsecrets.Store
+	Usage           serviceusage.Repository
+	Transcription   servicetranscribe.Store
+	Audit           serviceaudit.Store
+	AuxModel        serviceauxmodel.Store
 	// Providers is the free-tier provider pool registry; ProviderUsage is the
 	// append-only ledger beside it. Either one nil leaves the pool
 	// unavailable rather than half-wired.
@@ -181,6 +187,14 @@ func New(dataDir string) (Stores, error) {
 	lighthouse, err := filelighthouse.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init lighthouse store: %w", err)
+	}
+	twoFactor, err := filetwofactor.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init two-factor store: %w", err)
+	}
+	sessionRegistry, err := filesessions.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init session registry store: %w", err)
 	}
 	visual, err := filevisualdiff.New(dataDir)
 	if err != nil {
@@ -304,6 +318,8 @@ func New(dataDir string) (Stores, error) {
 		Screenshots:      screenshots,
 		Lighthouse:       lighthouse,
 		Visual:           visual,
+		TwoFactor:        twoFactor,
+		SessionRegistry:  sessionRegistry,
 		ProjectPortals:   projectPortals,
 		Schedules:        schedules,
 		Resources:        resources,

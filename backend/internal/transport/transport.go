@@ -295,6 +295,7 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		Templates:        httphandlers.NewTemplateHandler(deps.Templates),
 		BrowserInspector: httphandlers.NewBrowserInspectorHandler(),
 		Schedules:        scheduleHandler,
+		Security:         httphandlers.NewSecurityHandler(deps.Services.Auth),
 		Usage:            usageHandler,
 		Audit:            httphandlers.NewAuditHandler(deps.Services.Audit, deps.Services.Auth),
 		Uploads:          uploads,

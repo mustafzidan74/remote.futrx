@@ -155,7 +155,7 @@ func TestTrashRoutes(t *testing.T) {
 func TestTrashListingRejectsNonGet(t *testing.T) {
 	fixture := newSnapshotFixture(t)
 	req := httptest.NewRequest(http.MethodPost, "/api/projects/trash", nil)
-	req.AddCookie(fixture.cookie(snapshotAdmin))
+	req.AddCookie(fixture.cookie(t, snapshotAdmin))
 	rec := httptest.NewRecorder()
 	fixture.handler.HandleTrash(rec, req)
 	if rec.Code != http.StatusMethodNotAllowed {
@@ -188,6 +188,9 @@ func newSnapshotFixture(t *testing.T) *snapshotFixture {
 		func(string, string, string) serviceauth.OAuthProvider { return auditTestOAuth{} },
 		"https://remote.example.com",
 		[]byte("test-session-key"),
+		twoFactorStoreForTest(t),
+		sessionRegistryStoreForTest(t),
+		serviceauth.DefaultOptions(),
 	)
 	if err != nil {
 		t.Fatalf("auth service: %v", err)
@@ -235,10 +238,11 @@ func newSnapshotFixture(t *testing.T) *snapshotFixture {
 	}
 }
 
-func (f *snapshotFixture) cookie(email string) *http.Cookie {
+func (f *snapshotFixture) cookie(t *testing.T, email string) *http.Cookie {
+	t.Helper()
 	return &http.Cookie{
 		Name:  serviceauth.SessionCookieName,
-		Value: f.auth.SignSession(serviceauth.User{Email: email, Sub: "sub-" + email}),
+		Value: issueTestSession(t, f.auth, serviceauth.User{Email: email, Sub: "sub-" + email}),
 	}
 }
 
@@ -251,7 +255,7 @@ func (f *snapshotFixture) request(
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
 	req.Host = snapshotHostname
 	if email != "" {
-		req.AddCookie(f.cookie(email))
+		req.AddCookie(f.cookie(t, email))
 	}
 	rec := httptest.NewRecorder()
 	f.mux.ServeHTTP(rec, req)

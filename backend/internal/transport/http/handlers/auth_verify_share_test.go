@@ -223,6 +223,9 @@ func newVerifyHandler(t *testing.T) (*authVerifyHandler, *shareAuthorizerStub) {
 		func(string, string, string) serviceauth.OAuthProvider { return verifyOAuthProvider{} },
 		"https://"+verifyBaseHost,
 		[]byte("verify-handler-test-key"),
+		twoFactorStoreForTest(t),
+		sessionRegistryStoreForTest(t),
+		serviceauth.DefaultOptions(),
 	)
 	if err != nil {
 		t.Fatalf("New auth service: %v", err)

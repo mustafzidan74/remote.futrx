@@ -155,6 +155,19 @@ export const API_ROUTES = {
     use: (id: string) => `/api/me/snippets/${encodeURIComponent(id)}/use`,
     import: "/api/me/snippets/import",
   },
+  auth2fa: {
+    verify: "/auth/2fa/verify",
+    cancel: "/auth/2fa/cancel",
+  },
+  security: {
+    summary: "/api/me/security",
+    enroll: "/api/me/security/2fa/enroll",
+    confirm: "/api/me/security/2fa/confirm",
+    disable: "/api/me/security/2fa/disable",
+    regenerateRecoveryCodes: "/api/me/security/2fa/recovery-codes/regenerate",
+    preferences: "/api/me/security/preferences",
+    ackAlert: "/api/me/security/alerts/ack",
+  },
   usage: {
     summary: (query: string) => `/api/usage/summary${query ? `?${query}` : ""}`,
     records: (query: string) => `/api/usage/records${query ? `?${query}` : ""}`,

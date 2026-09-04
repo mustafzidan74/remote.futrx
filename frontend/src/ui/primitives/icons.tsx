@@ -78,3 +78,4 @@ export const MicOff = (p: P) => (<svg {...base} {...p}><path d="M9 9v-4a3 3 0 0 
 export const MoreHorizontal = (p: P) => (<svg {...base} {...p}><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>);
 export const Command = (p: P) => (<svg {...base} {...p}><path d="M15 6a3 3 0 1 1 3 3h-3zM9 6a3 3 0 1 0-3 3h3zM9 18a3 3 0 1 1-3-3h3zM15 18a3 3 0 1 0 3-3h-3zM9 9h6v6H9z"/></svg>);
 export const Keyboard = (p: P) => (<svg {...base} {...p}><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M9 14h6"/></svg>);
+export const ShieldCheck = (p: P) => (<svg {...base} {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>);

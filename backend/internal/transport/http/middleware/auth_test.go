@@ -34,6 +34,9 @@ func TestProviderLoginGate(t *testing.T) {
 		func(string, string, string) serviceauth.OAuthProvider { return authTestOAuth{} },
 		"https://remote.example.com",
 		[]byte("test-session-key"),
+		twoFactorStoreForTest(t),
+		sessionRegistryStoreForTest(t),
+		serviceauth.DefaultOptions(),
 	)
 	if err != nil {
 		t.Fatalf("New auth service: %v", err)
@@ -47,7 +50,7 @@ func TestProviderLoginGate(t *testing.T) {
 		Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		}))
-	session := auth.SignSession(serviceauth.User{Email: "admin@example.com", Sub: "admin"})
+	session := issueTestSession(t, auth, serviceauth.User{Email: "admin@example.com", Sub: "admin"})
 
 	request := func(path string) int {
 		req := httptest.NewRequest(http.MethodGet, path, nil)

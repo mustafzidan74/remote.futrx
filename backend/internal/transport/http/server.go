@@ -64,6 +64,7 @@ type Handlers struct {
 	WorkspaceWS      WebSocketRegistrar
 	AgentAuthWS      WebSocketRegistrar
 	Auth             RouteRegistrar
+	Security         RouteRegistrar
 	Middleware       Middleware
 	Static           http.Handler
 }
@@ -112,6 +113,7 @@ func NewHandler(handlers Handlers) http.Handler {
 	register(handlers.Templates)
 	register(handlers.BrowserInspector)
 	register(handlers.Schedules)
+	register(handlers.Security)
 	register(handlers.Usage)
 	register(handlers.Audit)
 	register(handlers.Uploads)

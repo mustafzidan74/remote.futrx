@@ -17,6 +17,8 @@ import (
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileauth"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filechat"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filesessions"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filetwofactor"
 )
 
 type stubCLIProvisioner struct{}
@@ -58,12 +60,23 @@ func (staticScheduleToolIssuer) IssueScheduleTool(
 }
 
 func TestNewAuthAllowsLocalAdminWithoutGoogleOAuth(t *testing.T) {
+	dir := t.TempDir()
+	twoFactor, err := filetwofactor.New(dir)
+	if err != nil {
+		t.Fatalf("two-factor store: %v", err)
+	}
+	sessions, err := filesessions.New(dir)
+	if err != nil {
+		t.Fatalf("session registry store: %v", err)
+	}
 	auth, err := newAuth(
 		context.Background(),
-		fileauth.New(t.TempDir()),
+		fileauth.New(dir),
 		nil,
 		"https://remote.example.com",
-		nil,
+		twoFactor,
+		sessions,
+		DefaultAuthOptions(),
 	)
 	if err != nil {
 		t.Fatalf("newAuth: %v", err)

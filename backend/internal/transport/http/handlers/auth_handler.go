@@ -13,6 +13,7 @@ import (
 type AuthHandler struct {
 	googleLogin  *googleLoginHandler
 	local        *localAuthHandler
+	twoFactor    *authTwoFactorHandler
 	session      *authSessionHandler
 	verify       *authVerifyHandler
 	googleConfig *googleConfigHandler
@@ -23,9 +24,11 @@ func NewAuthHandler(
 	access *serviceauth.AccessVerifier,
 	auditLog serviceaudit.Recorder,
 ) *AuthHandler {
+	loginLimiter := newLocalLoginLimiter()
 	return &AuthHandler{
 		googleLogin:  &googleLoginHandler{auth: auth},
-		local:        &localAuthHandler{auth: auth, logins: newLocalLoginLimiter()},
+		local:        &localAuthHandler{auth: auth, logins: loginLimiter},
+		twoFactor:    &authTwoFactorHandler{auth: auth, limiter: loginLimiter},
 		session:      &authSessionHandler{auth: auth, audit: auditLog},
 		verify:       &authVerifyHandler{auth: auth, access: access},
 		googleConfig: &googleConfigHandler{auth: auth},
@@ -44,6 +47,7 @@ func (h *AuthHandler) WithShares(shares *serviceshare.Service) *AuthHandler {
 func (h *AuthHandler) RegisterRoutes(mux *http.ServeMux) {
 	h.googleLogin.RegisterRoutes(mux)
 	h.local.RegisterRoutes(mux)
+	h.twoFactor.RegisterRoutes(mux)
 	h.session.RegisterRoutes(mux)
 	h.verify.RegisterRoutes(mux)
 	h.googleConfig.RegisterRoutes(mux)

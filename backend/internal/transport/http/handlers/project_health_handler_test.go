@@ -55,6 +55,9 @@ func newHealthTestHandler(t *testing.T) (*http.ServeMux, *serviceauth.Service, m
 		func(string, string, string) serviceauth.OAuthProvider { return auditTestOAuth{} },
 		"https://remote.example.com",
 		[]byte("test-session-key"),
+		twoFactorStoreForTest(t),
+		sessionRegistryStoreForTest(t),
+		serviceauth.DefaultOptions(),
 	)
 	if err != nil {
 		t.Fatalf("New auth service: %v", err)
@@ -118,7 +121,7 @@ func healthRequest(
 	if email != "" {
 		request.AddCookie(&http.Cookie{
 			Name:  serviceauth.SessionCookieName,
-			Value: auth.SignSession(serviceauth.User{Email: email, Sub: "sub-" + email}),
+			Value: issueTestSession(t, auth, serviceauth.User{Email: email, Sub: "sub-" + email}),
 		})
 	}
 	recorder := httptest.NewRecorder()

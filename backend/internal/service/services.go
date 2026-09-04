@@ -11,7 +11,6 @@ import (
 
 	"github.com/futrx-com/remote.futrx.com/internal/agent"
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
-	"github.com/futrx-com/remote.futrx.com/internal/integration/googleoauth"
 	agentauth "github.com/futrx-com/remote.futrx.com/internal/service/agent/auth"
 	serviceendpoints "github.com/futrx-com/remote.futrx.com/internal/service/agentendpoints"
 	serviceagentprefs "github.com/futrx-com/remote.futrx.com/internal/service/agentprefs"
@@ -96,9 +95,14 @@ type Dependencies struct {
 	// information.
 	ScheduleWorkspace ScheduleWorkspaceCommands
 	Auth              AuthStore
-	Users             serviceuser.Repository
-	UserSettings      serviceusersettings.Repository
-	Notifications     servicenotify.Store
+	// TwoFactor and SessionRegistry back the second factor and the signed-in
+	// device list. Either being nil switches that half of auth off rather
+	// than failing the boot.
+	TwoFactor       serviceauth.TwoFactorStore
+	SessionRegistry serviceauth.SessionRegistryStore
+	Users           serviceuser.Repository
+	UserSettings    serviceusersettings.Repository
+	Notifications   servicenotify.Store
 	// Monitoring backs the public /healthz endpoint and the outbound
 	// heartbeat. Nil leaves both unavailable.
 	Monitoring servicemonitoring.Store
@@ -257,6 +261,32 @@ type ScheduleLimits struct {
 	MinInterval        time.Duration
 	MaxConcurrentRuns  int
 	MaxTasksPerProject int
+}
+
+// AuthOptions is the deployment's tunable half of the auth service.
+type AuthOptions struct {
+	// Audit records sign-ins and the administrator claim. This fork has an
+	// audit log; upstream does not, so this field is ours.
+	Audit               serviceaudit.Recorder
+	PendingLoginTTL     time.Duration
+	EnrollmentTTL       time.Duration
+	RecoveryCodeCount   int
+	SessionHistoryLimit int
+	SetupTokenTTL       time.Duration
+}
+
+// DefaultAuthOptions are the values a deployment gets without saying anything.
+// The numbers themselves belong to the auth package; this only re-shapes them
+// for the composition root, which also carries the audit recorder.
+func DefaultAuthOptions() AuthOptions {
+	base := serviceauth.DefaultOptions()
+	return AuthOptions{
+		PendingLoginTTL:     base.PendingLoginTTL,
+		EnrollmentTTL:       base.EnrollmentTTL,
+		RecoveryCodeCount:   base.RecoveryCodeCount,
+		SessionHistoryLimit: base.SessionHistoryLimit,
+		SetupTokenTTL:       base.SetupTokenTTL,
+	}
 }
 
 type Services struct {
@@ -507,7 +537,17 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	}
 	userSettingsService := serviceusersettings.New(deps.UserSettings)
 	userService := serviceuser.New(deps.Users, serviceuser.WithAudit(auditLog))
-	authService, err := newAuth(ctx, deps.Auth, userService, deps.AuthBaseURL, auditLog)
+	authOptions := DefaultAuthOptions()
+	authOptions.Audit = auditLog
+	authService, err := newAuth(
+		ctx,
+		deps.Auth,
+		userService,
+		deps.AuthBaseURL,
+		deps.TwoFactor,
+		deps.SessionRegistry,
+		authOptions,
+	)
 	if err != nil {
 		return Services{}, err
 	}
@@ -1591,84 +1631,6 @@ type scheduledPromptHandle struct {
 
 func (h scheduledPromptHandle) Done() <-chan serviceschedule.RunResult {
 	return h.done
-}
-
-// userDirectoryAdapter wraps *serviceuser.Service to satisfy
-// serviceauth.UserDirectory. AddBootstrapAdmin is the one method the auth
-// service needs that the regular user.Service.Add doesn't quite cover (no
-// "addedBy" since it's the bootstrap path).
-type userDirectoryAdapter struct {
-	users *serviceuser.Service
-}
-
-func (a userDirectoryAdapter) IsAdmin(ctx context.Context, email string) (bool, error) {
-	return a.users.IsAdmin(ctx, email)
-}
-
-func (a userDirectoryAdapter) IsRegistered(ctx context.Context, email string) (bool, error) {
-	return a.users.IsRegistered(ctx, email)
-}
-
-func (a userDirectoryAdapter) AddBootstrapAdmin(ctx context.Context, email string) error {
-	_, err := a.users.Add(ctx, email, serviceuser.RoleAdmin, "")
-	return err
-}
-
-func (a userDirectoryAdapter) FirstAdmin(ctx context.Context) (*serviceauth.UserDirectoryEntry, error) {
-	list, err := a.users.List(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var oldest *serviceuser.User
-	for i := range list {
-		u := &list[i]
-		if u.Role != serviceuser.RoleAdmin {
-			continue
-		}
-		if oldest == nil || u.AddedAt < oldest.AddedAt {
-			oldest = u
-		}
-	}
-	if oldest == nil {
-		return nil, nil
-	}
-	return &serviceauth.UserDirectoryEntry{Email: oldest.Email}, nil
-}
-
-func newAuth(
-	ctx context.Context,
-	store AuthStore,
-	users *serviceuser.Service,
-	baseURL string,
-	auditLog serviceaudit.Recorder,
-) (*serviceauth.Service, error) {
-	if store == nil {
-		return nil, errors.New("authentication store is required")
-	}
-	baseURL, err := serviceauth.NormalizeBaseURL(baseURL)
-	if err != nil {
-		return nil, err
-	}
-	sessionKey, err := store.SessionKey(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var directory serviceauth.UserDirectory
-	if users != nil {
-		directory = userDirectoryAdapter{users: users}
-	}
-	return serviceauth.New(
-		ctx,
-		store,
-		directory,
-		func(clientID, clientSecret, redirectURL string) serviceauth.OAuthProvider {
-			return googleoauth.New(clientID, clientSecret, redirectURL)
-		},
-		baseURL,
-		sessionKey,
-		serviceauth.WithAudit(auditLog),
-	)
 }
 
 type chatProjectResolver struct {

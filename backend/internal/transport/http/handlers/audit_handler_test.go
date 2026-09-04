@@ -13,6 +13,8 @@ import (
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileaudit"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileauth"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filesessions"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filetwofactor"
 )
 
 type auditTestDirectory struct {
@@ -53,6 +55,9 @@ func newAuditTestHandler(t *testing.T) (*http.ServeMux, *serviceauth.Service, *s
 		func(string, string, string) serviceauth.OAuthProvider { return auditTestOAuth{} },
 		"https://remote.example.com",
 		[]byte("test-session-key"),
+		twoFactorStoreForTest(t),
+		sessionRegistryStoreForTest(t),
+		serviceauth.DefaultOptions(),
 	)
 	if err != nil {
 		t.Fatalf("New auth service: %v", err)
@@ -67,12 +72,13 @@ func newAuditTestHandler(t *testing.T) (*http.ServeMux, *serviceauth.Service, *s
 	return mux, auth, auditLog
 }
 
-func auditRequest(mux *http.ServeMux, auth *serviceauth.Service, method, path, email string) *httptest.ResponseRecorder {
+func auditRequest(t *testing.T, mux *http.ServeMux, auth *serviceauth.Service, method, path, email string) *httptest.ResponseRecorder {
+	t.Helper()
 	req := httptest.NewRequest(method, path, nil)
 	if email != "" {
 		req.AddCookie(&http.Cookie{
 			Name:  serviceauth.SessionCookieName,
-			Value: auth.SignSession(serviceauth.User{Email: email, Sub: "sub-" + email}),
+			Value: issueTestSession(t, auth, serviceauth.User{Email: email, Sub: "sub-" + email}),
 		})
 	}
 	rec := httptest.NewRecorder()
@@ -98,7 +104,7 @@ func TestAuditRoutesAreAdminOnly(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			rec := auditRequest(mux, auth, http.MethodGet, tc.path, tc.email)
+			rec := auditRequest(t, mux, auth, http.MethodGet, tc.path, tc.email)
 			if rec.Code != tc.want {
 				t.Fatalf("status = %d, want %d (%s)", rec.Code, tc.want, rec.Body.String())
 			}
@@ -111,7 +117,7 @@ func TestAuditRoutesRejectNonGetMethods(t *testing.T) {
 
 	for _, path := range []string{"/api/admin/audit", "/api/admin/audit/export"} {
 		for _, method := range []string{http.MethodPost, http.MethodDelete, http.MethodPut} {
-			rec := auditRequest(mux, auth, method, path, "admin@example.com")
+			rec := auditRequest(t, mux, auth, method, path, "admin@example.com")
 			if rec.Code != http.StatusMethodNotAllowed {
 				t.Fatalf("%s %s = %d, want %d", method, path, rec.Code, http.StatusMethodNotAllowed)
 			}
@@ -130,7 +136,7 @@ func TestAuditQueryAppliesFiltersAndPaginates(t *testing.T) {
 		auditLog.Record(context.Background(), entry)
 	}
 
-	rec := auditRequest(mux, auth, http.MethodGet, "/api/admin/audit?action=project.&limit=1", "admin@example.com")
+	rec := auditRequest(t, mux, auth, http.MethodGet, "/api/admin/audit?action=project.&limit=1", "admin@example.com")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d (%s)", rec.Code, rec.Body.String())
 	}
@@ -146,7 +152,7 @@ func TestAuditQueryAppliesFiltersAndPaginates(t *testing.T) {
 	}
 
 	rec = auditRequest(
-		mux, auth, http.MethodGet,
+		t, mux, auth, http.MethodGet,
 		"/api/admin/audit?action=project.&limit=1&cursor="+page.NextCursor,
 		"admin@example.com",
 	)
@@ -162,7 +168,7 @@ func TestAuditQueryRejectsUnparseableTimeBounds(t *testing.T) {
 	mux, auth, _ := newAuditTestHandler(t)
 
 	for _, query := range []string{"?from=yesterday", "?to=soon"} {
-		rec := auditRequest(mux, auth, http.MethodGet, "/api/admin/audit"+query, "admin@example.com")
+		rec := auditRequest(t, mux, auth, http.MethodGet, "/api/admin/audit"+query, "admin@example.com")
 		if rec.Code != http.StatusBadRequest {
 			t.Fatalf("status for %s = %d, want %d", query, rec.Code, http.StatusBadRequest)
 		}
@@ -176,7 +182,7 @@ func TestAuditExportStreamsJSONLAttachment(t *testing.T) {
 	entry.Actor = serviceaudit.Actor{Email: "admin@example.com"}
 	auditLog.Record(context.Background(), entry)
 
-	rec := auditRequest(mux, auth, http.MethodGet, "/api/admin/audit/export", "admin@example.com")
+	rec := auditRequest(t, mux, auth, http.MethodGet, "/api/admin/audit/export", "admin@example.com")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d (%s)", rec.Code, rec.Body.String())
 	}
@@ -224,4 +230,40 @@ func TestParseAuditTimeAcceptsRFC3339AndMillis(t *testing.T) {
 			}
 		})
 	}
+}
+
+// twoFactorStoreForTest and sessionRegistryStoreForTest give the auth service
+// the two collaborators it now requires. Neither is exercised here: these
+// tests are about audit records, not about the second factor.
+func twoFactorStoreForTest(t *testing.T) serviceauth.TwoFactorStore {
+	t.Helper()
+	store, err := filetwofactor.New(t.TempDir())
+	if err != nil {
+		t.Fatalf("two-factor store: %v", err)
+	}
+	return store
+}
+
+func sessionRegistryStoreForTest(t *testing.T) serviceauth.SessionRegistryStore {
+	t.Helper()
+	store, err := filesessions.New(t.TempDir())
+	if err != nil {
+		t.Fatalf("session registry store: %v", err)
+	}
+	return store
+}
+
+// issueTestSession mints a real session cookie. SignSession is gone: issuing a
+// session now consults the user's own security preferences and can register
+// the device, so it needs a context and a sign-in method rather than just a
+// key.
+func issueTestSession(t *testing.T, service *serviceauth.Service, user serviceauth.User) string {
+	t.Helper()
+	value, err := service.IssueSession(
+		context.Background(), user, serviceauth.SignInMethodPassword, "", "",
+	)
+	if err != nil {
+		t.Fatalf("issue session: %v", err)
+	}
+	return value
 }

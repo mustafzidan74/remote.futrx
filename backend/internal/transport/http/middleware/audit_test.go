@@ -9,6 +9,8 @@ import (
 	serviceaudit "github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileauth"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filesessions"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filetwofactor"
 )
 
 type auditRoleDirectory struct {
@@ -48,6 +50,9 @@ func newAuditMiddleware(t *testing.T, admins map[string]bool) (*serviceauth.Serv
 		func(string, string, string) serviceauth.OAuthProvider { return authTestOAuth{} },
 		"https://remote.example.com",
 		[]byte("test-session-key"),
+		twoFactorStoreForTest(t),
+		sessionRegistryStoreForTest(t),
+		serviceauth.DefaultOptions(),
 	)
 	if err != nil {
 		t.Fatalf("New auth service: %v", err)
@@ -79,7 +84,7 @@ func TestMiddlewarePropagatesTheAuditActor(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/api/projects", nil)
 			req.AddCookie(&http.Cookie{
 				Name:  serviceauth.SessionCookieName,
-				Value: auth.SignSession(serviceauth.User{Email: tc.email, Sub: "sub-1"}),
+				Value: issueTestSession(t, auth, serviceauth.User{Email: tc.email, Sub: "sub-1"}),
 			})
 			req.Header.Set("X-Forwarded-For", "203.0.113.5, 10.0.0.1")
 			req.Header.Set("User-Agent", "Mozilla/5.0 (test)")
@@ -143,4 +148,40 @@ func TestMiddlewareLeavesStaticRequestsUnstamped(t *testing.T) {
 	if found {
 		t.Fatal("a static asset request carried an audit caller")
 	}
+}
+
+// twoFactorStoreForTest and sessionRegistryStoreForTest give the auth service
+// the two collaborators it now requires. Neither is exercised here: these
+// tests are about audit records, not about the second factor.
+func twoFactorStoreForTest(t *testing.T) serviceauth.TwoFactorStore {
+	t.Helper()
+	store, err := filetwofactor.New(t.TempDir())
+	if err != nil {
+		t.Fatalf("two-factor store: %v", err)
+	}
+	return store
+}
+
+func sessionRegistryStoreForTest(t *testing.T) serviceauth.SessionRegistryStore {
+	t.Helper()
+	store, err := filesessions.New(t.TempDir())
+	if err != nil {
+		t.Fatalf("session registry store: %v", err)
+	}
+	return store
+}
+
+// issueTestSession mints a real session cookie. SignSession is gone: issuing a
+// session now consults the user's own security preferences and can register
+// the device, so it needs a context and a sign-in method rather than just a
+// key.
+func issueTestSession(t *testing.T, service *serviceauth.Service, user serviceauth.User) string {
+	t.Helper()
+	value, err := service.IssueSession(
+		context.Background(), user, serviceauth.SignInMethodPassword, "", "",
+	)
+	if err != nil {
+		t.Fatalf("issue session: %v", err)
+	}
+	return value
 }

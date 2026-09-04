@@ -40,7 +40,7 @@ func TestProjectCreateIsAudited(t *testing.T) {
 		RequireProviderLogin(func() bool { return true }).
 		Wrap(mux)
 
-	session := auth.SignSession(serviceauth.User{Email: "admin@example.com", Sub: "local-admin"})
+	session := issueTestSession(t, auth, serviceauth.User{Email: "admin@example.com", Sub: "local-admin"})
 	createReq := httptest.NewRequest(http.MethodPost, "/api/projects", strings.NewReader(`{"name":"Audited Project"}`))
 	createReq.AddCookie(&http.Cookie{Name: serviceauth.SessionCookieName, Value: session})
 	createReq.Header.Set("X-Forwarded-For", "203.0.113.11")
@@ -124,7 +124,7 @@ func TestProjectMemberRemovalIsAudited(t *testing.T) {
 		RequireLocalAdminSetup(func() bool { return true }).
 		RequireProviderLogin(func() bool { return true }).
 		Wrap(mux)
-	session := auth.SignSession(serviceauth.User{Email: "admin@example.com", Sub: "local-admin"})
+	session := issueTestSession(t, auth, serviceauth.User{Email: "admin@example.com", Sub: "local-admin"})
 
 	createReq := httptest.NewRequest(http.MethodPost, "/api/projects", strings.NewReader(`{"name":"Shared"}`))
 	createReq.AddCookie(&http.Cookie{Name: serviceauth.SessionCookieName, Value: session})
