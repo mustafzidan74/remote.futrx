@@ -1,0 +1,100 @@
+# Validates pushes and pull requests without needing LXD, a container runtime,
+# or a server. Unit tests, builds, and the infra shell tests only.
+#
+# Adapted from upstream's ci.yml with two differences, both deliberate:
+#
+#   - the backend job creates a stand-in backend/public before vet/test/build.
+#     static.go embeds that directory, the frontend build is what fills it, and
+#     the two jobs run independently. Without this the backend job cannot
+#     compile the root package at all.
+#   - the shell job runs the infra tests this fork actually has, rather than
+#     upstream's list. Ours is a subset; naming scripts that do not exist here
+#     would fail for a reason nobody can act on.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: backend (go vet/test/build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Check gofmt
+        run: |
+          set -euo pipefail
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "unformatted Go files:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      # The real bundle comes from the frontend job; this only has to exist so
+      # the //go:embed in static.go resolves. It is never shipped: the deploy
+      # script builds the frontend first, into this same directory.
+      - name: Stand in for the embedded frontend bundle
+        run: |
+          set -euo pipefail
+          mkdir -p public
+          printf '<!doctype html><title>ci placeholder</title>' > public/index.html
+
+      - name: Go vet
+        run: go vet ./...
+
+      - name: Go test
+        run: go test ./...
+
+      - name: Go build
+        run: go build ./...
+
+  frontend:
+    name: frontend (npm test/build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Run frontend tests
+        run: npm test
+      - name: Build frontend
+        run: npm run build
+
+  shell:
+    name: infra shell tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run infra tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash infra/tests/health-check-test.sh
+          bash infra/tests/go-toolchain-test.sh
+          bash infra/tests/dns-resolve-test.sh
+          bash infra/tests/container-forwarding-test.sh
+          bash infra/tests/qa-scripts-test.sh

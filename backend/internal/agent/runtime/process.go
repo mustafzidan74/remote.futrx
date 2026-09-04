@@ -118,8 +118,19 @@ func RunProcess(
 		})
 	}
 
-	err = cmd.Wait()
+	// Drain stderr before Wait, not after. Wait closes the pipes returned by
+	// StdoutPipe/StderrPipe as soon as it reaps the process, so calling it
+	// while the scanner above is still reading truncates whatever it had left
+	// — and the scanner then reports EOF rather than an error, so the capture
+	// comes back empty with nothing to say it was cut short.
+	//
+	// The race is timing-dependent and resolves the harmless way on Windows,
+	// which is why it survived: on Linux a failing agent run lost its stderr,
+	// leaving "the run failed" with no reason attached. Reading the channel
+	// first cannot deadlock, because stderr reaches EOF when the process exits
+	// whether or not Wait has been called.
 	stderrText := <-stderrDone
+	err = cmd.Wait()
 	if errors.Is(ctx.Err(), context.Canceled) {
 		return nil
 	}
