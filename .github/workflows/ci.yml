@@ -97,4 +97,9 @@ jobs:
           bash infra/tests/go-toolchain-test.sh
           bash infra/tests/dns-resolve-test.sh
           bash infra/tests/container-forwarding-test.sh
-          bash infra/tests/qa-scripts-test.sh
+          # qa-scripts-test.sh drives infra/install.sh, which refuses to run
+          # as anyone but root before it reaches the argument validation the
+          # test is actually asserting on. Without sudo it fails on "this
+          # installer needs root" rather than on anything it meant to check.
+          # The other four pass unprivileged and are left that way.
+          sudo bash infra/tests/qa-scripts-test.sh
