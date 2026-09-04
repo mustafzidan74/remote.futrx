@@ -14,6 +14,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
 
 	remote "github.com/futrx-com/remote.futrx.com"
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
@@ -47,6 +48,12 @@ import (
 func main() {
 	ctx := context.Background()
 	cfg := config.Load()
+	// Non-server subcommands run and exit before anything is started: an
+	// operator asking for a setup token does not want a whole platform
+	// booted underneath them.
+	if runCLICommand(ctx, cfg, os.Args) {
+		return
+	}
 
 	storeSet, err := stores.New(cfg.DataDir)
 	if err != nil {
