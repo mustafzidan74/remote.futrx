@@ -214,7 +214,14 @@ func (s *Service) AuthCodeURL(state string) (string, error) {
 }
 
 func (s *Service) LoginGoogle(ctx context.Context, code string) (User, error) {
-	return s.google.login(ctx, code)
+	user, err := s.google.login(ctx, code)
+	attempted := ""
+	var notInvited NotInvitedError
+	if errors.As(err, &notInvited) {
+		attempted = notInvited.Email
+	}
+	s.recordLogin(ctx, "google", attempted, user, err)
+	return user, err
 }
 
 // EnsureSetupToken issues a token when a claim made now would actually be
@@ -235,11 +242,43 @@ func (s *Service) SetupTokenTTL() time.Duration {
 }
 
 func (s *Service) ClaimLocalAdmin(ctx context.Context, req ClaimRequest) (User, error) {
-	return s.local.claim(ctx, req)
+	user, err := s.local.claim(ctx, req)
+	if s.audit != nil {
+		email := user.Email
+		if email == "" {
+			email = req.Email
+		}
+		entry := audit.Result(audit.ActionAuthAdminClaim, audit.Target{Type: audit.TargetSession}, nil, err)
+		entry.Actor = audit.Actor{Email: audit.NormalizeActorEmail(email), Sub: user.Sub}
+		s.audit.Record(ctx, entry)
+	}
+	return user, err
 }
 
-func (s *Service) LoginLocal(_ context.Context, email, password string) (User, error) {
-	return s.local.login(email, password)
+func (s *Service) LoginLocal(ctx context.Context, email, password string) (User, error) {
+	user, err := s.local.login(email, password)
+	s.recordLogin(ctx, "local", email, user, err)
+	return user, err
+}
+
+// recordLogin writes one sign-in attempt. The actor is set explicitly because
+// a login is exactly the request that has no session to resolve one from, and
+// a failed attempt still names the identity that was tried.
+func (s *Service) recordLogin(ctx context.Context, method, attemptedEmail string, user User, err error) {
+	if s == nil || s.audit == nil {
+		return
+	}
+	action := audit.ActionAuthLoginSuccess
+	if err != nil {
+		action = audit.ActionAuthLoginFailure
+	}
+	email := user.Email
+	if email == "" {
+		email = attemptedEmail
+	}
+	entry := audit.Result(action, audit.Target{Type: audit.TargetSession}, audit.Meta{"method": method}, err)
+	entry.Actor = audit.Actor{Email: audit.NormalizeActorEmail(email), Sub: user.Sub}
+	s.audit.Record(ctx, entry)
 }
 
 func (s *Service) ConfigureGoogleOAuth(ctx context.Context, cfg OAuthConfig) error {
