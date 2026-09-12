@@ -14,11 +14,11 @@ import {
 } from "../../../state/settings/agentEndpointsState";
 import type { RoutingDecision } from "../../../models/modelRouting";
 import {
-  PROVIDER_OPTIONS,
+  CHAT_PROVIDER_OPTIONS as PROVIDER_OPTIONS,
   modelDisplayLabel,
   modelOptionsForProvider,
   providerDisplayLabel,
-} from "../../../config/chat";
+} from "../../../config/chatCatalog";
 import { Bot, ChevronDown, Globe, MessageSquare, Zap } from "../../primitives/icons";
 
 /**

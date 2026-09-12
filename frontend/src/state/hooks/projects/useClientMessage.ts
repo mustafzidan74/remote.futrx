@@ -9,7 +9,7 @@ import {
   snippetsFor,
   sortSnippets,
   type SnippetContext,
-} from "../../chat/snippetState";
+} from "../chat/snippetState";
 
 export interface ClientMessageState {
   templates: Snippet[];

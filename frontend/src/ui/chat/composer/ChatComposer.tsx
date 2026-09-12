@@ -14,6 +14,7 @@ import { AlertCircle, ChevronDown, Settings, X } from "../../primitives/icons";
 import { ScreenshotCard } from "../../preview/ScreenshotCard";
 import { AttachmentTray } from "./AttachmentTray";
 import { AttachButton } from "./AttachButton";
+import { CommandPalette, type CommandPaletteHandle } from "./CommandPalette";
 import { ComposerAgentControls } from "./ComposerAgentControls";
 import { ComposerDropOverlay } from "./ComposerDropOverlay";
 import { ComposerStatusNote } from "./ComposerStatusNote";
@@ -167,7 +168,7 @@ export function ChatComposer({
   }
 
   return (
-    <div class="codex-composer-shell flex-none z-20 relative bg-[#0b0d11] border-t border-white/10">
+    <div class="codex-composer-shell relative z-20 flex-none bg-canvas">
       {dragging && <ComposerDropOverlay />}
 
       {snippets.notice && (
@@ -249,12 +250,6 @@ export function ChatComposer({
           onSubmit={submit}
           class="codex-composer-form composer-form flex gap-1.5 items-end px-2 pt-2"
         >
-          <AttachButton
-            fileInputRef={fileInputRef}
-            uploading={uploading}
-            disconnected={disconnected}
-            onFilesSelected={onFilesSelected}
-          />
           <PromptTextarea
             textareaRef={textareaRef}
             text={text}

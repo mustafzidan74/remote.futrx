@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import type { AgentActivity } from "../../../state/chat/agentActivity";
-import { activityView } from "../../../state/chat/agentActivity";
+import type { AgentActivity } from "../../../state/hooks/chat/agentActivity";
+import { activityView } from "../../../state/hooks/chat/agentActivity";
 import { useActivityClock, useShowThinking } from "../../../state/hooks/chat/useAgentActivity";
 import { ChevronDown, ChevronRight, Loader, Square } from "../../primitives/icons";
 

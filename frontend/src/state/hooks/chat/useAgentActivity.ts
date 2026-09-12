@@ -4,7 +4,7 @@ import {
   agentPhaseStore,
   type ActivityPhase,
   type LiveChatPhase,
-} from "../../chat/agentActivity";
+} from "./agentActivity";
 
 /**
  * A once-a-second clock, running only while something is watching it.

@@ -8,16 +8,48 @@ import (
 	"time"
 
 	"github.com/futrx-com/remote.futrx.com/internal/service/audit"
+
+	"github.com/futrx-com/remote.futrx.com/internal/agent"
+	agentmodule "github.com/futrx-com/remote.futrx.com/internal/service/agent/module"
 )
 
 type Service struct {
-	repo          Repository
-	projects      ProjectResolver
-	tmux          TmuxResolver
-	runs          RunController
-	defaultSkills DefaultSkillResolver
-	audit         audit.Recorder
-	now           func() time.Time
+	repo                 Repository
+	transcriptEvents     TranscriptEventSource
+	transcriptWindow     TranscriptEventWindowSource
+	transcriptProjection TranscriptProjectionSource
+	copiedEvents         CopiedEventAppender
+	projects             ProjectResolver
+	tmux                 TmuxResolver
+	runs                 RunController
+	sessions             SessionPolicy
+	providers            ProviderPolicy
+	defaultSkills        DefaultSkillResolver
+	audit                audit.Recorder
+	now                  func() time.Time
+}
+
+// SessionPolicy supplies provider-native behavior from the agent module
+// catalog without coupling chat orchestration to concrete adapters.
+type SessionPolicy interface {
+	SupportsNativeFork(provider string) bool
+}
+
+type ProviderPolicy interface {
+	HasProvider(provider string) bool
+	SupportsScope(provider string, scope agentmodule.ExecutionScope) bool
+}
+
+type defaultProviderPolicy interface {
+	DefaultProvider(scope agentmodule.ExecutionScope) agent.ProviderID
+}
+
+// WithCopiedEventAppender preserves copied history without raising the side
+// effects reserved for newly produced events.
+func WithCopiedEventAppender(appender CopiedEventAppender) Option {
+	return func(service *Service) {
+		service.copiedEvents = appender
+	}
 }
 
 // Option configures optional Service collaborators.
@@ -50,6 +82,18 @@ func WithClock(now func() time.Time) Option {
 		if now != nil {
 			s.now = now
 		}
+	}
+}
+
+func WithSessionPolicy(policy SessionPolicy) Option {
+	return func(service *Service) {
+		service.sessions = policy
+	}
+}
+
+func WithProviderPolicy(policy ProviderPolicy) Option {
+	return func(service *Service) {
+		service.providers = policy
 	}
 }
 
@@ -124,9 +168,12 @@ func (s *Service) create(ctx context.Context, in CreateInput) (Meta, error) {
 
 	mode := in.Mode
 	if mode == "" {
-		mode = "code"
+		mode = "default"
 	}
-	provider := NormalizeProvider(in.Provider)
+	provider, ok := s.providerForScope(in.Provider, in.ProjectID)
+	if !ok {
+		return Meta{}, ErrInvalidProvider
+	}
 
 	cwd := strings.TrimSpace(in.Cwd)
 	if cwd == "" && in.ProjectID != "" && s.projects != nil {
@@ -158,6 +205,8 @@ func (s *Service) create(ctx context.Context, in CreateInput) (Meta, error) {
 		ModelPolicy:     NormalizeModelPolicy(in.ModelPolicy),
 		EndpointID:      NormalizeEndpointID(in.EndpointID),
 		DirectModel:     NormalizeDirectModel(in.DirectModel),
+		ApprovalPolicy:  NormalizeApprovalPolicy(in.ApprovalPolicy),
+		SandboxPolicy:   NormalizeSandboxPolicy(in.SandboxPolicy),
 		ProjectID:       in.ProjectID,
 		SelectedSkills:  NormalizeSelectedSkills(s.withDefaultSkills(ctx, in, provider), provider),
 		CompanionOf:     in.CompanionOf,
@@ -185,8 +234,8 @@ func (s *Service) withDefaultSkills(ctx context.Context, in CreateInput, provide
 
 // Fork creates an independent copy of a chat from its latest state: same
 // metadata and full visible history, plus a pending fork of the underlying
-// agent session. The fork materializes on the next prompt — Claude via
-// --fork-session, Codex via a copied rollout — so the parent is never mutated.
+// agent session. The fork materializes on the next prompt through each
+// provider's native fork mechanism, so the parent is never mutated.
 func (s *Service) Fork(ctx context.Context, id ID) (Meta, error) {
 	if !ValidID(id) {
 		return Meta{}, ErrInvalidID
@@ -194,6 +243,9 @@ func (s *Service) Fork(ctx context.Context, id ID) (Meta, error) {
 	src, err := s.repo.Get(ctx, id)
 	if err != nil {
 		return Meta{}, err
+	}
+	if !s.validProviderScope(src.Provider, src.ProjectID) {
+		return Meta{}, ErrInvalidProvider
 	}
 	events, err := s.repo.ReadEvents(ctx, id)
 	if err != nil {
@@ -208,14 +260,16 @@ func (s *Service) Fork(ctx context.Context, id ID) (Meta, error) {
 	// Only pend a fork if there is a session to fork from; otherwise the copy
 	// just starts fresh on first prompt. TmuxSession is intentionally not
 	// copied — a fork must not hijack the parent's terminal.
-	forkPending := src.ClaudeSessionID != "" || src.CodexSessionID != "" || src.KimiSessionID != ""
-
-	forked, err := s.repo.Create(ctx, Meta{
+	sessions := src.SessionSnapshot()
+	nativeFork := s.sessions != nil && s.sessions.SupportsNativeFork(string(src.Provider))
+	forkPending := nativeFork && src.SessionID(src.Provider) != ""
+	if !nativeFork {
+		delete(sessions, src.Provider)
+	}
+	forkMeta := Meta{
 		Title:           title + " (fork)",
 		Provider:        src.Provider,
-		ClaudeSessionID: src.ClaudeSessionID,
-		CodexSessionID:  src.CodexSessionID,
-		KimiSessionID:   src.KimiSessionID,
+		Sessions:        sessions,
 		Cwd:             src.Cwd,
 		Model:           src.Model,
 		Mode:            src.Mode,
@@ -224,10 +278,14 @@ func (s *Service) Fork(ctx context.Context, id ID) (Meta, error) {
 		ModelPolicy:     src.ModelPolicy,
 		EndpointID:      src.EndpointID,
 		DirectModel:     src.DirectModel,
+		ApprovalPolicy:  NormalizeApprovalPolicy(src.ApprovalPolicy),
+		SandboxPolicy:   NormalizeSandboxPolicy(src.SandboxPolicy),
 		ProjectID:       src.ProjectID,
 		SelectedSkills:  src.SelectedSkills,
 		ForkPending:     forkPending,
-	})
+	}
+	forkMeta.NormalizeSessions()
+	forked, err := s.repo.Create(ctx, forkMeta)
 	if err != nil {
 		return Meta{}, err
 	}
@@ -236,12 +294,19 @@ func (s *Service) Fork(ctx context.Context, id ID) (Meta, error) {
 	// Zero seq so the store assigns fresh, monotonic sequence numbers.
 	for _, ev := range events {
 		ev.Seq = 0
-		if _, err := s.repo.AppendEvent(ctx, forked.ID, ev); err != nil {
+		if _, err := s.appendCopiedEvent(ctx, forked.ID, ev); err != nil {
 			return Meta{}, err
 		}
 	}
 
 	return s.withRunning(forked), nil
+}
+
+func (s *Service) appendCopiedEvent(ctx context.Context, id ID, event Event) (Event, error) {
+	if s.copiedEvents != nil {
+		return s.copiedEvents.AppendCopiedEvent(ctx, id, event)
+	}
+	return s.repo.AppendEvent(ctx, id, event)
 }
 
 func (s *Service) Update(ctx context.Context, id ID, in UpdateInput) (Meta, error) {
@@ -256,6 +321,19 @@ func (s *Service) Update(ctx context.Context, id ID, in UpdateInput) (Meta, erro
 	}
 
 	now := s.clock()
+	var nextProvider Provider
+	if in.Provider != nil {
+		current, err := s.repo.Get(ctx, id)
+		if err != nil {
+			return Meta{}, err
+		}
+		var valid bool
+		nextProvider, valid = s.providerForScope(*in.Provider, current.ProjectID)
+		if !valid {
+			return Meta{}, ErrInvalidProvider
+		}
+	}
+
 	meta, err := s.repo.Update(ctx, id, func(m *Meta) {
 		if in.Title != nil {
 			m.Title = strings.TrimSpace(*in.Title)
@@ -264,7 +342,6 @@ func (s *Service) Update(ctx context.Context, id ID, in UpdateInput) (Meta, erro
 			m.Cwd = *in.Cwd
 		}
 		if in.Provider != nil {
-			nextProvider := NormalizeProvider(*in.Provider)
 			if nextProvider != m.Provider {
 				m.SelectedSkills = nil
 				// An endpoint is a profile for one CLI. Switching the agent
@@ -308,6 +385,12 @@ func (s *Service) Update(ctx context.Context, id ID, in UpdateInput) (Meta, erro
 				m.EndpointID = ""
 			}
 		}
+		if in.ApprovalPolicy != nil {
+			m.ApprovalPolicy = NormalizeApprovalPolicy(*in.ApprovalPolicy)
+		}
+		if in.SandboxPolicy != nil {
+			m.SandboxPolicy = NormalizeSandboxPolicy(*in.SandboxPolicy)
+		}
 		if in.SelectedSkills != nil {
 			m.SelectedSkills = NormalizeSelectedSkills(*in.SelectedSkills, m.Provider)
 		}
@@ -325,6 +408,38 @@ func (s *Service) Update(ctx context.Context, id ID, in UpdateInput) (Meta, erro
 		return Meta{}, err
 	}
 	return s.withRunning(meta), nil
+}
+
+func (s *Service) validProviderScope(provider Provider, projectID ProjectID) bool {
+	if s.providers == nil {
+		return true
+	}
+	if !s.providers.HasProvider(string(provider)) {
+		return false
+	}
+	scope := agentmodule.ScopeHost
+	if projectID != "" {
+		scope = agentmodule.ScopeProject
+	}
+	return s.providers.SupportsScope(string(provider), scope)
+}
+
+func (s *Service) providerForScope(input Provider, projectID ProjectID) (Provider, bool) {
+	scope := agentmodule.ScopeHost
+	if projectID != "" {
+		scope = agentmodule.ScopeProject
+	}
+	normalized := agent.NormalizeProviderID(string(input))
+	if normalized == "" {
+		normalized = ProviderCodex
+		if defaults, ok := s.providers.(defaultProviderPolicy); ok {
+			normalized = defaults.DefaultProvider(scope)
+		}
+	}
+	if !agent.ValidProviderID(normalized) || !s.validProviderScope(normalized, projectID) {
+		return "", false
+	}
+	return normalized, true
 }
 
 func (s *Service) MarkRead(ctx context.Context, id ID) (Meta, error) {

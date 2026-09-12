@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { projectApi } from "../../../api/projectApi";
 import type { ProjectMeta } from "../../../models/project";
 import type { Snapshot, SnapshotJob } from "../../../models/snapshot";
-import type { ProjectDataLoadSignal } from "../../projects/projectContainerRecords";
+import type { ProjectDataLoadSignal } from "../../../models/project";
 import { SNAPSHOT_POLL_INTERVAL_MS, snapshotState } from "../../projects/snapshotState";
 
 export interface SnapshotsRecord {

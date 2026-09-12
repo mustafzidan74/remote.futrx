@@ -15,7 +15,7 @@ import {
   speechRecognitionConstructor,
   speechRecognitionSupported,
 } from "../../../types/speech";
-import { BrowserDictation } from "../../chat/voiceDictationController";
+import { BrowserDictation } from "./voiceDictationController";
 import {
   IDLE_MICROPHONE_TEST,
   IDLE_VOICE_SESSION,
@@ -40,7 +40,7 @@ import {
   withLevel,
   type MicrophoneTest,
   type VoiceSession,
-} from "../../chat/voiceInputState";
+} from "./voiceInputState";
 
 /** How often the level meter and the recording timer are refreshed. */
 const METER_INTERVAL_MS = 100;

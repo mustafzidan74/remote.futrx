@@ -1,6 +1,6 @@
 import type { ComponentChildren } from "preact";
 import type { ChatMeta } from "../../../models/chat";
-import type { AgentActivity } from "../../../state/chat/agentActivity";
+import type { AgentActivity } from "../../../state/hooks/chat/agentActivity";
 import type { ProjectMeta } from "../../../models/project";
 import { useState } from "preact/hooks";
 import { chatApi } from "../../../api/chatApi";
@@ -37,6 +37,7 @@ export function ThreadHeader({
   endpointBadge,
   directBadge,
   actions,
+  projectName,
   onHamburger,
   onOpenAgentBrowser,
   onOpenCompanionChat,
@@ -61,6 +62,8 @@ export function ThreadHeader({
   directBadge?: { short: string; title: string } | null;
   /** Optional extra header controls, right-aligned next to the preview chip. */
   actions?: ComponentChildren;
+  /** The project this chat belongs to, for the breadcrumb. */
+  projectName?: string;
   onHamburger: () => void;
   onOpenAgentBrowser?: () => void;
   /** Opens a team companion chat in the normal chat view. */

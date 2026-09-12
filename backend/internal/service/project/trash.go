@@ -20,6 +20,7 @@ package project
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"path/filepath"
 	"sort"
@@ -82,7 +83,7 @@ func (s *Service) trash(ctx context.Context, id ID, actor string) (Meta, error) 
 	if !ValidID(id) {
 		return Meta{}, ErrInvalidID
 	}
-	unlock := s.lockRunState(id)
+	unlock := s.runState.lock(id)
 	defer unlock()
 	m, err := s.repo.Get(ctx, id)
 	if err != nil {
@@ -97,8 +98,8 @@ func (s *Service) trash(ctx context.Context, id ID, actor string) (Meta, error) 
 	// answers with an empty engine and that is not an error.
 	database, engine := s.dumpDatabase(ctx, m)
 
-	s.clearAgentBrowserState(id)
-	s.forgetAgentBrowserActivity(id)
+	s.browsers.clearState(id)
+	s.browsers.forgetActivity(id)
 	if s.containerTemplates != nil && m.ContainerName != "" {
 		s.containerTemplates.ForgetTemplateState(m.ContainerName)
 	}
@@ -171,7 +172,7 @@ func (s *Service) ListTrashed(ctx context.Context, callerEmail string, isAdmin b
 			if s.access == nil || callerEmail == "" {
 				continue
 			}
-			member, err := s.access.Has(ctx, m.ID, callerEmail)
+			member, err := s.access.has(ctx, m.ID, callerEmail)
 			if err != nil {
 				log.Printf("projects: trash access check %s/%s: %v", m.ID, callerEmail, err)
 				continue
@@ -201,7 +202,7 @@ func (s *Service) restoreFromTrash(ctx context.Context, id ID) (Meta, error) {
 	if !ValidID(id) {
 		return Meta{}, ErrInvalidID
 	}
-	unlock := s.lockRunState(id)
+	unlock := s.runState.lock(id)
 	defer unlock()
 	m, err := s.repo.Get(ctx, id)
 	if err != nil {
@@ -270,7 +271,7 @@ func (s *Service) purge(ctx context.Context, id ID) (Meta, error) {
 	if !ValidID(id) {
 		return Meta{}, ErrInvalidID
 	}
-	unlock := s.lockRunState(id)
+	unlock := s.runState.lock(id)
 	defer unlock()
 	m, err := s.repo.Get(ctx, id)
 	if err != nil {
@@ -285,6 +286,13 @@ func (s *Service) purge(ctx context.Context, id ID) (Meta, error) {
 // purgeLocked is the irreversible half, shared by the endpoint and the
 // janitor. The caller owns the project's run-state lock.
 func (s *Service) purgeLocked(ctx context.Context, m Meta) error {
+	// Chats go first: a purge that stopped after them leaves nothing a user
+	// could open, while one that stopped before would strand transcripts.
+	if s.chats != nil {
+		if err := s.chats.DeleteProjectChats(ctx, m.ID); err != nil {
+			return fmt.Errorf("delete project chats: %w", err)
+		}
+	}
 	// A delete that failed part-way may have left the container behind.
 	if s.containerLifecycle != nil && m.ContainerName != "" {
 		if err := s.containerLifecycle.Delete(ctx, m.ContainerName); err != nil {
@@ -302,12 +310,12 @@ func (s *Service) purgeLocked(ctx context.Context, m Meta) error {
 		}
 	}
 	if s.secrets != nil {
-		if err := s.secrets.DeleteAll(ctx, m.ID); err != nil {
+		if err := s.secrets.deleteAll(ctx, m.ID); err != nil {
 			log.Printf("projects: delete secrets %s: %v", m.ID, err)
 		}
 	}
 	if s.access != nil {
-		if err := s.access.DeleteAll(ctx, m.ID); err != nil {
+		if err := s.access.deleteAll(ctx, m.ID); err != nil {
 			log.Printf("projects: delete access %s: %v", m.ID, err)
 		}
 	}
@@ -334,7 +342,7 @@ func (s *Service) PurgeExpiredTrash(ctx context.Context, retention time.Duration
 		if snapshots := s.snapshotService(); snapshots != nil && snapshots.Busy(m.ID) {
 			continue
 		}
-		unlock := s.lockRunState(m.ID)
+		unlock := s.runState.lock(m.ID)
 		err := s.purgeLocked(ctx, m)
 		unlock()
 		if err != nil {

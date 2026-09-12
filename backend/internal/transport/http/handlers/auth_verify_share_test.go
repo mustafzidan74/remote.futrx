@@ -12,6 +12,8 @@ import (
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileauth"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filesessions"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filetwofactor"
 )
 
 const (
@@ -25,9 +27,8 @@ const (
 // and drops the token from the URL.
 func TestVerifyAcceptsShareTokenAndIssuesScopedCookie(t *testing.T) {
 	handler, shares := newVerifyHandler(t)
-	shares.share = serviceshare.Share{
+	shares.grant = serviceshare.AuthorizationGrant{
 		ID:        "1f2e3d4c",
-		Port:      3000,
 		ExpiresAt: time.Now().Add(24 * time.Hour).UnixMilli(),
 	}
 	shares.validToken = "good-token"
@@ -162,9 +163,8 @@ func TestVerifyRejectsShareAttempts(t *testing.T) {
 			handler, shares := newVerifyHandler(t)
 			shares.validToken = test.validToken
 			shares.allows = test.allows
-			shares.share = serviceshare.Share{
+			shares.grant = serviceshare.AuthorizationGrant{
 				ID:        "1f2e3d4c",
-				Port:      3000,
 				ExpiresAt: time.Now().Add(time.Hour).UnixMilli(),
 			}
 
@@ -225,7 +225,7 @@ func newVerifyHandler(t *testing.T) (*authVerifyHandler, *shareAuthorizerStub) {
 		[]byte("verify-handler-test-key"),
 		twoFactorStoreForTest(t),
 		sessionRegistryStoreForTest(t),
-		serviceauth.DefaultOptions(),
+		testAuthOptions(),
 	)
 	if err != nil {
 		t.Fatalf("New auth service: %v", err)
@@ -240,17 +240,17 @@ func newVerifyHandler(t *testing.T) (*authVerifyHandler, *shareAuthorizerStub) {
 
 type shareAuthorizerStub struct {
 	validToken string
-	share      serviceshare.Share
+	grant      serviceshare.AuthorizationGrant
 	allows     bool
 }
 
 func (s *shareAuthorizerStub) Validate(
 	_ context.Context, _ string, _ int, token string,
-) (serviceshare.Share, bool) {
+) (serviceshare.AuthorizationGrant, bool) {
 	if s.validToken == "" || token != s.validToken {
-		return serviceshare.Share{}, false
+		return serviceshare.AuthorizationGrant{}, false
 	}
-	return s.share, true
+	return s.grant, true
 }
 
 func (s *shareAuthorizerStub) Allows(context.Context, string, int, serviceshare.ID) bool {
@@ -284,4 +284,36 @@ type verifyOAuthProvider struct{}
 func (verifyOAuthProvider) AuthCodeURL(string) string { return "https://accounts.example.test" }
 func (verifyOAuthProvider) ExchangeUser(context.Context, string) (serviceauth.User, error) {
 	return serviceauth.User{}, nil
+}
+
+// twoFactorStoreForTest and sessionRegistryStoreForTest give the auth service
+// the two collaborators it now requires. Neither is exercised by these tests.
+func twoFactorStoreForTest(t *testing.T) serviceauth.TwoFactorStore {
+	t.Helper()
+	store, err := filetwofactor.New(t.TempDir())
+	if err != nil {
+		t.Fatalf("two-factor store: %v", err)
+	}
+	return store
+}
+
+func sessionRegistryStoreForTest(t *testing.T) serviceauth.SessionRegistryStore {
+	t.Helper()
+	store, err := filesessions.New(t.TempDir())
+	if err != nil {
+		t.Fatalf("session registry store: %v", err)
+	}
+	return store
+}
+
+// testAuthOptions are the auth service's tunings, spelled out because New
+// rejects a zero TTL or count and a test only needs them to be valid.
+func testAuthOptions() serviceauth.Options {
+	return serviceauth.Options{
+		PendingLoginTTL:     5 * time.Minute,
+		EnrollmentTTL:       10 * time.Minute,
+		RecoveryCodeCount:   10,
+		SessionHistoryLimit: 20,
+		SetupTokenTTL:       30 * time.Minute,
+	}
 }

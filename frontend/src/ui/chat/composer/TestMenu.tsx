@@ -4,7 +4,7 @@ import {
   SMOKE_TEST_PROMPT,
   canSendUrlCheck,
   urlCheckPrompt,
-} from "../../../state/chat/testPrompts";
+} from "../../../state/hooks/chat/testPrompts";
 import { ChevronDown, TestTube } from "../../primitives/icons";
 
 /**

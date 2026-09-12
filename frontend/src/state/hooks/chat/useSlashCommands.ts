@@ -7,7 +7,7 @@ import type { ProjectMeta } from "../../../models/project";
 import type { ProjectScreenshot, ScreenshotDelivery } from "../../../models/screenshot";
 import type { RegisteredSkill } from "../../../models/skill";
 import type { Snippet } from "../../../models/snippet";
-import { buildProjectPreviewUrl } from "../../../shared/projectPreviewUrls";
+import { projectPreviewUrlService } from "../../../services/projects/projectPreviewUrlService";
 import {
   DEPLOY_FALLBACK_PROMPT,
   REVIEW_PROMPT,
@@ -26,9 +26,9 @@ import {
   slashHelpText,
   slashTokenAt,
   type SlashCommand,
-} from "../../chat/slashCommandState";
-import { findSnippetByShortcut } from "../../chat/snippetState";
-import { testCommandPrompt } from "../../chat/testPrompts";
+} from "./slashCommandState";
+import { findSnippetByShortcut } from "./snippetState";
+import { testCommandPrompt } from "./testPrompts";
 import { isShareablePort } from "../../projects/projectShareState";
 import {
   githubActions,
@@ -359,7 +359,7 @@ export function useSlashCommands({
         report({ tone: "error", text: "No app is listening in this project yet." });
         return;
       }
-      const url = buildProjectPreviewUrl(project.slug, port, PUBLIC_HOSTNAME);
+      const url = projectPreviewUrlService.build(project.slug, port, PUBLIC_HOSTNAME);
       if (!url) {
         report({ tone: "error", text: "This deployment has no public preview hostname." });
         return;

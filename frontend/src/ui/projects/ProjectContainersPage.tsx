@@ -1,27 +1,25 @@
 import type { ComponentChildren, ComponentType } from "preact";
-import type {
-  AccessRecord,
-  PortalRecord,
-  ProjectContainerRecord,
-  SecretsRecord,
-  SharesRecord,
-} from "../../state/projects/projectContainerRecords";
+import { useCallback, useState } from "preact/hooks";
+import { projectShareService } from "../../services/projects/projectShareService";
 import { describePortal, portalFormFrom } from "../../state/projects/projectPortalState";
 import {
   describeAutomation,
   describeGitHub,
 } from "../../state/projects/githubPanelState";
 import type { PortalFormState } from "../../state/projects/projectPortalState";
-import { buildProjectPreviewUrl } from "../../shared/projectPreviewUrls";
 import { PUBLIC_HOSTNAME } from "../../config/runtime";
 import { describeShareCount, liveShares } from "../../state/projects/projectShareState";
+import { projectPreviewUrlService } from "../../services/projects/projectPreviewUrlService";
 import { Empty } from "./project-containers/ProjectContainerPrimitives";
 import { ProjectActions } from "./project-containers/ProjectActions";
 import {
   ContainerStateBadge,
   ProjectInfoSection,
 } from "./project-containers/ProjectInfoSection";
-import { ProjectSecretsSection } from "./project-containers/ProjectSecretsSection";
+import {
+  ProjectSecretsSection,
+  type SecretDraft,
+} from "./project-containers/ProjectSecretsSection";
 import { ProjectMCPSection } from "./project-containers/ProjectMCPSection";
 import { ProjectSnapshotsSection } from "./project-containers/ProjectSnapshotsSection";
 import { ProjectLighthouseSection } from "./project-containers/ProjectLighthouseSection";
@@ -49,13 +47,20 @@ import {
 } from "./project-containers/ProjectTemplateSection";
 import { formatRelativeTime as fmtRelative } from "./project-containers/projectContainerFormat";
 import type {
+  AccessRecord,
   ContainerLimits,
+  CreatedProjectShare,
   ProjectContainerInfo,
+  ProjectContainerRecord,
   ProjectMeta,
+  PortalRecord,
   ProjectPortal,
   ProjectShare,
+  SecretsRecord,
+  SharesRecord,
 } from "../../models/project";
 import type { ProjectHealth } from "../../models/health";
+import type { UsageSummary } from "../../models/usage";
 import {
   Archive,
   ChevronLeft,
@@ -78,9 +83,9 @@ import {
 import type { SnapshotsRecord } from "../../state/hooks/projects/useProjectSnapshots";
 import type { ProjectGitHub } from "../../state/hooks/projects/useProjectGitHub";
 import type { ProjectMCP } from "../../state/hooks/projects/useProjectMCP";
-import type { UsageSummary } from "../../models/usage";
 import type { ProjectResources } from "../../models/resources";
 import { projectTemplateName } from "../../models/project";
+import { useConfirm } from "../../state/context/ConfirmContext";
 
 export type ProjectSettingsTab =
   | "info"
@@ -255,7 +260,7 @@ export function ProjectContainersPage({
   onDeleteSecret: (key: string) => Promise<void>;
   onAddMember: (email: string) => Promise<void>;
   onRemoveMember: (email: string) => Promise<void>;
-  onCreateShare: (port: number, ttlHours: number, label?: string) => Promise<ProjectShare>;
+  onCreateShare: (port: number, ttlHours: number, label?: string) => Promise<CreatedProjectShare>;
   onRevokeShare: (shareId: string) => Promise<void>;
   onCreateSnapshot: (label: string, includeSecrets: boolean) => Promise<void>;
   onRestoreSnapshot: (snapshotId: string) => Promise<void>;
@@ -272,15 +277,43 @@ export function ProjectContainersPage({
   onRestartProject: () => Promise<void>;
   onDeleteProject: () => Promise<void>;
 }) {
+  const confirm = useConfirm();
   const activeTabDetails = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
+
+  // Draft state for the "Add new secret" form — owned here so it survives tab
+  // switches. SecretEditor is a conditionally-rendered subtree that would
+  // otherwise be unmounted (and lose its local state) on every navigation.
+  const [secretDraft, setSecretDraft] = useState<SecretDraft>({ key: "", value: "" });
+
+  const hasDraft = secretDraft.key.trim() !== "" || secretDraft.value !== "";
+
+  // Guard tab navigation: if there is a non-empty draft and the user is leaving
+  // the Secrets tab, ask for confirmation before silently discarding it.
+  const handleTabChange = useCallback(
+    async (next: ProjectSettingsTab) => {
+      if (next === activeTab) return;
+      if (activeTab === "secrets" && hasDraft) {
+        const ok = await confirm({
+          title: "Discard unsaved secret?",
+          message: `You have an unsaved draft for "${secretDraft.key || "(no key)"}". Switching tabs will keep the draft — it will be here when you return.`,
+          confirmLabel: "Switch anyway",
+          cancelLabel: "Stay on Secrets",
+          tone: "neutral",
+        });
+        if (!ok) return;
+      }
+      onTabChange(next);
+    },
+    [activeTab, hasDraft, secretDraft.key, confirm, onTabChange]
+  );
 
   return (
     <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
-      <header class="codex-header top-chrome flex-none z-20 bg-[#101318] border-b border-white/10 px-3 pb-2 flex items-center gap-2 min-h-[52px]">
+      <header class="codex-header top-chrome z-20 flex-none border-b border-line px-3 pb-2 flex items-center gap-2 min-h-[52px]">
         <button
           type="button"
           onClick={onHamburger}
-          class="md:hidden h-10 w-10 text-ink-100 rounded-md hover:bg-white/[0.08] grid place-items-center"
+          class="md:hidden h-10 w-10 text-ink-100 rounded-md hover:bg-tint-strong grid place-items-center"
           aria-label="Toggle sidebar"
         >
           <Menu class="w-5 h-5" />
@@ -289,7 +322,7 @@ export function ProjectContainersPage({
           type="button"
           onClick={onBack}
           class="hidden md:inline-flex items-center gap-1.5 h-10 px-2 text-ink-200 hover:text-ink-50
-                 hover:bg-white/[0.08] rounded-md text-sm"
+                 hover:bg-tint-strong rounded-md text-sm"
         >
           <ChevronLeft class="w-4 h-4" /> Chats
         </button>
@@ -303,7 +336,7 @@ export function ProjectContainersPage({
           type="button"
           onClick={onRefresh}
           disabled={refreshing}
-          class="h-10 w-10 rounded-md text-ink-300 hover:text-ink-50 hover:bg-white/[0.08]
+          class="h-10 w-10 rounded-md text-ink-300 hover:text-ink-50 hover:bg-tint-strong
                  disabled:cursor-wait grid place-items-center"
           aria-label="Refresh"
           title="Refresh"
@@ -315,14 +348,14 @@ export function ProjectContainersPage({
       <div class="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden">
         <ProjectSettingsNavigation
           activeTab={activeTab}
-          onTabChange={onTabChange}
-          className="theme-submenu-surface hidden md:flex w-56 flex-none border-r border-white/10 bg-[#0f1217] p-3"
+          onTabChange={handleTabChange}
+          className="theme-submenu-surface hidden md:flex w-56 flex-none border-r border-line bg-inset p-3"
         />
         <ProjectSettingsNavigation
           activeTab={activeTab}
-          onTabChange={onTabChange}
+          onTabChange={handleTabChange}
           mobile
-          className="theme-submenu-surface md:hidden flex-none border-b border-white/10 bg-[#0f1217] px-3 py-2 overflow-x-auto no-scrollbar"
+          className="theme-submenu-surface md:hidden flex-none border-b border-line bg-inset px-3 py-2 overflow-x-auto no-scrollbar"
         />
 
         <main
@@ -496,6 +529,10 @@ export function ProjectContainersPage({
                   >
                     <ProjectSecretsSection
                       record={secretsRecord}
+                      draft={secretDraft}
+                      onDraftChange={(patch) =>
+                        setSecretDraft((prev) => ({ ...prev, ...patch }))
+                      }
                       onSave={onSaveSecret}
                       onDelete={onDeleteSecret}
                     />
@@ -574,7 +611,7 @@ export function ProjectContainersPage({
 function firstPreviewUrl(project: ProjectMeta, shares?: ProjectShare[]): string | null {
   const port = (shares ?? []).map((share) => share.port).sort((a, b) => a - b)[0];
   if (port === undefined) return null;
-  return buildProjectPreviewUrl(project.slug, port, PUBLIC_HOSTNAME);
+  return projectPreviewUrlService.build(project.slug, port, PUBLIC_HOSTNAME);
 }
 
 function ProjectSettingsNavigation({
@@ -584,7 +621,7 @@ function ProjectSettingsNavigation({
   className,
 }: {
   activeTab: ProjectSettingsTab;
-  onTabChange: (tab: ProjectSettingsTab) => void;
+  onTabChange: (tab: ProjectSettingsTab) => void | Promise<void>;
   mobile?: boolean;
   className: string;
 }) {
@@ -608,8 +645,8 @@ function ProjectSettingsNavigation({
               onClick={() => onTabChange(id)}
               class={`${mobile ? "h-9 px-3" : "w-full h-10 px-3"} rounded-md inline-flex items-center gap-2.5 border text-[13px] font-medium transition-colors ${
                 active
-                  ? "border-white/10 bg-white/[0.08] text-ink-50"
-                  : "border-transparent text-ink-300 hover:text-ink-100 hover:bg-white/[0.05]"
+                  ? "border-line bg-tint-strong text-ink-50"
+                  : "border-transparent text-ink-300 hover:text-ink-100 hover:bg-tint"
               }`}
             >
               <Icon class={`w-4 h-4 flex-none ${active ? "text-accent-blue" : "text-ink-400"}`} />
@@ -634,9 +671,9 @@ function ProjectSettingsPanel({
   children: ComponentChildren;
 }) {
   return (
-    <section class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-      <header class="px-4 py-3 flex items-start gap-3 border-b border-white/[0.06]">
-        <div class="mt-0.5 w-9 h-9 rounded-md bg-white/[0.06] border border-white/10 grid place-items-center flex-none">
+    <section class="rounded-card border border-line bg-surface overflow-hidden">
+      <header class="px-4 py-3 flex items-start gap-3 border-b border-line">
+        <div class="mt-0.5 grid h-8 w-8 flex-none place-items-center rounded-control bg-tint">
           <Icon class="w-4 h-4 text-ink-200" />
         </div>
         <div class="flex-1 min-w-0">
@@ -673,7 +710,9 @@ function accessDescription(record: AccessRecord): string {
 function sharesDescription(record: SharesRecord): string {
   if (record.loading && !record.data) return "Loading public preview links…";
   if (record.error) return "Public preview links could not be loaded.";
-  return describeShareCount(liveShares(record.data ?? [], Date.now()).length);
+  return projectShareService.describeCount(
+    projectShareService.live(record.data ?? [], Date.now()).length,
+  );
 }
 
 function ProjectHeader({
@@ -694,8 +733,8 @@ function ProjectHeader({
   usageError: string | null;
 }) {
   return (
-    <section class="rounded-lg border border-white/10 bg-[#101318] px-4 py-3 flex items-start gap-3">
-      <div class="mt-0.5 w-9 h-9 rounded-md bg-white/[0.06] border border-white/10 grid place-items-center flex-none">
+    <section class="rounded-card border border-line bg-surface px-4 py-3 flex items-start gap-3">
+      <div class="mt-0.5 grid h-8 w-8 flex-none place-items-center rounded-control bg-tint">
         <Settings class="w-4 h-4 text-ink-200" />
       </div>
       <div class="flex-1 min-w-0">

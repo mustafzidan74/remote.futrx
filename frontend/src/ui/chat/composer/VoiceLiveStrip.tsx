@@ -1,5 +1,5 @@
 import type { VoiceInput } from "../../../state/hooks/chat/useVoiceInput";
-import { formatElapsed } from "../../../state/chat/voiceInputState";
+import { formatElapsed } from "../../../state/hooks/chat/voiceInputState";
 import { Loader, Mic } from "../../primitives/icons";
 
 /**

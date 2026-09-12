@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 )
 
@@ -141,6 +142,17 @@ func (p recordingProvisioner) ProvisionEveryStart(_ context.Context, container s
 	*p.events = append(*p.events, "provision-every-start "+container)
 }
 
+type testProfileSource struct{}
+
+func (testProfileSource) Snapshot() []provisioning.Profile {
+	return []provisioning.Profile{
+		{ID: "claude", PersistentState: []provisioning.PersistentDirectory{{Device: "claude-home", HostDirectory: "claude", ContainerPath: "/root/.claude"}}},
+		{ID: "codex", PersistentState: []provisioning.PersistentDirectory{{Device: "codex-home", HostDirectory: "codex", ContainerPath: "/root/.codex"}}},
+		{ID: "kimi", PersistentState: []provisioning.PersistentDirectory{{Device: "kimi-home", HostDirectory: "kimi", ContainerPath: "/root/.kimi-code"}}},
+		{ID: "antigravity", PersistentState: []provisioning.PersistentDirectory{{Device: "antigravity-home", HostDirectory: "antigravity", ContainerPath: "/root/.gemini/antigravity-cli"}}},
+	}
+}
+
 func testProject(t *testing.T) serviceproject.Meta {
 	t.Helper()
 	return serviceproject.Meta{
@@ -157,11 +169,12 @@ func newTestService(runtime *recordingRuntime, events *[]string) *Service {
 		recordingWorkspace{events: events},
 		recordingResources{events: events},
 		recordingProvisioner{events: events},
+		testProfileSource{},
 	)
 }
 
 func expectedDisks(project serviceproject.Meta) map[string]testDisk {
-	mounts, _, _ := persistentMounts(project)
+	mounts, _, _ := persistentMounts(project, testProfileSource{}.Snapshot())
 	out := make(map[string]testDisk, len(mounts))
 	for _, mount := range mounts {
 		out[mount.device] = testDisk{source: mount.hostPath, path: mount.containerPath}
@@ -180,8 +193,8 @@ func TestEnsureCreatesStoppedContainerThenAttachesAndValidatesAllDurableMounts(t
 	if runtime.state != serviceproject.ContainerStateRunning {
 		t.Fatalf("state = %q, want running", runtime.state)
 	}
-	if len(runtime.devices) != 4 {
-		t.Fatalf("devices = %#v, want four durable mounts", runtime.devices)
+	if len(runtime.devices) != 5 {
+		t.Fatalf("devices = %#v, want five durable mounts", runtime.devices)
 	}
 	initAt := slices.Index(events, "runtime init local:remote-base project-1")
 	startAt := slices.Index(events, "runtime start project-1")
@@ -191,6 +204,44 @@ func TestEnsureCreatesStoppedContainerThenAttachesAndValidatesAllDurableMounts(t
 	}
 	if !slices.Contains(events, "provision project-1 My Project") {
 		t.Fatalf("launch provisioning missing: %q", events)
+	}
+}
+
+func TestPersistentMountsIncludeFutureProfileStateWithoutLifecycleChanges(t *testing.T) {
+	project := testProject(t)
+	profiles := append(testProfileSource{}.Snapshot(), provisioning.Profile{
+		ID: "future-agent",
+		PersistentState: []provisioning.PersistentDirectory{{
+			Device: "future-home", HostDirectory: "future", ContainerPath: "/root/.future",
+		}},
+	})
+	mounts, _, err := persistentMounts(project, profiles)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantHost := filepath.Join(filepath.Dir(project.Cwd), agentHomeDirName, "future")
+	if !slices.Contains(mounts, (durableMount{
+		device: "future-home", hostPath: wantHost, containerPath: "/root/.future", migrateExisting: true,
+	})) {
+		t.Fatalf("future state mount missing: %#v", mounts)
+	}
+}
+
+func TestPersistentMountsRejectInvalidAndOverlappingProfileState(t *testing.T) {
+	project := testProject(t)
+	for name, profiles := range map[string][]provisioning.Profile{
+		"unsafe host":      {{ID: "future", PersistentState: []provisioning.PersistentDirectory{{Device: "future-home", HostDirectory: "../future", ContainerPath: "/root/.future"}}}},
+		"workspace device": {{ID: "future", PersistentState: []provisioning.PersistentDirectory{{Device: "workspace", HostDirectory: "future", ContainerPath: "/root/.future"}}}},
+		"overlapping targets": {{ID: "future", PersistentState: []provisioning.PersistentDirectory{
+			{Device: "future-home", HostDirectory: "future", ContainerPath: "/root/.future"},
+			{Device: "future-cache", HostDirectory: "future-cache", ContainerPath: "/root/.future/cache"},
+		}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, _, err := persistentMounts(project, profiles); err == nil {
+				t.Fatal("persistentMounts accepted invalid state")
+			}
+		})
 	}
 }
 

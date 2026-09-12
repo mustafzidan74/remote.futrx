@@ -1,4 +1,4 @@
-import { fuzzyScore } from "../../shared/fuzzy.ts";
+import { fuzzyScore } from "../../services/projects/fuzzy.ts";
 
 /**
  * Search over the settings navigation.

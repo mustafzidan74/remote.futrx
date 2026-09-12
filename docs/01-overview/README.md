@@ -11,7 +11,7 @@ This documentation maps the complete `remote.futrx` application: how to use ever
 | Product user | [User guide](../02-user-guide/README.md) |
 | Server operator | [Deployment and operations](../04-operations/09-deployment-and-operations.md) |
 | Architect or security reviewer | [Philosophy](00-philosophy.md), then [System overview](01-system-overview.md) and the [Threat model](../threat-model.md) |
-| Contributor | [API and realtime](../03-platform/08-api-and-realtime.md), [Data and frontend state](../03-platform/07-data-and-frontend-state.md), then the code maps |
+| Contributor | [Agent integration guide](../dev/agents/README.md), [API and realtime](../03-platform/08-api-and-realtime.md), [Data and frontend state](../03-platform/07-data-and-frontend-state.md), then the code maps |
 
 ## Read in this order
 
@@ -56,6 +56,7 @@ This documentation maps the complete `remote.futrx` application: how to use ever
 | [11-uptime-monitoring.md](../04-operations/11-uptime-monitoring.md) | External uptime monitoring: the public `/healthz` endpoint, the outbound heartbeat, restart notifications, and free monitor setups |
 | [12-client-site-monitoring.md](../04-operations/12-client-site-monitoring.md) | Always-on watcher for the operator's client websites: HEAD/keyword/TLS/latency checks, the two-consecutive-checks rule, uptime windows, bulk import, and the `siteWatch` alerts |
 | [13-whatsapp-on-this-install.md](../04-operations/13-whatsapp-on-this-install.md) | What this deployment actually runs for WhatsApp alerts: the CallMeBot gateway, why its activation number must be read fresh every time, why messages are capped at 900 characters, and what must never be sent through a third-party relay |
+| [Agent integration developer guide](../dev/agents/README.md) | Module factory contract, concrete adapter boundary, parsing, capabilities, authentication, provisioning, and adding a provider |
 
 ## Cross-cutting references
 
@@ -64,6 +65,7 @@ This documentation maps the complete `remote.futrx` application: how to use ever
 | [../../ARCHITECTURE.md](../../ARCHITECTURE.md) | Top-level architecture: topology, layers, data flow, and trust boundaries |
 | [../threat-model.md](../threat-model.md) | STRIDE threat model per trust boundary, with mitigations and residual gaps |
 | [../known-limitations.md](../known-limitations.md) | Current scaling, operational, and functional constraints |
+| [../dev/agents/README.md](../dev/agents/README.md) | Complete contributor guide for registering and implementing agent integrations |
 
 ## Feature map
 
@@ -80,7 +82,7 @@ flowchart TD
     Identity --> Users["Invited Google users"]
     Identity --> Sharing["Per-project membership"]
 
-    Workspace --> Providers["Claude, Codex, Kimi, Antigravity"]
+    Workspace --> Providers["Claude, Codex, MiniMax, Kimi, Antigravity"]
     Workspace --> Chat["Streaming chats"]
     Workspace --> Skills["Reusable skills"]
     Workspace --> Schedules["One-time and recurring tasks"]

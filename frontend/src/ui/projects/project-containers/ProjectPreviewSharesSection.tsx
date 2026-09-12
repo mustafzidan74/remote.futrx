@@ -1,13 +1,14 @@
 import { useMemo, useState } from "preact/hooks";
-import type { ProjectShare } from "../../../models/project";
-import type { SharesRecord } from "../../../state/projects/projectContainerRecords";
+import type {
+  CreatedProjectShare,
+  ProjectShare,
+  SharesRecord,
+} from "../../../models/project";
 import {
-  DEFAULT_SHARE_TTL_HOURS,
-  SHARE_TTL_OPTIONS,
-  formatShareExpiry,
-  liveShares,
-  shareablePortRows,
-} from "../../../state/projects/projectShareState";
+  PROJECT_SHARE_DEFAULT_TTL_HOURS,
+  PROJECT_SHARE_TTL_OPTIONS,
+} from "../../../config/project";
+import { projectShareService } from "../../../services/projects/projectShareService";
 import { AlertCircle, Check, Clock, ExternalLink, X } from "../../primitives/icons";
 import { Empty, Loading } from "./ProjectContainerPrimitives";
 
@@ -17,15 +18,15 @@ export function ProjectPreviewSharesSection({
   onRevoke,
 }: {
   record: SharesRecord;
-  onCreate: (port: number, ttlHours: number, label?: string) => Promise<ProjectShare>;
+  onCreate: (port: number, ttlHours: number, label?: string) => Promise<CreatedProjectShare>;
   onRevoke: (shareId: string) => Promise<void>;
 }) {
   // Held in the section, not the row, so switching ports does not lose the
   // link the operator has not copied yet.
-  const [issued, setIssued] = useState<ProjectShare | null>(null);
+  const [issued, setIssued] = useState<CreatedProjectShare | null>(null);
   const shares = record.data ?? [];
   const rows = useMemo(
-    () => shareablePortRows(record.apps ?? [], shares),
+    () => projectShareService.portRows(record.apps ?? [], shares),
     [record.apps, shares]
   );
 
@@ -87,7 +88,7 @@ function IssuedLink({
   share,
   onDismiss,
 }: {
-  share: ProjectShare;
+  share: CreatedProjectShare;
   onDismiss: () => void;
 }) {
   const [copied, setCopied] = useState(false);
@@ -151,7 +152,7 @@ function SharePortRow({
   shareCount: number;
   onShare: (ttlHours: number) => Promise<void>;
 }) {
-  const [ttlHours, setTtlHours] = useState(DEFAULT_SHARE_TTL_HOURS);
+  const [ttlHours, setTtlHours] = useState(PROJECT_SHARE_DEFAULT_TTL_HOURS);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -186,7 +187,7 @@ function SharePortRow({
             aria-label={`Link lifetime for port ${port}`}
             class="h-8 px-2 rounded-md border border-white/10 bg-black/30 text-[12px] text-ink-100 focus:outline-none focus:border-accent-blue/50"
           >
-            {SHARE_TTL_OPTIONS.map((option) => (
+            {PROJECT_SHARE_TTL_OPTIONS.map((option) => (
               <option key={option.hours} value={String(option.hours)}>
                 {option.label}
               </option>
@@ -215,7 +216,7 @@ function ActiveSharesList({
   onRevoke: (shareId: string) => Promise<void>;
 }) {
   const now = Date.now();
-  const live = liveShares(shares, now);
+  const live = projectShareService.live(shares, now);
   if (live.length === 0) return <Empty text="No active public links." compact />;
   return (
     <div class="space-y-2">
@@ -267,7 +268,7 @@ function ActiveShareRow({
         )}
         <span class="text-[11px] text-ink-400 inline-flex items-center gap-1 whitespace-nowrap ml-auto">
           <Clock class="w-3 h-3" />
-          {formatShareExpiry(share.expiresAt, now)}
+          {projectShareService.formatExpiry(share.expiresAt, now)}
         </span>
         <button
           type="button"

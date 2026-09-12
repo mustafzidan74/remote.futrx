@@ -15,12 +15,20 @@ import (
 var emailPattern = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
 
 type Service struct {
-	repo  Repository
-	audit audit.Recorder
+	repo    Repository
+	audit   audit.Recorder
+	cleanup RemovalCleanup
 }
 
-// Option configures optional Service collaborators.
+// Option configures an optional user-service collaborator.
 type Option func(*Service)
+
+// WithRemovalCleanup revokes identity-keyed resources before user deletion.
+func WithRemovalCleanup(cleanup RemovalCleanup) Option {
+	return func(service *Service) {
+		service.cleanup = cleanup
+	}
+}
 
 // WithAudit records directory changes (invites, removals, role changes) to
 // the audit log.
@@ -161,6 +169,11 @@ func (s *Service) remove(ctx context.Context, email string) error {
 		}
 		if admins <= 1 {
 			return ErrCannotRemoveLastAdmin
+		}
+	}
+	if s.cleanup != nil {
+		if err := s.cleanup.CleanupRemovedUser(ctx, email); err != nil {
+			return err
 		}
 	}
 	return s.repo.Remove(ctx, email)

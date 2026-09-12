@@ -4,7 +4,7 @@ import {
   buildTurnTimeline,
   timelineSummary,
   type TimelineStep,
-} from "../../../state/chat/agentActivity";
+} from "../../../state/hooks/chat/agentActivity";
 import { AlertCircle, ChevronDown, ChevronRight, Loader } from "../../primitives/icons";
 import { ToolCall } from "../tool-calls/ToolCall";
 import { ToolShell } from "../tool-calls/ToolShell";

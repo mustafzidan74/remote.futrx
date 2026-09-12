@@ -1,5 +1,4 @@
 import type { AppearanceTheme } from "../../models/settings";
-import type { CodexDeviceLogin, KimiDeviceLogin } from "../../models/auth";
 import type { UserDirectory } from "../../state/hooks/users/useUserDirectory";
 import type { GlobalSkillLibrary } from "../../state/hooks/settings/useGlobalSkills";
 import type { PlaybookLibraryEditor } from "../../state/hooks/settings/usePlaybookLibrary";
@@ -12,7 +11,9 @@ import type { ProjectTrash } from "../../state/hooks/admin/useProjectTrash";
 import type { ServerInfo } from "../../models/serverInfo";
 import type { FleetResourcesView, FleetSettings } from "../../models/resources";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
+import type { SecuritySettingsController } from "../../state/hooks/auth/useSecuritySettings";
 import type { ComponentType } from "preact";
+import type { PushNotifications } from "../../state/hooks/push/usePushNotifications";
 import {
   Activity,
   Bell,
@@ -50,16 +51,15 @@ import { ReplyLanguagePreference } from "./ReplyLanguagePreference";
 import { ReplyPreferencesSettings } from "./ReplyPreferencesSettings";
 import { AuditLogSettings } from "./AuditLogSettings";
 import { ClientSitesSettings } from "./ClientSitesSettings";
-import { ClaudeAuthSettings } from "./ClaudeAuthSettings";
-import { CodexAuthSettings } from "./CodexAuthSettings";
-import { KimiAuthSettings } from "./KimiAuthSettings";
-import { AntigravityAuthSettings } from "./AntigravityAuthSettings";
+import { NotificationSettings } from "./NotificationSettings";
+import { AgentAuthSettingsList } from "./AgentAuthSettings";
 import { GoogleOAuthSettings } from "./GoogleOAuthSettings";
 import { MonitoringSettings } from "./MonitoringSettings";
 import { NotificationsSettings } from "./NotificationsSettings";
 import { ResourcesSettings } from "./ResourcesSettings";
 import { SecretsVaultSettings } from "./SecretsVaultSettings";
 import { MCPServersSettings } from "./MCPServersSettings";
+import { SecuritySettings } from "./SecuritySettings";
 import { ServerInfoSettings } from "./ServerInfoSettings";
 import { TrashSettings } from "./TrashSettings";
 import { UpdatesSettings } from "./UpdatesSettings";
@@ -68,8 +68,6 @@ import { PlaybooksSettings } from "./PlaybooksSettings";
 import { VoiceInputSettings } from "./VoiceInputSettings";
 import { UsageSettings } from "./UsageSettings";
 import { ModelRoutingSettings } from "./ModelRoutingSettings";
-import { SecuritySettings } from "./SecuritySettings";
-import { useSecuritySettings } from "../../state/hooks/auth/useSecuritySettings";
 import { UsersPanel } from "../account/UsersPanel";
 import type { UsageDashboard } from "../../state/hooks/usage/useUsageDashboard";
 import type { ModelRoutingEditor } from "../../state/hooks/settings/useModelRouting";
@@ -136,7 +134,7 @@ const tabs: SettingsTabDescriptor[] = [
     id: "agents",
     group: "agents",
     label: "Agents",
-    description: "Manage host authentication for coding agents.",
+    description: "Configure coding-agent access and authentication.",
     Icon: Bot,
   },
   {
@@ -238,7 +236,7 @@ const tabs: SettingsTabDescriptor[] = [
   },
   {
     id: "notifications",
-    group: "platform",
+    group: "personal",
     label: "Notifications",
     description: "Get pinged when an agent finishes, fails, or needs you.",
     Icon: Bell,
@@ -345,20 +343,8 @@ export function SettingsPage({
   appearanceLoading,
   appearanceSaving,
   appearanceError,
-  codexAuthenticated,
-  codexUsesApiKey,
-  codexDeviceLogin,
-  codexLoading,
-  codexStarting,
-  codexError,
-  kimiAuthenticated,
-  antigravityAuthenticated,
-  antigravityLoading,
-  antigravityHint,
-  kimiDeviceLogin,
-  kimiLoading,
-  kimiStarting,
-  kimiError,
+  push,
+  security,
   onBack,
   onHamburger,
   onTabChange,
@@ -367,8 +353,6 @@ export function SettingsPage({
   onApplyUpdate,
   onAppearanceThemeChange,
   onReplyLanguageChange,
-  onStartCodexDeviceLogin,
-  onStartKimiDeviceLogin,
 }: {
   activeTab: SettingsTab;
   currentEmail: string;
@@ -410,20 +394,8 @@ export function SettingsPage({
   appearanceLoading: boolean;
   appearanceSaving: boolean;
   appearanceError: string | null;
-  codexAuthenticated: boolean;
-  codexUsesApiKey: boolean;
-  codexDeviceLogin?: CodexDeviceLogin;
-  codexLoading: boolean;
-  codexStarting: boolean;
-  codexError: string | null;
-  kimiAuthenticated: boolean;
-  antigravityAuthenticated: boolean;
-  antigravityLoading: boolean;
-  antigravityHint?: string;
-  kimiDeviceLogin?: KimiDeviceLogin;
-  kimiLoading: boolean;
-  kimiStarting: boolean;
-  kimiError: string | null;
+  push: PushNotifications;
+  security: SecuritySettingsController;
   onBack: () => void;
   onHamburger: () => void;
   onTabChange: (tab: SettingsTab) => void;
@@ -432,21 +404,16 @@ export function SettingsPage({
   onApplyUpdate: (tag?: string) => Promise<void>;
   onAppearanceThemeChange: (theme: AppearanceTheme) => void;
   onReplyLanguageChange: (language: string) => void;
-  onStartCodexDeviceLogin: () => Promise<void>;
-  onStartKimiDeviceLogin: () => Promise<void>;
 }) {
-  // Scoped to the tab: the hook fetches the account's security summary, and
-  // there is no reason to ask for it behind a panel nobody opened.
-  const security = useSecuritySettings(activeTab === "security");
   const activeTabDetails = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
 
   return (
     <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
-      <header class="codex-header top-chrome flex-none z-20 bg-[#101318] border-b border-white/10 px-3 pb-2 flex items-center gap-2 min-h-[52px]">
+      <header class="codex-header top-chrome z-20 flex-none border-b border-line px-3 pb-2 flex items-center gap-2 min-h-[52px]">
         <button
           type="button"
           onClick={onHamburger}
-          class="md:hidden h-10 w-10 text-ink-100 rounded-md hover:bg-white/[0.08] grid place-items-center"
+          class="md:hidden h-10 w-10 text-ink-100 rounded-md hover:bg-tint-strong grid place-items-center"
           aria-label="Toggle sidebar"
         >
           <Menu class="w-5 h-5" />
@@ -455,7 +422,7 @@ export function SettingsPage({
           type="button"
           onClick={onBack}
           class="hidden md:inline-flex items-center gap-1.5 h-10 px-2 text-ink-200 hover:text-ink-50
-                 hover:bg-white/[0.08] rounded-md text-sm"
+                 hover:bg-tint-strong rounded-md text-sm"
         >
           <ChevronLeft class="w-4 h-4" /> Chats
         </button>
@@ -475,7 +442,7 @@ export function SettingsPage({
           activeTab={activeTab}
           onTabChange={onTabChange}
           mobile
-          className="theme-submenu-surface md:hidden flex-none border-b border-white/10 bg-[#0f1217] px-3 py-2 overflow-x-auto no-scrollbar"
+          className="theme-submenu-surface md:hidden flex-none border-b border-line bg-inset px-3 py-2 overflow-x-auto no-scrollbar"
         />
 
         <main
@@ -508,39 +475,19 @@ export function SettingsPage({
               </div>
             )}
 
+            {activeTab === "notifications" && <NotificationSettings push={push} />}
+
             {activeTab === "agents" && (
               isAdmin ? (
-                <div class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-                  <div class="px-4 py-3 border-b border-white/[0.06]">
+                <div class="rounded-card border border-line bg-surface overflow-hidden">
+                  <div class="px-4 py-3 border-b border-line">
                     <div class="text-[14.5px] font-semibold text-ink-50">Agent authentication</div>
                     <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug">
-                      Sign in once on the parent host and share the credentials with project containers.
+                      Configure each agent using its declared host-managed, project-external, or no-auth flow.
                     </div>
                   </div>
                   <div class="p-3 space-y-3">
-                    <ClaudeAuthSettings />
-                    <CodexAuthSettings
-                      authenticated={codexAuthenticated}
-                      usesApiKey={codexUsesApiKey}
-                      deviceLogin={codexDeviceLogin}
-                      loading={codexLoading}
-                      starting={codexStarting}
-                      error={codexError}
-                      onStartDeviceLogin={onStartCodexDeviceLogin}
-                    />
-                    <KimiAuthSettings
-                      authenticated={kimiAuthenticated}
-                      deviceLogin={kimiDeviceLogin}
-                      loading={kimiLoading}
-                      starting={kimiStarting}
-                      error={kimiError}
-                      onStartDeviceLogin={onStartKimiDeviceLogin}
-                    />
-                    <AntigravityAuthSettings
-                      authenticated={antigravityAuthenticated}
-                      loading={antigravityLoading}
-                      hint={antigravityHint}
-                    />
+                    <AgentAuthSettingsList />
                   </div>
                 </div>
               ) : (
@@ -678,14 +625,12 @@ export function SettingsPage({
               </div>
             )}
 
-            {activeTab === "notifications" &&
-              (isAdmin ? (
-                <NotificationsSettings />
-              ) : (
-                <SettingsNotice>
-                  Notifications are managed by server administrators.
-                </SettingsNotice>
-              ))}
+            {activeTab === "notifications" && (
+              <>
+                <NotificationSettings push={push} />
+                {isAdmin && <NotificationsSettings />}
+              </>
+            )}
 
             {activeTab === "resources" &&
               (isAdmin ? (
@@ -965,7 +910,7 @@ function SettingsTabButton({
 
 function SettingsNotice({ children }: { children: string }) {
   return (
-    <section class="rounded-lg border border-white/10 bg-[#101318] p-4 text-[13px] leading-relaxed text-ink-300">
+    <section class="rounded-card border border-line bg-surface p-4 text-[13px] leading-relaxed text-ink-300">
       {children}
     </section>
   );

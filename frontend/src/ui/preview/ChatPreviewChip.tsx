@@ -3,7 +3,7 @@ import { PUBLIC_HOSTNAME } from "../../config/runtime.ts";
 import type { ProjectMeta } from "../../models/project";
 import { useProjectPreviewLinks } from "../../state/hooks/projects/useProjectPreviewLinks.ts";
 import { preferredPreviewPort } from "../../state/projects/projectPreviewLinksState.ts";
-import { buildProjectPreviewUrl } from "../../shared/projectPreviewUrls.ts";
+import { projectPreviewUrlService } from "../../services/projects/projectPreviewUrlService.ts";
 import { ChevronDown, Globe } from "../primitives/icons";
 import { PreviewPopover } from "./PreviewPopover";
 import { PreviewPortList } from "./PreviewPortList";
@@ -39,7 +39,7 @@ export function ChatPreviewChip({
 
   const port = preferredPreviewPort(links.rows);
   if (port === null) return null;
-  const url = buildProjectPreviewUrl(project.slug, port, PUBLIC_HOSTNAME);
+  const url = projectPreviewUrlService.build(project.slug, port, PUBLIC_HOSTNAME);
   if (!url) return null;
 
   return (

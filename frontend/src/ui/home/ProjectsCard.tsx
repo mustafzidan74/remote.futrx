@@ -1,7 +1,7 @@
 import { PUBLIC_HOSTNAME } from "../../config/runtime.ts";
 import type { DashboardProject } from "../../models/dashboard";
 import { formatRelative, projectDot } from "../../state/home/dashboardState";
-import { buildProjectPreviewUrl } from "../../shared/projectPreviewUrls.ts";
+import { projectPreviewUrlService } from "../../services/projects/projectPreviewUrlService.ts";
 import { CardEmpty, CardSkeleton, DashboardCard, RowAction, ToneDot } from "./DashboardCard";
 import { Archive, Folder, Globe, MessageSquare, Plus } from "../primitives/icons";
 
@@ -89,7 +89,7 @@ function ProjectRow({
 }) {
   const dot = projectDot(project);
   const previewUrl = project.previewPort
-    ? buildProjectPreviewUrl(project.slug, project.previewPort, PUBLIC_HOSTNAME)
+    ? projectPreviewUrlService.build(project.slug, project.previewPort, PUBLIC_HOSTNAME)
     : "";
   const activity = formatRelative(project.lastActivityAt, now);
 

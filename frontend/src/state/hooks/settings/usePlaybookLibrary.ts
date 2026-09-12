@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 import { playbookApi } from "../../../api/playbookApi";
 import type { Playbook } from "../../../models/playbook";
-import { sortPlaybooks } from "../../chat/playbookState";
+import { sortPlaybooks } from "../chat/playbookState";
 import {
   playbookLibraryProblem,
   playbookLibraryRequest,

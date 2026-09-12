@@ -1,4 +1,5 @@
-import { buildUsageChart, type UsageChartMetric } from "../../../state/usage/usageChartModel";
+import type { UsageChartMetric } from "../../../models/usage";
+import { usageChartService } from "../../../services/usage/usageChartService.ts";
 import type { UsageDayPoint } from "../../../models/usage";
 
 const VIEW_WIDTH = 720;
@@ -19,13 +20,13 @@ export function UsageBarChart({
   metric: UsageChartMetric;
   onMetricChange: (metric: UsageChartMetric) => void;
 }) {
-  const chart = buildUsageChart(daily, metric);
+  const chart = usageChartService.build(daily, metric);
   const slot = chart.bars.length > 0 ? VIEW_WIDTH / chart.bars.length : VIEW_WIDTH;
   const barWidth = Math.max(1, slot * 0.62);
 
   return (
-    <section class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-      <header class="px-4 py-3 border-b border-white/[0.06] flex flex-wrap items-center gap-3">
+    <section class="rounded-card border border-line bg-surface overflow-hidden">
+      <header class="px-4 py-3 border-b border-line flex items-center gap-3">
         <div class="flex-1 min-w-0">
           <div class="text-[14.5px] font-semibold text-ink-50">Daily usage</div>
           <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug">
@@ -34,7 +35,7 @@ export function UsageBarChart({
               : `Peak day ${chart.peakLabel} · UTC days`}
           </div>
         </div>
-        <div class="flex-none inline-flex rounded-md border border-white/10 overflow-hidden">
+        <div class="flex-none inline-flex rounded-md border border-line overflow-hidden">
           {(["tokens", "cost"] as UsageChartMetric[]).map((option) => (
             <button
               key={option}
@@ -43,8 +44,8 @@ export function UsageBarChart({
               aria-pressed={metric === option}
               class={`h-8 px-3 text-[12px] font-medium transition-colors ${
                 metric === option
-                  ? "bg-white/[0.10] text-ink-50"
-                  : "text-ink-300 hover:text-ink-100 hover:bg-white/[0.05]"
+                  ? "bg-tint-active text-ink-50"
+                  : "text-ink-300 hover:text-ink-100 hover:bg-tint"
               }`}
             >
               {option === "tokens" ? "Tokens" : "Cost"}

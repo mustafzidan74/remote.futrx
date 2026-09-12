@@ -10,7 +10,7 @@ import {
   unresolvedSummary,
   type PlaybookChatState,
   type PlaybookContext,
-} from "../../chat/playbookState";
+} from "./playbookState";
 
 export interface PlaybookLibrary {
   playbooks: Playbook[];

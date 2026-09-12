@@ -6,7 +6,7 @@ import {
   newSnippetInput,
   snippetInputFrom,
   snippetPreview,
-} from "../../../state/chat/snippetState";
+} from "../../../state/hooks/chat/snippetState";
 import {
   ChevronDown,
   Download,

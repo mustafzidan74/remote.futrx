@@ -4,8 +4,11 @@ import { useAuthContext } from "../../state/context/AuthContext";
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
 import { useSidebarState } from "../../state/hooks/workspace/useSidebarState";
 import { useMessageSearch } from "../../state/hooks/workspace/useMessageSearch";
+import { useOpenCommandPalette } from "../../state/hooks/workspace/useCommandPalette";
+import { useSidebarSearch } from "../../state/hooks/workspace/useWorkspaceSearch";
 import { useWorkspaceCommands } from "../../state/hooks/workspace/useWorkspaceCommands";
-import { workspaceSidebarState } from "../../state/workspace/workspaceSidebarState";
+import { workspaceSidebarService } from "../../services/workspace/workspaceSidebarService.ts";
+import { useAccountSignOut } from "../../state/hooks/auth/useAccountSignOut";
 
 export function SidebarContainer() {
   const { auth } = useAuthContext();
@@ -17,10 +20,13 @@ export function SidebarContainer() {
     workspace.chats
   );
   const commands = useWorkspaceCommands();
-  const messageSearch = useMessageSearch(sidebar.query);
+  const signOut = useAccountSignOut();
+  const search = useSidebarSearch();
+  const openPalette = useOpenCommandPalette();
+  const messageSearch = useMessageSearch(search.query);
   const model = useMemo(
-    () => workspaceSidebarState.model(workspace.chats, workspace.projects, sidebar.query),
-    [workspace.chats, workspace.projects, sidebar.query]
+    () => workspaceSidebarService.model(workspace.chats, workspace.projects),
+    [workspace.chats, workspace.projects]
   );
 
   /**
@@ -28,7 +34,7 @@ export function SidebarContainer() {
    * the project has none. The gear beside it still goes to the settings page.
    */
   function openProject(projectId: string) {
-    const chatId = workspaceSidebarState.mostRecentChatId(workspace.chats, projectId);
+    const chatId = workspaceSidebarService.mostRecentChatId(workspace.chats, projectId);
     if (chatId) workspace.selectChat(chatId);
     else void commands.newChatInProject(projectId);
   }
@@ -38,8 +44,9 @@ export function SidebarContainer() {
       open={workspace.ui.sidebarOpen}
       model={model}
       health={workspace.health}
-      query={sidebar.query}
       messageSearch={messageSearch}
+      search={search}
+      loading={!workspace.loaded}
       collapsed={sidebar.collapsed}
       recentOpen={sidebar.recentOpen}
       sidebarCollapsed={sidebar.sidebarCollapsed}
@@ -49,12 +56,11 @@ export function SidebarContainer() {
         authenticated: auth.authenticated,
       }}
       onClose={workspace.closeSidebar}
-      onQueryChange={sidebar.setQuery}
-      onClearQuery={() => sidebar.setQuery("")}
       onOpenSearchResult={(result) => {
         workspace.selectChatAt(result.chatId, result.at);
         workspace.closeSidebar();
       }}
+      onOpenPalette={openPalette}
       onToggleSidebar={sidebar.toggleSidebarCollapsed}
       onToggleRecent={sidebar.toggleRecent}
       onNewProject={commands.newProject}
@@ -70,6 +76,7 @@ export function SidebarContainer() {
       onOpenSettings={workspace.showSettings}
       onOpenHome={workspace.showHome}
       homeActive={workspace.ui.view === "home"}
+      onSignOut={signOut}
     />
   );
 }

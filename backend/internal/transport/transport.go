@@ -63,7 +63,7 @@ type Dependencies struct {
 }
 
 func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
-	agentAuthBindings := deps.Services.AgentAuth.Bindings()
+	agentAuthBindings := deps.Services.Agents.Bindings()
 	// A nil audit service is still a usable Recorder (its methods are
 	// nil-safe), so handlers can take it unconditionally.
 	var auditLog serviceaudit.Recorder = deps.Services.Audit
@@ -81,10 +81,11 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 				"/ws/"+provider+"/auth-status",
 			)
 		}
+		providerAuthPrefixes = append(providerAuthPrefixes, "/api/agent-auth", "/ws/agent-auth/")
 		middleware = httpmiddleware.NewAuth(deps.Services.Auth).
 			RequireLocalAdminSetup(deps.Services.Auth.LocalAdminConfigured).
 			RequireProviderLogin(
-				deps.Services.AgentAuth.AnyAuthenticated,
+				deps.Services.Agents.AccessReady,
 				providerAuthPrefixes...,
 			)
 	}
@@ -179,7 +180,9 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		AgentAuth: httphandlers.NewAgentAuthHandler(
 			agentAuthBindings,
 			deps.Services.Auth,
+			deps.Services.Agents,
 		).WithAudit(auditLog),
+		AgentCapabilities: httphandlers.NewAgentCapabilitiesHandler(deps.Services.AgentCapabilities),
 		UserSettings: httphandlers.NewUserSettingsHandler(
 			deps.Services.UserSettings,
 			deps.Services.Auth,
@@ -234,9 +237,14 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		// The third: GitHub's own deliveries, authenticated by an HMAC
 		// signature over the raw body rather than by a session.
 		GitHubHooks: gitHubHookRoutes(gitHubHandler),
-		ServerInfo:  httphandlers.NewServerInfoHandler(deps.ServerInfo),
-		SelfUpdate:  httphandlers.NewSelfUpdateHandler(deps.SelfUpdate, deps.Services.Auth),
-		Skills:      httphandlers.NewSkillHandler(deps.Services.Skills),
+		Push: httphandlers.NewPushHandler(
+			deps.Services.Push,
+			deps.Services.Auth,
+			deps.Services.Presence,
+		),
+		ServerInfo: httphandlers.NewServerInfoHandler(deps.ServerInfo),
+		SelfUpdate: httphandlers.NewSelfUpdateHandler(deps.SelfUpdate, deps.Services.Auth),
+		Skills:     httphandlers.NewSkillHandler(deps.Services.Skills),
 		GlobalSkills: httphandlers.NewGlobalSkillHandler(
 			deps.Services.GlobalSkills,
 			deps.Services.Auth,

@@ -23,7 +23,15 @@ type usageProvider struct {
 func (p *usageProvider) ID() agent.ProviderID                     { return agent.ProviderClaude }
 func (p *usageProvider) Parser(agent.RunRequest) agent.LineParser { return nil }
 
-func (p *usageProvider) Run(_ context.Context, _ agent.RunRequest, emit func(agent.Event)) error {
+// Capabilities satisfies the interface qa added to agent.Provider. This double
+// exists to record usage events, so it reports nothing rather than pretending
+// to have a capability set.
+func (p *usageProvider) Capabilities(context.Context, agent.CapabilityRequest) (agent.Capabilities, error) {
+	return agent.Capabilities{}, nil
+}
+
+func (p *usageProvider) Run(
+	_ context.Context, _ agent.RunRequest, emit func(agent.Event)) error {
 	now := time.Now().UnixMilli()
 	emit(agent.Event{T: now, Type: agent.EventAssistantTextDelta, Text: "done"})
 	if p.fail {
@@ -206,7 +214,16 @@ func TestStartWithoutLedgerStillRuns(t *testing.T) {
 		t.Fatal(err)
 	}
 	var completed bool
+	var turnID string
 	for _, event := range events {
+		if event.TurnID == "" {
+			t.Fatalf("persisted event has no turn id: %#v", event)
+		}
+		if turnID == "" {
+			turnID = event.TurnID
+		} else if event.TurnID != turnID {
+			t.Fatalf("one prompt produced multiple turn ids: %#v", events)
+		}
 		if event.Type == "complete" {
 			completed = true
 		}

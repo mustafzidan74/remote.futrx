@@ -2,9 +2,10 @@ import { TerminalIcon } from "../../../primitives/icons";
 import type { ToolCallProps } from "../ToolCallTypes";
 import { CodeBlock } from "../CodeBlock";
 import { ToolShell } from "../ToolShell";
+import { DEFAULT_TOOL_OUTPUT_PREVIEW_CHARS } from "../../../../config/chat";
 import { shortPath, truncate } from "../utils";
 
-export function SearchCall({ name, input, output, status, isError, defaultOpen }: ToolCallProps) {
+export function SearchCall({ name, input, output, outputExpanded, status, isError, defaultOpen }: ToolCallProps) {
   const pattern = (input?.pattern as string) ?? (input?.query as string) ?? "";
   const path = (input?.path as string) ?? "";
   return (
@@ -21,7 +22,7 @@ export function SearchCall({ name, input, output, status, isError, defaultOpen }
       isError={isError}
       defaultOpen={defaultOpen}
     >
-      {output ? <CodeBlock text={truncate(output, 6000)} /> : null}
+      {output ? <CodeBlock text={outputExpanded ? output : truncate(output, DEFAULT_TOOL_OUTPUT_PREVIEW_CHARS)} /> : null}
     </ToolShell>
   );
 }

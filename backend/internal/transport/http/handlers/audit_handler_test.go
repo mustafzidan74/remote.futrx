@@ -13,8 +13,6 @@ import (
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileaudit"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileauth"
-	"github.com/futrx-com/remote.futrx.com/internal/stores/filesessions"
-	"github.com/futrx-com/remote.futrx.com/internal/stores/filetwofactor"
 )
 
 type auditTestDirectory struct {
@@ -230,27 +228,6 @@ func TestParseAuditTimeAcceptsRFC3339AndMillis(t *testing.T) {
 			}
 		})
 	}
-}
-
-// twoFactorStoreForTest and sessionRegistryStoreForTest give the auth service
-// the two collaborators it now requires. Neither is exercised here: these
-// tests are about audit records, not about the second factor.
-func twoFactorStoreForTest(t *testing.T) serviceauth.TwoFactorStore {
-	t.Helper()
-	store, err := filetwofactor.New(t.TempDir())
-	if err != nil {
-		t.Fatalf("two-factor store: %v", err)
-	}
-	return store
-}
-
-func sessionRegistryStoreForTest(t *testing.T) serviceauth.SessionRegistryStore {
-	t.Helper()
-	store, err := filesessions.New(t.TempDir())
-	if err != nil {
-		t.Fatalf("session registry store: %v", err)
-	}
-	return store
 }
 
 // issueTestSession mints a real session cookie. SignSession is gone: issuing a

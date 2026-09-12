@@ -1,6 +1,7 @@
 import { useState } from "preact/hooks";
 import type { User, UserRole } from "../../models/user";
-import { Check, Loader, Users, X } from "../primitives/icons";
+import { useConfirm } from "../../state/context/ConfirmContext";
+import { AlertCircle, Check, Loader, Users, X } from "../primitives/icons";
 import { EmptyState, ErrorBanner } from "../primitives/Feedback";
 
 interface UsersPanelProps {
@@ -31,22 +32,30 @@ export function UsersPanel({
   onRemove,
   onSetRole,
 }: UsersPanelProps) {
+  const confirm = useConfirm();
+
   const removeUser = async (email: string) => {
-    if (!confirm(`Remove ${email}? They lose access immediately.`)) return;
-    await onRemove(email);
+    await confirm({
+      title: "Remove user",
+      description: "They lose access immediately.",
+      message: `${email} will no longer be able to sign in or reach any shared project.`,
+      confirmLabel: "Remove user",
+      pendingLabel: "Removing…",
+      action: () => onRemove(email),
+    });
   };
 
   if (!isAdmin) {
     return (
-      <section class="rounded-lg border border-white/10 bg-[#101318] p-4 text-[13px] text-ink-300">
+      <section class="rounded-card border border-line bg-surface p-4 text-[13px] text-ink-300">
         Users are admin-only. Ask your admin to add or remove people.
       </section>
     );
   }
 
   return (
-    <section class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-      <header class="px-4 py-3 flex items-start gap-3 border-b border-white/[0.06]">
+    <section class="rounded-card border border-line bg-surface overflow-hidden">
+      <header class="px-4 py-3 flex items-start gap-3 border-b border-line">
         <div class="flex-1 min-w-0">
           <div class="text-[14.5px] font-semibold text-ink-50">Users</div>
           <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug">
@@ -115,7 +124,7 @@ function AddUserForm({
   return (
     <form
       onSubmit={submit}
-      class="rounded-md border border-white/10 bg-white/[0.03] p-2.5 space-y-2"
+      class="rounded-md border border-line bg-tint p-2.5 space-y-2"
     >
       <div class="grid gap-2 sm:grid-cols-[2fr_auto_auto] items-center">
         <input
@@ -125,12 +134,12 @@ function AddUserForm({
           placeholder="someone@example.com"
           spellcheck={false}
           autoComplete="off"
-          class="h-9 px-2.5 rounded-md border border-white/10 bg-white/[0.04] text-[13px] text-ink-50 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue/60 focus:ring-1 focus:ring-accent-blue/30"
+          class="h-9 px-2.5 rounded border border-line bg-inset text-[13px] text-ink-50 placeholder-ink-400 focus:outline-none focus:border-accent-blue/50"
         />
         <select
           value={role}
           onChange={(e) => setRole((e.target as HTMLSelectElement).value as UserRole)}
-          class="h-9 px-2 rounded-md border border-white/10 bg-white/[0.04] text-[13px] text-ink-50 focus:outline-none focus:border-accent-blue/60 focus:ring-1 focus:ring-accent-blue/30"
+          class="h-9 px-2 rounded border border-line bg-inset text-[13px] text-ink-50 focus:outline-none focus:border-accent-blue/50"
         >
           <option value="member">member</option>
           <option value="admin">admin</option>
@@ -138,7 +147,7 @@ function AddUserForm({
         <button
           type="submit"
           disabled={submitting}
-          class="h-9 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          class="btn btn-primary btn-sm disabled:opacity-50"
         >
           {submitting ? "Adding…" : "Add"}
         </button>
@@ -163,7 +172,7 @@ function UserList({
 }) {
   if (loading) {
     return (
-      <div class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-4 text-center text-[12.5px] text-ink-300">
+      <div class="rounded-md border border-line bg-tint px-3 py-4 text-center text-[12.5px] text-ink-300">
         Loading users…
       </div>
     );
@@ -228,7 +237,7 @@ function UserRow({
   };
 
   return (
-    <div class="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 space-y-1">
+    <div class="rounded-md border border-line bg-tint px-3 py-2 space-y-1">
       <div class="flex items-center gap-2 min-w-0">
         <span class="text-[12.5px] text-ink-50 truncate" title={user.email}>
           {user.email}
@@ -237,7 +246,7 @@ function UserRow({
           class={`inline-flex items-center h-5 px-1.5 rounded text-[11px] font-medium ${
             user.role === "admin"
               ? "text-accent-blue bg-accent-blue/[0.14]"
-              : "text-ink-300 bg-white/[0.06]"
+              : "text-ink-300 bg-tint"
           }`}
         >
           {user.role}
@@ -252,7 +261,7 @@ function UserRow({
             type="button"
             onClick={toggleRole}
             disabled={busy}
-            class="h-8 px-2 rounded text-[11px] text-ink-300 hover:text-ink-100 hover:bg-white/[0.08] disabled:opacity-50"
+            class="h-7 px-2 rounded text-[11px] text-ink-300 hover:text-ink-100 hover:bg-tint-strong disabled:opacity-50"
             title={user.role === "admin" ? "Demote to member" : "Promote to admin"}
           >
             {user.role === "admin" ? "demote" : "promote"}
@@ -261,7 +270,7 @@ function UserRow({
             type="button"
             onClick={remove}
             disabled={busy}
-            class="h-8 w-8 rounded text-ink-300 hover:text-accent-red hover:bg-white/[0.08] grid place-items-center disabled:opacity-50"
+            class="h-7 w-7 rounded text-ink-300 hover:text-accent-red hover:bg-tint-strong grid place-items-center disabled:opacity-50"
             aria-label={`Remove ${user.email}`}
             title="Remove user"
           >

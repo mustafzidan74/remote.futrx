@@ -478,7 +478,7 @@ func TestRebuildIsIdempotentAndPreservesAttribution(t *testing.T) {
 			},
 			"bbbb": {
 				{Seq: 1, T: ms(2, 9), Type: "complete", Usage: json.RawMessage(
-					`{"input_tokens":1000000,"output_tokens":0}`,
+					`{"input_tokens":1000000,"cache_read_input_tokens":300000,"output_tokens":0}`,
 				)},
 			},
 		},
@@ -518,9 +518,13 @@ func TestRebuildIsIdempotentAndPreservesAttribution(t *testing.T) {
 	if first[1].Provider != "codex" || first[1].Model != "gpt-5-codex" {
 		t.Fatalf("unexpected provider/model: %+v", first[1])
 	}
+	if first[1].InputTokens != 700000 || first[1].CacheReadTokens != 300000 ||
+		first[1].TotalTokens() != 1000000 {
+		t.Fatalf("legacy Codex input was not normalized: %+v", first[1])
+	}
 	if first[1].CostUSD == nil || !first[1].Estimated ||
-		math.Abs(*first[1].CostUSD-1.25) > 1e-9 {
-		t.Fatalf("expected a $1.25 estimate, got %+v", first[1])
+		math.Abs(*first[1].CostUSD-0.9125) > 1e-9 {
+		t.Fatalf("expected a $0.9125 estimate, got %+v", first[1])
 	}
 	if first[1].RunID != "bbbb-1" {
 		t.Fatalf("rebuilt run id = %q, want chat-seq derived", first[1].RunID)
@@ -537,6 +541,78 @@ func TestRebuildIsIdempotentAndPreservesAttribution(t *testing.T) {
 		if first[i] != second[i] && !recordsEqual(first[i], second[i]) {
 			t.Fatalf("rebuild is not idempotent at %d:\n%+v\n%+v", i, first[i], second[i])
 		}
+	}
+}
+
+func TestRecordFromChatEventNormalizesOnlyLegacyCodexInput(t *testing.T) {
+	prices, err := PriceTable{Models: []ModelPrice{{
+		Match: "test-model", InputPerMTok: 3, OutputPerMTok: 15,
+		CacheReadPerMTok: 0.3, CacheWritePerMTok: 3.75,
+	}}}.Normalize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	chat := servicechat.Meta{ID: "codex-chat", Provider: servicechat.ProviderCodex, Model: "test-model"}
+	tests := []struct {
+		name  string
+		usage string
+	}{
+		{
+			name:  "legacy inclusive input",
+			usage: `{"input_tokens":10,"output_tokens":4,"cache_read_input_tokens":3,"cache_creation_input_tokens":2}`,
+		},
+		{
+			name:  "versioned disjoint input",
+			usage: `{"schema_version":1,"input_tokens":5,"output_tokens":4,"cache_read_input_tokens":3,"cache_creation_input_tokens":2}`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			record, ok := recordFromChatEvent(chat, servicechat.Event{
+				Seq: 1, T: ms(1, 9), Type: "complete", Provider: servicechat.ProviderCodex,
+				Usage: json.RawMessage(test.usage),
+			}, nil, prices)
+			if !ok {
+				t.Fatal("completion was not rebuilt")
+			}
+			if record.InputTokens != 5 || record.CacheReadTokens != 3 ||
+				record.CacheWriteTokens != 2 || record.OutputTokens != 4 ||
+				record.TotalTokens() != 14 {
+				t.Fatalf("record = %+v", record)
+			}
+			const wantCost = 0.0000834
+			if record.CostUSD == nil || !record.Estimated ||
+				math.Abs(*record.CostUSD-wantCost) > 1e-12 {
+				t.Fatalf("cost = %v, want %v", record.CostUSD, wantCost)
+			}
+		})
+	}
+}
+
+func TestRebuildPrefersLiveProviderAndModelForLegacyCompletion(t *testing.T) {
+	at := ms(2, 9)
+	chats := fakeChats{
+		metas: []servicechat.Meta{{
+			ID: "switched", Provider: servicechat.ProviderClaude, Model: "claude-sonnet-4-5",
+		}},
+		events: map[servicechat.ID][]servicechat.Event{
+			"switched": {{
+				Seq: 1, T: at, Type: "complete",
+				Usage: json.RawMessage(`{"input_tokens":10,"cache_read_input_tokens":3}`),
+			}},
+		},
+	}
+	repo := newFakeRepository(Record{
+		At: at, ChatID: "switched", Provider: "codex", Model: "gpt-5-codex",
+	})
+	service := New(repo, testProjects(), chats)
+	if _, err := service.Rebuild(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	record := repo.written[0][0]
+	if record.Provider != "codex" || record.Model != "gpt-5-codex" ||
+		record.InputTokens != 7 || record.CacheReadTokens != 3 {
+		t.Fatalf("live attribution was not preserved: %+v", record)
 	}
 }
 

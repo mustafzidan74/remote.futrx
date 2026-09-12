@@ -55,8 +55,7 @@ type LoginResult struct {
 // composition root. Cryptographic protocol parameters remain package-owned.
 type Options struct {
 	// Audit records sign-ins, the administrator claim, and Google OAuth
-	// configuration changes. Nil leaves auditing off, which is what a
-	// deployment without an audit store gets.
+	// configuration changes. Nil leaves auditing off.
 	Audit               audit.Recorder
 	PendingLoginTTL     time.Duration
 	EnrollmentTTL       time.Duration
@@ -189,15 +188,6 @@ func New(
 	return service, nil
 }
 
-// Audit exposes the recorder so collaborators built beside this service log to
-// the same place rather than each holding their own.
-func (s *Service) Audit() audit.Recorder {
-	if s == nil || s.audit == nil {
-		return audit.Nop{}
-	}
-	return s.audit
-}
-
 // SignSharePass mints the value for ShareCookieName. Callers must already have
 // validated the underlying share token for this slug and port.
 func (s *Service) SignSharePass(pass SharePass) string {
@@ -209,24 +199,6 @@ func (s *Service) SignSharePass(pass SharePass) string {
 // still live is the share service's question.
 func (s *Service) VerifySharePass(cookieValue string) (*SharePass, error) {
 	return s.sharePasses.verify(cookieValue)
-}
-
-// recordLogin files one sign-in attempt, successful or not.
-func (s *Service) recordLogin(ctx context.Context, method, attemptedEmail string, user User, err error) {
-	if s == nil || s.audit == nil {
-		return
-	}
-	action := audit.ActionAuthLoginSuccess
-	if err != nil {
-		action = audit.ActionAuthLoginFailure
-	}
-	email := user.Email
-	if email == "" {
-		email = attemptedEmail
-	}
-	entry := audit.Result(action, audit.Target{Type: audit.TargetSession}, audit.Meta{"method": method}, err)
-	entry.Actor = audit.Actor{Email: audit.NormalizeActorEmail(email), Sub: user.Sub}
-	s.audit.Record(ctx, entry)
 }
 
 func (s *Service) BaseURL() string {
@@ -478,11 +450,18 @@ func (s *Service) PendingTwoFactorDuration() time.Duration {
 	return s.pendingLoginTTL
 }
 
+// Audit exposes the recorder so collaborators built beside this service log to
+// the same place rather than each holding their own.
+func (s *Service) Audit() audit.Recorder {
+	if s == nil || s.audit == nil {
+		return audit.Nop{}
+	}
+	return s.audit
+}
+
 // DefaultOptions are the tunings a deployment gets without saying anything.
-//
-// They live here rather than in the composition root because every caller that
-// builds a Service needs them — the platform, the operator commands, and the
-// tests — and three copies of the same five numbers is how they drift apart.
+// This fork's composition root and tests read them from here rather than
+// spelling the same five numbers out in several places.
 func DefaultOptions() Options {
 	return Options{
 		PendingLoginTTL:     5 * time.Minute,

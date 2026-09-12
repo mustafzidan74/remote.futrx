@@ -105,9 +105,7 @@ func newAuth(
 		twoFactor,
 		sessionRegistry,
 		serviceauth.Options{
-			// This fork records sign-ins to its audit log; upstream has no
-			// audit service, so the recorder rides in on Options rather than
-			// changing the constructor's shape.
+			// This fork records sign-ins to its audit log.
 			Audit:               options.Audit,
 			PendingLoginTTL:     options.PendingLoginTTL,
 			EnrollmentTTL:       options.EnrollmentTTL,

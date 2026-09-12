@@ -6,7 +6,7 @@ import {
   teamProviderOptions,
   type TeamRoleView,
   type TeamView,
-} from "../../../state/chat/teamState";
+} from "../../../state/hooks/chat/teamState";
 import { Loader, Users } from "../../primitives/icons";
 
 /**

@@ -1,4 +1,11 @@
 import type { ChatEvent, SyntheticKind } from "../models/chat";
+import type { ChatInteractionIntent } from "../models/chatInteraction";
+
+export type ChatInteractionResponder = (
+  interactionId: string,
+  method: string,
+  intent: ChatInteractionIntent
+) => boolean;
 
 export interface ChatStream {
   readonly isOpen: boolean;
@@ -8,6 +15,11 @@ export interface ChatStream {
    */
   sendPrompt(text: string, clientId?: string, synthetic?: SyntheticKind): boolean;
   cancel(): boolean;
+  respondInteraction(
+    interactionId: string,
+    method: string,
+    intent: ChatInteractionIntent
+  ): boolean;
   close(): void;
 }
 

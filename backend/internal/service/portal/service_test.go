@@ -53,11 +53,11 @@ func (p stubProjects) Get(context.Context, serviceproject.ID) (serviceproject.Me
 }
 
 type stubShares struct {
-	shares []serviceshare.Share
+	shares []serviceshare.Metadata
 	err    error
 }
 
-func (s stubShares) List(context.Context, serviceproject.ID) ([]serviceshare.Share, error) {
+func (s stubShares) List(context.Context, serviceproject.ID) ([]serviceshare.Metadata, error) {
 	return s.shares, s.err
 }
 
@@ -266,7 +266,7 @@ func TestViewRateLimitsRepeatedAttemptsFromOneClient(t *testing.T) {
 
 func TestPreviewsOnlyListPortsWithALivePublicShare(t *testing.T) {
 	now := time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
-	shares := stubShares{shares: []serviceshare.Share{
+	shares := stubShares{shares: []serviceshare.Metadata{
 		{ID: "a", Port: 3000, ExpiresAt: now.Add(time.Hour).UnixMilli()},
 		{ID: "b", Port: 3000, ExpiresAt: now.Add(2 * time.Hour).UnixMilli()},
 		{ID: "c", Port: 5173, ExpiresAt: now.Add(time.Hour).UnixMilli()},
@@ -324,7 +324,7 @@ func TestPreviewsAreOmittedWithoutALiveShare(t *testing.T) {
 }
 
 func TestPreviewSectionIsSkippedWhenTheToggleIsOff(t *testing.T) {
-	shares := stubShares{shares: []serviceshare.Share{
+	shares := stubShares{shares: []serviceshare.Metadata{
 		{ID: "a", Port: 3000, ExpiresAt: time.Now().Add(time.Hour).UnixMilli()},
 	}}
 	service := newTestService(t, newMemoryRepo(), WithShares(shares))

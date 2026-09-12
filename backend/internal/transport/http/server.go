@@ -20,53 +20,55 @@ type Middleware interface {
 }
 
 type Handlers struct {
-	Sessions         RouteRegistrar
-	Chats            RouteRegistrar
-	Projects         RouteRegistrar
-	ProjectHealth    RouteRegistrar
-	Dashboard        RouteRegistrar
-	Users            RouteRegistrar
-	AgentAuth        RouteRegistrar
-	UserSettings     RouteRegistrar
-	Notifications    RouteRegistrar
-	Monitoring       RouteRegistrar
-	AuxModel         RouteRegistrar
-	Providers        RouteRegistrar
-	SiteWatch        RouteRegistrar
-	Transcribe       RouteRegistrar
-	Portal           RouteRegistrar
-	ScreenshotLinks  RouteRegistrar
-	GitHubHooks      RouteRegistrar
-	ServerInfo       RouteRegistrar
-	SelfUpdate       RouteRegistrar
-	AdminResources   RouteRegistrar
-	ModelRouting     RouteRegistrar
-	Skills           RouteRegistrar
-	GlobalSkills     RouteRegistrar
-	Playbooks        RouteRegistrar
-	Snippets         RouteRegistrar
-	AgentPreferences RouteRegistrar
-	Search           RouteRegistrar
-	GlobalSecrets    RouteRegistrar
-	MCPServers       RouteRegistrar
-	AgentEndpoints   RouteRegistrar
-	DirectModels     RouteRegistrar
-	AgentQuota       RouteRegistrar
-	Templates        RouteRegistrar
-	BrowserInspector RouteRegistrar
-	Schedules        RouteRegistrar
-	Usage            RouteRegistrar
-	Audit            RouteRegistrar
-	Uploads          RouteRegistrar
-	TmuxWS           WebSocketRegistrar
-	TerminalWS       WebSocketRegistrar
-	ChatWS           WebSocketRegistrar
-	WorkspaceWS      WebSocketRegistrar
-	AgentAuthWS      WebSocketRegistrar
-	Auth             RouteRegistrar
-	Security         RouteRegistrar
-	Middleware       Middleware
-	Static           http.Handler
+	Sessions          RouteRegistrar
+	Chats             RouteRegistrar
+	Projects          RouteRegistrar
+	ProjectHealth     RouteRegistrar
+	Dashboard         RouteRegistrar
+	Users             RouteRegistrar
+	AgentAuth         RouteRegistrar
+	AgentCapabilities RouteRegistrar
+	Push              RouteRegistrar
+	UserSettings      RouteRegistrar
+	Notifications     RouteRegistrar
+	Monitoring        RouteRegistrar
+	AuxModel          RouteRegistrar
+	Providers         RouteRegistrar
+	SiteWatch         RouteRegistrar
+	Transcribe        RouteRegistrar
+	Portal            RouteRegistrar
+	ScreenshotLinks   RouteRegistrar
+	GitHubHooks       RouteRegistrar
+	ServerInfo        RouteRegistrar
+	SelfUpdate        RouteRegistrar
+	AdminResources    RouteRegistrar
+	ModelRouting      RouteRegistrar
+	Skills            RouteRegistrar
+	GlobalSkills      RouteRegistrar
+	Playbooks         RouteRegistrar
+	Snippets          RouteRegistrar
+	AgentPreferences  RouteRegistrar
+	Search            RouteRegistrar
+	GlobalSecrets     RouteRegistrar
+	MCPServers        RouteRegistrar
+	AgentEndpoints    RouteRegistrar
+	DirectModels      RouteRegistrar
+	AgentQuota        RouteRegistrar
+	Templates         RouteRegistrar
+	BrowserInspector  RouteRegistrar
+	Schedules         RouteRegistrar
+	Usage             RouteRegistrar
+	Audit             RouteRegistrar
+	Uploads           RouteRegistrar
+	TmuxWS            WebSocketRegistrar
+	TerminalWS        WebSocketRegistrar
+	ChatWS            WebSocketRegistrar
+	WorkspaceWS       WebSocketRegistrar
+	AgentAuthWS       WebSocketRegistrar
+	Auth              RouteRegistrar
+	Security          RouteRegistrar
+	Middleware        Middleware
+	Static            http.Handler
 }
 
 func NewHandler(handlers Handlers) http.Handler {
@@ -85,6 +87,7 @@ func NewHandler(handlers Handlers) http.Handler {
 	register(handlers.Dashboard)
 	register(handlers.Users)
 	register(handlers.AgentAuth)
+	register(handlers.AgentCapabilities)
 	register(handlers.UserSettings)
 	register(handlers.Notifications)
 	register(handlers.Monitoring)
@@ -95,6 +98,7 @@ func NewHandler(handlers Handlers) http.Handler {
 	register(handlers.Portal)
 	register(handlers.ScreenshotLinks)
 	register(handlers.GitHubHooks)
+	register(handlers.Push)
 	register(handlers.ServerInfo)
 	register(handlers.SelfUpdate)
 	register(handlers.AdminResources)

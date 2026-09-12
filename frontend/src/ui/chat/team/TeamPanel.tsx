@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { providerDisplayLabel } from "../../../config/chat";
-import type { TeamHopView, TeamRoleView, TeamView } from "../../../state/chat/teamState";
+import type { TeamHopView, TeamRoleView, TeamView } from "../../../state/hooks/chat/teamState";
 import { AlertCircle, Check, ExternalLink, Users, X } from "../../primitives/icons";
 
 /**

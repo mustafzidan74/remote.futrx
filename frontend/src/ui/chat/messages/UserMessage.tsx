@@ -97,6 +97,7 @@ function RoutedBadge({ routing }: { routing: ChatEventRouting }) {
     </span>
   );
 }
+import { getTextAlignClass, getTextDirection } from "../markdown/bidi";
 
 export function UserMessage({
   text,
@@ -115,6 +116,9 @@ export function UserMessage({
   /** Opens the snippet editor with this message as its body. */
   onSaveSnippet?: (text: string) => void;
 }) {
+  const dir = getTextDirection(text);
+  const align = getTextAlignClass(text);
+
   return (
     <div class="group flex justify-end">
       <div class="max-w-[92%] sm:max-w-[78%] flex flex-col items-end gap-1.5">
@@ -125,10 +129,13 @@ export function UserMessage({
           </div>
         )}
         <div
-          dir="auto"
-          class={`codex-user-bubble bidi-auto border rounded-[18px] rounded-br-md px-3.5 py-2.5 text-[14.5px] leading-relaxed
-                 whitespace-pre-wrap break-words shadow-sm
-                 ${synthetic ? "border-white/10 bg-white/[0.05] text-ink-200" : "bg-accent-blue/15 border-accent-blue/30"}`}>
+          dir={dir}
+          class={`codex-user-bubble max-w-full rounded-panel rounded-br-control border
+                    px-3.5 py-2.5 text-[14px] leading-relaxed
+                    whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${align}
+                    ${synthetic ? "border-line bg-tint text-ink-200" : "border-line bg-tint-strong text-ink-100"}`}
+          style={{ unicodeBidi: "plaintext" }}
+        >
           {text}
         </div>
         {(onRewind || onSaveSnippet) && (

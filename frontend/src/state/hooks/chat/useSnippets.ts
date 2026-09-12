@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { snippetApi } from "../../../api/snippetApi";
 import type { Snippet, SnippetInput } from "../../../models/snippet";
-import { firstUnresolvedRange, unresolvedSummary } from "../../chat/playbookState";
+import { firstUnresolvedRange, unresolvedSummary } from "./playbookState";
 import {
   exportSnippets,
   parseSnippetImport,
@@ -11,7 +11,7 @@ import {
   sortSnippets,
   usesSelection,
   type SnippetContext,
-} from "../../chat/snippetState";
+} from "./snippetState";
 
 export interface SnippetLibrary {
   /** The personal prompts, most used first. */

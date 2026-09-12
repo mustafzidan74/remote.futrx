@@ -1,11 +1,13 @@
 import { useCallback, useState } from "preact/hooks";
 import { projectApi } from "../../../api/projectApi";
-import type { ContainerApp, ProjectMeta, ProjectShare } from "../../../models/project";
 import type {
+  ContainerApp,
+  CreatedProjectShare,
   ProjectDataLoadSignal,
+  ProjectMeta,
   SharesRecord,
-} from "../../projects/projectContainerRecords";
-import { addShare, removeShare } from "../../projects/projectShareState";
+} from "../../../models/project";
+import { projectShareService } from "../../../services/projects/projectShareService";
 
 /**
  * Public preview links for one project, alongside the container's listening
@@ -39,14 +41,15 @@ export function useProjectShares(project: ProjectMeta | null) {
   );
 
   const create = useCallback(
-    async (port: number, ttlHours: number, label?: string): Promise<ProjectShare> => {
+    async (port: number, ttlHours: number, label?: string): Promise<CreatedProjectShare> => {
       if (!project) throw new Error("No project selected.");
       const created = await projectApi.createShare(project.id, { port, ttlHours, label });
+      const metadata = { ...created, url: undefined };
       setRecord((current) => ({
         ...current,
         loading: false,
         // The url is the one-time secret; it never enters the stored list.
-        data: addShare(current.data ?? [], { ...created, url: undefined }),
+        data: projectShareService.add(current.data ?? [], metadata),
       }));
       return created;
     },
@@ -60,7 +63,7 @@ export function useProjectShares(project: ProjectMeta | null) {
       setRecord((current) => ({
         ...current,
         loading: false,
-        data: removeShare(current.data ?? [], shareId),
+        data: projectShareService.remove(current.data ?? [], shareId),
       }));
     },
     [project]

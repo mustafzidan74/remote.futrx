@@ -1,21 +1,12 @@
-# Validates pushes and pull requests without needing LXD, a container runtime,
-# or a server. Unit tests, builds, and the infra shell tests only.
-#
-# Adapted from upstream's ci.yml with two differences, both deliberate:
-#
-#   - the backend job creates a stand-in backend/public before vet/test/build.
-#     static.go embeds that directory, the frontend build is what fills it, and
-#     the two jobs run independently. Without this the backend job cannot
-#     compile the root package at all.
-#   - the shell job runs the infra tests this fork actually has, rather than
-#     upstream's list. Ours is a subset; naming scripts that do not exist here
-#     would fail for a reason nobody can act on.
+# Validates pull requests and pushes to main/qa without needing LXD or a server.
+# Backend and frontend unit tests, builds, and infra shell tests only.
+# See CONTRIBUTING.md for the local equivalents of every step below.
 name: CI
 
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, qa]
 
 permissions:
   contents: read
@@ -34,7 +25,19 @@ jobs:
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
-
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build frontend bundle for go:embed
+        # backend/static.go embeds backend/public, which only exists after the
+        # Vite build. Without it go vet/test/build fail with
+        # "pattern public: no matching files found".
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
       - name: Check gofmt
         run: |
           set -euo pipefail
@@ -44,22 +47,10 @@ jobs:
             echo "$unformatted"
             exit 1
           fi
-
-      # The real bundle comes from the frontend job; this only has to exist so
-      # the //go:embed in static.go resolves. It is never shipped: the deploy
-      # script builds the frontend first, into this same directory.
-      - name: Stand in for the embedded frontend bundle
-        run: |
-          set -euo pipefail
-          mkdir -p public
-          printf '<!doctype html><title>ci placeholder</title>' > public/index.html
-
       - name: Go vet
         run: go vet ./...
-
       - name: Go test
         run: go test ./...
-
       - name: Go build
         run: go build ./...
 
@@ -89,17 +80,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run infra tests
+      - name: Run infra and release classifier tests
         shell: bash
         run: |
           set -euo pipefail
           bash infra/tests/health-check-test.sh
           bash infra/tests/go-toolchain-test.sh
+          bash infra/tests/host-agent-install-test.sh
+          bash infra/tests/remote-cli-test.sh
           bash infra/tests/dns-resolve-test.sh
           bash infra/tests/container-forwarding-test.sh
+          bash infra/tests/swap-provision-test.sh
+          bash infra/tests/release-version-test.sh
+          bash infra/tests/deploy-app-script-test.sh
           # qa-scripts-test.sh drives infra/install.sh, which refuses to run
           # as anyone but root before it reaches the argument validation the
-          # test is actually asserting on. Without sudo it fails on "this
-          # installer needs root" rather than on anything it meant to check.
-          # The other four pass unprivileged and are left that way.
+          # test is actually asserting on.
           sudo bash infra/tests/qa-scripts-test.sh
+          bash .github/scripts/classify-release-test.sh

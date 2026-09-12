@@ -63,12 +63,24 @@ func (s *Service) Rebuild(ctx context.Context) (RebuildResult, error) {
 				turnRouting = event.Routing
 				continue
 			}
-			record, ok := recordFromChatEvent(chat, event, slugs, prices)
+			prior, found := existing[recordKey(string(chat.ID), event.T)]
+			// Live ledger records carry provider/model attribution that old chat
+			// events did not persist. Prefer it before interpreting legacy usage.
+			effectiveChat := chat
+			if found {
+				if event.Provider == "" && prior.Provider != "" {
+					event.Provider = servicechat.Provider(prior.Provider)
+				}
+				if prior.Model != "" {
+					effectiveChat.Model = prior.Model
+				}
+			}
+			record, ok := recordFromChatEvent(effectiveChat, event, slugs, prices)
 			if !ok {
 				continue
 			}
 			applyRouting(&record, turnRouting)
-			if prior, found := existing[recordKey(record.ChatID, record.At)]; found {
+			if found {
 				record.RunID = prior.RunID
 				record.UserEmail = prior.UserEmail
 				record.Scheduled = prior.Scheduled
@@ -111,11 +123,17 @@ func recordFromChatEvent(
 	if event.Type != "complete" || event.T <= 0 {
 		return Record{}, false
 	}
-	usage, hasUsage := agent.ParseUsage(event.Usage)
-
 	provider := strings.TrimSpace(string(event.Provider))
 	if provider == "" {
 		provider = strings.TrimSpace(string(servicechat.NormalizeProvider(chat.Provider)))
+	}
+	usage, hasUsage := agent.ParseUsage(event.Usage)
+	// Before the normalized usage schema was versioned, Remote persisted
+	// Codex's inclusive input_tokens beside cache_read_input_tokens. Convert
+	// that legacy shape once during rebuild. This provider-specific branch is
+	// migration code only; live adapters emit the provider-neutral contract.
+	if provider == string(agent.ProviderCodex) && usage.SchemaVersion < agent.UsageSchemaVersion {
+		usage = agent.NormalizeInclusiveInput(usage)
 	}
 	model := strings.TrimSpace(usage.Model)
 	if model == "" {

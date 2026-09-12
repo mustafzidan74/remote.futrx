@@ -14,7 +14,7 @@ export const CHAT_PROVIDER_OPTIONS = [
   { value: "antigravity", label: "Antigravity", validInUserSettings: false },
 ] as const;
 
-export type ChatProvider = (typeof CHAT_PROVIDER_OPTIONS)[number]["value"];
+export type ChatProvider = string;
 
 export const CHAT_MODE_OPTIONS = [
   { value: "chat", label: "Chat" },
@@ -25,7 +25,7 @@ export const CHAT_MODE_OPTIONS = [
   { value: "full-auto", label: "Full auto" },
 ] as const;
 
-export type ChatMode = (typeof CHAT_MODE_OPTIONS)[number]["value"];
+export type ChatMode = string;
 
 // Reasoning-effort ladders differ per CLI (verified against each provider's
 // --help / config validation). "Auto" ("") omits the flag so the CLI/server
@@ -42,7 +42,7 @@ export const REASONING_EFFORT_OPTIONS = [
   { value: "ultra", label: "Ultra", providers: ["claude", "codex"] },
 ] as const;
 
-export type ReasoningEffort = (typeof REASONING_EFFORT_OPTIONS)[number]["value"];
+export type ReasoningEffort = string;
 
 // Codex `service_tier` is the only headless speed lever across our providers.
 // Values are model-gated; "Auto" ("") omits the flag entirely.
@@ -53,7 +53,7 @@ export const SERVICE_TIER_OPTIONS = [
   { value: "fast", label: "Fast", providers: ["codex"] },
 ] as const;
 
-export type ServiceTier = (typeof SERVICE_TIER_OPTIONS)[number]["value"];
+export type ServiceTier = string;
 
 const MODEL_OPTIONS_BY_PROVIDER = {
   claude: [

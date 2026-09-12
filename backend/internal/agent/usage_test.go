@@ -21,8 +21,10 @@ func TestParseUsageAcceptsProviderSpellings(t *testing.T) {
 		},
 		{
 			name: "codex native usage",
-			raw:  `{"input_tokens":10,"cached_input_tokens":3,"output_tokens":4,"reasoning_output_tokens":2}`,
-			want: Usage{InputTokens: 10, CacheReadTokens: 3, OutputTokens: 4, ReasoningTokens: 2},
+			raw:  `{"input_tokens":10,"cached_input_tokens":3,"cache_write_input_tokens":2,"output_tokens":4,"reasoning_output_tokens":2}`,
+			// Parsing accepts native aliases, but the owning provider adapter
+			// decides whether input is inclusive and applies normalization.
+			want: Usage{InputTokens: 10, CacheReadTokens: 3, CacheWriteTokens: 2, OutputTokens: 4, ReasoningTokens: 2},
 			ok:   true,
 		},
 		{
@@ -71,16 +73,35 @@ func TestUsageRawOmitsEmptyPayload(t *testing.T) {
 		t.Fatalf("empty usage rendered %s, want nil", raw)
 	}
 	raw := Usage{InputTokens: 2, OutputTokens: 3, Model: "gpt-5-codex"}.Raw()
-	if string(raw) != `{"input_tokens":2,"output_tokens":3,"model":"gpt-5-codex"}` {
+	if string(raw) != `{"schema_version":1,"input_tokens":2,"output_tokens":3,"model":"gpt-5-codex"}` {
 		t.Fatalf("usage rendered %s", raw)
 	}
 }
 
 func TestUsageTotalTokensSumsEveryBucket(t *testing.T) {
 	usage := Usage{InputTokens: 1, OutputTokens: 2, CacheReadTokens: 4, CacheWriteTokens: 8, ReasoningTokens: 16}
-	// Reasoning tokens are a subset of output tokens upstream, so they must
-	// not be double counted.
+	// The four billable buckets are disjoint. Reasoning tokens are a subset of
+	// output tokens upstream, so they must not be double counted.
 	if got := usage.TotalTokens(); got != 15 {
 		t.Fatalf("total = %d, want 15", got)
+	}
+}
+
+func TestNormalizeInclusiveInputSplitsCacheSubsets(t *testing.T) {
+	usage := NormalizeInclusiveInput(Usage{
+		InputTokens:      10,
+		OutputTokens:     4,
+		CacheReadTokens:  3,
+		CacheWriteTokens: 2,
+	})
+	if usage.InputTokens != 5 || usage.TotalTokens() != 14 {
+		t.Fatalf("usage = %#v, want 5 uncached and 14 total tokens", usage)
+	}
+}
+
+func TestNormalizeInclusiveInputNeverProducesNegativeTokens(t *testing.T) {
+	usage := NormalizeInclusiveInput(Usage{InputTokens: 2, CacheReadTokens: 3})
+	if usage.InputTokens != 0 || usage.CacheReadTokens != 2 || usage.TotalTokens() != 2 {
+		t.Fatalf("usage = %#v, want the cache subset clamped to 2", usage)
 	}
 }

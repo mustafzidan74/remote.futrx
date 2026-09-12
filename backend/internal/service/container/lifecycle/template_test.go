@@ -46,6 +46,7 @@ func newTemplateService(
 		recordingWorkspace{events: events},
 		recordingResources{events: events},
 		recordingProvisioner{events: events},
+		testProfileSource{},
 		templates,
 	)
 }

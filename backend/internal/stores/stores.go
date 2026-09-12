@@ -1,8 +1,10 @@
 package stores
 
 import (
+	"context"
 	"fmt"
 
+	agentauth "github.com/futrx-com/remote.futrx.com/internal/service/agent/auth"
 	serviceendpoints "github.com/futrx-com/remote.futrx.com/internal/service/agentendpoints"
 	serviceagentprefs "github.com/futrx-com/remote.futrx.com/internal/service/agentprefs"
 	serviceagentquota "github.com/futrx-com/remote.futrx.com/internal/service/agentquota"
@@ -20,6 +22,7 @@ import (
 	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	serviceproviderpool "github.com/futrx-com/remote.futrx.com/internal/service/providerpool"
+	servicepush "github.com/futrx-com/remote.futrx.com/internal/service/push"
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
 	servicerouting "github.com/futrx-com/remote.futrx.com/internal/service/routing"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
@@ -54,6 +57,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectsecrets"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectshares"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileproviderpool"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filepush"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileresources"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filerouting"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileschedule"
@@ -92,13 +96,35 @@ type VisualStore interface {
 	servicevisualdiff.Blobs
 }
 
+// ChatStore retains the complete file-chat capability until composition can
+// project it into each service's narrower repository and transcript contracts.
+type ChatStore interface {
+	servicechat.Repository
+	servicechat.TranscriptEventSource
+	servicechat.TranscriptEventWindowSource
+	servicechat.TranscriptProjectionSource
+}
+
+type recentChatIndexWarmer interface {
+	WarmRecentChatIndexes(context.Context, int) error
+}
+
+// PushStore exposes the subscription, account-cleanup, and VAPID capabilities
+// required at the application composition boundary.
+type PushStore interface {
+	servicepush.Repository
+	DeleteAll(ctx context.Context, email string) error
+	VAPIDKeys(generate func() (private string, public string, err error)) (string, string, error)
+}
+
 type Stores struct {
-	Chats          servicechat.Repository
-	Projects       serviceproject.Repository
-	ProjectSecrets serviceproject.SecretsRepository
-	ProjectAccess  serviceproject.AccessRepository
-	ProjectShares  serviceshare.Repository
-	Snapshots      servicesnapshot.Repository
+	Chats           ChatStore
+	chatIndexWarmer recentChatIndexWarmer
+	Projects        serviceproject.Repository
+	ProjectSecrets  serviceproject.SecretsRepository
+	ProjectAccess   serviceproject.AccessRepository
+	ProjectShares   serviceshare.Repository
+	Snapshots       servicesnapshot.Repository
 	// Screenshots is both the per-project capture index and the PNG blob
 	// store; one file-backed type satisfies both ports.
 	Screenshots ScreenshotStore
@@ -119,6 +145,8 @@ type Stores struct {
 	// signed-in device list behind Settings -> Security.
 	TwoFactor       serviceauth.TwoFactorStore
 	SessionRegistry serviceauth.SessionRegistryStore
+	Push            PushStore
+	AgentAPIKeys    agentauth.APIKeyStore
 	Users           serviceuser.Repository
 	UserSettings    serviceusersettings.Repository
 	Notifications   servicenotify.Store
@@ -157,6 +185,15 @@ type Stores struct {
 	GitHub servicegithub.Store
 	// AgentPreferences backs the platform-wide agent reply preferences.
 	AgentPreferences serviceagentprefs.Repository
+}
+
+// WarmRecentChatIndexes populates disposable read indexes through the
+// startup-only capability retained by the composition bundle.
+func (stores Stores) WarmRecentChatIndexes(ctx context.Context, limit int) error {
+	if stores.chatIndexWarmer == nil {
+		return nil
+	}
+	return stores.chatIndexWarmer.WarmRecentChatIndexes(ctx, limit)
 }
 
 func New(dataDir string) (Stores, error) {
@@ -308,8 +345,14 @@ func New(dataDir string) (Stores, error) {
 	if err != nil {
 		return Stores{}, fmt.Errorf("init agent preferences store: %w", err)
 	}
+	push, err := filepush.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init push subscriptions store: %w", err)
+	}
+	authStore := fileauth.New(dataDir)
 	return Stores{
 		Chats:            chats,
+		chatIndexWarmer:  chats,
 		Projects:         projects,
 		ProjectSecrets:   projectSecrets,
 		ProjectAccess:    projectAccess,
@@ -324,7 +367,9 @@ func New(dataDir string) (Stores, error) {
 		Schedules:        schedules,
 		Resources:        resources,
 		ModelRouting:     modelRouting,
-		Auth:             fileauth.New(dataDir),
+		Auth:             authStore,
+		AgentAPIKeys:     authStore,
+		Push:             push,
 		Users:            users,
 		UserSettings:     userSettings,
 		Notifications:    notifications,

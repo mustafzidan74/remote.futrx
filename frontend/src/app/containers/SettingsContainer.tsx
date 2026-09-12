@@ -17,8 +17,10 @@ import { useAgentEndpoints } from "../../state/hooks/settings/useAgentEndpoints"
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
 import { useAuditLog } from "../../state/hooks/admin/useAuditLog";
 import { useProjectTrash } from "../../state/hooks/admin/useProjectTrash";
+import { useSecuritySettings } from "../../state/hooks/auth/useSecuritySettings";
 import { useServerInfo } from "../../state/hooks/server/useServerInfo";
 import { useSelfUpdate } from "../../state/hooks/server/useSelfUpdate";
+import { usePushNotifications } from "../../state/hooks/push/usePushNotifications";
 import { useUsageDashboard } from "../../state/hooks/usage/useUsageDashboard";
 import { usageApi } from "../../api/usageApi";
 import { useFleetResources } from "../../state/hooks/server/useFleetResources";
@@ -31,10 +33,7 @@ export function SettingsContainer({
   onBack: () => void;
   onHamburger: () => void;
 }) {
-  const { auth, codexAuth, kimiAuth } = useAuthContext();
-  // Not in the auth context with the others: antigravity has no login for the
-  // context to run, only a status, and only an admin can act on it.
-  const antigravityAuth = useAntigravityAuth(auth.isAdmin);
+  const { auth } = useAuthContext();
   const userSettings = useUserSettingsContext();
   const userDirectory = useUserDirectory(auth.isAdmin);
   const { projects, ui } = useWorkspaceContext();
@@ -65,6 +64,7 @@ export function SettingsContainer({
   const agentEndpoints = useAgentEndpoints(activeTab === "agent-endpoints" && auth.isAdmin);
   const serverInfo = useServerInfo(activeTab === "info");
   const selfUpdate = useSelfUpdate(activeTab === "updates" && auth.isAdmin);
+  const security = useSecuritySettings(activeTab === "security");
   const usageDashboard = useUsageDashboard(activeTab === "usage");
   const [usageRebuilding, setUsageRebuilding] = useState(false);
   const [usageRebuildMessage, setUsageRebuildMessage] = useState<string | null>(null);
@@ -91,6 +91,7 @@ export function SettingsContainer({
   // Members see their own trashed projects here too, so this is not gated on
   // admin: the backend already scopes the listing to the caller.
   const projectTrash = useProjectTrash(activeTab === "trash");
+  const push = usePushNotifications(activeTab === "notifications");
 
   return (
     <SettingsPage
@@ -133,12 +134,7 @@ export function SettingsContainer({
       appearanceLoading={userSettings.loading}
       appearanceSaving={userSettings.saving}
       appearanceError={userSettings.error}
-      codexAuthenticated={codexAuth.authenticated}
-      codexUsesApiKey={codexAuth.usesApiKey}
-      codexDeviceLogin={codexAuth.deviceLogin}
-      codexLoading={codexAuth.loading}
-      codexStarting={codexAuth.starting}
-      codexError={codexAuth.error}
+      push={push}
       onBack={onBack}
       onHamburger={onHamburger}
       onTabChange={setActiveTab}
@@ -147,16 +143,7 @@ export function SettingsContainer({
       onApplyUpdate={selfUpdate.apply}
       onAppearanceThemeChange={(theme) => void userSettings.setTheme(theme)}
       onReplyLanguageChange={(language) => void userSettings.setReplyLanguage(language)}
-      onStartCodexDeviceLogin={codexAuth.startDeviceLogin}
-      kimiAuthenticated={kimiAuth.authenticated}
-      antigravityAuthenticated={antigravityAuth.authenticated}
-      antigravityLoading={antigravityAuth.loading}
-      antigravityHint={antigravityAuth.hint}
-      kimiDeviceLogin={kimiAuth.deviceLogin}
-      kimiLoading={kimiAuth.loading}
-      kimiStarting={kimiAuth.starting}
-      kimiError={kimiAuth.error}
-      onStartKimiDeviceLogin={kimiAuth.startDeviceLogin}
+      security={security}
     />
   );
 }

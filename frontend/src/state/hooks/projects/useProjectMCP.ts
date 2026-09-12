@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 import { mcpApi } from "../../../api/mcpApi";
 import type { ProjectMeta } from "../../../models/project";
-import type { ProjectDataLoadSignal, ProjectMCPRecord } from "../../projects/projectContainerRecords";
+import type { ProjectDataLoadSignal, ProjectMCPRecord } from "../../../models/project";
 import { mcpServersState } from "../../settings/mcpServersState";
 import type { MCPDraft } from "../../settings/mcpServersState";
 

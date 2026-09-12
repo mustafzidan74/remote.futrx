@@ -1,6 +1,6 @@
 import type { Playbook } from "../../../models/playbook";
 import type { PlaybookLibrary } from "../../../state/hooks/chat/usePlaybooks";
-import { playbookLabel } from "../../../state/chat/playbookState";
+import { playbookLabel } from "../../../state/hooks/chat/playbookState";
 import { MessageSquare, Zap } from "../../primitives/icons";
 
 /** How many playbooks a blank thread offers before it becomes a menu. */
@@ -21,12 +21,12 @@ export function ThreadEmptyState({
   const suggestions: Playbook[] = (playbooks?.playbooks ?? []).slice(0, SUGGESTION_COUNT);
 
   return (
-    <div class="text-center text-ink-300 text-sm py-12 px-4 max-w-md mx-auto">
-      <div class="w-14 h-14 mx-auto mb-4 rounded-lg bg-white/[0.06] border border-white/10 grid place-items-center">
-        <MessageSquare class="w-7 h-7 opacity-70" />
+    <div class="mx-auto max-w-md px-4 py-16 text-center text-sm text-ink-300">
+      <div class="mx-auto mb-4 grid h-11 w-11 place-items-center rounded-card border border-line text-ink-400">
+        <MessageSquare class="h-5 w-5" />
       </div>
-      <div class="font-semibold text-ink-100 text-base">Start a conversation</div>
-      <div class="text-xs mt-2 leading-relaxed">
+      <div class="text-[15px] font-semibold tracking-[-0.01em] text-ink-50">Start a conversation</div>
+      <div class="mt-2 text-[12.5px] leading-relaxed text-ink-400">
         The selected agent runs with full tool access in{" "}
         <span class="font-mono text-ink-100">{cwd || "~"}</span>.
         Drop, paste, or upload files to reference them.

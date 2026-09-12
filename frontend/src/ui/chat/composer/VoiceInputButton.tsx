@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { VOICE_LANGUAGE_OPTIONS } from "../../../config/voice";
 import type { VoiceInput } from "../../../state/hooks/chat/useVoiceInput";
-import { formatElapsed } from "../../../state/chat/voiceInputState";
+import { formatElapsed } from "../../../state/hooks/chat/voiceInputState";
 import {
   AlertCircle,
   Check,

@@ -11,7 +11,10 @@ import (
 
 	"github.com/futrx-com/remote.futrx.com/internal/agent"
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
+	"github.com/futrx-com/remote.futrx.com/internal/integration/webpush"
 	agentauth "github.com/futrx-com/remote.futrx.com/internal/service/agent/auth"
+	agentcapability "github.com/futrx-com/remote.futrx.com/internal/service/agent/capability"
+	agentmodule "github.com/futrx-com/remote.futrx.com/internal/service/agent/module"
 	serviceendpoints "github.com/futrx-com/remote.futrx.com/internal/service/agentendpoints"
 	serviceagentprefs "github.com/futrx-com/remote.futrx.com/internal/service/agentprefs"
 	serviceagentquota "github.com/futrx-com/remote.futrx.com/internal/service/agentquota"
@@ -31,9 +34,11 @@ import (
 	serviceplaybooks "github.com/futrx-com/remote.futrx.com/internal/service/playbooks"
 	serviceportal "github.com/futrx-com/remote.futrx.com/internal/service/portal"
 	servicepostrun "github.com/futrx-com/remote.futrx.com/internal/service/postrun"
+	servicepresence "github.com/futrx-com/remote.futrx.com/internal/service/presence"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	"github.com/futrx-com/remote.futrx.com/internal/service/prompt"
 	serviceproviderpool "github.com/futrx-com/remote.futrx.com/internal/service/providerpool"
+	servicepush "github.com/futrx-com/remote.futrx.com/internal/service/push"
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
 	servicerouting "github.com/futrx-com/remote.futrx.com/internal/service/routing"
 	"github.com/futrx-com/remote.futrx.com/internal/service/runhub"
@@ -65,8 +70,26 @@ type TmuxClient interface {
 	servicetmux.SessionClient
 }
 
+// ChatStore is the complete persistence capability required at composition;
+// individual services receive only the narrower contracts they consume.
+type ChatStore interface {
+	servicechat.Repository
+	servicechat.TranscriptEventSource
+	servicechat.TranscriptEventWindowSource
+	servicechat.TranscriptProjectionSource
+}
+
+// PushStore persists Web Push registrations and the server's long-lived VAPID
+// key pair. VAPIDKeys mints the pair on first use and returns the stored one
+// thereafter; rotating it would invalidate every browser subscription.
+type PushStore interface {
+	servicepush.Repository
+	removedUserSubscriptions
+	VAPIDKeys(generate func() (private string, public string, err error)) (string, string, error)
+}
+
 type Dependencies struct {
-	Chats           servicechat.Repository
+	Chats           ChatStore
 	Projects        serviceproject.Repository
 	ProjectSecrets  serviceproject.SecretsRepository
 	ProjectAccess   serviceproject.AccessRepository
@@ -100,6 +123,7 @@ type Dependencies struct {
 	// than failing the boot.
 	TwoFactor       serviceauth.TwoFactorStore
 	SessionRegistry serviceauth.SessionRegistryStore
+	Push            PushStore
 	Users           serviceuser.Repository
 	UserSettings    serviceusersettings.Repository
 	Notifications   servicenotify.Store
@@ -201,6 +225,11 @@ type Dependencies struct {
 	TmuxClient      TmuxClient
 	ValidTmuxName   func(string) bool
 	ScheduleLimits  ScheduleLimits
+	AgentModules    *agentmodule.Catalog
+	AgentAPIKeys    agentauth.APIKeyStore
+	AgentOptions    AgentOptions
+	AuthOptions     AuthOptions
+	PromptStartGate prompt.StartGate
 }
 
 // SecretsContainerDependencies groups the container capabilities the secrets
@@ -263,6 +292,16 @@ type ScheduleLimits struct {
 	MaxTasksPerProject int
 }
 
+// AgentOptions mirrors application-wide agent policy without coupling the
+// service layer to the config package.
+type AgentOptions struct {
+	CapabilityTimeout          time.Duration
+	CapabilityCacheTTL         time.Duration
+	DegradedCapabilityCacheTTL time.Duration
+	CredentialSyncTimeout      time.Duration
+	BrowserIdleTTL             time.Duration
+}
+
 // AuthOptions is the deployment's tunable half of the auth service.
 type AuthOptions struct {
 	// Audit records sign-ins and the administrator claim. This fork has an
@@ -290,23 +329,26 @@ func DefaultAuthOptions() AuthOptions {
 }
 
 type Services struct {
-	Chats         *servicechat.Service
-	ChatAccess    *servicechat.AccessService
-	Projects      *serviceproject.Service
-	Shares        *serviceshare.Service
-	Portals       *serviceportal.Service
-	Prompt        *prompt.Service
-	Schedules     *serviceschedule.Service
-	ScheduleCaps  *schedulecapability.Registry
-	AgentAuth     *agentauth.Registry
-	Runs          *runhub.Hub
-	Workspace     *workspacehub.Hub
-	Auth          *serviceauth.Service
-	Users         *serviceuser.Service
-	UserSettings  *serviceusersettings.Service
-	Notifications *servicenotify.Service
-	Monitoring    *servicemonitoring.Service
-	AuxModel      *serviceauxmodel.Service
+	Chats             *servicechat.Service
+	ChatAccess        *servicechat.AccessService
+	Projects          *serviceproject.Service
+	Shares            *serviceshare.Service
+	Portals           *serviceportal.Service
+	Prompt            *prompt.Service
+	Schedules         *serviceschedule.Service
+	ScheduleCaps      *schedulecapability.Registry
+	Agents            *agentmodule.Runtime
+	AgentCapabilities *agentcapability.Service
+	Push              *servicepush.Service
+	Presence          *servicepresence.Service
+	Runs              *runhub.Hub
+	Workspace         *workspacehub.Hub
+	Auth              *serviceauth.Service
+	Users             *serviceuser.Service
+	UserSettings      *serviceusersettings.Service
+	Notifications     *servicenotify.Service
+	Monitoring        *servicemonitoring.Service
+	AuxModel          *serviceauxmodel.Service
 	// Providers is the free-tier provider pool. Nil on a deployment with no
 	// registry store.
 	Providers *serviceproviderpool.Service
@@ -351,6 +393,14 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	if err := deps.AgentContainers.Validate(); err != nil {
 		return Services{}, fmt.Errorf("agent container dependencies: %w", err)
 	}
+	if deps.AgentModules == nil {
+		return Services{}, errors.New("agent module catalog is required")
+	}
+	if deps.Auth != nil {
+		if err := deps.AgentModules.ValidateAccessGate(); err != nil {
+			return Services{}, fmt.Errorf("agent module catalog: %w", err)
+		}
+	}
 	if deps.Schedules == nil {
 		return Services{}, errors.New("scheduled task repository is required")
 	}
@@ -367,6 +417,11 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	// the repository decorator that feeds it is created here, so the handle is
 	// filled in afterwards — the same late-binding shape the run hub uses.
 	chatSearchIndex := &chatSearchIndexer{}
+	// The notifier needs services that are built further down, so it is
+	// created empty here and populated once they exist — the same late
+	// binding the run hub uses above.
+	presenceService := servicepresence.New()
+	pushNotifier := &chatPushNotifier{chats: deps.Chats, presence: presenceService}
 	chats := notifyingChatRepository{
 		Repository: deps.Chats,
 		workspace:  workspace,
@@ -374,10 +429,9 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		running: func(id servicechat.ID) bool {
 			return runs != nil && runs.IsRunning(id)
 		},
+		push: pushNotifier,
 	}
 	projects := notifyingProjectRepository{Repository: deps.Projects, workspace: workspace}
-	definitions := agentDefinitions()
-	profiles := profilesFromDefinitions(definitions)
 	// The fleet resource policy is loaded (or derived from host capacity on
 	// first run) before any project can launch, so the very first container
 	// of a fresh install already lands inside a host-aware envelope.
@@ -415,6 +469,15 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	projectOptions := []serviceproject.Option{
 		serviceproject.WithAudit(auditLog),
 		serviceproject.WithStorage(deps.ProjectStorage),
+		serviceproject.WithChatCleanup(projectChatCleanup{
+			chats: chats,
+			cancel: func(ctx context.Context, id servicechat.ID) error {
+				if runs == nil {
+					return errors.New("run controller is unavailable")
+				}
+				return runs.Cancel(ctx, id)
+			},
+		}),
 	}
 	if globalSecrets != nil {
 		projectOptions = append(
@@ -432,7 +495,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	if globalSecrets != nil {
 		globalSecrets.SetProjects(secretSyncTargets{projects: projectService})
 	}
-	projectService.StartAgentBrowserReaper(ctx, 20*time.Minute)
+	projectService.StartAgentBrowserReaper(ctx, deps.AgentOptions.BrowserIdleTTL)
 	// Snapshots and projects each need the other: a delete takes a snapshot,
 	// and a snapshot resolves the project it belongs to. The project service
 	// is built first and told about snapshots afterwards, before anything
@@ -453,30 +516,6 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		projectService.SetSnapshots(snapshotService)
 	}
 	projectService.StartTrashJanitor(ctx, deps.TrashRetention)
-	runs = runhub.New(chats)
-	runs.SetRunningSubscriber(func(id servicechat.ID, _ bool) {
-		chats.publishChat(context.Background(), id)
-	})
-	var tmuxResolver servicechat.TmuxResolver
-	if deps.TmuxClient != nil {
-		tmuxResolver = chatTmuxResolver{client: deps.TmuxClient, validName: deps.ValidTmuxName}
-	}
-	globalSkillService := serviceskills.NewGlobalService(deps.GlobalSkills, projectService)
-	chatOptions := []servicechat.Option{servicechat.WithAudit(auditLog)}
-	if globalSkillService != nil {
-		chatOptions = append(
-			chatOptions,
-			servicechat.WithDefaultSkills(globalSkillDefaults{global: globalSkillService}),
-		)
-	}
-	chatService := servicechat.New(
-		chats,
-		chatProjectResolver{projects: projectService},
-		tmuxResolver,
-		runs,
-		chatOptions...,
-	)
-	chatAccessService := servicechat.NewAccessService(chatService, projectService)
 	// The MCP registry is built before the agent providers because each
 	// provider's run path materializes it: the port is handed to them through
 	// the same container-dependency bundle every other capability arrives on.
@@ -511,33 +550,63 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		}
 		agentEndpointService = serviceendpoints.New(deps.AgentEndpoints, endpointOptions...)
 	}
-	agents := agent.NewRegistry()
-	agentAuth := agentauth.NewRegistry()
-	for index, definition := range definitions {
-		provider := definition.provider(projectService, deps.AgentContainers)
-		if string(provider.ID()) != profiles[index].ID {
-			return Services{}, fmt.Errorf(
-				"agent registration mismatch: provider %q has profile %q",
-				provider.ID(), profiles[index].ID,
-			)
-		}
-		if err := agents.Register(provider); err != nil {
-			return Services{}, err
-		}
-		authBinding := definition.authBinding()
-		if authBinding.ID() != provider.ID() {
-			return Services{}, fmt.Errorf(
-				"agent auth registration mismatch: binding %q has provider %q",
-				authBinding.ID(), provider.ID(),
-			)
-		}
-		if err := agentAuth.Register(authBinding); err != nil {
-			return Services{}, err
-		}
+	agentRuntime, err := deps.AgentModules.Build(agentmodule.BuildDependencies{
+		Projects:              agentProjectResolver{projects: projectService},
+		Containers:            deps.AgentContainers,
+		APIKeys:               deps.AgentAPIKeys,
+		CredentialSyncTimeout: deps.AgentOptions.CredentialSyncTimeout,
+	})
+	if err != nil {
+		return Services{}, fmt.Errorf("build agent modules: %w", err)
 	}
-	userSettingsService := serviceusersettings.New(deps.UserSettings)
-	userService := serviceuser.New(deps.Users, serviceuser.WithAudit(auditLog))
-	authOptions := DefaultAuthOptions()
+	runs = runhub.New(chats)
+	runs.SetRunningSubscriber(func(id servicechat.ID, _ bool) {
+		chats.publishChat(context.Background(), id)
+	})
+	var tmuxResolver servicechat.TmuxResolver
+	if deps.TmuxClient != nil {
+		tmuxResolver = chatTmuxResolver{client: deps.TmuxClient, validName: deps.ValidTmuxName}
+	}
+	globalSkillService := serviceskills.NewGlobalService(deps.GlobalSkills, projectService)
+	chatOptions := []servicechat.Option{
+		servicechat.WithAudit(auditLog),
+		servicechat.WithTranscriptEventSource(deps.Chats),
+		servicechat.WithTranscriptEventWindowSource(deps.Chats),
+		servicechat.WithTranscriptProjectionSource(deps.Chats),
+		servicechat.WithCopiedEventAppender(chats),
+		servicechat.WithSessionPolicy(agentRuntime),
+		servicechat.WithProviderPolicy(agentRuntime),
+	}
+	if globalSkillService != nil {
+		chatOptions = append(
+			chatOptions,
+			servicechat.WithDefaultSkills(globalSkillDefaults{global: globalSkillService}),
+		)
+	}
+	chatService := servicechat.New(
+		chats,
+		chatProjectResolver{projects: projectService},
+		tmuxResolver,
+		runs,
+		chatOptions...,
+	)
+	chatAccessService := servicechat.NewAccessService(chatService, projectService)
+	pushService := newPush(deps.Push, deps.AuthBaseURL)
+	userSettingsService := serviceusersettings.New(
+		deps.UserSettings,
+		serviceusersettings.WithProviderCatalog(agentRuntime),
+	)
+	userService := serviceuser.New(
+		deps.Users,
+		serviceuser.WithAudit(auditLog),
+		serviceuser.WithRemovalCleanup(userRemovalCleanup{
+			projects:        projectService,
+			subscriptions:   deps.Push,
+			twoFactor:       deps.TwoFactor,
+			sessionRegistry: deps.SessionRegistry,
+		}),
+	)
+	authOptions := deps.AuthOptions
 	authOptions.Audit = auditLog
 	authService, err := newAuth(
 		ctx,
@@ -562,7 +631,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		routingService = servicerouting.New(
 			deps.ModelRouting,
 			servicerouting.WithAudit(auditLog),
-			servicerouting.WithProviders(routableProviders{registry: agentAuth}),
+			servicerouting.WithProviders(routableProviders{registry: agentRuntime}),
 		)
 	}
 	// The usage ledger is built before the notification service so the weekly
@@ -719,13 +788,14 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	teamDriver := serviceteam.New(serviceteam.Dependencies{
 		ChatFactory: chatService,
 		Events:      runs,
-		Providers:   connectedProviders{registry: agentAuth},
+		Providers:   connectedProviders{registry: agentRuntime},
 		Skills:      globalSkillNames{global: globalSkillService},
 	})
 	promptOptions := []prompt.Option{
 		prompt.WithDirectResponder(directModels),
 		prompt.WithQuotaRecorder(agentQuota),
 		prompt.WithScheduleToolIssuer(scheduleCaps),
+		prompt.WithAgentPolicy(agentRuntime),
 		prompt.WithRunObserver(runNotifications),
 		prompt.WithRunObserver(postRunDriver),
 		prompt.WithRunObserver(teamDriver),
@@ -734,6 +804,9 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		// holds up a run. A nil driver is dropped by WithRunObserver itself.
 		prompt.WithRunObserver(auxRunObserver(auxJobs)),
 		prompt.WithReplyPreferences(replyPreferencePreamble{prefs: agentPreferences}),
+	}
+	if deps.PromptStartGate != nil {
+		promptOptions = append(promptOptions, prompt.WithStartGate(deps.PromptStartGate))
 	}
 	if usageService != nil {
 		promptOptions = append(promptOptions, prompt.WithUsageRecorder(usageService))
@@ -752,7 +825,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		deps.TmuxClient,
 		projectService,
 		runs,
-		agents,
+		agentRuntime,
 		promptOptions...,
 	)
 	scheduleOptions := []serviceschedule.Option{
@@ -803,9 +876,20 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	if deps.Snippets != nil {
 		snippetService = servicesnippets.New(deps.Snippets)
 	}
-	skillService := serviceskills.New()
+	skillService := serviceskills.New(serviceskills.WithProviderCatalog(agentRuntime))
 	skillCatalog := serviceskills.NewCatalog(skillService, projectService, authService).
 		WithGlobalLibrary(globalSkillService)
+	agentCapabilities := agentcapability.New(
+		agentRuntime,
+		projectService,
+		authService,
+		agentcapability.Settings{
+			CapabilityTimeout:          deps.AgentOptions.CapabilityTimeout,
+			CapabilityCacheTTL:         deps.AgentOptions.CapabilityCacheTTL,
+			DegradedCapabilityCacheTTL: deps.AgentOptions.DegradedCapabilityCacheTTL,
+		},
+		agentcapability.WithModulePolicy(agentRuntime),
+	)
 	var accessVerifier *serviceauth.AccessVerifier
 	if authService != nil {
 		accessVerifier = serviceauth.NewAccessVerifier(authService, projectService)
@@ -917,54 +1001,62 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		deps.Backups,
 		deps.TrashRetention,
 	)
+
+	pushNotifier.push = pushService
+	pushNotifier.audience.projects = projectService
+	pushNotifier.audience.users = userService
+
 	return Services{
-		Chats:          chatService,
-		Projects:       projectService,
-		Schedules:      scheduleService,
-		Runs:           runs,
-		Skills:         skillCatalog,
-		Access:         accessVerifier,
-		ChatAccess:     chatAccessService,
-		Shares:         shareService,
-		Portals:        portalService,
-		Prompt:         promptService,
-		ScheduleCaps:   scheduleCaps,
-		AgentAuth:      agentAuth,
-		Workspace:      workspace,
-		Auth:           authService,
-		Users:          userService,
-		UserSettings:   userSettingsService,
-		Notifications:  notifications,
-		Monitoring:     monitoringService,
-		AuxModel:       auxModel,
-		Providers:      providerPool,
-		DirectModels:   directModels,
-		AgentQuota:     agentQuota,
-		AuxJobs:        auxJobs,
-		SiteWatch:      siteWatchService,
-		Transcription:  transcription,
-		Playbooks:      playbookService,
-		Snippets:       snippetService,
-		AgentPrefs:     agentPreferences,
-		Search:         searchService,
-		GlobalSecrets:  globalSecrets,
-		MCP:            mcpService,
-		AgentEndpoints: agentEndpointService,
-		GitHub:         gitHubService,
-		Tmux:           tmuxService,
-		GlobalSkills:   globalSkillService,
-		Usage:          usageService,
-		ModelRouting:   routingService,
-		Resources:      resourceService,
-		Audit:          auditLog,
-		Health:         healthService,
-		Snapshots:      snapshotService,
-		Screenshots:    screenshotService,
-		Lighthouse:     lighthouseService,
-		Visual:         visualService,
-		PostRun:        postRunDriver,
-		Team:           teamDriver,
-		Dashboard:      dashboardService,
+		Chats:             chatService,
+		Projects:          projectService,
+		Schedules:         scheduleService,
+		Runs:              runs,
+		Skills:            skillCatalog,
+		Access:            accessVerifier,
+		ChatAccess:        chatAccessService,
+		Shares:            shareService,
+		Portals:           portalService,
+		Prompt:            promptService,
+		ScheduleCaps:      scheduleCaps,
+		Agents:            agentRuntime,
+		AgentCapabilities: agentCapabilities,
+		Push:              pushService,
+		Presence:          presenceService,
+		Workspace:         workspace,
+		Auth:              authService,
+		Users:             userService,
+		UserSettings:      userSettingsService,
+		Notifications:     notifications,
+		Monitoring:        monitoringService,
+		AuxModel:          auxModel,
+		Providers:         providerPool,
+		DirectModels:      directModels,
+		AgentQuota:        agentQuota,
+		AuxJobs:           auxJobs,
+		SiteWatch:         siteWatchService,
+		Transcription:     transcription,
+		Playbooks:         playbookService,
+		Snippets:          snippetService,
+		AgentPrefs:        agentPreferences,
+		Search:            searchService,
+		GlobalSecrets:     globalSecrets,
+		MCP:               mcpService,
+		AgentEndpoints:    agentEndpointService,
+		GitHub:            gitHubService,
+		Tmux:              tmuxService,
+		GlobalSkills:      globalSkillService,
+		Usage:             usageService,
+		ModelRouting:      routingService,
+		Resources:         resourceService,
+		Audit:             auditLog,
+		Health:            healthService,
+		Snapshots:         snapshotService,
+		Screenshots:       screenshotService,
+		Lighthouse:        lighthouseService,
+		Visual:            visualService,
+		PostRun:           postRunDriver,
+		Team:              teamDriver,
+		Dashboard:         dashboardService,
 	}, nil
 }
 
@@ -972,7 +1064,13 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 // now" from the agent auth registry. Team mode needs it to pick a reviewer
 // that is a genuine second opinion rather than a provider nobody logged in to.
 type connectedProviders struct {
-	registry *agentauth.Registry
+	registry authBindingSource
+}
+
+// authBindingSource is the one read both provider adapters make of the agent
+// module runtime: every binding, so they can ask which is signed in.
+type authBindingSource interface {
+	Bindings() []agentauth.Binding
 }
 
 func (p connectedProviders) Connected() []servicechat.Provider {
@@ -995,7 +1093,7 @@ func (p connectedProviders) Connected() []servicechat.Provider {
 // different vocabularies — team mode names chat providers, routing names
 // plain ids.
 type routableProviders struct {
-	registry *agentauth.Registry
+	registry authBindingSource
 }
 
 func (p routableProviders) Connected() []string {
@@ -1388,6 +1486,36 @@ func projectLimits(limits serviceresources.Limits) serviceproject.ContainerLimit
 	}
 }
 
+// newPush builds the Web Push service. A deployment without a usable VAPID key
+// simply has notifications switched off; it is not a reason to refuse to boot.
+func newPush(store PushStore, baseURL string) *servicepush.Service {
+	if store == nil {
+		return servicepush.New(nil, nil)
+	}
+	private, public, err := store.VAPIDKeys(func() (string, string, error) {
+		key, err := webpush.GenerateVAPIDKey()
+		if err != nil {
+			return "", "", err
+		}
+		return key.PrivateKeyBase64(), key.PublicKeyBase64(), nil
+	})
+	if err != nil {
+		log.Printf("push: notifications disabled: %v", err)
+		return servicepush.New(store, nil)
+	}
+	key, err := webpush.ParseVAPIDKey(private, public)
+	if err != nil {
+		log.Printf("push: notifications disabled: %v", err)
+		return servicepush.New(store, nil)
+	}
+	client, err := webpush.NewClient(key, baseURL)
+	if err != nil {
+		log.Printf("push: notifications disabled: %v", err)
+		return servicepush.New(store, nil)
+	}
+	return servicepush.New(store, webPushSender{client: client})
+}
+
 func (s Services) AuthEnabled() bool {
 	return s.Auth != nil
 }
@@ -1600,7 +1728,7 @@ func (e scheduledPromptExecutor) StartScheduledPrompt(
 		ScheduledRunID:  task.ActiveRunID,
 		ParentContext:   ctx,
 	}, nil)
-	if errors.Is(err, prompt.ErrPromptAlreadyRunning) {
+	if errors.Is(err, prompt.ErrPromptAlreadyRunning) || errors.Is(err, prompt.ErrMaintenance) {
 		return nil, serviceschedule.ErrExecutorBusy
 	}
 	if err != nil {

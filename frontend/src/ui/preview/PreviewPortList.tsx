@@ -16,7 +16,7 @@ import {
   previewLinkFeedbackReduce,
   type PreviewPortRow,
 } from "../../state/projects/projectPreviewLinksState.ts";
-import { buildProjectPreviewUrl } from "../../shared/projectPreviewUrls.ts";
+import { projectPreviewUrlService } from "../../services/projects/projectPreviewUrlService.ts";
 import { ScreenshotCard } from "./ScreenshotCard";
 import {
   AlertCircle,
@@ -111,7 +111,7 @@ export function PreviewPortList({
           <PortRow
             key={row.port}
             row={row}
-            url={buildProjectPreviewUrl(project.slug, row.port, PUBLIC_HOSTNAME)}
+            url={projectPreviewUrlService.build(project.slug, row.port, PUBLIC_HOSTNAME)}
             copying={isPreviewLinkBusy(feedback, "copy", row.port)}
             copied={isPreviewLinkDone(feedback, "copy", row.port)}
             sharing={isPreviewLinkBusy(feedback, "share", row.port)}

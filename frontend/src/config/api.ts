@@ -7,6 +7,10 @@ export const API_RESPONSE_STATUS = {
 
 export const DEFAULT_CHAT_HISTORY_COMMIT_LIMIT = 100;
 export const DEFAULT_AUDIT_LOG_LIMIT = 50;
+/** Complete conversation turns fetched on the first chat load. */
+export const CHAT_INITIAL_TRANSCRIPT_TURN_LIMIT = 10;
+/** Complete conversation turns fetched on each older-history page. */
+export const CHAT_TRANSCRIPT_TURN_PAGE_LIMIT = 20;
 export const DIRTY_WORKING_TREE_FALLBACK_MESSAGE = "dirty working tree";
 /**
  * Used only when a 409 from the pull-request route arrives without the
@@ -18,4 +22,9 @@ export const DEFAULT_UPLOAD_MEDIA_TYPE = "application/octet-stream";
 export const CHAT_STREAM_MESSAGE_TYPES = {
   prompt: "prompt",
   cancel: "cancel",
+	interactionResponse: "interaction_response",
 } as const;
+/** Usage records fetched per drill-down page. */
+export const USAGE_RECORD_PAGE_LIMIT = 100;
+/** How long typing settles before the workspace file search is sent. */
+export const WORKSPACE_FILE_SEARCH_DEBOUNCE_MS = 250;

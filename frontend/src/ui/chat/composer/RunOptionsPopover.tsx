@@ -1,11 +1,11 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import {
-  MODE_OPTIONS,
+  CHAT_MODE_OPTIONS as MODE_OPTIONS,
   reasoningEffortOptionsForProvider,
   serviceTierOptionsForProvider,
-} from "../../../config/chat";
-import { runOptionsAriaLabel, runOptionsSummary } from "../../../state/chat/runOptionsState";
+} from "../../../config/chatCatalog";
+import { runOptionsAriaLabel, runOptionsSummary } from "../../../state/hooks/chat/runOptionsState";
 import type { ChatPolicies } from "../../../state/hooks/chat/useChatPolicies";
 import { Activity, ChevronDown, Cpu, MessageSquare, Settings } from "../../primitives/icons";
 import { AutoTestControl } from "./AutoTestControl";

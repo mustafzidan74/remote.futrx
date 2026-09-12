@@ -4,8 +4,8 @@ import {
   PHASE_ABBREVIATION,
   formatElapsed,
   type AgentActivity,
-} from "../../../state/chat/agentActivity";
-import type { AutopilotView } from "../../../state/chat/chatPolicyState";
+} from "../../../state/hooks/chat/agentActivity";
+import type { AutopilotView } from "../../../state/hooks/chat/chatPolicyState";
 import { useActivityClock } from "../../../state/hooks/chat/useAgentActivity";
 import { PlaneTakeoff, X } from "../../primitives/icons";
 

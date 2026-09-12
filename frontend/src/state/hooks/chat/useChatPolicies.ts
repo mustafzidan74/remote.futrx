@@ -13,8 +13,8 @@ import {
   validateAutopilotDraft,
   type AutopilotDraft,
   type AutopilotView,
-} from "../../chat/chatPolicyState";
-import { armTeamPatch, boundedLoops, teamView, type TeamView } from "../../chat/teamState";
+} from "./chatPolicyState";
+import { armTeamPatch, boundedLoops, teamView, type TeamView } from "./teamState";
 
 export interface ChatPolicies {
   autopilot: AutopilotView;

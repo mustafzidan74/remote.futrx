@@ -9,7 +9,9 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 )
 
@@ -70,6 +72,10 @@ type TemplateProvisioner interface {
 	Ensure(ctx context.Context, project serviceproject.Meta) <-chan struct{}
 }
 
+type ProfileSource interface {
+	Snapshot() []provisioning.Profile
+}
+
 type Service struct {
 	runtime     Runtime
 	image       string
@@ -77,6 +83,7 @@ type Service struct {
 	resources   ResourceEnsurer
 	provisioner LaunchProvisioner
 	templates   TemplateProvisioner
+	profiles    ProfileSource
 }
 
 // NewService wires the lifecycle. templates is variadic so callers that do
@@ -87,6 +94,7 @@ func NewService(
 	workspace WorkspacePreparer,
 	resources ResourceEnsurer,
 	provisioner LaunchProvisioner,
+	profiles ProfileSource,
 	templates ...TemplateProvisioner,
 ) *Service {
 	service := &Service{
@@ -95,6 +103,7 @@ func NewService(
 		workspace:   workspace,
 		resources:   resources,
 		provisioner: provisioner,
+		profiles:    profiles,
 	}
 	if len(templates) > 0 {
 		service.templates = templates[0]
@@ -140,10 +149,10 @@ func (s *Service) Busy(ctx context.Context, containerName string) (bool, error) 
 }
 
 type durableMount struct {
-	device        string
-	hostPath      string
-	containerPath string
-	legacyHome    bool
+	device          string
+	hostPath        string
+	containerPath   string
+	migrateExisting bool
 }
 
 // Ensure converges a project to one complete, running container. Project
@@ -154,7 +163,7 @@ func (s *Service) Ensure(ctx context.Context, project serviceproject.Meta) error
 		return errors.New("lxc CLI not found on PATH - install LXD on the host first")
 	}
 
-	mounts, agentRoot, err := persistentMounts(project)
+	mounts, agentRoot, err := persistentMounts(project, s.profileSnapshot())
 	if err != nil {
 		return err
 	}
@@ -175,7 +184,7 @@ func (s *Service) Ensure(ctx context.Context, project serviceproject.Meta) error
 			return fmt.Errorf("prepare agent home: %w", err)
 		}
 		for _, mount := range mounts {
-			if !mount.legacyHome {
+			if !mount.migrateExisting {
 				continue
 			}
 			if err := s.preparePrivateDirectory(mount.hostPath); err != nil {
@@ -202,7 +211,7 @@ func (s *Service) Ensure(ctx context.Context, project serviceproject.Meta) error
 			return ErrContainerBusy
 		}
 		for _, mount := range changes {
-			if mount.legacyHome {
+			if mount.migrateExisting {
 				if err := s.preparePrivateDirectory(agentRoot); err != nil {
 					return fmt.Errorf("prepare agent home: %w", err)
 				}
@@ -210,7 +219,7 @@ func (s *Service) Ensure(ctx context.Context, project serviceproject.Meta) error
 			}
 		}
 		for _, mount := range changes {
-			if !mount.legacyHome {
+			if !mount.migrateExisting {
 				if err := s.workspace.Prepare(mount.hostPath); err != nil {
 					return fmt.Errorf("prepare %s: %w", mount.device, err)
 				}
@@ -228,7 +237,7 @@ func (s *Service) Ensure(ctx context.Context, project serviceproject.Meta) error
 			}
 			state = serviceproject.ContainerStateRunning
 		}
-		if err := s.migrateLegacyHomes(ctx, project.ContainerName, changes); err != nil {
+		if err := s.migratePersistentState(ctx, project.ContainerName, changes); err != nil {
 			return err
 		}
 	}
@@ -318,7 +327,14 @@ func (s *Service) Ensure(ctx context.Context, project serviceproject.Meta) error
 	return nil
 }
 
-func persistentMounts(project serviceproject.Meta) ([]durableMount, string, error) {
+func (s *Service) profileSnapshot() []provisioning.Profile {
+	if s.profiles == nil {
+		return nil
+	}
+	return s.profiles.Snapshot()
+}
+
+func persistentMounts(project serviceproject.Meta, profiles []provisioning.Profile) ([]durableMount, string, error) {
 	workspace := filepath.Clean(project.Cwd)
 	if !filepath.IsAbs(workspace) || filepath.Base(workspace) != "workspace" {
 		return nil, "", fmt.Errorf("invalid project workspace %q", project.Cwd)
@@ -327,12 +343,35 @@ func persistentMounts(project serviceproject.Meta) ([]durableMount, string, erro
 		return nil, "", errors.New("project has no container name")
 	}
 	agentRoot := filepath.Join(filepath.Dir(workspace), agentHomeDirName)
-	return []durableMount{
-		{device: "workspace", hostPath: workspace, containerPath: containerWorkspacePath},
-		{device: "codex-home", hostPath: filepath.Join(agentRoot, "codex"), containerPath: "/root/.codex", legacyHome: true},
-		{device: "claude-home", hostPath: filepath.Join(agentRoot, "claude"), containerPath: "/root/.claude", legacyHome: true},
-		{device: "kimi-home", hostPath: filepath.Join(agentRoot, "kimi"), containerPath: "/root/.kimi-code", legacyHome: true},
-	}, agentRoot, nil
+	mounts := []durableMount{{
+		device: "workspace", hostPath: workspace, containerPath: containerWorkspacePath,
+	}}
+	for _, profile := range profiles {
+		for _, state := range profile.PersistentState {
+			if err := state.Validate(); err != nil {
+				return nil, "", fmt.Errorf("invalid persistent state for agent %q: %w", profile.ID, err)
+			}
+			for _, mount := range mounts {
+				if mount.device == state.Device || mount.hostPath == filepath.Join(agentRoot, state.HostDirectory) ||
+					containerPathsOverlap(mount.containerPath, state.ContainerPath) {
+					return nil, "", fmt.Errorf("persistent state for agent %q conflicts with mount %q", profile.ID, mount.device)
+				}
+			}
+			mounts = append(mounts, durableMount{
+				device:          state.Device,
+				hostPath:        filepath.Join(agentRoot, state.HostDirectory),
+				containerPath:   state.ContainerPath,
+				migrateExisting: true,
+			})
+		}
+	}
+	return mounts, agentRoot, nil
+}
+
+func containerPathsOverlap(left, right string) bool {
+	left = filepath.Clean(left)
+	right = filepath.Clean(right)
+	return left == right || strings.HasPrefix(left, right+"/") || strings.HasPrefix(right, left+"/")
 }
 
 func (s *Service) mountChanges(ctx context.Context, container string, mounts []durableMount) ([]durableMount, error) {
@@ -349,9 +388,9 @@ func (s *Service) mountChanges(ctx context.Context, container string, mounts []d
 	return changes, nil
 }
 
-func (s *Service) migrateLegacyHomes(ctx context.Context, container string, changes []durableMount) error {
+func (s *Service) migratePersistentState(ctx context.Context, container string, changes []durableMount) error {
 	for _, mount := range changes {
-		if !mount.legacyHome {
+		if !mount.migrateExisting {
 			continue
 		}
 		empty, err := directoryEmpty(mount.hostPath)

@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	servicelighthouse "github.com/futrx-com/remote.futrx.com/internal/service/lighthouse"
@@ -372,6 +373,10 @@ func (h *ProjectHandler) HandleResource(w http.ResponseWriter, r *http.Request) 
 		h.usage.HandleProjectSummary(w, r, string(id), email, isAdmin)
 		return
 	}
+	if len(parts) >= 2 && parts[1] == "shares" {
+		h.handleShares(w, r, id, parts)
+		return
+	}
 
 	if len(parts) >= 2 && parts[1] != "" {
 		switch parts[1] {
@@ -706,7 +711,7 @@ func (h *ProjectHandler) HandleTLSAsk(w http.ResponseWriter, r *http.Request) {
 	if mm := h.projectHostPattern.FindStringSubmatch(domain); mm != nil {
 		slug = mm[1]
 		port, err := strconv.Atoi(mm[2])
-		if err != nil || port < 1024 || port > 65535 {
+		if err != nil || port < configconstants.ProjectPreviewMinPort || port > configconstants.ProjectPreviewMaxPort {
 			http.Error(w, "port out of range", http.StatusNotFound)
 			return
 		}
@@ -933,6 +938,8 @@ func sendProjectError(w http.ResponseWriter, err error) {
 		httptransport.SendErr(w, http.StatusConflict, err.Error())
 	case errors.Is(err, serviceproject.ErrSecretsUnavailable):
 		httptransport.SendErr(w, http.StatusServiceUnavailable, err.Error())
+	case errors.Is(err, serviceproject.ErrNameAlreadyExists):
+		httptransport.SendErr(w, http.StatusConflict, err.Error())
 	case errors.Is(err, serviceproject.ErrNotFound):
 		httptransport.SendErr(w, http.StatusNotFound, "project not found")
 	default:

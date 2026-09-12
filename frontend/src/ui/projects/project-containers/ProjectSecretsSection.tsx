@@ -1,7 +1,8 @@
 import { useState } from "preact/hooks";
 import type { ProjectSecret } from "../../../models/project";
 import type { InheritedSecret } from "../../../models/secretsVault";
-import type { SecretsRecord } from "../../../state/projects/projectContainerRecords";
+import type { SecretsRecord } from "../../../models/project";
+import { useConfirm } from "../../../state/context/ConfirmContext";
 import { AlertCircle, Key, X } from "../../primitives/icons";
 import { Empty, Loading } from "./ProjectContainerPrimitives";
 import {
@@ -10,12 +11,23 @@ import {
   lineSummary,
 } from "./projectContainerFormat";
 
+/** Draft state for the "Add new secret" form, lifted to survive tab switches. */
+export interface SecretDraft {
+  key: string;
+  value: string;
+}
+
 export function ProjectSecretsSection({
   record,
+  draft,
+  onDraftChange,
   onSave,
   onDelete,
 }: {
   record: SecretsRecord;
+  /** Lifted draft state — persists when the user switches away from this tab. */
+  draft: SecretDraft;
+  onDraftChange: (patch: Partial<SecretDraft>) => void;
   onSave: (key: string, value: string) => Promise<void>;
   onDelete: (key: string) => Promise<void>;
 }) {
@@ -27,7 +39,7 @@ export function ProjectSecretsSection({
           <div class="text-accent-red break-words">{record.error}</div>
         </div>
       )}
-      <SecretEditor onSave={onSave} />
+      <SecretEditor draft={draft} onDraftChange={onDraftChange} onSave={onSave} />
       <SecretsList list={record.data ?? []} loading={record.loading && !record.data} onSave={onSave} onDelete={onDelete} />
       <p class="text-[11.5px] text-ink-400 leading-relaxed">
         Secrets are passed to the selected agent CLI as <span class="font-mono">--env KEY=VALUE</span> on every prompt run. They never land in the container's filesystem and are not synced back from it.
@@ -38,18 +50,21 @@ export function ProjectSecretsSection({
 }
 
 function SecretEditor({
+  draft,
+  onDraftChange,
   onSave,
 }: {
+  /** Lifted draft state — caller owns this so it survives tab navigation. */
+  draft: SecretDraft;
+  onDraftChange: (patch: Partial<SecretDraft>) => void;
   onSave: (key: string, value: string) => Promise<void>;
 }) {
-  const [key, setKey] = useState("");
-  const [value, setValue] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const submit = async (event: Event) => {
     event.preventDefault();
-    const normalizedKey = key.trim();
+    const normalizedKey = draft.key.trim();
     if (!normalizedKey) {
       setErr("Key is required.");
       return;
@@ -61,9 +76,9 @@ function SecretEditor({
     setErr(null);
     setSubmitting(true);
     try {
-      await onSave(normalizedKey, value);
-      setKey("");
-      setValue("");
+      await onSave(normalizedKey, draft.value);
+      // Clear the draft on success so the form resets.
+      onDraftChange({ key: "", value: "" });
     } catch (error) {
       setErr((error as Error).message);
     } finally {
@@ -71,34 +86,41 @@ function SecretEditor({
     }
   };
 
+  const hasDraft = draft.key.trim() !== "" || draft.value !== "";
+
   return (
-    <form onSubmit={submit} class="rounded-md border border-white/10 bg-white/[0.03] p-2.5 space-y-2">
+    <form onSubmit={submit} class="rounded-md border border-line bg-tint p-2.5 space-y-2">
       <div class="grid gap-2 sm:grid-cols-[1fr_2fr_auto] items-start">
         <input
-          value={key}
-          onInput={(event) => setKey((event.target as HTMLInputElement).value)}
+          value={draft.key}
+          onInput={(event) => onDraftChange({ key: (event.target as HTMLInputElement).value })}
           placeholder="KEY"
-          class="h-9 px-2.5 rounded-md border border-white/10 bg-black/30 text-[13px] font-mono text-ink-50 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue/50"
+          class="h-9 px-2.5 rounded border border-line bg-inset text-[13px] font-mono text-ink-50 placeholder-ink-400 focus:outline-none focus:border-accent-blue/50"
         />
         <textarea
-          value={value}
-          onInput={(event) => setValue((event.target as HTMLTextAreaElement).value)}
+          value={draft.value}
+          onInput={(event) => onDraftChange({ value: (event.target as HTMLTextAreaElement).value })}
           placeholder="value (multi-line OK — paste PEM keys, JSON, etc.)"
           rows={1}
           spellcheck={false}
           autoComplete="off"
-          class="min-h-9 max-h-48 px-2.5 py-1.5 rounded-md border border-white/10 bg-black/30 text-[13px] font-mono text-ink-50 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue/50 resize-y leading-[1.45] overflow-y-auto"
+          class="min-h-9 max-h-48 px-2.5 py-1.5 rounded border border-line bg-inset text-[13px] font-mono text-ink-50 placeholder-ink-400 focus:outline-none focus:border-accent-blue/50 resize-y leading-[1.45] overflow-y-auto"
           style={{ fieldSizing: "content" } as any}
         />
         <button
           type="submit"
           disabled={submitting}
-          class="h-9 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50"
+          class="btn btn-primary btn-sm text-[13px] font-medium disabled:opacity-50"
         >
           {submitting ? "Saving…" : "Add"}
         </button>
       </div>
       {err && <div class="text-[11.5px] text-accent-red">{err}</div>}
+      {hasDraft && !err && (
+        <p class="text-[11px] text-ink-400">
+          Draft preserved — switch tabs freely and return to finish.
+        </p>
+      )}
     </form>
   );
 }
@@ -134,6 +156,7 @@ function SecretRow({
   onSave: (key: string, value: string) => Promise<void>;
   onDelete: (key: string) => Promise<void>;
 }) {
+  const confirm = useConfirm();
   const [editing, setEditing] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [draft, setDraft] = useState(secret.value);
@@ -154,7 +177,13 @@ function SecretRow({
   };
 
   const remove = async () => {
-    if (!confirm(`Delete secret ${secret.key}?`)) return;
+    const confirmed = await confirm({
+      title: "Delete secret",
+      description: "This action cannot be undone.",
+      message: `${secret.key} will be removed from this project's environment.`,
+      confirmLabel: "Delete secret",
+    });
+    if (!confirmed) return;
     setBusy(true);
     try {
       await onDelete(secret.key);
@@ -166,7 +195,7 @@ function SecretRow({
   };
 
   return (
-    <div class="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 space-y-1">
+    <div class="rounded-md border border-line bg-tint px-3 py-2 space-y-1">
       <div class="flex items-center gap-2 min-w-0">
         <span class="font-mono text-[12.5px] text-ink-50 truncate">{secret.key}</span>
         <span class="text-[11px] text-ink-400 ml-auto whitespace-nowrap">
@@ -180,13 +209,13 @@ function SecretRow({
             onInput={(event) => setDraft((event.target as HTMLTextAreaElement).value)}
             rows={1}
             spellcheck={false}
-            class="flex-1 min-h-8 max-h-48 px-2 py-1 rounded-md border border-white/10 bg-black/30 text-[12.5px] font-mono text-ink-50 focus:outline-none focus:border-accent-blue/50 resize-y leading-[1.45] overflow-y-auto"
+            class="flex-1 min-h-8 max-h-48 px-2 py-1 rounded border border-line bg-inset text-[12.5px] font-mono text-ink-50 focus:outline-none focus:border-accent-blue/50 resize-y leading-[1.45] overflow-y-auto"
             style={{ fieldSizing: "content" } as any}
           />
           <button
             type="button"
             onClick={() => setRevealed(!revealed)}
-            class="h-8 px-2 rounded text-[11px] text-ink-300 hover:text-ink-100 hover:bg-white/[0.08]"
+            class="h-8 px-2 rounded text-[11px] text-ink-300 hover:text-ink-100 hover:bg-tint-strong"
           >
             {revealed ? "hide" : "show"}
           </button>
@@ -194,7 +223,7 @@ function SecretRow({
             type="button"
             onClick={save}
             disabled={busy}
-            class="h-8 px-2.5 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[12px] font-medium disabled:opacity-50"
+            class="btn btn-primary btn-sm text-[12px] font-medium disabled:opacity-50"
           >
             Save
           </button>
@@ -205,7 +234,7 @@ function SecretRow({
               setDraft(secret.value);
               setErr(null);
             }}
-            class="h-8 px-2 rounded text-[12px] text-ink-300 hover:text-ink-100 hover:bg-white/[0.08]"
+            class="h-8 px-2 rounded text-[12px] text-ink-300 hover:text-ink-100 hover:bg-tint-strong"
           >
             Cancel
           </button>
@@ -222,14 +251,14 @@ function SecretRow({
           <button
             type="button"
             onClick={() => setRevealed(!revealed)}
-            class="h-8 px-2 rounded text-[11px] text-ink-300 hover:text-ink-100 hover:bg-white/[0.08]"
+            class="h-7 px-2 rounded text-[11px] text-ink-300 hover:text-ink-100 hover:bg-tint-strong"
           >
             {revealed ? "hide" : "show"}
           </button>
           <button
             type="button"
             onClick={() => setEditing(true)}
-            class="h-8 px-2 rounded text-[11px] text-ink-300 hover:text-ink-100 hover:bg-white/[0.08]"
+            class="h-7 px-2 rounded text-[11px] text-ink-300 hover:text-ink-100 hover:bg-tint-strong"
           >
             edit
           </button>
@@ -237,7 +266,7 @@ function SecretRow({
             type="button"
             onClick={remove}
             disabled={busy}
-            class="h-8 w-8 rounded text-ink-300 hover:text-accent-red hover:bg-white/[0.08] grid place-items-center disabled:opacity-50"
+            class="h-7 w-7 rounded text-ink-300 hover:text-accent-red hover:bg-tint-strong grid place-items-center disabled:opacity-50"
             aria-label="Delete"
             title="Delete"
           >

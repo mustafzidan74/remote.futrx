@@ -9,15 +9,16 @@ import { WorkspaceActions } from "../../ui/chat/header/WorkspaceActions";
 import { HistoryDrawer } from "../../ui/chat/history/HistoryDrawer";
 import { FileManagerDrawer } from "../../ui/chat/files/FileManagerDrawer";
 import { ScheduleDrawer } from "../../ui/chat/schedules/ScheduleDrawer";
-import { chatAttachmentState } from "../../state/chat/chatAttachmentState";
-import { useAuthContext } from "../../state/context/AuthContext";
+import { chatAttachmentService } from "../../services/chat/chatAttachmentService.ts";
+import { useAgentAuthRegistry } from "../../state/hooks/auth/useAgentAuthRegistry";
 import { usePublishChatPhase } from "../../state/hooks/chat/useAgentActivity";
 import { useChat } from "../../state/hooks/chat/useChat";
 import { useChatBrowserController } from "../../state/hooks/chat/useChatBrowserController";
 import { useChatComposerController } from "../../state/hooks/chat/useChatComposerController";
 import { useChatDrawerController } from "../../state/hooks/chat/useChatDrawerController";
-import { useChatKeyboardShortcuts } from "../../state/hooks/chat/useChatKeyboardShortcuts";
+import { isDictating } from "../../state/hooks/chat/voiceInputState";
 import { useChatPolicies } from "../../state/hooks/chat/useChatPolicies";
+import { useChatFind } from "../../state/hooks/chat/useChatFind";
 import { useChatPreferences } from "../../state/hooks/chat/useChatPreferences";
 import { useAgentEndpointChoices } from "../../state/hooks/chat/useAgentEndpointChoices";
 import { endpointBadge } from "../../state/settings/agentEndpointsState";
@@ -26,7 +27,8 @@ import { useChatReadMarker } from "../../state/hooks/chat/useChatReadMarker";
 import { usePlaybooks } from "../../state/hooks/chat/usePlaybooks";
 import { useSnippets } from "../../state/hooks/chat/useSnippets";
 import { useSlashCommands } from "../../state/hooks/chat/useSlashCommands";
-import { useTerminalOverlayController } from "../../state/hooks/chat/useTerminalOverlayController";
+import { useDismissShortcut } from "../../state/hooks/shared/useDismissShortcut.ts";
+import { useTerminalOverlayController } from "../../ui/chat/terminal/useTerminalOverlayController";
 import { useWorkspaceGitRepos } from "../../state/hooks/chat/useWorkspaceGitRepos";
 import { useDirectModelChoices } from "../../state/hooks/chat/useDirectModelChoices";
 import { directBadge, isDirect, NO_DIRECT_MODEL } from "../../models/directModels";
@@ -53,19 +55,22 @@ export function ChatContainer({
     eventCount,
     hasOlder,
     loadingOlder,
+    indexingProgress,
     status,
     error,
     canSendPrompt,
     sendPrompt,
     promptOutcome,
     cancel,
+    respondInteraction,
     rewind,
     loadOlder,
     refreshMeta,
   } = useChat(chat.id);
   const preferences = useChatPreferences({ chat, loadedMeta: meta, refreshMeta });
   const { displayMeta, displayMode, selectedSkills } = preferences;
-  const attachmentBasePath = chatAttachmentState.basePath(displayMeta, projects);
+  const attachmentBasePath = chatAttachmentService.basePath(displayMeta, projects);
+  const project = projects.find((candidate) => candidate.id === displayMeta.projectId);
   const composer = useChatComposerController({
     chatId: chat.id,
     eventCount,
@@ -89,7 +94,6 @@ export function ChatContainer({
   // Same resolution the browser drawer uses; the header's preview chip needs
   // the project's slug to build preview URLs.
   const chatProject = browser.browserProject;
-  const terminal = useTerminalOverlayController(chat.id);
   // The composer's Playbooks menu. Its context comes from the chat's project
   // and the newest preview URL the conversation mentioned, so a template can
   // name the project it is about without a port scan.
@@ -111,14 +115,12 @@ export function ChatContainer({
   );
   // Team mode may only seat a provider that is actually logged in on the host;
   // the auth context already keeps those three sockets live for the setup gate.
-  const { claudeAuth, codexAuth, kimiAuth } = useAuthContext();
+  const agentRegistry = useAgentAuthRegistry(true);
   const connectedProviders = useMemo(() => {
-    const connected: ChatProvider[] = [];
-    if (claudeAuth.authenticated) connected.push("claude");
-    if (codexAuth.authenticated) connected.push("codex");
-    if (kimiAuth.authenticated) connected.push("kimi");
-    return connected;
-  }, [claudeAuth.authenticated, codexAuth.authenticated, kimiAuth.authenticated]);
+    return agentRegistry.providers
+      .filter((entry) => entry.status.authenticated)
+      .map((entry) => entry.provider as ChatProvider);
+  }, [agentRegistry.providers]);
   const applyMeta = preferences.applyMeta;
   const applyPlaybookMeta = useCallback(
     (patch: UpdateChatInput) => applyMeta(patch),
@@ -185,21 +187,36 @@ export function ChatContainer({
     showBrowser: browser.openBrowserDrawer,
     hideBrowser: browser.closeBrowserDrawer,
   });
+  const terminal = useTerminalOverlayController(drawers.terminalOpen);
+
+  // `eventCount` stands in for "the thread changed": find re-reads the rendered
+  // messages on it, so a match list cannot go stale against a streaming reply.
+  const find = useChatFind({
+    scrollRef: composer.scroll.scrollRef,
+    contentRef: composer.scroll.contentRef,
+    revision: eventCount,
+  });
 
   useChatReadMarker({ chatId: chat.id, eventCount, status });
   // The sidebar row is a sibling of this container, so the phase it shows is
   // published rather than threaded through the workspace context — see
   // `agentPhaseStore`.
   usePublishChatPhase(chat.id, status === "streaming" ? activity.phase : "idle");
-  useChatKeyboardShortcuts({ status, onCancel: cancel });
+  // Escape cancels the reply being streamed, and is the weakest claim on the
+  // key in a chat: it falls behind find-in-chat, a menu, and every modal, so
+  // Escape only reaches the run when nothing is open over it.
+  // Escape stops a live microphone before it cancels a run: dictating a
+  // queued prompt while the agent works is ordinary.
+  useDismissShortcut(cancel, { enabled: status === "streaming" && !isDictating(), fallback: true });
   const { hasRepos } = useWorkspaceGitRepos({ chatId: chat.id, status });
   const workspaceActions = {
     cwd: displayMeta.cwd || "~",
-    onOpenTerminal: terminal.openTerminal,
+    onToggleTerminal: drawers.terminalOpen ? drawers.closeTerminal : drawers.openTerminal,
     onToggleBrowser: browser.browserOpen ? browser.closeBrowserDrawer : drawers.openBrowser,
     onToggleHistory: drawers.historyOpen ? drawers.closeHistory : drawers.openHistory,
     onToggleFiles: drawers.filesOpen ? drawers.closeFiles : drawers.openFiles,
     onToggleSchedules: drawers.schedulesOpen ? drawers.closeSchedules : drawers.openSchedules,
+    terminalOpen: drawers.terminalOpen,
     browserOpen: browser.browserOpen,
     historyOpen: drawers.historyOpen,
     filesOpen: drawers.filesOpen,
@@ -213,9 +230,11 @@ export function ChatContainer({
       ? "files"
       : drawers.schedulesOpen
         ? "schedules"
-        : browser.browserOpen
-          ? "browser"
-          : null;
+        : drawers.terminalOpen
+          ? "terminal"
+          : browser.browserOpen
+            ? "browser"
+            : null;
   const previousMobilePane = useRef<typeof activePane>(null);
 
   useEffect(() => {
@@ -285,8 +304,11 @@ export function ChatContainer({
       serviceTier: displayMeta.serviceTier || "",
       modelPolicy: displayMeta.modelPolicy,
       endpointId: displayMeta.endpointId,
+      approvalPolicy: displayMeta.approvalPolicy,
+      sandboxPolicy: displayMeta.sandboxPolicy,
     },
     preferenceActions: {
+      changeAgent: preferences.changeAgent,
       changeProvider: preferences.changeProvider,
       changeModel: preferences.changeModel,
       changeModelPolicy: preferences.changeModelPolicy,
@@ -294,6 +316,8 @@ export function ChatContainer({
       changeMode: preferences.changeMode,
       changeReasoningEffort: preferences.changeReasoningEffort,
       changeServiceTier: preferences.changeServiceTier,
+      changeApprovalPolicy: preferences.changeApprovalPolicy,
+      changeSandboxPolicy: preferences.changeSandboxPolicy,
     },
     routing: { decision: routingPreview.decision, available: !routingPreview.unavailable },
     endpointChoices,
@@ -330,6 +354,7 @@ export function ChatContainer({
       <div class="flex h-full min-h-0 w-full overflow-hidden">
         <div class={`min-w-0 flex-1 h-full ${activePane ? "hidden md:block" : ""}`}>
           <ChatThread
+            find={find}
             chat={displayMeta}
             project={chatProject}
             activity={activity}
@@ -337,6 +362,7 @@ export function ChatContainer({
             highlightAt={highlightAt ?? null}
             hasOlder={hasOlder}
             loadingOlder={loadingOlder}
+            indexingProgress={indexingProgress}
             status={status}
             error={error}
             composer={composerView}
@@ -351,16 +377,14 @@ export function ChatContainer({
             onScroll={composer.scroll.onScroll}
             onJumpToBottom={composer.scroll.jumpToBottom}
             onAnswerQuestion={composer.handleAnswerQuestion}
+            onRespondInteraction={respondInteraction}
             onLoadOlder={loadOlder}
             onRewind={composer.handleRewind}
             onSaveSnippet={handleSaveSnippet}
             onOpenAgentBrowser={browser.openAgentBrowserPane}
             onOpenCompanionChat={onSelectChat}
-            mobileToolbar={
-              <aside class="workspace-action-toolbar relative z-30 flex flex-none justify-end border-b border-white/10 bg-[#101318] px-3 py-2 md:hidden">
-                <WorkspaceActions {...workspaceActions} orientation="horizontal" />
-              </aside>
-            }
+            projectName={project?.name}
+            actions={<WorkspaceActions {...workspaceActions} orientation="horizontal" />}
           />
         </div>
         <HistoryDrawer
@@ -392,17 +416,14 @@ export function ChatContainer({
           onCaptureElement={browser.insertBrowserElementContext}
           onClose={browser.closeBrowserDrawer}
         />
-        <aside class="workspace-action-rail top-chrome z-20 hidden w-12 flex-none flex-col items-center border-l border-white/10 bg-[#101318] px-1.5 pb-2 md:flex">
-          <WorkspaceActions {...workspaceActions} orientation="vertical" />
-        </aside>
+        {terminal.TerminalOverlay && (
+          <terminal.TerminalOverlay
+            chat={displayMeta}
+            open={drawers.terminalOpen}
+            onClose={drawers.closeTerminal}
+          />
+        )}
       </div>
-      {terminal.TerminalOverlay && (
-        <terminal.TerminalOverlay
-          chat={displayMeta}
-          open={terminal.terminalOpen}
-          onClose={terminal.closeTerminal}
-        />
-      )}
       <MediaViewerOverlay />
     </div>
   );

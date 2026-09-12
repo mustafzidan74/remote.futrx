@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { useStore } from "zustand";
+import { useCallback, useEffect, useRef } from "preact/hooks";
 import type { ChatStatus, PromptOutcome, SyntheticKind } from "../../../models/chat";
-import { chatComposerSessionStore } from "../../chat/composerSessionStore";
-import { unescapeSlash } from "../../chat/slashCommandState";
+import { useConfirm } from "../../context/ConfirmContext";
+import { chatAttachmentService } from "../../../services/chat/chatAttachmentService.ts";
+import { chatComposerSessionStore } from "../../stores/chat/composerSessionStore";
+import { promptQueueState } from "./promptQueueState";
+import { unescapeSlash } from "./slashCommandState";
 import { useAttachmentUpload } from "./useAttachmentUpload";
 import { useAutosizeTextarea } from "./useAutosizeTextarea";
 import { useDragUpload } from "./useDragUpload";
@@ -31,19 +35,22 @@ export function useChatComposerController({
   refreshMeta: () => Promise<void>;
   attachmentBasePath: string;
 }) {
-  // Initialise from the per-chat session store and mirror every change back to it.
-  // ChatContainer remounts on chat switch (it is keyed by chatId), so this is
-  // what makes a half-typed message survive leaving and returning to a chat.
-  const [text, setTextState] = useState(() => chatComposerSessionStore.getDraft(chatId));
+  const confirm = useConfirm();
+  // ChatContainer remounts on chat switch (it is keyed by chatId), so selecting
+  // the active draft from the session store is what makes a half-typed message
+  // survive leaving and returning to a chat.
+  const text = useStore(
+    chatComposerSessionStore,
+    (state) => state.drafts.get(chatId) ?? "",
+  );
+  const setDraft = useStore(chatComposerSessionStore, (state) => state.setDraft);
   const setText = useCallback(
     (value: string | ((prev: string) => string)) => {
-      setTextState((prev) => {
-        const next = typeof value === "function" ? (value as (prev: string) => string)(prev) : value;
-        chatComposerSessionStore.setDraft(chatId, next);
-        return next;
-      });
+      const previous = chatComposerSessionStore.getState().drafts.get(chatId) ?? "";
+      const next = typeof value === "function" ? value(previous) : value;
+      setDraft(chatId, next);
     },
-    [chatId],
+    [chatId, setDraft],
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { textareaRef, focusInput } = useAutosizeTextarea(text);
@@ -68,7 +75,13 @@ export function useChatComposerController({
       alert("Cancel the current run before rewinding this chat.");
       return;
     }
-    if (!confirm("Rewind to this prompt? Messages from this point forward will be removed.")) return;
+    const confirmed = await confirm({
+      title: "Rewind chat",
+      description: "This action cannot be undone.",
+      message: "Every message from this prompt forward is removed, and the prompt is put back in the composer.",
+      confirmLabel: "Rewind",
+    });
+    if (!confirmed) return;
     try {
       await rewind(t);
       queue.clearQueuedPrompts();
@@ -102,7 +115,7 @@ export function useChatComposerController({
   }
 
   function handleSend() {
-    if (upload.uploading || (!chatComposerSessionStore.allowsQueue(status) && !canSendPrompt)) return;
+    if (upload.uploading || (!promptQueueState.allowsQueue(status) && !canSendPrompt)) return;
     // `//do the thing` is how a user says "this really does start with a
     // slash"; the escape is the composer's, so it is removed here rather than
     // travelling to the agent.
@@ -112,7 +125,7 @@ export function useChatComposerController({
       .map((attachment) => attachment.serverPath);
     if (!userText && paths.length === 0) return;
     const finalText = paths.length
-      ? chatComposerSessionStore.promptWithAttachments(userText, paths)
+      ? chatAttachmentService.promptWithAttachments(userText, paths)
       : userText;
 
     if (status === "streaming") {
@@ -157,7 +170,7 @@ export function useChatComposerController({
   function submitText(value: string): boolean {
     const userText = value.trim();
     if (!userText) return false;
-    if (upload.uploading || (!chatComposerSessionStore.allowsQueue(status) && !canSendPrompt)) {
+    if (upload.uploading || (!promptQueueState.allowsQueue(status) && !canSendPrompt)) {
       return false;
     }
     if (status === "streaming") {

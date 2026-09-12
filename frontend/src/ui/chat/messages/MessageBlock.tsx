@@ -2,6 +2,7 @@ import type { ChatMessageBlock } from "../../../models/chatMessage";
 import { AssistantMessage } from "./AssistantMessage";
 import { ErrorMessage } from "./ErrorMessage";
 import { UserMessage } from "./UserMessage";
+import type { ChatInteractionResponder } from "../../../types/chatApi";
 
 export function MessageBlock({
   block,
@@ -11,6 +12,7 @@ export function MessageBlock({
   chatId,
   cwd,
   onAnswerQuestion,
+  onRespondInteraction,
   onRewind,
   onSaveSnippet,
 }: {
@@ -23,6 +25,7 @@ export function MessageBlock({
   chatId?: string;
   cwd?: string;
   onAnswerQuestion?: (text: string) => void;
+  onRespondInteraction?: ChatInteractionResponder;
   onRewind?: (t: number, text: string) => void;
   /** Offers "Save as snippet" on prompts the user wrote. */
   onSaveSnippet?: (text: string) => void;

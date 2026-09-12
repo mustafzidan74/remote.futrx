@@ -1,6 +1,6 @@
 import type { ChatMeta } from "../../models/chat";
 import type { ProjectMeta } from "../../models/project";
-import { timeAgo } from "../../shared/format";
+import { relativeTimeService } from "../../services/platform/relativeTimeService.ts";
 import { ChevronDown, ChevronRight, Clock, Loader } from "../primitives/icons";
 
 /**
@@ -88,7 +88,7 @@ export function RecentChats({
                       {chat.projectId ? projectNames.get(chat.projectId) ?? "Project" : "No project"}
                     </span>
                     <Clock class="h-2.5 w-2.5 flex-none" aria-hidden="true" />
-                    <span class="tabular-nums whitespace-nowrap">{timeAgo(chat.lastMessageAt)}</span>
+                    <span class="tabular-nums whitespace-nowrap">{relativeTimeService.ago(chat.lastMessageAt)}</span>
                   </span>
                 </span>
               </button>

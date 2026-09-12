@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 )
 
@@ -44,7 +45,7 @@ func TestCreateValidatesInput(t *testing.T) {
 		},
 		{
 			name:    "agent browser port",
-			input:   CreateInput{Port: AgentBrowserPort},
+			input:   CreateInput{Port: configconstants.ProjectPreviewAgentBrowserPort},
 			project: projectOne,
 			wantErr: ErrPortNotShareable,
 		},
@@ -95,14 +96,14 @@ func TestCreateValidatesInput(t *testing.T) {
 			if created.Slug != slugOne {
 				t.Fatalf("slug = %q, want %q", created.Slug, slugOne)
 			}
-			if created.Share.CreatedBy != "owner@example.com" {
-				t.Fatalf("createdBy = %q, want it normalized", created.Share.CreatedBy)
+			if created.Metadata.CreatedBy != "owner@example.com" {
+				t.Fatalf("createdBy = %q, want it normalized", created.Metadata.CreatedBy)
 			}
-			wantTTL := DefaultTTL
+			wantTTL := configconstants.ProjectShareDefaultTTL
 			if test.input.TTLHours != 0 {
 				wantTTL = time.Duration(test.input.TTLHours) * time.Hour
 			}
-			gotTTL := time.UnixMilli(created.Share.ExpiresAt).Sub(time.UnixMilli(created.Share.CreatedAt))
+			gotTTL := time.UnixMilli(created.Metadata.ExpiresAt).Sub(time.UnixMilli(created.Metadata.CreatedAt))
 			if gotTTL != wantTTL {
 				t.Fatalf("ttl = %s, want %s", gotTTL, wantTTL)
 			}
@@ -136,19 +137,19 @@ func TestCreateBoundsLabelAndLinkCount(t *testing.T) {
 	service, _ := newTestService(t)
 	created, err := service.Create(context.Background(), projectOne, CreateInput{
 		Port:  3000,
-		Label: "  client\ndemo" + strings.Repeat("x", MaxLabelLength),
+		Label: "  client\ndemo" + strings.Repeat("x", configconstants.ProjectShareMaxLabelLength),
 	}, "owner@example.com")
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	if len([]rune(created.Share.Label)) > MaxLabelLength {
-		t.Fatalf("label length = %d, want at most %d", len(created.Share.Label), MaxLabelLength)
+	if len([]rune(created.Metadata.Label)) > configconstants.ProjectShareMaxLabelLength {
+		t.Fatalf("label length = %d, want at most %d", len(created.Metadata.Label), configconstants.ProjectShareMaxLabelLength)
 	}
-	if strings.ContainsAny(created.Share.Label, "\n\r") {
-		t.Fatalf("label = %q, want newlines flattened", created.Share.Label)
+	if strings.ContainsAny(created.Metadata.Label, "\n\r") {
+		t.Fatalf("label = %q, want newlines flattened", created.Metadata.Label)
 	}
 
-	for i := 1; i < MaxPerProject; i++ {
+	for i := 1; i < configconstants.ProjectShareMaxPerProject; i++ {
 		if _, err := service.Create(
 			context.Background(), projectOne, CreateInput{Port: 3000}, "owner@example.com",
 		); err != nil {
@@ -204,26 +205,29 @@ func TestValidate(t *testing.T) {
 		},
 		{
 			name: "agent browser port",
-			slug: slugOne, port: AgentBrowserPort, token: created.Token, at: base,
+			slug: slugOne, port: configconstants.ProjectPreviewAgentBrowserPort, token: created.Token, at: base,
 		},
 		{
 			name: "one second before expiry",
 			slug: slugOne, port: 3000, token: created.Token,
-			at: base.Add(DefaultTTL - time.Second), want: true,
+			at: base.Add(configconstants.ProjectShareDefaultTTL - time.Second), want: true,
 		},
 		{
 			name: "after expiry",
 			slug: slugOne, port: 3000, token: created.Token,
-			at: base.Add(DefaultTTL + time.Second),
+			at: base.Add(configconstants.ProjectShareDefaultTTL + time.Second),
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			now = test.at
-			_, got := service.Validate(context.Background(), test.slug, test.port, test.token)
+			grant, got := service.Validate(context.Background(), test.slug, test.port, test.token)
 			if got != test.want {
 				t.Fatalf("Validate(%q, %d) = %v, want %v", test.slug, test.port, got, test.want)
+			}
+			if got && (grant.ID != created.Metadata.ID || grant.ExpiresAt != created.Metadata.ExpiresAt) {
+				t.Fatalf("grant = %#v, want id %q and expiry %d", grant, created.Metadata.ID, created.Metadata.ExpiresAt)
 			}
 		})
 	}
@@ -241,17 +245,17 @@ func TestRevokeStopsValidationAndListing(t *testing.T) {
 	if _, ok := service.Validate(ctx, slugOne, 3000, created.Token); !ok {
 		t.Fatal("Validate before revoke = false, want true")
 	}
-	if !service.Allows(ctx, slugOne, 3000, created.Share.ID) {
+	if !service.Allows(ctx, slugOne, 3000, created.Metadata.ID) {
 		t.Fatal("Allows before revoke = false, want true")
 	}
 
-	if err := service.Revoke(ctx, projectOne, created.Share.ID); err != nil {
+	if err := service.Revoke(ctx, projectOne, created.Metadata.ID); err != nil {
 		t.Fatalf("Revoke: %v", err)
 	}
 	if _, ok := service.Validate(ctx, slugOne, 3000, created.Token); ok {
 		t.Fatal("Validate after revoke = true, want false")
 	}
-	if service.Allows(ctx, slugOne, 3000, created.Share.ID) {
+	if service.Allows(ctx, slugOne, 3000, created.Metadata.ID) {
 		t.Fatal("Allows after revoke = true, want false")
 	}
 	list, err := service.List(ctx, projectOne)
@@ -264,7 +268,7 @@ func TestRevokeStopsValidationAndListing(t *testing.T) {
 	if stored := repo.snapshot(projectOne); len(stored) != 1 || stored[0].RevokedAt != now.UnixMilli() {
 		t.Fatalf("stored record after revoke = %#v, want revokedAt stamped", stored)
 	}
-	if err := service.Revoke(ctx, projectOne, created.Share.ID); !errors.Is(err, ErrNotFound) {
+	if err := service.Revoke(ctx, projectOne, created.Metadata.ID); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("second Revoke = %v, want %v", err, ErrNotFound)
 	}
 	if err := service.Revoke(ctx, projectOne, ID("missing")); !errors.Is(err, ErrNotFound) {
@@ -291,7 +295,7 @@ func TestListReturnsLiveSharesNewestFirst(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
-	if len(list) != 2 || list[0].ID != long.Share.ID || list[1].ID != short.Share.ID {
+	if len(list) != 2 || list[0].ID != long.Metadata.ID || list[1].ID != short.Metadata.ID {
 		t.Fatalf("List = %#v, want the newest first", list)
 	}
 
@@ -300,14 +304,14 @@ func TestListReturnsLiveSharesNewestFirst(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List after expiry: %v", err)
 	}
-	if len(list) != 1 || list[0].ID != long.Share.ID {
+	if len(list) != 1 || list[0].ID != long.Metadata.ID {
 		t.Fatalf("List after expiry = %#v, want only the 7-day link", list)
 	}
 }
 
 func newTestService(t *testing.T, options ...Option) (*Service, *memoryRepo) {
 	t.Helper()
-	repo := &memoryRepo{shares: map[serviceproject.ID][]Share{}}
+	repo := &memoryRepo{shares: map[serviceproject.ID][]Record{}}
 	projects := &fakeProjects{metas: []serviceproject.Meta{
 		{ID: projectOne, Slug: slugOne},
 		{ID: projectTwo, Slug: slugTwo},
@@ -342,23 +346,23 @@ func (p *fakeProjects) GetBySlug(_ context.Context, slug string) (serviceproject
 
 type memoryRepo struct {
 	mu     sync.Mutex
-	shares map[serviceproject.ID][]Share
+	shares map[serviceproject.ID][]Record
 }
 
-func (r *memoryRepo) List(_ context.Context, projectID serviceproject.ID) ([]Share, error) {
+func (r *memoryRepo) List(_ context.Context, projectID serviceproject.ID) ([]Record, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return append([]Share(nil), r.shares[projectID]...), nil
+	return append([]Record(nil), r.shares[projectID]...), nil
 }
 
 func (r *memoryRepo) Update(
 	_ context.Context,
 	projectID serviceproject.ID,
-	fn func([]Share) ([]Share, error),
-) ([]Share, error) {
+	fn func([]Record) ([]Record, error),
+) ([]Record, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	next, err := fn(append([]Share(nil), r.shares[projectID]...))
+	next, err := fn(append([]Record(nil), r.shares[projectID]...))
 	if err != nil {
 		return nil, err
 	}
@@ -366,10 +370,10 @@ func (r *memoryRepo) Update(
 	return next, nil
 }
 
-func (r *memoryRepo) snapshot(projectID serviceproject.ID) []Share {
+func (r *memoryRepo) snapshot(projectID serviceproject.ID) []Record {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return append([]Share(nil), r.shares[projectID]...)
+	return append([]Record(nil), r.shares[projectID]...)
 }
 
 // encoded renders everything the repository holds, so a test can assert no

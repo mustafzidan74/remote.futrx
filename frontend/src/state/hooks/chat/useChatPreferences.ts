@@ -1,15 +1,17 @@
 import type {
   ChatMeta,
+  ApprovalPolicy,
   ChatMode,
   ChatModelPolicy,
   ChatProvider,
   ReasoningEffort,
   SelectedSkill,
   ServiceTier,
+  SandboxPolicy,
 } from "../../../models/chat";
 import type { RegisteredSkill } from "../../../models/skill";
 import { useUserSettingsContext } from "../../context/UserSettingsContext";
-import { chatPreferenceState } from "../../chat/chatPreferenceState";
+import { chatPreferenceState } from "./chatPreferenceState";
 import { useChatMetaActions } from "./useChatMetaActions";
 import { NO_DIRECT_MODEL, type DirectModelChoice } from "../../../models/directModels";
 
@@ -23,25 +25,34 @@ export function useChatPreferences({
   refreshMeta: () => Promise<void>;
 }) {
   const { settings, setChatSettings } = useUserSettingsContext();
-  const displayMeta = chatPreferenceState.resolveMeta(chat, loadedMeta, settings.chat);
+  const preferenceScope = chat.projectId ? "project" : "host";
+  const defaults = preferenceScope === "project" ? settings.projectChat : settings.chat;
+  const displayMeta = chatPreferenceState.resolveMeta(chat, loadedMeta, defaults);
   const displayProvider = displayMeta.provider;
+  const displayModel = displayMeta.model;
   const displayMode = displayMeta.mode;
   const selectedSkills = displayMeta.selectedSkills || [];
   const metaActions = useChatMetaActions({ chatId: chat.id, refreshMeta });
 
-  function changeProvider(provider: ChatProvider) {
-    if (provider === displayProvider) return;
-    // Naming an agent by hand pins the chat, the same way naming a model
-    // does: the operator just answered the question routing was answering.
+  function changeAgent(provider: ChatProvider, model: string) {
+    if (provider === displayProvider && model === displayModel) return;
+    const providerChanged = provider !== displayProvider;
     metaActions.applyMeta({
       provider,
-      model: "",
+      model,
       reasoningEffort: "",
       serviceTier: "",
-      selectedSkills: [],
+      ...(providerChanged ? { selectedSkills: [] } : {}),
+      // Naming an agent or a model by hand pins the chat: the operator just
+      // answered the question routing was answering.
       modelPolicy: "pinned",
     });
-    void setChatSettings({ provider, model: "", reasoningEffort: "", serviceTier: "" });
+    void setChatSettings(preferenceScope, {
+      provider,
+      model,
+      reasoningEffort: "",
+      serviceTier: "",
+    });
   }
 
   function selectSkill(skill: RegisteredSkill) {
@@ -60,12 +71,14 @@ export function useChatPreferences({
     });
   }
 
+  // The composer's pill picks the agent and the model in two steps; both are
+  // the same choice upstream's picker makes in one.
+  function changeProvider(provider: ChatProvider) {
+    changeAgent(provider, "");
+  }
+
   function changeModel(model: string) {
-    // Picking a model by hand is how a chat leaves Auto: the operator just
-    // said which model they want, so the routing policy stands down for this
-    // chat until they ask for it back.
-    metaActions.applyMeta({ model, modelPolicy: "pinned" });
-    void setChatSettings({ model });
+    changeAgent(displayProvider, model);
   }
 
   // Switching to Auto keeps the stored model untouched, so turning routing
@@ -120,19 +133,34 @@ export function useChatPreferences({
     });
   }
 
-  function changeMode(mode: ChatMode) {
-    metaActions.applyMeta({ mode });
-    void setChatSettings({ mode });
+  function changeMode(mode: ChatMode, modelPreset?: string, reasoningPreset?: string) {
+    const patch = {
+      mode,
+      ...(modelPreset ? { model: modelPreset } : {}),
+      ...(reasoningPreset ? { reasoningEffort: reasoningPreset } : {}),
+    };
+    metaActions.applyMeta(patch);
+    void setChatSettings(preferenceScope, patch);
   }
 
   function changeReasoningEffort(reasoningEffort: ReasoningEffort) {
     metaActions.applyMeta({ reasoningEffort });
-    void setChatSettings({ reasoningEffort });
+    void setChatSettings(preferenceScope, { reasoningEffort });
   }
 
   function changeServiceTier(serviceTier: ServiceTier) {
     metaActions.applyMeta({ serviceTier });
-    void setChatSettings({ serviceTier });
+    void setChatSettings(preferenceScope, { serviceTier });
+  }
+
+  function changeApprovalPolicy(approvalPolicy: ApprovalPolicy) {
+    metaActions.applyMeta({ approvalPolicy });
+    void setChatSettings(preferenceScope, { approvalPolicy });
+  }
+
+  function changeSandboxPolicy(sandboxPolicy: SandboxPolicy) {
+    metaActions.applyMeta({ sandboxPolicy });
+    void setChatSettings(preferenceScope, { sandboxPolicy });
   }
 
   return {
@@ -142,6 +170,7 @@ export function useChatPreferences({
     // Exposed for prompt sources that change several settings at once — the
     // Playbooks menu applies skills, mode, and provider in a single patch.
     applyMeta: metaActions.applyMeta,
+    changeAgent,
     changeProvider,
     changeModel,
     changeModelPolicy,
@@ -150,6 +179,8 @@ export function useChatPreferences({
     changeMode,
     changeReasoningEffort,
     changeServiceTier,
+    changeApprovalPolicy,
+    changeSandboxPolicy,
     selectSkill,
     removeSelectedSkill,
   };

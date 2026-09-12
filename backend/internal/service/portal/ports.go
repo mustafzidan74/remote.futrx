@@ -25,7 +25,7 @@ type Projects interface {
 // only when this reports an active share for it, which is exactly the set of
 // ports an outside visitor can reach at all.
 type Shares interface {
-	List(ctx context.Context, projectID serviceproject.ID) ([]serviceshare.Share, error)
+	List(ctx context.Context, projectID serviceproject.ID) ([]serviceshare.Metadata, error)
 }
 
 // History reads the workspace's git log. It is the same service the project

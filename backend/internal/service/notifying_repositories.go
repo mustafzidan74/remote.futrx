@@ -26,6 +26,9 @@ type notifyingChatRepository struct {
 	// sees (imports, rewinds, scheduled runs).
 	search  chatIndexer
 	running func(servicechat.ID) bool
+	// push receives every appended event so it can raise notifications for
+	// the few that matter. Nil when push is not configured.
+	push *chatPushNotifier
 }
 
 func (r notifyingChatRepository) Create(ctx context.Context, meta servicechat.Meta) (servicechat.Meta, error) {
@@ -66,14 +69,35 @@ func (r notifyingChatRepository) AppendEvent(
 	id servicechat.ID,
 	ev servicechat.Event,
 ) (servicechat.Event, error) {
+	return r.appendEvent(ctx, id, ev, true)
+}
+
+func (r notifyingChatRepository) AppendCopiedEvent(
+	ctx context.Context,
+	id servicechat.ID,
+	ev servicechat.Event,
+) (servicechat.Event, error) {
+	return r.appendEvent(ctx, id, ev, false)
+}
+
+func (r notifyingChatRepository) appendEvent(
+	ctx context.Context,
+	id servicechat.ID,
+	ev servicechat.Event,
+	notify bool,
+) (servicechat.Event, error) {
 	next, err := r.Repository.AppendEvent(ctx, id, ev)
-	if err == nil {
-		r.indexEvent(id, next)
-		if eventUpdatesWorkspace(next.Type) {
-			r.publishChat(ctx, id)
-		}
+	if err != nil {
+		return next, err
 	}
-	return next, err
+	r.indexEvent(id, next)
+	if eventUpdatesWorkspace(next.Type) {
+		r.publishChat(ctx, id)
+	}
+	if notify {
+		r.push.ChatEvent(id, next)
+	}
+	return next, nil
 }
 
 // indexEvent hands one persisted event to the search index. The cheap type

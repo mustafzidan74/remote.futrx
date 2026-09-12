@@ -10,7 +10,7 @@ import type {
   ImportGitHubCommentsResult,
   UpdateGitHubSettingsInput,
 } from "../../../models/github";
-import type { ProjectDataLoadSignal } from "../../projects/projectContainerRecords";
+import type { ProjectDataLoadSignal } from "../../../models/project";
 
 /** The panel's three records: the link, the automation settings, the open PRs. */
 export interface GitHubRecord {

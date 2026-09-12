@@ -6,7 +6,7 @@ import {
   type StatusTone,
   type TrendDelta,
 } from "../../state/home/dashboardState";
-import { formatCostWithConfidence } from "../../state/usage/usageChartModel";
+import { usageFormatService } from "../../services/usage/usageFormatService.ts";
 import { TONE_TEXT } from "./DashboardCard";
 import { Activity, AlertCircle, Layers, Zap } from "../primitives/icons";
 
@@ -57,7 +57,7 @@ export function KpiTiles({
       <Tile
         Icon={Zap}
         label={`Est. cost · ${windowDays} days`}
-        value={formatCostWithConfidence({
+        value={usageFormatService.costWithConfidence({
           costUsd: kpis.costThisWeek,
           estimatedCostUsd: kpis.estimatedCostThisWeek,
           unpricedRuns: kpis.unpricedRunsThisWeek,

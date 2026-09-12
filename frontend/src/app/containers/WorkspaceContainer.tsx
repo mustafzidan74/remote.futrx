@@ -7,8 +7,13 @@ import { CommandPalette } from "../../ui/app/CommandPalette";
 import { ShortcutsOverlay } from "../../ui/app/ShortcutsOverlay";
 import { SETTINGS_TABS } from "../../ui/settings/SettingsPage";
 import { buildCommandItems } from "../../state/app/commandPaletteState";
+import { ChatSkeleton } from "../../ui/chat/ChatSkeleton";
+import { CreateProjectModal } from "../../ui/projects/CreateProjectModal";
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
 import { useUserSettingsContext } from "../../state/context/UserSettingsContext";
+import { useCommandPalette } from "../../state/hooks/workspace/useCommandPalette";
+import { usePaletteSearch } from "../../state/hooks/workspace/useWorkspaceSearch";
+import { CommandPalette as SearchPalette } from "../../ui/search/CommandPalette";
 import { useWorkspaceCommands } from "../../state/hooks/workspace/useWorkspaceCommands";
 import { useDashboard } from "../../state/hooks/home/useDashboard";
 import { chatScheduleApi } from "../../api/chat/chatScheduleApi";
@@ -85,6 +90,17 @@ export function WorkspaceContainer() {
     [workspace, commands, nextTheme, userSettings],
   );
 
+  // The one caller of `useCommandPalette`: it binds the chord that toggles the
+  // palette, and this is what renders the palette it toggles.
+  const palette = useCommandPalette();
+  const paletteSearch = usePaletteSearch();
+  // Two moments where there is no chat to render but one is still coming: the
+  // snapshot has not landed, or it has and the initial-chat effect has not run
+  // its pick yet. Both would otherwise flash the "Create your first project"
+  // pitch at someone who already has projects.
+  const chatPending =
+    !workspace.loaded || (!workspace.activeChat && workspace.chats.length > 0);
+
   return (
     <>
       <AppShell sidebar={<SidebarContainer />}>
@@ -114,6 +130,8 @@ export function WorkspaceContainer() {
             onHamburger={workspace.openSidebar}
             onSelectChat={workspace.selectChat}
           />
+        ) : chatPending ? (
+          <ChatSkeleton onHamburger={workspace.openSidebar} />
         ) : (
           <NoChatSelected
             hasProjects={hasProjects}
@@ -132,7 +150,19 @@ export function WorkspaceContainer() {
         onSubmit={workspace.submitNewProject}
         onClose={workspace.closeNewProject}
       />
+      <CreateProjectModal
+        open={workspace.ui.createProjectOpen}
+        projects={workspace.projects}
+        onClose={workspace.closeCreateProject}
+        onCreate={workspace.createProject}
+      />
       <CommandPalette items={commandItems} />
+      <SearchPalette
+        search={paletteSearch}
+        open={palette.open}
+        onClose={palette.close}
+        onSelectChat={workspace.selectChat}
+      />
       <ShortcutsOverlay />
     </>
   );

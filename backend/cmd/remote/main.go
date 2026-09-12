@@ -1,10 +1,10 @@
-// remote.futrx: self-hosted Claude Code / Codex chat + terminal-PTY server.
+// remote.futrx is the self-hosted control plane for configured coding agents
+// and their isolated project workspaces.
 //
 // Backend serves:
 //   - Static SPA (Preact/Vite bundle) embedded via go:embed
-//   - HTTP API for chat metadata + per-chat upload
-//   - WS /ws for tmux PTY streaming (terminal SSH bridge, no UI surfaces it)
-//   - WS /ws/chat/{id} for agent streaming
+//   - HTTP APIs for users, agents, chats, projects, files, and operations
+//   - WebSockets for workspace state, agent runs, auth status, and terminals
 
 package main
 
@@ -19,6 +19,7 @@ import (
 	remote "github.com/futrx-com/remote.futrx.com"
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
 	"github.com/futrx-com/remote.futrx.com/internal/config"
+	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/containers/githubcli"
 	containerlighthouse "github.com/futrx-com/remote.futrx.com/internal/integration/containers/lighthouse"
 	containerscreenshot "github.com/futrx-com/remote.futrx.com/internal/integration/containers/screenshot"
@@ -33,6 +34,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/integration/updatecli"
 	service "github.com/futrx-com/remote.futrx.com/internal/service"
 	servicegithistory "github.com/futrx-com/remote.futrx.com/internal/service/githistory"
+	servicemaintenance "github.com/futrx-com/remote.futrx.com/internal/service/maintenance"
 	serviceselfupdate "github.com/futrx-com/remote.futrx.com/internal/service/selfupdate"
 	serviceserverinfo "github.com/futrx-com/remote.futrx.com/internal/service/serverinfo"
 	serviceworkspacefiles "github.com/futrx-com/remote.futrx.com/internal/service/workspacefiles"
@@ -46,6 +48,12 @@ import (
 )
 
 func main() {
+	// This executable is the process composition root. The sections below
+	// follow dependency direction from configuration and outbound adapters to
+	// application policy, inbound transport, and process-owned runtime work.
+
+	// Configuration and composition inputs: load process settings, choose the
+	// executable mode, and validate values shared by the layers composed below.
 	ctx := context.Background()
 	cfg := config.Load()
 	// Non-server subcommands run and exit before anything is started: an
@@ -55,18 +63,28 @@ func main() {
 		return
 	}
 
+	// Persistence adapters: open file-backed repositories and the disposable,
+	// durable indexes they own.
 	storeSet, err := stores.New(cfg.DataDir)
 	if err != nil {
 		log.Fatalf("init stores: %v", err)
 	}
-	lxcClient := lxc.New()
 	publicHostname, err := config.PublicHostname(cfg.BaseURL)
 	if err != nil {
 		log.Fatalf("configure public hostname: %v", err)
 	}
+
+	// Outbound integrations and container composition: bind compiled agent
+	// providers and LXD-backed capabilities behind application-facing contracts.
+	agentModules, err := config.NewAgentModules()
+	if err != nil {
+		log.Fatalf("configure agent modules: %v", err)
+	}
+
+	lxcClient := lxc.New()
 	containerStack := config.NewContainerStack(
 		lxcClient,
-		service.AgentProfiles(),
+		agentModules.Profiles(),
 		config.ContainerStackOptions{
 			AgentInstructions: provisioning.InstructionsTemplate(publicHostname),
 			GlobalSkillsDir:   fileskillsglobal.Dir(cfg.DataDir),
@@ -78,6 +96,17 @@ func main() {
 	// metadata: they sit next to the live workspaces they were taken from.
 	snapshotArchiver := hostarchive.NewArchiver(filesnapshot.ArchiveRoot)
 	projectTrash := hostarchive.NewTrashStorage(filesnapshot.TrashRoot)
+
+	// Application services and startup reconciliation: compose policy from
+	// persistence contracts and outbound capabilities, then initialize it.
+	maintenanceGuard := servicemaintenance.New(cfg.DataDir)
+	selfUpdateService := serviceselfupdate.New(
+		version.Version,
+		cfg.InstallDir,
+		cfg.DataDir,
+		updatecli.New(),
+	)
+
 	tmuxClient := tmuxcli.New()
 	// One host collector serves both the server-info page and the resource
 	// policy, so displayed capacity and enforced capacity never disagree.
@@ -156,8 +185,25 @@ func main() {
 		HealthVitals:            containerStack.Inspection,
 		HealthInterval:          cfg.Health.Interval,
 		AgentContainers:         containerStack.AgentDependencies(),
-		TmuxClient:              tmuxClient,
-		ValidTmuxName:           tmuxcli.ValidName,
+		Push:                    storeSet.Push,
+		AgentModules:            agentModules,
+		AgentAPIKeys:            storeSet.AgentAPIKeys,
+		AgentOptions: service.AgentOptions{
+			CapabilityTimeout:          cfg.Agent.CapabilityTimeout,
+			CapabilityCacheTTL:         cfg.Agent.CapabilityCacheTTL,
+			DegradedCapabilityCacheTTL: cfg.Agent.DegradedCapabilityCacheTTL,
+			CredentialSyncTimeout:      cfg.Agent.CredentialSyncTimeout,
+			BrowserIdleTTL:             cfg.Agent.BrowserIdleTTL,
+		},
+		AuthOptions: service.AuthOptions{
+			PendingLoginTTL:     cfg.Auth.PendingLoginTTL,
+			EnrollmentTTL:       cfg.Auth.EnrollmentTTL,
+			RecoveryCodeCount:   cfg.Auth.RecoveryCodeCount,
+			SessionHistoryLimit: cfg.Auth.SessionHistoryLimit,
+			SetupTokenTTL:       cfg.Auth.SetupTokenTTL,
+		},
+		TmuxClient:    tmuxClient,
+		ValidTmuxName: tmuxcli.ValidName,
 		ScheduleLimits: service.ScheduleLimits{
 			MinInterval:        cfg.Schedule.MinInterval,
 			MaxConcurrentRuns:  cfg.Schedule.MaxConcurrentRuns,
@@ -184,6 +230,7 @@ func main() {
 			Blobs:    storeSet.Visual,
 			Capturer: containerscreenshot.NewAdapter(lxcClient),
 		},
+		PromptStartGate: maintenanceGuard,
 	})
 	if err != nil {
 		log.Fatalf("init services: %v", err)
@@ -198,10 +245,19 @@ func main() {
 	} else if seeded > 0 {
 		log.Printf("global skills: installed %d built-in skills", seeded)
 	}
+	// On a first boot nobody exists to authorise the local-admin claim, so the
+	// setup token is minted and printed here and nowhere else: the operator's
+	// terminal is the one channel a passer-by loading the page cannot reach.
+	// Issuing on every gated start also rotates it, so a token that leaked
+	// before a restart is already dead.
+	announceSetupToken(ctx, serviceSet.Auth, cfg.BaseURL, log.Writer())
 	if err := serviceSet.Reconcile(ctx); err != nil {
 		log.Printf("services: reconcile warning: %v", err)
 	}
 
+	// Inbound delivery and transport adapters: prepare embedded assets and
+	// delivery-facing collaborators, then bind application services to HTTP and
+	// WebSocket endpoints.
 	static, err := fs.Sub(remote.PublicFS, "public")
 	if err != nil {
 		log.Fatal(err)
@@ -213,19 +269,12 @@ func main() {
 		fileproject.WorkspaceRoot,
 		serviceserverinfo.WithBackupProbe(backupProber),
 	)
-	selfUpdateService := serviceselfupdate.New(
-		version.Version,
-		cfg.InstallDir,
-		cfg.DataDir,
-		updatecli.New(),
-		serviceselfupdate.WithAudit(serviceSet.Audit),
-	)
+	selfUpdateService.SetAudit(serviceSet.Audit)
 	workspaceFileService := serviceworkspacefiles.New(hostfs.NewWorkspaceFileStore())
 	codeServerBaseURL, err := config.CodeServerBaseURL(cfg.BaseURL)
 	if err != nil {
 		log.Fatalf("configure IDE URL: %v", err)
 	}
-	workspaceIDEService := serviceworkspaceide.New(codeServerBaseURL, fileproject.WorkspaceRoot)
 
 	handler, err := transport.NewHTTPHandler(transport.Dependencies{
 		Services:       serviceSet,
@@ -237,7 +286,7 @@ func main() {
 		SelfUpdate:     selfUpdateService,
 		Files:          workspaceFileService,
 		GitHistory:     gitHistoryService,
-		IDE:            workspaceIDEService,
+		IDE:            serviceworkspaceide.New(codeServerBaseURL, fileproject.WorkspaceRoot),
 		Templates:      containerStack.Templates,
 		TrashRetention: cfg.Trash.Retention,
 	})
@@ -245,9 +294,18 @@ func main() {
 		log.Fatalf("init http handler: %v", err)
 	}
 
-	srv := transport.NewHTTPServer(cfg.Addr(), handler)
-	log.Printf("remote.futrx listening on %s", cfg.Addr())
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	// Runtime lifecycle: launch process-owned background work and start the
+	// HTTP listener. Background scheduling stays at this composition boundary.
+	address := cfg.Addr()
+	server := transport.NewHTTPServer(address, handler)
+	startChatIndexWarmup(
+		ctx,
+		storeSet,
+		configconstants.StartupChatIndexWarmupChatLimit,
+		log.Default(),
+	)
+	log.Printf("remote.futrx listening on %s", address)
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
 }

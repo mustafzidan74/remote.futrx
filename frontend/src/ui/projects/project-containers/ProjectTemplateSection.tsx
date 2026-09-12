@@ -5,7 +5,7 @@ import type {
   ProjectTemplateAdmin,
   ProjectTemplateStatus,
 } from "../../../models/template";
-import type { SecretsRecord } from "../../../state/projects/projectContainerRecords";
+import type { SecretsRecord } from "../../../models/project";
 import { Copy, ExternalLink, Eye, EyeOff } from "../../primitives/icons";
 import { Field, Grid, Panel } from "./ProjectContainerPrimitives";
 import { formatEpochMillis } from "./projectContainerFormat";

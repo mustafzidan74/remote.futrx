@@ -54,11 +54,16 @@ func DefaultPriceTable() PriceTable {
 			{Match: "sonnet", Label: "Claude Sonnet (alias)", InputPerMTok: 3, OutputPerMTok: 15, CacheReadPerMTok: 0.3, CacheWritePerMTok: 3.75},
 			{Match: "haiku", Label: "Claude Haiku (alias)", InputPerMTok: 1, OutputPerMTok: 5, CacheReadPerMTok: 0.1, CacheWritePerMTok: 1.25},
 
-			// OpenAI — Codex reports tokens only.
-			{Match: "gpt-5-codex", Label: "GPT-5 Codex", InputPerMTok: 1.25, OutputPerMTok: 10, CacheReadPerMTok: 0.125},
-			{Match: "gpt-5-mini", Label: "GPT-5 mini", InputPerMTok: 0.25, OutputPerMTok: 2, CacheReadPerMTok: 0.025},
-			{Match: "gpt-5-nano", Label: "GPT-5 nano", InputPerMTok: 0.05, OutputPerMTok: 0.4, CacheReadPerMTok: 0.005},
-			{Match: "gpt-5", Label: "GPT-5", InputPerMTok: 1.25, OutputPerMTok: 10, CacheReadPerMTok: 0.125},
+			// OpenAI — Codex reports tokens only. GPT-5.6 bills cache writes at
+			// 1.25x ordinary input; earlier models use the ordinary input rate if
+			// they ever report a write bucket.
+			{Match: "gpt-5.6-terra", Label: "GPT-5.6 Terra", InputPerMTok: 2, OutputPerMTok: 12, CacheReadPerMTok: 0.2, CacheWritePerMTok: 2.5},
+			{Match: "gpt-5.6-luna", Label: "GPT-5.6 Luna", InputPerMTok: 0.2, OutputPerMTok: 1.2, CacheReadPerMTok: 0.02, CacheWritePerMTok: 0.25},
+			{Match: "gpt-5.6", Label: "GPT-5.6 Sol", InputPerMTok: 4, OutputPerMTok: 20, CacheReadPerMTok: 0.4, CacheWritePerMTok: 5},
+			{Match: "gpt-5-codex", Label: "GPT-5 Codex", InputPerMTok: 1.25, OutputPerMTok: 10, CacheReadPerMTok: 0.125, CacheWritePerMTok: 1.25},
+			{Match: "gpt-5-mini", Label: "GPT-5 mini", InputPerMTok: 0.25, OutputPerMTok: 2, CacheReadPerMTok: 0.025, CacheWritePerMTok: 0.25},
+			{Match: "gpt-5-nano", Label: "GPT-5 nano", InputPerMTok: 0.05, OutputPerMTok: 0.4, CacheReadPerMTok: 0.005, CacheWritePerMTok: 0.05},
+			{Match: "gpt-5", Label: "GPT-5", InputPerMTok: 1.25, OutputPerMTok: 10, CacheReadPerMTok: 0.125, CacheWritePerMTok: 1.25},
 
 			// Moonshot — kimi-code emits no usage today, so this only applies
 			// if a future CLI version starts reporting tokens.

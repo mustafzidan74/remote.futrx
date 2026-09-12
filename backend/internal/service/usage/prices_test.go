@@ -19,6 +19,8 @@ func TestPriceTableLookupPrefersTheLongestMatch(t *testing.T) {
 		{model: "claude-opus-4-5", want: "claude-opus-4", found: true},
 		{model: "sonnet", want: "sonnet", found: true},
 		{model: "gpt-5-codex", want: "gpt-5-codex", found: true},
+		{model: "gpt-5.6-terra", want: "gpt-5.6-terra", found: true},
+		{model: "gpt-5.6-sol", want: "gpt-5.6", found: true},
 		{model: "gpt-5-mini", want: "gpt-5-mini", found: true},
 		{model: "gpt-5", want: "gpt-5", found: true},
 		{model: "kimi-k2-turbo-preview", want: "kimi-k2", found: true},
@@ -37,6 +39,21 @@ func TestPriceTableLookupPrefersTheLongestMatch(t *testing.T) {
 				t.Fatalf("matched %q, want %q", price.Match, test.want)
 			}
 		})
+	}
+}
+
+func TestDefaultOpenAIPricesIncludeCacheWrites(t *testing.T) {
+	table, err := DefaultPriceTable().Normalize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	price, ok := table.Lookup("gpt-5.6-sol")
+	if !ok {
+		t.Fatal("missing GPT-5.6 price")
+	}
+	if price.InputPerMTok != 4 || price.CacheReadPerMTok != 0.4 ||
+		price.CacheWritePerMTok != 5 || price.OutputPerMTok != 20 {
+		t.Fatalf("unexpected GPT-5.6 prices: %+v", price)
 	}
 }
 

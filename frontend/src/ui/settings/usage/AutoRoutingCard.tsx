@@ -1,6 +1,6 @@
 import type { RoutingUsageSummary } from "../../../models/modelRouting";
 import { cheapShare, savingsNote } from "../../../state/settings/modelRoutingState";
-import { formatUsd } from "../../../state/usage/usageChartModel";
+import { usageFormatService } from "../../../services/usage/usageFormatService.ts";
 import { Zap } from "../../primitives/icons";
 
 /**
@@ -51,7 +51,7 @@ export function AutoRoutingCard({ summary }: { summary: RoutingUsageSummary }) {
             />
             <Stat
               label="Estimated saved"
-              value={formatUsd(saved)}
+              value={usageFormatService.usd(saved)}
               detail={`vs ${summary.defaultModel || "the default model"}`}
               tone={savedTone}
             />
@@ -71,8 +71,8 @@ export function AutoRoutingCard({ summary }: { summary: RoutingUsageSummary }) {
               </div>
               <div class="mt-1 text-[11.5px] text-ink-300">
                 {Math.round(share * 100)}% of routed runs went cheap ·{" "}
-                {formatUsd(summary.routedCostUsd)} actual vs{" "}
-                {formatUsd(summary.baselineCostUsd)} baseline
+                {usageFormatService.usd(summary.routedCostUsd)} actual vs{" "}
+                {usageFormatService.usd(summary.baselineCostUsd)} baseline
               </div>
             </div>
           )}
@@ -92,7 +92,7 @@ export function AutoRoutingCard({ summary }: { summary: RoutingUsageSummary }) {
                       {rule.label}
                     </span>
                     <span class="flex-none text-[12px] tabular-nums text-ink-300">
-                      {rule.runs} {rule.runs === 1 ? "run" : "runs"} · {formatUsd(rule.costUsd)}
+                      {rule.runs} {rule.runs === 1 ? "run" : "runs"} · {usageFormatService.usd(rule.costUsd)}
                     </span>
                   </li>
                 ))}

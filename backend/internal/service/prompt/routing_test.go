@@ -222,3 +222,7 @@ func readEvents(t *testing.T, store servicechat.Repository, id servicechat.ID) [
 	}
 	return events
 }
+
+func (p *requestProvider) Capabilities(context.Context, agent.CapabilityRequest) (agent.Capabilities, error) {
+	return agent.Capabilities{}, nil
+}

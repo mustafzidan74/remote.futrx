@@ -1,10 +1,12 @@
 import type { ChatMeta } from "../../../models/chat";
 import type { ProjectMeta } from "../../../models/project";
+import { useConfirm } from "../../context/ConfirmContext";
 import { useWorkspaceContext } from "../../context/WorkspaceContext";
 import { chatApi } from "../../../api/chatApi";
 
 export function useWorkspaceCommands() {
   const workspace = useWorkspaceContext();
+  const confirm = useConfirm();
 
   // Opens the new-project dialog, which owns the name field and the template
   // picker. Errors surface inside the dialog rather than in an alert().
@@ -22,12 +24,14 @@ export function useWorkspaceCommands() {
 
   async function deleteChat(chat: ChatMeta, event: Event) {
     event.stopPropagation();
-    if (!confirm(`Delete chat "${chat.title}"? This removes its history.`)) return;
-    try {
-      await workspace.deleteChat(chat.id);
-    } catch (error) {
-      alert("delete failed: " + (error as Error).message);
-    }
+    await confirm({
+      title: "Delete chat",
+      description: "This action cannot be undone.",
+      message: `"${chat.title || "Untitled chat"}" and its full message history will be permanently removed.`,
+      confirmLabel: "Delete chat",
+      pendingLabel: "Deleting\u2026",
+      action: () => workspace.deleteChat(chat.id),
+    });
   }
 
   async function toggleChatUnread(chat: ChatMeta, event: Event) {
@@ -66,18 +70,15 @@ export function useWorkspaceCommands() {
       chatsInProject > 0
         ? ` The ${chatsInProject} chat${chatsInProject === 1 ? "" : "s"} inside it are removed for good.`
         : "";
-    const message =
-      `Delete project "${project.name}"?
-
-` +
-      "The container is destroyed and the project moves to Trash for 7 days, where " +
-      `it can be restored from Settings -> Trash.${chatNote}`;
-    if (!confirm(message)) return;
-    try {
-      await workspace.deleteProject(project.id);
-    } catch (error) {
-      alert("delete failed: " + (error as Error).message);
-    }
+    await confirm({
+      title: "Delete project",
+      description: "The project can be restored from Settings -> Trash for 7 days.",
+      message:
+        `The container for "${project.name}" is destroyed and the project moves to Trash.${chatNote}`,
+      confirmLabel: "Move to Trash",
+      pendingLabel: "Moving to Trash\u2026",
+      action: () => workspace.deleteProject(project.id),
+    });
   }
 
   async function startProject(project: ProjectMeta, event: Event) {

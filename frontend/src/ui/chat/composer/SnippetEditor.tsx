@@ -8,7 +8,7 @@ import {
   normalizeShortcut,
   parseTags,
   validateSnippetInput,
-} from "../../../state/chat/snippetState";
+} from "../../../state/hooks/chat/snippetState";
 import { Globe, Loader } from "../../primitives/icons";
 
 /**

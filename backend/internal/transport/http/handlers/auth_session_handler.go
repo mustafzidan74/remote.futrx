@@ -28,6 +28,7 @@ func (h *authSessionHandler) logout(w http.ResponseWriter, r *http.Request) {
 	)
 	if session, err := h.auth.CurrentSession(r.Context(), httptransport.SessionCookieValue(r)); err == nil && session != nil {
 		entry.Actor = serviceaudit.Actor{Email: session.Email, Sub: session.Sub}
+		_ = h.auth.RevokeSession(r.Context(), session.Email)
 	}
 	if h.audit != nil {
 		h.audit.Record(r.Context(), entry)

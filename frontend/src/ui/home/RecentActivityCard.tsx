@@ -1,6 +1,6 @@
 import type { DashboardRun } from "../../models/dashboard";
 import { formatRelative } from "../../state/home/dashboardState";
-import { formatTokens, formatUsd } from "../../state/usage/usageChartModel";
+import { usageFormatService } from "../../services/usage/usageFormatService.ts";
 import { CardEmpty, CardSkeleton, DashboardCard, ToneDot } from "./DashboardCard";
 import { Activity, CalendarClock } from "../primitives/icons";
 
@@ -83,13 +83,13 @@ export function RecentActivityCard({
                       ? "running"
                       : run.costUsd == null
                         ? "—"
-                        : `${run.estimated ? "~" : ""}${formatUsd(run.costUsd)}`}
+                        : `${run.estimated ? "~" : ""}${usageFormatService.usd(run.costUsd)}`}
                   </div>
                   <div class="mt-0.5 text-[11px] tabular-nums text-ink-400">
                     {run.status === "running"
                       ? formatRelative(run.startedAt, now)
                       : run.totalTokens
-                        ? `${formatTokens(run.totalTokens)} · ${formatRelative(run.finishedAt, now)}`
+                        ? `${usageFormatService.tokens(run.totalTokens)} · ${formatRelative(run.finishedAt, now)}`
                         : formatRelative(run.finishedAt, now)}
                   </div>
                 </div>

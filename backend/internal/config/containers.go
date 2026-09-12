@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
+	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
 	containeragentendpoint "github.com/futrx-com/remote.futrx.com/internal/integration/containers/agentendpoint"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/containers/assets"
 	containerbaseimage "github.com/futrx-com/remote.futrx.com/internal/integration/containers/baseimage"
@@ -19,6 +20,7 @@ import (
 	containermcp "github.com/futrx-com/remote.futrx.com/internal/integration/containers/mcp"
 	containernetwork "github.com/futrx-com/remote.futrx.com/internal/integration/containers/network"
 	containerresources "github.com/futrx-com/remote.futrx.com/internal/integration/containers/resources"
+	containerruntimeassets "github.com/futrx-com/remote.futrx.com/internal/integration/containers/runtimeassets"
 	containerscheduletools "github.com/futrx-com/remote.futrx.com/internal/integration/containers/scheduletools"
 	containerschedulework "github.com/futrx-com/remote.futrx.com/internal/integration/containers/schedulework"
 	containersecrets "github.com/futrx-com/remote.futrx.com/internal/integration/containers/secrets"
@@ -66,13 +68,14 @@ type ContainerStack struct {
 	ScheduleTools  *containerscheduletools.Adapter
 	// ScheduleWork runs the in-container probes scheduled tasks need: the
 	// commandExitCode gate and the before/after git capture of run history.
-	ScheduleWork *containerschedulework.Adapter
-	Listeners    *containerlisteners.Scanner
-	Network      *containernetwork.Repairer
-	Workspace    *containerworkspace.Provisioner
-	Images       *serviceimage.Builder
-	Templates    *servicetemplates.Service
-	Database     *containerdatabase.Adapter
+	ScheduleWork  *containerschedulework.Adapter
+	Listeners     *containerlisteners.Scanner
+	Network       *containernetwork.Repairer
+	Workspace     *containerworkspace.Provisioner
+	RuntimeAssets *containerruntimeassets.Adapter
+	Images        *serviceimage.Builder
+	Templates     *servicetemplates.Service
+	Database      *containerdatabase.Adapter
 	// Preparer remaps a host directory into the container idmap. Snapshot
 	// restores reuse the very adapter the launch path uses, so a restored
 	// workspace is owned exactly like a freshly created one.
@@ -120,6 +123,7 @@ func (s ContainerStack) AgentDependencies() provisioning.ContainerDependencies {
 		CLI:           s.CLI,
 		Credentials:   s.Credentials,
 		Workspace:     s.Workspace,
+		RuntimeAssets: s.RuntimeAssets,
 		Browser:       s.Browser,
 		ScheduleTools: s.ScheduleTools,
 		Lifecycle:     s.Lifecycle,
@@ -147,7 +151,7 @@ func NewContainerStack(
 		Provisioner: browserAdapter,
 		Runtime:     browserAdapter,
 		Tooling:     browserAdapter,
-	}, containerbrowser.VNCPort)
+	}, configconstants.ProjectPreviewAgentBrowserPort)
 	codeServer := containercodeserver.NewProvisioner(runner)
 	scheduleTools := containerscheduletools.NewAdapter(runner, publisher)
 	workspace := containerworkspace.NewProvisioner(
@@ -157,6 +161,7 @@ func NewContainerStack(
 		options.AgentInstructions,
 		containerworkspace.WithGlobalSkillLibrary(options.GlobalSkillsDir),
 	)
+	runtimeAssets := containerruntimeassets.NewAdapter(runner, publisher)
 	images := serviceimage.NewBuilder(
 		containerbaseimage.NewClient(runner),
 		profiles,
@@ -185,6 +190,7 @@ func NewContainerStack(
 		preparer,
 		resources,
 		launchProvisioner,
+		profiles,
 		templates,
 	)
 	inspectionAdapter := containerinspection.NewAdapter(
@@ -203,21 +209,22 @@ func NewContainerStack(
 
 	return ContainerStack{
 		Lifecycle:      lifecycle,
-		Resources:      resources,
 		Inspection:     inspection,
 		Credentials:    credentials,
 		Environment:    environment,
-		Secrets:        vaultSecrets,
-		MCP:            mcpServers,
-		AgentEndpoints: containeragentendpoint.NewClient(runner),
 		CLI:            cli,
 		Browser:        browser,
 		ScheduleTools:  scheduleTools,
-		ScheduleWork:   containerschedulework.NewAdapter(runner),
 		Listeners:      listeners,
 		Network:        network,
 		Workspace:      workspace,
+		RuntimeAssets:  runtimeAssets,
 		Images:         images,
+		Resources:      resources,
+		Secrets:        vaultSecrets,
+		MCP:            mcpServers,
+		AgentEndpoints: containeragentendpoint.NewClient(runner),
+		ScheduleWork:   containerschedulework.NewAdapter(runner),
 		Templates:      templates,
 		Database:       containerdatabase.NewAdapter(runner),
 		Preparer:       preparer,

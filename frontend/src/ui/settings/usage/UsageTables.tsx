@@ -1,9 +1,6 @@
 import type { ComponentChildren } from "preact";
 import type { UsageGroup, UsageGroupBy, UsageRecord } from "../../../models/usage";
-import {
-  formatTokens,
-  formatUsd,
-} from "../../../state/usage/usageChartModel";
+import { usageFormatService } from "../../../services/usage/usageFormatService.ts";
 import { Activity, ChevronRight, Loader, X } from "../../primitives/icons";
 import { EmptyState } from "../../primitives/Feedback";
 
@@ -62,17 +59,15 @@ export function UsageGroupTable({
             {groups.map((group) => (
               <tr
                 key={group.key || group.label}
-                class={`border-t border-white/[0.06] ${
-                  drillable ? "cursor-pointer hover:bg-white/[0.04]" : ""
+                class={`border-t border-line ${
+                  drillable ? "cursor-pointer hover:bg-tint" : ""
                 }`}
                 onClick={drillable ? () => onDrillDown(group) : undefined}
               >
-                <td dir="auto" class="bidi-auto px-2 py-2 text-ink-100 truncate max-w-[220px]" title={group.label}>
-                  {group.label}
-                </td>
-                <td class="px-2 py-2 text-right text-ink-200 font-mono tabular-nums">{group.runs}</td>
-                <td class="px-2 py-2 text-right text-ink-200 font-mono tabular-nums">
-                  {formatTokens(group.totalTokens)}
+                <td class="px-2 py-2 text-ink-100 truncate max-w-[220px]">{group.label}</td>
+                <td class="px-2 py-2 text-right text-ink-200 font-mono">{group.runs}</td>
+                <td class="px-2 py-2 text-right text-ink-200 font-mono">
+                  {usageFormatService.tokens(group.totalTokens)}
                 </td>
                 <td class="px-2 py-2 text-right font-mono tabular-nums text-ink-50">
                   <CostCell
@@ -124,7 +119,7 @@ export function UsageRecordsTable({
         <button
           type="button"
           onClick={onClose}
-          class="h-8 w-8 rounded-md text-ink-300 hover:text-ink-50 hover:bg-white/[0.08] grid place-items-center"
+          class="h-8 w-8 rounded-md text-ink-300 hover:text-ink-50 hover:bg-tint-strong grid place-items-center"
           aria-label="Close run list"
         >
           <X class="w-4 h-4" />
@@ -157,7 +152,7 @@ export function UsageRecordsTable({
                 {records.map((record) => (
                   <tr
                     key={`${record.chatId}-${record.at}`}
-                    class="border-t border-white/[0.06] align-top"
+                    class="border-t border-line align-top"
                   >
                     <td class="px-2 py-2 text-ink-300 font-mono tabular-nums whitespace-nowrap">
                       {formatUtcDateTime(record.at)}
@@ -174,14 +169,14 @@ export function UsageRecordsTable({
                     <td class="px-2 py-2 text-ink-200 truncate max-w-[180px]" title={record.model || record.provider}>
                       {record.model || record.provider || "—"}
                     </td>
-                    <td class="px-2 py-2 text-right text-ink-200 font-mono tabular-nums">
-                      {formatTokens(record.inputTokens)}
+                    <td class="px-2 py-2 text-right text-ink-200 font-mono">
+                      {usageFormatService.tokens(record.inputTokens)}
                     </td>
-                    <td class="px-2 py-2 text-right text-ink-200 font-mono tabular-nums">
-                      {formatTokens(record.outputTokens)}
+                    <td class="px-2 py-2 text-right text-ink-200 font-mono">
+                      {usageFormatService.tokens(record.outputTokens)}
                     </td>
-                    <td class="px-2 py-2 text-right text-ink-300 font-mono tabular-nums">
-                      {formatTokens(record.cacheReadTokens + record.cacheWriteTokens)}
+                    <td class="px-2 py-2 text-right text-ink-300 font-mono">
+                      {usageFormatService.tokens(record.cacheReadTokens + record.cacheWriteTokens)}
                     </td>
                     <td class="px-2 py-2 text-right font-mono tabular-nums text-ink-50">
                       {record.costUsd == null ? (
@@ -191,7 +186,7 @@ export function UsageRecordsTable({
                       ) : (
                         <span title={record.estimated ? "Estimated from the price table" : "Reported by the provider"}>
                           {record.estimated ? "~" : ""}
-                          {formatUsd(record.costUsd)}
+                          {usageFormatService.usd(record.costUsd)}
                         </span>
                       )}
                     </td>
@@ -205,7 +200,7 @@ export function UsageRecordsTable({
               type="button"
               onClick={onLoadMore}
               disabled={loading}
-              class="mt-2 h-9 px-3 rounded-md bg-white/[0.08] hover:bg-white/[0.12] text-[13px]
+              class="mt-2 h-9 px-3 rounded-md bg-tint-strong hover:bg-tint-active text-[13px]
                      text-ink-100 disabled:opacity-60"
             >
               {loading ? "Loading…" : "Load more runs"}
@@ -228,7 +223,7 @@ function CostCell({
 }) {
   const allEstimated = cost > 0 && estimated >= cost;
   const title = [
-    estimated > 0 ? `${formatUsd(estimated)} estimated from the price table` : null,
+    estimated > 0 ? `${usageFormatService.usd(estimated)} estimated from the price table` : null,
     unpriced > 0 ? `${unpriced} run${unpriced === 1 ? "" : "s"} with unknown cost` : null,
   ]
     .filter(Boolean)
@@ -236,8 +231,8 @@ function CostCell({
   return (
     <span title={title || "Reported by the provider"}>
       {allEstimated ? "~" : ""}
-      {formatUsd(cost)}
-      {!allEstimated && estimated > 0 && <span class="text-ink-300">*</span>}
+      {usageFormatService.usd(cost)}
+      {!allEstimated && estimated > 0 && <span class="text-ink-400">*</span>}
     </span>
   );
 }
@@ -254,8 +249,8 @@ export function UsagePanel({
   children: ComponentChildren;
 }) {
   return (
-    <section class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-      <header class="px-4 py-3 border-b border-white/[0.06] flex items-start gap-3">
+    <section class="rounded-card border border-line bg-surface overflow-hidden">
+      <header class="px-4 py-3 border-b border-line flex items-start gap-3">
         <div class="flex-1 min-w-0">
           <div class="text-[14.5px] font-semibold text-ink-50">{title}</div>
           <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug">{description}</div>

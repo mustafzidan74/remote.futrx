@@ -1,16 +1,21 @@
+import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { ChatMeta } from "../../models/chat";
 import type { ProjectHealth } from "../../models/health";
 import type { ProjectMeta } from "../../models/project";
+import type { DropPosition } from "../../models/workspace";
 import { ChevronDown, ChevronRight, Loader, Plus, Settings } from "../primitives/icons";
 import { ProjectPreviewButton } from "../preview/ProjectPreviewButton";
 import { ChatRow } from "./ChatRow";
 import { ProjectStatusDot } from "./ProjectStatusDot";
 
+const projectActionClass =
+  "grid h-7 w-7 place-items-center rounded-control text-ink-400 transition-colors " +
+  "hover:bg-tint-strong hover:text-ink-50";
+
 export function ProjectGroup({
   project,
   health,
   chats,
-  visibleChats,
   activeChatId,
   collapsed,
   onToggle,
@@ -23,16 +28,16 @@ export function ProjectGroup({
   onForkChat,
   draggable,
   dragging,
-  dragOver,
+  dropPosition,
   onDragStart,
   onDragOver,
+  onDragLeave,
   onDrop,
   onDragEnd,
 }: {
   project: ProjectMeta;
   health?: ProjectHealth;
   chats: ChatMeta[];
-  visibleChats: ChatMeta[];
   activeChatId: string | null;
   collapsed: boolean;
   onToggle: () => void;
@@ -46,91 +51,99 @@ export function ProjectGroup({
   onForkChat: (chat: ChatMeta, event: Event) => void;
   draggable?: boolean;
   dragging?: boolean;
-  dragOver?: boolean;
+  dropPosition?: DropPosition | null;
   onDragStart?: (event: DragEvent) => void;
   onDragOver?: (event: DragEvent) => void;
+  onDragLeave?: (event: DragEvent) => void;
   onDrop?: (event: DragEvent) => void;
   onDragEnd?: (event: DragEvent) => void;
 }) {
   const provisioning = project.status === "provisioning";
   const hasUnread = chats.some((chat) => (chat.lastMessageAt || 0) > (chat.lastReadAt || 0));
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const [moreBelow, setMoreBelow] = useState(false);
+
+  // The clipped list gives no hint that chats continue past the fold, so we
+  // track the remaining scroll distance and fade the last visible row.
+  useLayoutEffect(() => {
+    const node = listRef.current;
+    if (collapsed || !node) {
+      setMoreBelow(false);
+      return;
+    }
+    const measure = () =>
+      setMoreBelow(node.scrollHeight - node.scrollTop - node.clientHeight > 1);
+    measure();
+    node.addEventListener("scroll", measure, { passive: true });
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => {
+      node.removeEventListener("scroll", measure);
+      observer.disconnect();
+    };
+  }, [collapsed, chats.length]);
 
   return (
     <div
-      class={`min-h-0 rounded-lg transition ${dragging ? "opacity-55" : ""} ${dragOver ? "ring-1 ring-accent-blue/60 bg-accent-blue/[0.08]" : ""}`}
-      draggable={draggable}
-      onDragStart={onDragStart as any}
+      class={`relative min-h-0 rounded-card transition ${dragging ? "opacity-40" : ""}`}
       onDragOver={onDragOver as any}
+      onDragLeave={onDragLeave as any}
       onDrop={onDrop as any}
-      onDragEnd={onDragEnd as any}
     >
-      {/*
-        The resting row is only "status dot, name, slug" — the settings, preview
-        and new-chat controls float over the right edge and appear on hover or
-        keyboard focus, and stay permanently visible where there is no hover
-        (see `.sidebar-project-row-actions` in index.css).
-      */}
-      <div class="group relative flex items-stretch gap-0.5 rounded-md hover:bg-white/[0.04]">
+      {/* A line in the gap, not a tint on the whole group: it says where the
+          project lands, which a block highlight cannot express. */}
+      {dropPosition && (
+        <div
+          aria-hidden="true"
+          class={`pointer-events-none absolute inset-x-1 z-10 h-0.5 rounded-full bg-accent-blue
+                  ${dropPosition === "before" ? "-top-px" : "-bottom-px"}`}
+        />
+      )}
+
+      <div
+        class={`group/head flex items-center rounded-control pr-1 hover:bg-tint
+                ${draggable ? "cursor-grab active:cursor-grabbing" : ""}`}
+        draggable={draggable}
+        onDragStart={onDragStart as any}
+        onDragEnd={onDragEnd as any}
+      >
         <button
           type="button"
           onClick={onToggle}
-          class="w-7 flex-none grid place-items-center text-ink-300 hover:text-ink-100"
-          aria-label={collapsed ? `Collapse ${project.name}` : `Expand ${project.name}`}
+          class="flex min-w-0 flex-1 items-center gap-1.5 py-1.5 pl-1 pr-1 text-left"
           aria-expanded={!collapsed}
-          title={collapsed ? "Expand" : "Collapse"}
+          aria-label={collapsed ? `Expand ${project.name}` : `Collapse ${project.name}`}
         >
-          {collapsed ? <ChevronRight class="w-4 h-4" /> : <ChevronDown class="w-4 h-4" />}
-        </button>
-        <div class="sidebar-project-row-label flex-1 min-w-0 py-2 pe-1 flex items-center gap-2">
+          <span class="grid h-4 w-4 flex-none place-items-center text-ink-400">
+            {collapsed ? <ChevronRight class="h-3.5 w-3.5" /> : <ChevronDown class="h-3.5 w-3.5" />}
+          </span>
           <ProjectStatusDot project={project} health={health} onOpen={onOpenContainer} />
+          <span class="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-300">
+            {project.name}
+          </span>
           {hasUnread && (
-            <span class="flex-none w-2 h-2 rounded-full bg-accent-green animate-pulse shadow-[0_0_0_3px_rgba(43,213,118,0.12)]" title="Unread chats" />
+            <span
+              class="h-1.5 w-1.5 flex-none rounded-full bg-accent-green"
+              title="Unread chats"
+            />
           )}
-          {/*
-            Clicking the name opens the project's newest chat, which is what
-            "open this project" means in practice; the chevron still expands
-            the group and the gear still opens the settings page.
-          */}
-          <button
-            type="button"
-            onClick={onOpenProject}
-            class="flex-1 min-w-0 text-left"
-            title={
-              chats.length > 0
-                ? `Open the latest chat in ${project.name}`
-                : `Start a chat in ${project.name}`
-            }
-          >
-            <div
-              dir="auto"
-              class="bidi-auto text-[13.5px] leading-tight truncate font-medium text-ink-100"
-            >
-              {project.name}
-            </div>
-            <div class="text-[11px] text-ink-300 truncate font-mono">
-              {project.slug}
-              {chats.length > 0 && (
-                <span class="ms-1.5 tabular-nums">
-                  · {chats.length} chat{chats.length === 1 ? "" : "s"}
-                </span>
-              )}
-            </div>
-          </button>
-        </div>
-        <div class="sidebar-project-row-actions hover-actions">
+          {provisioning && <Loader class="h-3 w-3 flex-none animate-spin text-accent-yellow" />}
+        </button>
+
+        {/* Project-level actions stay out of the way until the header is touched. */}
+        <div class="flex flex-none items-center gap-0.5 md:opacity-0 md:transition-opacity md:group-hover/head:opacity-100 md:group-focus-within/head:opacity-100">
           <button
             type="button"
             onClick={(event) => {
               event.stopPropagation();
               onOpenContainer();
             }}
-            class="h-10 w-10 rounded-md grid place-items-center text-ink-300 hover:text-ink-50 hover:bg-white/[0.08]"
+            class={projectActionClass}
             aria-label={`Open container info for ${project.name}`}
             title="Project settings"
           >
-            <Settings class="w-4 h-4" />
+            <Settings class="h-3.5 w-3.5" />
           </button>
-          <ProjectPreviewButton project={project} />
           <button
             type="button"
             onClick={(event) => {
@@ -138,37 +151,44 @@ export function ProjectGroup({
               onNewChat();
             }}
             disabled={provisioning}
-            class="h-10 w-10 grid place-items-center text-ink-300 hover:text-ink-50 hover:bg-white/[0.08]
-                   rounded-md disabled:opacity-40 disabled:cursor-not-allowed"
-            aria-label={`New chat in ${project.name}`}
+            class={`${projectActionClass} disabled:cursor-not-allowed disabled:opacity-40`}
+            aria-label="New chat in project"
             title={provisioning ? "Project is still provisioning" : "New chat in this project"}
           >
-            {provisioning ? <Loader class="w-4 h-4 animate-spin" /> : <Plus class="w-4 h-4" />}
+            <Plus class="h-3.5 w-3.5" />
           </button>
+          <ProjectPreviewButton project={project} />
         </div>
       </div>
 
       {project.errorMsg && (
-        <div dir="ltr" class="bidi-ltr ms-7 mt-1 me-1 text-[11px] text-accent-red bg-accent-red/10 border border-accent-red/30 rounded-md px-2 py-1.5 break-words font-mono">
+        <div
+          class="mx-1 mt-1 line-clamp-2 rounded-control border border-accent-red/25 bg-accent-red/[0.08] px-2 py-1.5 font-mono text-[11px] leading-relaxed text-accent-red break-words"
+          title={project.errorMsg}
+        >
           {project.errorMsg}
         </div>
       )}
 
       {!collapsed && (
-        <div class="sidebar-project-chat-list ml-5 pl-2 pr-1 mt-1 space-y-0.5 border-l border-white/[0.08] overflow-y-auto touch-scroll scrollbar-thin">
-          {visibleChats.length === 0 ? (
+        <div class="sidebar-project-chat-frame relative mb-1 mt-1.5">
+        <div
+          ref={listRef}
+          class="sidebar-project-chat-list space-y-px overflow-y-auto pl-3 pr-0.5 touch-scroll scrollbar-thin"
+        >
+          {chats.length === 0 ? (
             <button
               type="button"
               onClick={onNewChat}
               disabled={provisioning}
-              class="ml-2 mt-1 mb-2 inline-flex items-center gap-1.5 h-8 px-2 rounded
-                     text-[12px] text-ink-300 hover:text-ink-100 hover:bg-white/[0.06]
-                     disabled:opacity-40 disabled:cursor-not-allowed"
+              class="mb-1 ml-2 inline-flex h-7 items-center gap-1.5 rounded-control px-2
+                     text-[12px] text-ink-400 transition-colors hover:bg-tint hover:text-ink-100
+                     disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <Plus class="w-3.5 h-3.5" /> New chat
+              <Plus class="h-3.5 w-3.5" /> New chat
             </button>
           ) : (
-            visibleChats.map((chat) => (
+            chats.map((chat) => (
               <ChatRow
                 key={chat.id}
                 chat={chat}
@@ -180,6 +200,8 @@ export function ProjectGroup({
               />
             ))
           )}
+        </div>
+        {moreBelow && <div class="sidebar-project-chat-fade" aria-hidden="true" />}
         </div>
       )}
     </div>

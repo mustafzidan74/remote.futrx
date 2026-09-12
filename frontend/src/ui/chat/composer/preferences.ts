@@ -1,9 +1,11 @@
 import type {
   ChatMode,
   ChatModelPolicy,
+  ApprovalPolicy,
   ChatProvider,
   ReasoningEffort,
   ServiceTier,
+  SandboxPolicy,
 } from "../../../models/chat";
 import type { RoutingDecision } from "../../../models/modelRouting";
 
@@ -13,6 +15,8 @@ export interface ComposerPreferences {
   mode: ChatMode;
   reasoningEffort: ReasoningEffort;
   serviceTier: ServiceTier;
+  approvalPolicy: ApprovalPolicy;
+  sandboxPolicy: SandboxPolicy;
   /** Whether the chat is pinned to the model above or routed per turn. */
   modelPolicy: ChatModelPolicy;
   /**
@@ -34,6 +38,7 @@ export interface ComposerRoutingHint {
 }
 
 export interface ComposerPreferenceActions {
+  changeAgent: (provider: ChatProvider, model: string) => void;
   changeProvider: (provider: ChatProvider) => void;
   changeModel: (model: string) => void;
   changeModelPolicy: (policy: ChatModelPolicy) => void;
@@ -44,7 +49,9 @@ export interface ComposerPreferenceActions {
    * ids it may ask for.
    */
   changeEndpoint: (endpointId: string, cli: ChatProvider, model: string) => void;
-  changeMode: (mode: ChatMode) => void;
+  changeMode: (mode: ChatMode, modelPreset?: string, reasoningPreset?: string) => void;
   changeReasoningEffort: (reasoningEffort: ReasoningEffort) => void;
   changeServiceTier: (serviceTier: ServiceTier) => void;
+  changeApprovalPolicy: (approvalPolicy: ApprovalPolicy) => void;
+  changeSandboxPolicy: (sandboxPolicy: SandboxPolicy) => void;
 }

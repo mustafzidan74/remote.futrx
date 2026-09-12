@@ -493,7 +493,7 @@ func readProjectSkill(workspace, name string) (map[string]string, error) {
 	if strings.TrimSpace(workspace) == "" {
 		return nil, ErrProjectSkillNotFound
 	}
-	for _, root := range projectRoots(workspace) {
+	for _, root := range (&Service{}).projectRoots(workspace, "") {
 		directory := filepath.Join(root.path, name)
 		if _, err := os.Stat(filepath.Join(directory, SkillFileName)); err != nil {
 			continue

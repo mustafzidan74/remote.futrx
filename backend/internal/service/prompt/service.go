@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path"
 	"strings"
 	"time"
 
 	"github.com/futrx-com/remote.futrx.com/internal/agent"
+	agentmodule "github.com/futrx-com/remote.futrx.com/internal/service/agent/module"
 	"github.com/futrx-com/remote.futrx.com/internal/service/audit"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
@@ -36,6 +38,8 @@ type agentBrowserActivityRecorder interface {
 }
 
 var ErrPromptAlreadyRunning = errors.New("a previous prompt is still running")
+var ErrUnsupportedAgentScope = errors.New("agent does not support this chat execution scope")
+var ErrMaintenance = errors.New("an infrastructure update is recycling workspaces; prompts will be available when it finishes")
 
 type Actor struct {
 	Email string
@@ -124,6 +128,19 @@ type UsageRecorder interface {
 }
 
 type Option func(*Service)
+
+// StartGate blocks new agent runs while an external host job owns the
+// workspace lifecycle. Existing runs remain untouched and are skipped by the
+// workspace upgrader.
+type StartGate interface {
+	Blocked() bool
+}
+
+func WithStartGate(gate StartGate) Option {
+	return func(service *Service) {
+		service.startGate = gate
+	}
+}
 
 func WithScheduleToolIssuer(issuer ScheduleToolIssuer) Option {
 	return func(service *Service) {
@@ -224,12 +241,28 @@ func WithAudit(recorder audit.Recorder) Option {
 	}
 }
 
+type AgentPolicy interface {
+	Descriptor(provider string) (agentmodule.Descriptor, bool)
+	SupportsScope(provider string, scope agentmodule.ExecutionScope) bool
+}
+
+type AgentRegistry interface {
+	Lookup(agent.ProviderID) agent.Provider
+}
+
+func WithAgentPolicy(policy AgentPolicy) Option {
+	return func(service *Service) {
+		service.agentPolicy = policy
+	}
+}
+
 type Service struct {
 	store         servicechat.Repository
 	tmux          TmuxClient
 	projects      ProjectResolver
 	hub           *runhub.Hub
-	agents        *agent.Registry
+	agents        AgentRegistry
+	agentPolicy   AgentPolicy
 	scheduleTools ScheduleToolIssuer
 	observers     []RunObserver
 	usage         UsageRecorder
@@ -239,6 +272,8 @@ type Service struct {
 	endpoints     AgentEndpoints
 	direct        DirectResponder
 	quota         QuotaRecorder
+	startGate     StartGate
+	interactions  interactionResponseRouter
 }
 
 func New(
@@ -246,19 +281,20 @@ func New(
 	tmux TmuxClient,
 	projects ProjectResolver,
 	hub *runhub.Hub,
-	agents *agent.Registry,
+	agents AgentRegistry,
 	options ...Option,
 ) *Service {
 	if hub == nil {
 		hub = runhub.New(store)
 	}
 	service := &Service{
-		store:    store,
-		tmux:     tmux,
-		projects: projects,
-		hub:      hub,
-		agents:   agents,
-		audit:    audit.Nop{},
+		store:        store,
+		tmux:         tmux,
+		projects:     projects,
+		hub:          hub,
+		agents:       agents,
+		audit:        audit.Nop{},
+		interactions: newInteractionResponseRouter(),
 	}
 	for _, option := range options {
 		if option != nil {
@@ -276,6 +312,12 @@ func (rnr *Service) Start(input StartInput, emitTransient func(ChatEvent)) (RunH
 	if emitTransient == nil {
 		emitTransient = func(ChatEvent) {}
 	}
+	if rnr.startGate != nil && rnr.startGate.Blocked() {
+		emitTransient(ChatEvent{
+			T: time.Now().UnixMilli(), Type: "error", Message: ErrMaintenance.Error(),
+		})
+		return RunHandle{}, ErrMaintenance
+	}
 	parentCtx := input.ParentContext
 	if parentCtx == nil {
 		parentCtx = context.Background()
@@ -292,18 +334,24 @@ func (rnr *Service) Start(input StartInput, emitTransient func(ChatEvent)) (RunH
 		return RunHandle{}, ErrPromptAlreadyRunning
 	}
 	rnr.recordRun(parentCtx, audit.ActionAgentRunStart, input, nil)
+	responses := rnr.interactions.open(input.ChatID, runID)
 
 	done := make(chan RunResult, 1)
 	ledgerRunID := newLedgerRunID()
 	go func() {
 		defer close(done)
 		defer rnr.hub.FinishRun(input.ChatID, runID)
+		defer rnr.interactions.remove(input.ChatID, runID)
 		var output strings.Builder
 		err := rnr.runPromptAs(
 			ctx,
 			input,
 			ledgerRunID,
+			responses,
 			func(ev ChatEvent) {
+				// Stamp the originating task so a scheduled run's events stay
+				// distinguishable from an interactive turn's downstream.
+				ev.ScheduledTaskID = input.ScheduledTaskID
 				rnr.hub.Emit(input.ChatID, ev)
 				if ev.Type == "assistant_text" {
 					output.WriteString(ev.Text)
@@ -395,6 +443,10 @@ func (rnr *Service) recordRun(ctx context.Context, action string, input StartInp
 	rnr.audit.Record(ctx, entry)
 }
 
+func (rnr *Service) RespondInteraction(id servicechat.ID, response agent.InteractionResponse) error {
+	return rnr.interactions.respond(id, response)
+}
+
 func (rnr *Service) runPrompt(
 	ctx context.Context,
 	id servicechat.ID,
@@ -406,6 +458,7 @@ func (rnr *Service) runPrompt(
 		ctx,
 		StartInput{ChatID: id, Prompt: prompt},
 		newLedgerRunID(),
+		nil,
 		emit,
 		emitTransient,
 	)
@@ -415,9 +468,11 @@ func (rnr *Service) runPromptAs(
 	ctx context.Context,
 	input StartInput,
 	ledgerRunID string,
+	interactionResponses <-chan agent.InteractionResponse,
 	emit func(ChatEvent),
 	emitTransient func(ChatEvent),
 ) error {
+	emit = withTurnID(ledgerRunID, emit)
 	id := input.ChatID
 	prompt := input.Prompt
 	meta, err := rnr.store.Get(ctx, id)
@@ -433,9 +488,14 @@ func (rnr *Service) runPromptAs(
 		})
 	}
 
-	// Resolve a fresh cwd: live tmux pane_current_path if linked, else stored.
+	// Project metadata stores the host-side bind-mount source, but provider
+	// processes run inside the project container where that workspace is always
+	// mounted at /workspace. Never pass the host path into an in-container CLI:
+	// Codex-harness tools and MCP servers use this request cwd when they spawn.
 	cwd := meta.Cwd
-	if meta.TmuxSession != "" {
+	if meta.ProjectID != "" {
+		cwd = agent.ProjectWorkspacePath
+	} else if meta.TmuxSession != "" {
 		if c, err := rnr.tmux.Cwd(meta.TmuxSession); err == nil && c != "" {
 			cwd = c
 		}
@@ -508,6 +568,18 @@ func (rnr *Service) runPromptAs(
 		Routing:   routingEvent(routed),
 	})
 
+	descriptor := agentmodule.Descriptor{}
+	if rnr.agentPolicy != nil {
+		descriptor, _ = rnr.agentPolicy.Descriptor(string(providerID))
+		scope := agentmodule.ScopeHost
+		if meta.ProjectID != "" {
+			scope = agentmodule.ScopeProject
+		}
+		if !rnr.agentPolicy.SupportsScope(string(providerID), scope) {
+			emitTransient(ChatEvent{T: time.Now().UnixMilli(), Type: "error", Message: ErrUnsupportedAgentScope.Error()})
+			return ErrUnsupportedAgentScope
+		}
+	}
 	promptSkills := meta.SelectedSkills
 	if input.ScheduledTaskID != "" && !hasScheduledTasksSkill(promptSkills) {
 		promptSkills = append(
@@ -521,9 +593,16 @@ func (rnr *Service) runPromptAs(
 		)
 	}
 	resumeID := sessionIDForProvider(meta, providerID)
+	if rnr.agentPolicy != nil && !descriptor.Features.Sessions.Resume {
+		resumeID = ""
+	}
+	forkSession := meta.ForkPending
+	if rnr.agentPolicy != nil && !descriptor.Features.Sessions.Fork {
+		forkSession = false
+	}
 	replyPreference := rnr.replyPreference(ctx, input.Actor, string(meta.ProjectID))
-	effectivePrompt := promptWithReplyPreference(replyPreference, promptForMode(meta.Mode, prompt))
-	enableBrowser := hasBrowserSkill(meta.SelectedSkills)
+	effectivePrompt := promptWithReplyPreference(replyPreference, prompt)
+	enableBrowser := descriptor.Features.BrowserTools && hasBrowserSkill(meta.SelectedSkills)
 	if enableBrowser && meta.ProjectID != "" {
 		stopBrowserKeepalive := rnr.keepAgentBrowserActivity(ctx, serviceproject.ID(meta.ProjectID))
 		defer stopBrowserKeepalive()
@@ -531,7 +610,14 @@ func (rnr *Service) runPromptAs(
 	if resumeID == "" {
 		effectivePrompt = promptWithVisibleHistory(priorEvents, effectivePrompt)
 	}
-	effectivePrompt = promptWithSelectedSkills(providerID, promptSkills, effectivePrompt)
+	effectivePrompt = promptWithSelectedSkills(
+		descriptor.Features.Skills,
+		descriptor.Label,
+		providerID,
+		promptSkills,
+		meta.ProjectID != "",
+		effectivePrompt,
+	)
 
 	provider := rnr.agents.Lookup(providerID)
 	if provider == nil {
@@ -540,7 +626,8 @@ func (rnr *Service) runPromptAs(
 		return err
 	}
 
-	enableScheduleTools := hasScheduledTasksSkill(meta.SelectedSkills) || input.ScheduledTaskID != ""
+	enableScheduleTools := descriptor.Features.ScheduledTools &&
+		(hasScheduledTasksSkill(meta.SelectedSkills) || input.ScheduledTaskID != "")
 	runtimeEnv := map[string]string(nil)
 	if enableScheduleTools {
 		if meta.ProjectID == "" {
@@ -592,20 +679,25 @@ func (rnr *Service) runPromptAs(
 			Prompt:         runPrompt,
 			Cwd:            cwd,
 			Model:          runModel,
-			Mode:           meta.Mode,
+			Mode:           agent.RunMode(meta.Mode),
 			ResumeID:       runResumeID,
 			ProjectID:      string(meta.ProjectID),
-			Fork:           meta.ForkPending,
+			Fork:           forkSession,
 			Preferences: agent.RunPreferences{
 				ReasoningEffort: agent.ReasoningEffort(routed.ReasoningEffort),
 				ServiceTier:     agent.ServiceTier(meta.ServiceTier),
+				ApprovalPolicy:  servicechat.NormalizeApprovalPolicy(meta.ApprovalPolicy),
+				SandboxPolicy:   servicechat.NormalizeSandboxPolicy(meta.SandboxPolicy),
 			},
-			EnableBrowser:       enableBrowser,
-			EnableScheduleTools: enableScheduleTools,
-			RuntimeEnv:          runtimeEnv,
-			Endpoint:            runEndpoint,
+			EnableBrowser:        enableBrowser,
+			EnableScheduleTools:  enableScheduleTools,
+			RuntimeEnv:           runtimeEnv,
+			InteractionResponses: interactionResponses,
+			Endpoint:             runEndpoint,
 		}, func(ev agent.Event) {
-			rnr.emitAgentEvent(ctx, id, ev, emit)
+			// qa added the provider argument; the ledger hook is this
+			// branch's and sits after the emit as before.
+			rnr.emitAgentEvent(ctx, id, providerID, ev, emit)
 			rnr.recordRunUsage(ctx, ledger, ev)
 			rnr.recordQuota(ctx, ledger, ev)
 		})
@@ -618,9 +710,16 @@ func (rnr *Service) runPromptAs(
 			m.ForkPending = false
 		})
 		emit(ChatEvent{T: time.Now().UnixMilli(), Type: "system", Subtype: "session_recovered"})
-		freshPrompt := promptWithReplyPreference(replyPreference, promptForMode(meta.Mode, prompt))
+		freshPrompt := promptWithReplyPreference(replyPreference, prompt)
 		freshPrompt = promptWithVisibleHistory(priorEvents, freshPrompt)
-		freshPrompt = promptWithSelectedSkills(providerID, promptSkills, freshPrompt)
+		freshPrompt = promptWithSelectedSkills(
+			descriptor.Features.Skills,
+			descriptor.Label,
+			providerID,
+			promptSkills,
+			meta.ProjectID != "",
+			freshPrompt,
+		)
 		err = run(freshPrompt, "")
 	}
 	if err != nil && !errors.Is(err, agent.ErrRunFailed) {
@@ -775,17 +874,15 @@ func skillTriggerNames(skills []servicechat.SkillRef) []string {
 	return names
 }
 
-func clearSessionIDForProvider(meta *ChatMeta, provider agent.ProviderID) {
-	switch provider {
-	case agent.ProviderCodex:
-		meta.CodexSessionID = ""
-	case agent.ProviderKimi:
-		meta.KimiSessionID = ""
-	case agent.ProviderAntigravity:
-		meta.AntigravitySessionID = ""
-	default:
-		meta.ClaudeSessionID = ""
+func withTurnID(turnID string, emit func(ChatEvent)) func(ChatEvent) {
+	return func(event ChatEvent) {
+		event.TurnID = turnID
+		emit(event)
 	}
+}
+
+func clearSessionIDForProvider(meta *ChatMeta, provider agent.ProviderID) {
+	meta.SetSessionID(servicechat.Provider(provider), "")
 }
 
 func (rnr *Service) keepAgentBrowserActivity(ctx context.Context, projectID serviceproject.ID) func() {
@@ -811,46 +908,11 @@ func (rnr *Service) keepAgentBrowserActivity(ctx context.Context, projectID serv
 }
 
 func providerIDFromChatProvider(provider servicechat.Provider) agent.ProviderID {
-	switch servicechat.NormalizeProvider(provider) {
-	case servicechat.ProviderCodex:
-		return agent.ProviderCodex
-	case servicechat.ProviderKimi:
-		return agent.ProviderKimi
-	case servicechat.ProviderAntigravity:
-		return agent.ProviderAntigravity
-	default:
-		return agent.ProviderClaude
-	}
+	return servicechat.NormalizeProvider(provider)
 }
 
 func sessionIDForProvider(meta ChatMeta, provider agent.ProviderID) string {
-	switch provider {
-	case agent.ProviderCodex:
-		return meta.CodexSessionID
-	case agent.ProviderKimi:
-		return meta.KimiSessionID
-	case agent.ProviderAntigravity:
-		return meta.AntigravitySessionID
-	default:
-		return meta.ClaudeSessionID
-	}
-}
-
-func promptForMode(mode, prompt string) string {
-	switch mode {
-	case "plan":
-		return "Work in planning mode. Inspect enough context to be concrete, then propose the implementation plan before changing files. Avoid file edits until the user asks you to proceed.\n\n" + prompt
-	case "review":
-		return "Work in review mode. Prioritize bugs, behavioral regressions, missing tests, and risks. Put findings first with file and line references when available.\n\n" + prompt
-	case "debug":
-		return "Work in debugging mode. Reproduce or localize the issue first, explain the failing path, then make the smallest fix that addresses the root cause.\n\n" + prompt
-	case "full-auto":
-		return "Work in full-auto mode. Carry the task through implementation, verification, and a concise outcome unless you hit a hard blocker.\n\n" + prompt
-	case "chat":
-		return "Work in chat mode. Answer directly and avoid changing files unless the user clearly asks for implementation.\n\n" + prompt
-	default:
-		return prompt
-	}
+	return meta.SessionID(servicechat.Provider(provider))
 }
 
 // replyPreference resolves the platform reply preference for this run. A nil
@@ -891,8 +953,8 @@ func promptWithVisibleHistory(events []ChatEvent, prompt string) string {
 const browserSkillName = "browser"
 const scheduledTasksSkillName = "scheduled-tasks"
 
-// hasBrowserSkill reports whether the user selected the `browser` skill for
-// this prompt — the signal to wire the @playwright/mcp browser tools.
+// hasBrowserSkill reports whether the user selected the `browser` skill. The
+// module descriptor must also enable browser tools before they are wired in.
 func hasBrowserSkill(skills []servicechat.SkillRef) bool {
 	for _, s := range skills {
 		if skillTriggerName(s.Command) == browserSkillName || skillTriggerName(s.Name) == browserSkillName {
@@ -912,8 +974,15 @@ func hasScheduledTasksSkill(skills []servicechat.SkillRef) bool {
 	return false
 }
 
-func promptWithSelectedSkills(provider agent.ProviderID, skills []servicechat.SkillRef, prompt string) string {
-	if len(skills) == 0 {
+func promptWithSelectedSkills(
+	strategy agentmodule.SkillStrategy,
+	providerLabel string,
+	provider agent.ProviderID,
+	skills []servicechat.SkillRef,
+	projectScoped bool,
+	prompt string,
+) string {
+	if len(skills) == 0 || strategy == agentmodule.SkillsNone {
 		return prompt
 	}
 
@@ -930,30 +999,35 @@ func promptWithSelectedSkills(provider agent.ProviderID, skills []servicechat.Sk
 			continue
 		}
 
-		switch provider {
-		case agent.ProviderClaude:
+		switch strategy {
+		case agentmodule.SkillsSlashCommand:
 			triggers = append(triggers, "/"+name)
-		case agent.ProviderCodex:
+		case agentmodule.SkillsDollarMention:
 			triggers = append(triggers, "$"+name)
-		case agent.ProviderKimi, agent.ProviderAntigravity:
-			if name == scheduledTasksSkillName {
-				triggers = append(
-					triggers,
-					"/workspace/.agents/skills/scheduled-tasks/SKILL.md",
-				)
+		case agentmodule.SkillsInstructions:
+			if name == "." || name == ".." || path.Base(name) != name {
+				continue
 			}
+			root := "/root/.agents/skills"
+			if projectScoped {
+				root = "/workspace/.agents/skills"
+			}
+			triggers = append(triggers, path.Join(root, name, "SKILL.md"))
 		}
 	}
 	if len(triggers) == 0 {
 		return prompt
 	}
 
-	switch provider {
-	case agent.ProviderClaude:
+	switch strategy {
+	case agentmodule.SkillsSlashCommand:
 		return strings.Join(triggers, "\n") + "\n\n" + prompt
-	case agent.ProviderCodex:
-		return "Use these Codex skills for this request: " + strings.Join(triggers, " ") + "\n\n" + prompt
-	case agent.ProviderKimi, agent.ProviderAntigravity:
+	case agentmodule.SkillsDollarMention:
+		if strings.TrimSpace(providerLabel) == "" {
+			providerLabel = string(provider)
+		}
+		return "Use these " + providerLabel + " skills for this request: " + strings.Join(triggers, " ") + "\n\n" + prompt
+	case agentmodule.SkillsInstructions:
 		return "Read and follow the selected skill instructions at " +
 			strings.Join(triggers, ", ") + ".\n\n" + prompt
 	default:

@@ -91,13 +91,11 @@ export interface ClaudeAuthStatus {
   login?: ClaudeLoginState;
 }
 
-// Streamed handshake state, mirroring CodexDeviceLogin. Claude's CLI uses the
-// authorization-code grant instead of a device grant: it emits an OAuth URL
-// and expects a code pasted back, so there's an `authUrl` + `awaitingCode`
-// rather than a `userCode` for the user to read off.
-export interface ClaudeLoginState {
+/** How one provider's login stands, as the settings row draws it. */
+
+export interface AgentAuthLoginSnapshot {
   active: boolean;
-  authUrl?: string;
+  url?: string;
   awaitingCode?: boolean;
   startedAt?: number;
   completed?: boolean;
@@ -135,17 +133,26 @@ export interface CodexDeviceLogin {
   error?: string;
 }
 
-export interface KimiAuthStatus {
+export interface AgentAuthSnapshot {
   authenticated: boolean;
-  deviceLogin?: KimiDeviceLogin;
+  warning?: string;
+  login: AgentAuthLoginSnapshot;
 }
 
-export interface KimiDeviceLogin {
-  active: boolean;
-  verificationUri?: string;
-  userCode?: string;
-  startedAt?: number;
-  expiresAt?: number;
-  completed?: boolean;
-  error?: string;
+export interface AgentAuthProvider {
+  provider: string;
+  label: string;
+  default?: boolean;
+  executionScopes: Array<"host" | "project">;
+  authentication: {
+    mode: AgentAuthMode;
+    instructions?: string;
+    satisfiesAccessGate: boolean;
+    apiKey?: {
+      createUrl: string;
+      createLabel: string;
+      credentialLabel: string;
+    };
+  };
+  status: AgentAuthSnapshot;
 }

@@ -39,6 +39,7 @@ export function PromptTextarea({
   return (
     <textarea
       ref={textareaRef}
+      dir="auto"
       value={text}
       onInput={(event) => {
         onTextChange((event.currentTarget as HTMLTextAreaElement).value);
@@ -63,7 +64,6 @@ export function PromptTextarea({
       onFocus={() => onCaretChange?.()}
       onPaste={(event) => onPaste(event as ClipboardEvent)}
       rows={1}
-      dir="auto"
       lang={lang || undefined}
       enterkeyhint="enter"
       aria-keyshortcuts="Control+Enter Meta+Enter"

@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/agent"
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
 	agentauth "github.com/futrx-com/remote.futrx.com/internal/service/agent/auth"
+	agentmodule "github.com/futrx-com/remote.futrx.com/internal/service/agent/module"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	"github.com/futrx-com/remote.futrx.com/internal/service/prompt"
 	"github.com/futrx-com/remote.futrx.com/internal/service/runhub"
@@ -29,12 +29,30 @@ type contextAwareScheduleProvider struct {
 	started chan struct{}
 }
 
+type serviceTestProvider struct {
+	id agent.ProviderID
+}
+
+func (p serviceTestProvider) ID() agent.ProviderID { return p.id }
+
+func (p serviceTestProvider) Capabilities(context.Context, agent.CapabilityRequest) (agent.Capabilities, error) {
+	return agent.Capabilities{Provider: p.id}, nil
+}
+
+func (p serviceTestProvider) Run(context.Context, agent.RunRequest, func(agent.Event)) error {
+	return nil
+}
+
 func (p *contextAwareScheduleProvider) ID() agent.ProviderID {
 	return agent.ProviderCodex
 }
 
 func (p *contextAwareScheduleProvider) Parser(agent.RunRequest) agent.LineParser {
 	return nil
+}
+
+func (p *contextAwareScheduleProvider) Capabilities(context.Context, agent.CapabilityRequest) (agent.Capabilities, error) {
+	return agent.Capabilities{Provider: agent.ProviderCodex}, nil
 }
 
 func (p *contextAwareScheduleProvider) Run(
@@ -60,29 +78,37 @@ func (staticScheduleToolIssuer) IssueScheduleTool(
 }
 
 func TestNewAuthAllowsLocalAdminWithoutGoogleOAuth(t *testing.T) {
-	dir := t.TempDir()
-	twoFactor, err := filetwofactor.New(dir)
+	twoFactorStore, err := filetwofactor.New(t.TempDir())
 	if err != nil {
-		t.Fatalf("two-factor store: %v", err)
+		t.Fatalf("init two-factor store: %v", err)
 	}
-	sessions, err := filesessions.New(dir)
+	sessionRegistryStore, err := filesessions.New(t.TempDir())
 	if err != nil {
-		t.Fatalf("session registry store: %v", err)
+		t.Fatalf("init session registry store: %v", err)
 	}
 	auth, err := newAuth(
 		context.Background(),
-		fileauth.New(dir),
+		fileauth.New(t.TempDir()),
 		nil,
 		"https://remote.example.com",
-		twoFactor,
-		sessions,
-		DefaultAuthOptions(),
+		twoFactorStore,
+		sessionRegistryStore,
+		AuthOptions{
+			PendingLoginTTL:     5 * time.Minute,
+			EnrollmentTTL:       10 * time.Minute,
+			RecoveryCodeCount:   10,
+			SessionHistoryLimit: 20,
+			SetupTokenTTL:       30 * time.Minute,
+		},
 	)
 	if err != nil {
 		t.Fatalf("newAuth: %v", err)
 	}
 	if auth.GoogleOAuthEnabled() {
 		t.Fatal("Google OAuth unexpectedly enabled")
+	}
+	if got := auth.SetupTokenTTL(); got != 30*time.Minute {
+		t.Fatalf("setup token TTL = %s, want 30m", got)
 	}
 }
 
@@ -98,73 +124,36 @@ func TestNewRejectsPartialAgentContainerDependencies(t *testing.T) {
 	}
 }
 
-func TestAgentProfilesComeFromRegistrationCatalog(t *testing.T) {
-	// Every agent now carries a credential policy, antigravity included: its
-	// sign-in still happens in a chat terminal, but the resulting token is
-	// pulled to the host and seeded into the other containers, so there is no
-	// longer a profile that ships without one.
-	profiles := AgentProfiles()
-	ids := make([]string, 0, len(profiles))
-	for _, profile := range profiles {
-		ids = append(ids, profile.ID)
-		if profile.CLI.Binary == "" {
-			t.Fatalf("profile %q has incomplete CLI policy: %#v", profile.ID, profile.CLI)
-		}
-		if profile.CLI.InstallMode == provisioning.InstallWithScript {
-			if profile.CLI.InstallScript == "" {
-				t.Fatalf("profile %q uses script install without a script", profile.ID)
-			}
-		} else if profile.CLI.PackageName == "" {
-			t.Fatalf("profile %q has incomplete CLI policy: %#v", profile.ID, profile.CLI)
-		}
-		if profile.Credentials.Empty() {
-			t.Fatalf("profile %q has no credential policy", profile.ID)
-		}
+func TestNewRejectsAuthenticatedDeploymentWithoutAgentAccessGate(t *testing.T) {
+	descriptor := agentmodule.Descriptor{
+		ID:               "external-agent",
+		Label:            "External Agent",
+		ExecutionScopes:  []agentmodule.ExecutionScope{agentmodule.ScopeHost},
+		Auth:             agentmodule.AuthExternal,
+		AuthInstructions: "Authenticate outside Remote.",
+		Features:         agentmodule.Features{Skills: agentmodule.SkillsNone},
 	}
-	if want := []string{"claude", "codex", "kimi", "antigravity"}; !slices.Equal(ids, want) {
-		t.Fatalf("profile IDs = %v, want %v", ids, want)
+	factory, err := agentmodule.NewFactory(descriptor, nil, func(agentmodule.Dependencies, *provisioning.Profile) (agentmodule.Components, error) {
+		binding := agentauth.NewExternalBinding(descriptor.ID)
+		return agentmodule.Components{
+			Provider: serviceTestProvider{id: descriptor.ID},
+			Auth:     &binding,
+		}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
-}
+	catalog, err := agentmodule.NewCatalog(factory)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-func TestAgentAuthBindingsComeFromRegistrationCatalog(t *testing.T) {
-	definitions := agentDefinitions()
-	registry := agentauth.NewRegistry()
-	ids := make([]string, 0, len(definitions))
-	// antigravity deliberately registers a service-less binding: agy's bare
-	// TUI sign-in cannot run under the shared code/device auth services, so
-	// in-app auth reports unavailable and sign-in happens in the terminal.
-	availabilityExempt := map[agent.ProviderID]bool{agent.ProviderAntigravity: true}
-
-	for _, definition := range definitions {
-		binding := definition.authBinding()
-		profile := definition.profile()
-		if string(binding.ID()) != profile.ID {
-			t.Fatalf("auth binding %q has profile %q", binding.ID(), profile.ID)
-		}
-		if !binding.Available() && !availabilityExempt[binding.ID()] {
-			t.Fatalf("auth binding %q is unavailable", binding.ID())
-		}
-		if err := registry.Register(binding); err != nil {
-			t.Fatalf("register auth binding %q: %v", binding.ID(), err)
-		}
-		ids = append(ids, string(binding.ID()))
-	}
-	if want := []string{"claude", "codex", "kimi", "antigravity"}; !slices.Equal(ids, want) {
-		t.Fatalf("auth binding IDs = %v, want %v", ids, want)
-	}
-}
-
-func TestAgentProfilesReturnsDefensiveCopies(t *testing.T) {
-	first := AgentProfiles()
-	first[0].Credentials.Files[0].HostPath = "/changed"
-	first[0].BrowserMCPTemplates[0].Content[0] = 'x'
-
-	second := AgentProfiles()
-	if second[0].Credentials.Files[0].HostPath == "/changed" {
-		t.Fatal("credential policy mutation escaped the catalog")
-	}
-	if second[0].BrowserMCPTemplates[0].Content[0] == 'x' {
-		t.Fatal("template mutation escaped the catalog")
+	_, err = New(context.Background(), Dependencies{
+		Auth:         fileauth.New(t.TempDir()),
+		AgentModules: catalog,
+	})
+	if !errors.Is(err, agentmodule.ErrNoAccessGate) {
+		t.Fatalf("New error = %v, want ErrNoAccessGate", err)
 	}
 }
 

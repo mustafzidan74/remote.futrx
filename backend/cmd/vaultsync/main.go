@@ -14,7 +14,6 @@ import (
 
 	"github.com/futrx-com/remote.futrx.com/internal/config"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/lxc"
-	"github.com/futrx-com/remote.futrx.com/internal/service"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	"github.com/futrx-com/remote.futrx.com/internal/stores"
 )
@@ -32,7 +31,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("init stores: %v", err)
 	}
-	stack := config.NewContainerStack(lxc.New(), service.AgentProfiles(), config.ContainerStackOptions{})
+	agentModules, err := config.NewAgentModules()
+	if err != nil {
+		log.Fatalf("configure agent modules: %v", err)
+	}
+	stack := config.NewContainerStack(lxc.New(), agentModules.Profiles(), config.ContainerStackOptions{})
 
 	vault := serviceglobalsecrets.New(
 		storeSet.GlobalSecrets,

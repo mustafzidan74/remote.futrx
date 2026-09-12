@@ -27,6 +27,7 @@ type Record struct {
 	Provider    string `json:"provider"`
 	Model       string `json:"model,omitempty"`
 
+	// InputTokens is uncached input; all four token fields are disjoint.
 	InputTokens      int64 `json:"inputTokens"`
 	OutputTokens     int64 `json:"outputTokens"`
 	CacheReadTokens  int64 `json:"cacheReadTokens"`

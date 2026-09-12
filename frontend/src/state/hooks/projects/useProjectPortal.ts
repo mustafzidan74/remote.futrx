@@ -1,7 +1,7 @@
 import { useCallback, useState } from "preact/hooks";
 import { projectApi } from "../../../api/projectApi";
 import type { ProjectMeta, ProjectPortal } from "../../../models/project";
-import type { PortalRecord, ProjectDataLoadSignal } from "../../projects/projectContainerRecords";
+import type { PortalRecord, ProjectDataLoadSignal } from "../../../models/project";
 import {
   type PortalFormState,
   portalFormFrom,

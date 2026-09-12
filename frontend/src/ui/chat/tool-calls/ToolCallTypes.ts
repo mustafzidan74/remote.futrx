@@ -13,6 +13,10 @@ export interface ToolCallProps {
   name: string;
   input: Record<string, unknown> | undefined;
   output?: string;
+  outputRef?: string;
+  outputBytes?: number;
+  outputTruncated?: boolean;
+  outputExpanded?: boolean;
   isError?: boolean;
   status: "running" | "done";
   /** Opens the call's detail immediately — the turn timeline expands into it. */

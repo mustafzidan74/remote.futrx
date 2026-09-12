@@ -33,8 +33,10 @@ export const API_ROUTES = {
       `/api/chats/${encodeURIComponent(id)}/media-open?path=${encodeURIComponent(path)}`,
     ideOpen: (id: string, path: string) =>
       `/api/chats/${encodeURIComponent(id)}/ide-open?path=${encodeURIComponent(path)}`,
-    events: (id: string, query: string) =>
-      `/api/chats/${encodeURIComponent(id)}/events${query ? `?${query}` : ""}`,
+    transcript: (id: string, query: string) =>
+      `/api/chats/${encodeURIComponent(id)}/transcript${query ? `?${query}` : ""}`,
+    transcriptContent: (id: string, query: string) =>
+      `/api/chats/${encodeURIComponent(id)}/transcript/content?${query}`,
     rewind: (id: string) => `/api/chats/${encodeURIComponent(id)}/rewind`,
     historyRepos: (id: string) =>
       `/api/chats/${encodeURIComponent(id)}/history/repos`,
@@ -54,19 +56,18 @@ export const API_ROUTES = {
     runDiff: (id: string, runId: string) =>
       `/api/schedules/${encodeURIComponent(id)}/history/${encodeURIComponent(runId)}/diff`,
   },
-  claudeAuth: {
-    status: "/api/claude/auth-status",
-    startLogin: "/api/claude/login/start",
-    submitCode: "/api/claude/login/code",
-    cancelLogin: "/api/claude/login/cancel",
-  },
-  codexAuth: {
-    status: "/api/codex/auth-status",
-    startDeviceLogin: "/api/codex/login/device",
-  },
-  kimiAuth: {
-    status: "/api/kimi/auth-status",
-    startDeviceLogin: "/api/kimi/login/device",
+  agentAuth: {
+    catalog: "/api/agent-auth",
+    startCodeLogin: (provider: string) =>
+      `/api/${encodeURIComponent(provider)}/login/start`,
+    submitCode: (provider: string) =>
+      `/api/${encodeURIComponent(provider)}/login/code`,
+    cancelCodeLogin: (provider: string) =>
+      `/api/${encodeURIComponent(provider)}/login/cancel`,
+    startDeviceLogin: (provider: string) =>
+      `/api/${encodeURIComponent(provider)}/login/device`,
+    apiKey: (provider: string) =>
+      `/api/${encodeURIComponent(provider)}/login/api-key`,
   },
   antigravityAuth: {
     /**
@@ -175,6 +176,13 @@ export const API_ROUTES = {
     prices: "/api/admin/usage/prices",
     rebuild: "/api/admin/usage/rebuild",
   },
+  push: {
+    config: "/api/push/config",
+    subscriptions: "/api/push/subscriptions",
+    subscriptionStatus: "/api/push/subscriptions/status",
+    test: "/api/push/test",
+    presence: "/api/push/presence",
+  },
   serverInfo: "/api/server/info",
   adminResources: "/api/admin/resources",
   modelRouting: {
@@ -266,6 +274,8 @@ export const API_ROUTES = {
   agentPreferences: "/api/admin/agent-preferences",
   search: (query: string) => `/api/search?${query}`,
   templates: "/api/templates",
+  agentCapabilities: (query: string) =>
+    `/api/agent-capabilities${query ? `?${query}` : ""}`,
   uploads: "/api/uploads",
   users: {
     collection: "/api/admin/users",
@@ -278,9 +288,8 @@ export const API_ROUTES = {
 
 export const WEB_SOCKET_ROUTES = {
   workspace: applicationPath("/ws/workspace"),
-  claudeAuthStatus: applicationPath("/ws/claude/auth-status"),
-  codexAuthStatus: applicationPath("/ws/codex/auth-status"),
-  kimiAuthStatus: applicationPath("/ws/kimi/auth-status"),
+  agentAuthStatus: (provider: string): ApplicationPath =>
+    applicationPath(`/ws/agent-auth/${encodeURIComponent(provider)}`),
   chat: (chatId: string, sinceSeq: number): ApplicationPath => {
     const route = applicationPath(`/ws/chat/${encodeURIComponent(chatId)}`);
     return sinceSeq > 0

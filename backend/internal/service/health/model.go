@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
+	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
 )
 
 // Status is one project's traffic light.
@@ -79,10 +79,10 @@ type ProjectHealth struct {
 // The port numbers are shared with the public-link rules, which refuse the
 // same set for the same reason.
 var platformPorts = map[int]struct{}{
-	serviceshare.AgentBrowserPort: {},
-	serviceshare.IDEProxyPort:     {},
-	serviceshare.IDEDirectPort:    {},
-	serviceshare.CDPPort:          {},
+	configconstants.ProjectPreviewAgentBrowserPort:    {},
+	configconstants.ProjectPreviewIDEProxyPort:        {},
+	configconstants.ProjectPreviewIDEDirectPort:       {},
+	configconstants.ProjectPreviewBrowserDevToolsPort: {},
 }
 
 // FirstAppPort is firstAppPort for callers outside this package. The home
@@ -105,7 +105,7 @@ func firstAppPort(ports []int) (int, bool) {
 		// Privileged ports (sshd on 22, in-container mail/DNS daemons) are
 		// never previews: Caddy only routes ports >= 1024, so an HTTP probe
 		// there would flag a healthy project as broken.
-		if port < serviceshare.MinPort {
+		if port < configconstants.ProjectPreviewMinPort {
 			continue
 		}
 		return port, true
@@ -137,11 +137,11 @@ func describeListeners(ports []int) string {
 
 func listenerName(port int) string {
 	switch port {
-	case serviceshare.AgentBrowserPort:
+	case configconstants.ProjectPreviewAgentBrowserPort:
 		return "agent browser"
-	case serviceshare.IDEProxyPort, serviceshare.IDEDirectPort:
+	case configconstants.ProjectPreviewIDEProxyPort, configconstants.ProjectPreviewIDEDirectPort:
 		return "code-server"
-	case serviceshare.CDPPort:
+	case configconstants.ProjectPreviewBrowserDevToolsPort:
 		// The DevTools endpoint is the same Chromium as the agent browser;
 		// naming it twice would overstate what is running.
 		return ""

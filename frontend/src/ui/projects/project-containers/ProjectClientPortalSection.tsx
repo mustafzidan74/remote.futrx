@@ -1,6 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
 import type { ProjectPortal } from "../../../models/project";
-import type { PortalRecord } from "../../../state/projects/projectContainerRecords";
+import type { PortalRecord } from "../../../models/project";
 import {
   type PortalFormState,
   portalFormFrom,

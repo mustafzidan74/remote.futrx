@@ -20,8 +20,9 @@ const (
 	// multi-GiB base image onto a dir-backed pool takes well over 90s on a
 	// single-vCPU host, and a timeout here kills the create operation
 	// half-way and strands a broken instance, so the ceiling is generous and
-	// FUTRX_LAUNCH_TIMEOUT (Go duration) can raise it further.
-	defaultLaunchTimeout = 5 * time.Minute
+	// FUTRX_LAUNCH_TIMEOUT (Go duration) can raise it further. Ten minutes is
+	// qa's own measured figure.
+	defaultLaunchTimeout = 10 * time.Minute
 	migrateTimeout       = 5 * time.Minute
 	startTimeout         = 30 * time.Second
 	stopTimeout          = 30 * time.Second
@@ -120,7 +121,8 @@ func (c *Client) PullDirectory(ctx context.Context, container, source, hostTarge
 		return true, nil
 	}
 	lower := strings.ToLower(out)
-	if strings.Contains(lower, "file does not exist") || strings.Contains(lower, "no such file") {
+	if strings.Contains(lower, "file does not exist") || strings.Contains(lower, "no such file") ||
+		strings.Contains(lower, "not found") {
 		return false, nil
 	}
 	return false, fmt.Errorf("pull %s from %s: %w; output: %s", source, container, err, out)

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 )
 
@@ -79,7 +80,7 @@ func (s *Service) Create(
 	}
 
 	now := s.now()
-	record := Share{
+	record := Record{
 		ID:        id,
 		TokenHash: hashToken(token),
 		Port:      input.Port,
@@ -89,9 +90,9 @@ func (s *Service) Create(
 		ExpiresAt: now.Add(ttl).UnixMilli(),
 	}
 
-	if _, err := s.repo.Update(ctx, projectID, func(stored []Share) ([]Share, error) {
+	if _, err := s.repo.Update(ctx, projectID, func(stored []Record) ([]Record, error) {
 		live := activeOnly(stored, now.UnixMilli())
-		if len(live) >= MaxPerProject {
+		if len(live) >= configconstants.ProjectShareMaxPerProject {
 			return nil, ErrTooManyShares
 		}
 		return append(live, record), nil
@@ -99,12 +100,12 @@ func (s *Service) Create(
 		return Created{}, err
 	}
 
-	return Created{Share: record, Token: token, Slug: project.Slug}, nil
+	return Created{Metadata: metadataFromRecord(record), Token: token, Slug: project.Slug}, nil
 }
 
 // List returns the project's still-usable links, newest first. Expired and
 // revoked records are storage detail and never surface.
-func (s *Service) List(ctx context.Context, projectID serviceproject.ID) ([]Share, error) {
+func (s *Service) List(ctx context.Context, projectID serviceproject.ID) ([]Metadata, error) {
 	if s == nil || s.repo == nil {
 		return nil, ErrUnavailable
 	}
@@ -122,7 +123,11 @@ func (s *Service) List(ctx context.Context, projectID serviceproject.ID) ([]Shar
 	sort.SliceStable(live, func(i, j int) bool {
 		return live[i].CreatedAt > live[j].CreatedAt
 	})
-	return live, nil
+	metadata := make([]Metadata, 0, len(live))
+	for _, record := range live {
+		metadata = append(metadata, metadataFromRecord(record))
+	}
+	return metadata, nil
 }
 
 // Revoke closes one link immediately. Revoking an already-revoked or expired
@@ -141,11 +146,11 @@ func (s *Service) Revoke(ctx context.Context, projectID serviceproject.ID, id ID
 		return err
 	}
 	now := s.now().UnixMilli()
-	_, err := s.repo.Update(ctx, projectID, func(stored []Share) ([]Share, error) {
-		next := make([]Share, len(stored))
+	_, err := s.repo.Update(ctx, projectID, func(stored []Record) ([]Record, error) {
+		next := make([]Record, len(stored))
 		copy(next, stored)
 		for index := range next {
-			if next[index].ID != id || !next[index].Active(now) {
+			if next[index].ID != id || !next[index].active(now) {
 				continue
 			}
 			next[index].RevokedAt = now
@@ -163,28 +168,28 @@ func (s *Service) Validate(
 	slug string,
 	port int,
 	token string,
-) (Share, bool) {
+) (AuthorizationGrant, bool) {
 	if s == nil || s.repo == nil || token == "" {
-		return Share{}, false
+		return AuthorizationGrant{}, false
 	}
 	if err := ShareablePort(port); err != nil {
-		return Share{}, false
+		return AuthorizationGrant{}, false
 	}
 	shares, ok := s.sharesForSlug(ctx, slug)
 	if !ok {
-		return Share{}, false
+		return AuthorizationGrant{}, false
 	}
 	digest := hashToken(token)
 	now := s.now().UnixMilli()
 	for _, candidate := range shares {
-		if candidate.Port != port || !candidate.Active(now) {
+		if candidate.Port != port || !candidate.active(now) {
 			continue
 		}
 		if subtle.ConstantTimeCompare([]byte(candidate.TokenHash), []byte(digest)) == 1 {
-			return candidate, true
+			return AuthorizationGrant{ID: candidate.ID, ExpiresAt: candidate.ExpiresAt}, true
 		}
 	}
-	return Share{}, false
+	return AuthorizationGrant{}, false
 }
 
 // Allows answers the repeat-visit hop: the visitor already exchanged a token
@@ -203,14 +208,14 @@ func (s *Service) Allows(ctx context.Context, slug string, port int, id ID) bool
 	}
 	now := s.now().UnixMilli()
 	for _, candidate := range shares {
-		if candidate.ID == id && candidate.Port == port && candidate.Active(now) {
+		if candidate.ID == id && candidate.Port == port && candidate.active(now) {
 			return true
 		}
 	}
 	return false
 }
 
-func (s *Service) sharesForSlug(ctx context.Context, slug string) ([]Share, bool) {
+func (s *Service) sharesForSlug(ctx context.Context, slug string) ([]Record, bool) {
 	slug = strings.ToLower(strings.TrimSpace(slug))
 	if slug == "" || s.projects == nil {
 		return nil, false
@@ -228,23 +233,34 @@ func (s *Service) sharesForSlug(ctx context.Context, slug string) ([]Share, bool
 
 func resolveTTL(hours int) (time.Duration, error) {
 	if hours == 0 {
-		return DefaultTTL, nil
+		return configconstants.ProjectShareDefaultTTL, nil
 	}
 	ttl := time.Duration(hours) * time.Hour
-	if ttl < MinTTL || ttl > MaxTTL {
+	if ttl < configconstants.ProjectShareMinTTL || ttl > configconstants.ProjectShareMaxTTL {
 		return 0, ErrInvalidTTL
 	}
 	return ttl, nil
 }
 
-func activeOnly(shares []Share, nowMilli int64) []Share {
-	live := make([]Share, 0, len(shares))
+func activeOnly(shares []Record, nowMilli int64) []Record {
+	live := make([]Record, 0, len(shares))
 	for _, candidate := range shares {
-		if candidate.Active(nowMilli) {
+		if candidate.active(nowMilli) {
 			live = append(live, candidate)
 		}
 	}
 	return live
+}
+
+func metadataFromRecord(record Record) Metadata {
+	return Metadata{
+		ID:        record.ID,
+		Port:      record.Port,
+		Label:     record.Label,
+		CreatedBy: record.CreatedBy,
+		CreatedAt: record.CreatedAt,
+		ExpiresAt: record.ExpiresAt,
+	}
 }
 
 func hashToken(token string) string {
@@ -253,7 +269,7 @@ func hashToken(token string) string {
 }
 
 func newToken() (string, error) {
-	buf := make([]byte, TokenBytes)
+	buf := make([]byte, configconstants.ProjectShareTokenBytes)
 	if _, err := rand.Read(buf); err != nil {
 		return "", err
 	}
@@ -282,8 +298,8 @@ func sanitizeLabel(label string) string {
 	}, label)
 	cleaned = strings.TrimSpace(cleaned)
 	runes := []rune(cleaned)
-	if len(runes) > MaxLabelLength {
-		cleaned = strings.TrimSpace(string(runes[:MaxLabelLength]))
+	if len(runes) > configconstants.ProjectShareMaxLabelLength {
+		cleaned = strings.TrimSpace(string(runes[:configconstants.ProjectShareMaxLabelLength]))
 	}
 	return cleaned
 }

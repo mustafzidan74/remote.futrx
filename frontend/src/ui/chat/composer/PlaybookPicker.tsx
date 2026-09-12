@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { Playbook } from "../../../models/playbook";
 import type { PlaybookLibrary } from "../../../state/hooks/chat/usePlaybooks";
-import { playbookLabel } from "../../../state/chat/playbookState";
+import { playbookLabel } from "../../../state/hooks/chat/playbookState";
 import { ChevronDown, Loader, Zap } from "../../primitives/icons";
 
 /**

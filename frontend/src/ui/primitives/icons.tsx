@@ -22,6 +22,7 @@ export const Archive = (p: P) => (<svg {...base} {...p}><rect x="2" y="4" width=
 export const FileText = (p: P) => (<svg {...base} {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg>);
 export const ChevronsUpDown = (p: P) => (<svg {...base} {...p}><path d="M7 9l5-5 5 5M7 15l5 5 5-5"/></svg>);
 export const ChevronsDownUp = (p: P) => (<svg {...base} {...p}><path d="M7 4l5 5 5-5M7 20l5-5 5 5"/></svg>);
+export const Boxes = (p: P) => (<svg {...base} {...p}><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg>);
 export const Terminal = (p: P) => (<svg {...base} {...p}><path d="m4 17 6-6-6-6M12 19h8"/></svg>);
 export const MessageSquare = (p: P) => (<svg {...base} {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>);
 export const GitFork = (p: P) => (<svg {...base} {...p}><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v1a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9"/><path d="M12 12v3"/></svg>);
@@ -52,6 +53,7 @@ export const ExternalLink = (p: P) => (<svg {...base} {...p}><path d="M18 13v6a2
 export const Copy = (p: P) => (<svg {...base} {...p}><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>);
 export const Link2 = (p: P) => (<svg {...base} {...p}><path d="M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 0 1 0 10h-2M8 12h8"/></svg>);
 export const Key = (p: P) => (<svg {...base} {...p}><path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>);
+export const Lock = (p: P) => (<svg {...base} {...p}><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>);
 export const Monitor = (p: P) => (<svg {...base} {...p}><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>);
 export const Moon = (p: P) => (<svg {...base} {...p}><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>);
 export const Sun = (p: P) => (<svg {...base} {...p}><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>);
@@ -60,7 +62,6 @@ export const Crosshair = (p: P) => (<svg {...base} {...p}><circle cx="12" cy="12
 export const Bot = (p: P) => (<svg {...base} {...p}><rect x="4" y="6" width="16" height="13" rx="2"/><path d="M12 2v4M8 11h.01M16 11h.01M9 15h6M2 10h2M20 10h2"/></svg>);
 export const Users = (p: P) => (<svg {...base} {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>);
 export const Info = (p: P) => (<svg {...base} {...p}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>);
-export const Bell = (p: P) => (<svg {...base} {...p}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>);
 export const Server = (p: P) => (<svg {...base} {...p}><rect x="3" y="3" width="18" height="7" rx="1"/><rect x="3" y="14" width="18" height="7" rx="1"/><path d="M7 6.5h.01M7 17.5h.01M11 6.5h7M11 17.5h7"/></svg>);
 export const Cpu = (p: P) => (<svg {...base} {...p}><rect x="6" y="6" width="12" height="12" rx="1"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg>);
 export const MemoryStick = (p: P) => (<svg {...base} {...p}><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h2v4H6zM11 10h2v4h-2zM16 10h2v4h-2zM6 18v2M10 18v2M14 18v2M18 18v2"/></svg>);
@@ -79,3 +80,10 @@ export const MoreHorizontal = (p: P) => (<svg {...base} {...p}><circle cx="5" cy
 export const Command = (p: P) => (<svg {...base} {...p}><path d="M15 6a3 3 0 1 1 3 3h-3zM9 6a3 3 0 1 0-3 3h3zM9 18a3 3 0 1 1-3-3h3zM15 18a3 3 0 1 0 3-3h-3zM9 9h6v6H9z"/></svg>);
 export const Keyboard = (p: P) => (<svg {...base} {...p}><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M9 14h6"/></svg>);
 export const ShieldCheck = (p: P) => (<svg {...base} {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>);
+export const Bell = (p: P) => (<svg {...base} {...p}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>);
+export const BellOff = (p: P) => (<svg {...base} {...p}><path d="M8.7 3A6 6 0 0 1 18 8c0 2.4.4 4.2.9 5.5M6 8a6 6 0 0 1 .3-1.8M3 17h15M13.73 21a2 2 0 0 1-3.46 0"/><path d="m1 1 22 22"/></svg>);
+export const Smartphone = (p: P) => (<svg {...base} {...p}><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg>);
+export const Filter = (p: P) => (<svg {...base} {...p}><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>);
+export const Calendar = (p: P) => (<svg {...base} {...p}><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>);
+export const SlidersHorizontal = (p: P) => (<svg {...base} {...p}><path d="M3 6h10M17 6h4M3 12h4M11 12h10M3 18h10M17 18h4"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="15" cy="18" r="2"/></svg>);
+export const CornerDownLeft = (p: P) => (<svg {...base} {...p}><path d="M9 10 4 15l5 5"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>);

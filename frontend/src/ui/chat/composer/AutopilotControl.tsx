@@ -8,7 +8,7 @@ import {
   validateAutopilotDraft,
   type AutopilotDraft,
   type AutopilotView,
-} from "../../../state/chat/chatPolicyState";
+} from "../../../state/hooks/chat/chatPolicyState";
 import { Loader, PlaneTakeoff } from "../../primitives/icons";
 
 /**

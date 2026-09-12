@@ -3,7 +3,7 @@ import {
   SLASH_GROUP_LABEL,
   type SlashCommand,
   type SlashGroup,
-} from "../../../state/chat/slashCommandState";
+} from "../../../state/hooks/chat/slashCommandState";
 import { Code, TestTube, Zap } from "../../primitives/icons";
 
 /**

@@ -1,3 +1,4 @@
+import { providerDisplayLabel } from "../../../config/chat";
 import type { ChatModelPolicy, ChatProvider, SelectedSkill } from "../../../models/chat";
 import type { DirectModelChoice, DirectModelRef } from "../../../models/directModels";
 import type { AgentEndpointChoice } from "../../../models/agentEndpoints";
@@ -107,6 +108,7 @@ export function ComposerAgentControls({
       >
         <SkillPicker
           provider={provider}
+          providerLabel={providerDisplayLabel(provider)}
           projectId={projectId}
           selectedCount={selectedSkills.length}
           onSelect={(skill) => onSelectSkill(skill)}

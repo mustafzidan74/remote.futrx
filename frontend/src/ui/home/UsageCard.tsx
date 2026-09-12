@@ -1,12 +1,9 @@
 import { useState } from "preact/hooks";
 import type { DashboardUsage } from "../../models/dashboard";
 import { weekOverWeek } from "../../state/home/dashboardState";
-import {
-  buildUsageChart,
-  formatTokens,
-  formatUsd,
-  type UsageChartMetric,
-} from "../../state/usage/usageChartModel";
+import type { UsageChartMetric } from "../../models/usage";
+import { usageChartService } from "../../services/usage/usageChartService.ts";
+import { usageFormatService } from "../../services/usage/usageFormatService.ts";
 import { CardEmpty, CardSkeleton, DashboardCard } from "./DashboardCard";
 import { ExternalLink, Zap } from "../primitives/icons";
 
@@ -36,7 +33,7 @@ export function UsageCard({
   onOpenUsage: () => void;
 }) {
   const [metric, setMetric] = useState<UsageChartMetric>("cost");
-  const chart = buildUsageChart(usage.daily, metric);
+  const chart = usageChartService.build(usage.daily, metric);
   const slot = chart.bars.length > 0 ? VIEW_WIDTH / chart.bars.length : VIEW_WIDTH;
   const barWidth = Math.max(2, slot - BAR_GAP);
   const delta =
@@ -95,8 +92,8 @@ export function UsageCard({
           <div class="mb-2 flex items-baseline justify-between gap-3">
             <span dir="ltr" class="bidi-ltr font-mono text-[20px] font-semibold tabular-nums text-ink-50">
               {metric === "cost"
-                ? formatUsd(usage.thisWeek.costUsd)
-                : formatTokens(usage.thisWeek.totalTokens)}
+                ? usageFormatService.usd(usage.thisWeek.costUsd)
+                : usageFormatService.tokens(usage.thisWeek.totalTokens)}
             </span>
             <span class="text-[12px] tabular-nums text-ink-300" title={delta.title}>
               peak day {chart.peakLabel}
