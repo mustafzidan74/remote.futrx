@@ -32,8 +32,10 @@ func (cleanup *deleteTestChatCleanup) DeleteProjectChats(_ context.Context, proj
 	return cleanup.err
 }
 
-func TestDeleteRemovesAssociatedChats(t *testing.T) {
-	repository := &deleteTestRepository{meta: Meta{ID: "deadbeef"}}
+// Delete moves a project to the Trash, where its chats must still be there to
+// reconnect on restore. They go when the project is purged for good.
+func TestPurgeRemovesAssociatedChats(t *testing.T) {
+	repository := &deleteTestRepository{meta: Meta{ID: "deadbeef", DeletedAt: 1}}
 	chats := &deleteTestChatCleanup{}
 	service := New(
 		repository,
@@ -43,7 +45,7 @@ func TestDeleteRemovesAssociatedChats(t *testing.T) {
 		WithChatCleanup(chats),
 	)
 
-	if err := service.Delete(context.Background(), repository.meta.ID); err != nil {
+	if err := service.Purge(context.Background(), repository.meta.ID); err != nil {
 		t.Fatal(err)
 	}
 	if chats.projectID != repository.meta.ID {
@@ -54,8 +56,8 @@ func TestDeleteRemovesAssociatedChats(t *testing.T) {
 	}
 }
 
-func TestDeletePreservesProjectWhenChatCleanupFails(t *testing.T) {
-	repository := &deleteTestRepository{meta: Meta{ID: "deadbeef"}}
+func TestPurgePreservesProjectWhenChatCleanupFails(t *testing.T) {
+	repository := &deleteTestRepository{meta: Meta{ID: "deadbeef", DeletedAt: 1}}
 	wantErr := errors.New("disk full")
 	service := New(
 		repository,
@@ -65,9 +67,9 @@ func TestDeletePreservesProjectWhenChatCleanupFails(t *testing.T) {
 		WithChatCleanup(&deleteTestChatCleanup{err: wantErr}),
 	)
 
-	err := service.Delete(context.Background(), repository.meta.ID)
+	err := service.Purge(context.Background(), repository.meta.ID)
 	if !errors.Is(err, wantErr) || !strings.Contains(err.Error(), "delete project chats") {
-		t.Fatalf("Delete() error = %v, want wrapped chat cleanup error", err)
+		t.Fatalf("Purge() error = %v, want wrapped chat cleanup error", err)
 	}
 	if repository.deleted {
 		t.Fatal("project record was deleted after chat cleanup failed")

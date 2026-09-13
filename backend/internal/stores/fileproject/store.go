@@ -216,10 +216,9 @@ func (s *Store) Update(
 		return serviceproject.Meta{}, err
 	}
 	// Trashing and restoring both run through Update, so this is where the
-	// slug index learns that a name is reserved by the trash.
-	s.indexMu.Lock()
+	// slug index learns that a name is reserved by the trash. indexMu is
+	// already held for the name check above.
 	s.bySlug[m.Slug] = slugEntry{id: m.ID, trashed: m.Trashed()}
-	s.indexMu.Unlock()
 	return m, nil
 }
 
@@ -354,6 +353,11 @@ func (s *Store) nameTakenLocked(name string, except serviceproject.ID) (bool, er
 			return false, err
 		}
 		if sameProjectName(m.Name, name) {
+			// A trashed project still owns its name: restoring it must not
+			// collide with a newcomer, so say where the name went.
+			if entry.trashed || m.Trashed() {
+				return false, serviceproject.ErrSlugInTrash
+			}
 			return true, nil
 		}
 	}

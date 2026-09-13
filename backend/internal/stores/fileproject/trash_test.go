@@ -8,11 +8,11 @@ import (
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 )
 
-// TestSlugReservedByTheTrash pins the collision rule. A live project's name
-// collision is resolved with a numeric suffix, exactly as it always was; a
-// collision with a project in the trash is refused, because renaming the
-// trashed project would change the container name and preview hostnames it is
-// restored under.
+// TestSlugReservedByTheTrash pins the collision rule. Display names are unique,
+// but two different names can still slugify alike: that live slug collision is
+// resolved with a numeric suffix, exactly as it always was. A collision with a
+// project in the trash is refused, because renaming the trashed project would
+// change the container name and preview hostnames it is restored under.
 func TestSlugReservedByTheTrash(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -46,8 +46,14 @@ func TestSlugReservedByTheTrash(t *testing.T) {
 				}
 			}
 
+			// A different display name with the same slug, so the live cases
+			// exercise the slug rule rather than the unique-name rule.
+			name := "My Project"
+			if !test.trash || test.restore {
+				name = "My-Project"
+			}
 			second, err := store.Create(context.Background(), serviceproject.Meta{
-				Name: "My Project", Slug: serviceproject.Slugify("My Project"),
+				Name: name, Slug: serviceproject.Slugify(name),
 			})
 			if test.wantErr != nil {
 				if !errors.Is(err, test.wantErr) {
