@@ -31,8 +31,8 @@ export function AuditLogSettings({
   onLoadMore: () => Promise<void>;
 }) {
   return (
-    <section class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-      <header class="px-4 py-3 flex items-start gap-3 border-b border-white/[0.06]">
+    <section class="rounded-lg border border-line bg-surface overflow-hidden">
+      <header class="px-4 py-3 flex items-start gap-3 border-b border-line">
         <div class="flex-1 min-w-0">
           <div class="text-[14.5px] font-semibold text-ink-50">Audit log</div>
           <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug">
@@ -47,7 +47,7 @@ export function AuditLogSettings({
             onClick={() => void onRefresh()}
             disabled={loading}
             class="h-9 px-2.5 rounded-md inline-flex items-center gap-2 text-[12px] text-ink-200
-                   hover:text-ink-50 hover:bg-white/[0.08] disabled:opacity-60"
+                   hover:text-ink-50 hover:bg-tint-strong disabled:opacity-60"
           >
             <RotateCcw class={`w-4 h-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" />
             <span class="hidden sm:inline">Refresh</span>
@@ -56,7 +56,7 @@ export function AuditLogSettings({
             href={exportUrl}
             download="audit-log.jsonl"
             class="h-9 px-2.5 rounded-md inline-flex items-center gap-2 text-[12px] text-ink-200
-                   hover:text-ink-50 hover:bg-white/[0.08]"
+                   hover:text-ink-50 hover:bg-tint-strong"
             title="Download the matching date range as JSONL"
           >
             <Download class="w-4 h-4" aria-hidden="true" />
@@ -73,7 +73,7 @@ export function AuditLogSettings({
         )}
 
         {loading && entries.length === 0 ? (
-          <div class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-8 flex items-center justify-center gap-2 text-[12.5px] text-ink-300">
+          <div class="rounded-md border border-line bg-tint px-3 py-8 flex items-center justify-center gap-2 text-[12.5px] text-ink-300">
             <Loader class="w-4 h-4 animate-spin" /> Loading audit entries…
           </div>
         ) : entries.length === 0 ? (
@@ -93,7 +93,7 @@ export function AuditLogSettings({
               onClick={() => void onLoadMore()}
               disabled={loadingMore}
               class="h-8 px-3 rounded-md text-[12px] text-ink-300 hover:text-ink-100
-                     hover:bg-white/[0.07] border border-white/10 disabled:opacity-50"
+                     hover:bg-tint-strong border border-line disabled:opacity-50"
             >
               {loadingMore ? "Loading older entries…" : "Load older entries"}
             </button>
@@ -138,7 +138,7 @@ function AuditFilterBar({
   return (
     <form
       onSubmit={submit}
-      class="rounded-md border border-white/10 bg-white/[0.03] p-2.5 space-y-2"
+      class="rounded-md border border-line bg-tint p-2.5 space-y-2"
     >
       <div class="grid gap-2 sm:grid-cols-2">
         <FilterField label="Actor">
@@ -149,7 +149,7 @@ function AuditFilterBar({
             placeholder="someone@example.com"
             spellcheck={false}
             autoComplete="off"
-            class="h-8 w-full rounded-md border border-white/10 bg-black/30 px-2 text-[12px] text-ink-100
+            class="h-8 w-full rounded-md border border-line bg-inset px-2 text-[12px] text-ink-100
                    placeholder:text-ink-400 focus:outline-none focus:border-accent-blue/60"
           />
         </FilterField>
@@ -161,7 +161,7 @@ function AuditFilterBar({
             placeholder="project.secret."
             spellcheck={false}
             autoComplete="off"
-            class="h-8 w-full rounded-md border border-white/10 bg-black/30 px-2 text-[12px] text-ink-100
+            class="h-8 w-full rounded-md border border-line bg-inset px-2 text-[12px] text-ink-100
                    placeholder:text-ink-400 focus:outline-none focus:border-accent-blue/60"
           />
         </FilterField>
@@ -172,7 +172,7 @@ function AuditFilterBar({
             type="datetime-local"
             value={draft.from}
             onInput={(event) => update({ from: (event.target as HTMLInputElement).value })}
-            class="h-8 w-full rounded-md border border-white/10 bg-black/30 px-2 text-[12px] text-ink-100
+            class="h-8 w-full rounded-md border border-line bg-inset px-2 text-[12px] text-ink-100
                    focus:outline-none focus:border-accent-blue/60"
           />
         </FilterField>
@@ -181,7 +181,7 @@ function AuditFilterBar({
             type="datetime-local"
             value={draft.to}
             onInput={(event) => update({ to: (event.target as HTMLInputElement).value })}
-            class="h-8 w-full rounded-md border border-white/10 bg-black/30 px-2 text-[12px] text-ink-100
+            class="h-8 w-full rounded-md border border-line bg-inset px-2 text-[12px] text-ink-100
                    focus:outline-none focus:border-accent-blue/60"
           />
         </FilterField>
@@ -190,7 +190,7 @@ function AuditFilterBar({
         <button
           type="submit"
           disabled={!dirty}
-          class="h-8 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[12px]
+          class="h-8 px-3 rounded-md bg-accent-blue text-on-accent hover:bg-accent-blue/85 text-[12px]
                  font-medium disabled:opacity-50"
         >
           Apply filters
@@ -200,7 +200,7 @@ function AuditFilterBar({
             type="button"
             onClick={clear}
             class="h-8 px-2.5 rounded-md inline-flex items-center gap-1.5 text-[12px] text-ink-300
-                   hover:text-ink-100 hover:bg-white/[0.08]"
+                   hover:text-ink-100 hover:bg-tint-strong"
           >
             <X class="w-3.5 h-3.5" /> Clear
           </button>
@@ -224,9 +224,9 @@ function FilterField({ label, children }: { label: string; children: ComponentCh
 
 function AuditTable({ entries }: { entries: AuditEntry[] }) {
   return (
-    <div class="overflow-x-auto touch-scroll border border-white/10 rounded-lg">
+    <div class="overflow-x-auto touch-scroll border border-line rounded-lg">
       <table class="w-full text-[12px] border-collapse">
-        <thead class="bg-white/[0.04]">
+        <thead class="bg-tint">
           <tr>
             <AuditHeaderCell>Time</AuditHeaderCell>
             <AuditHeaderCell>Actor</AuditHeaderCell>
@@ -276,14 +276,14 @@ function AuditTable({ entries }: { entries: AuditEntry[] }) {
 
 function AuditHeaderCell({ children }: { children: ComponentChildren }) {
   return (
-    <th class="text-left px-3 py-1.5 font-semibold border-b border-white/10 text-ink-100 whitespace-nowrap">
+    <th class="text-left px-3 py-1.5 font-semibold border-b border-line text-ink-100 whitespace-nowrap">
       {children}
     </th>
   );
 }
 
 function AuditCell({ children }: { children: ComponentChildren }) {
-  return <td class="px-3 py-1.5 border-b border-white/[0.06] align-top">{children}</td>;
+  return <td class="px-3 py-1.5 border-b border-line align-top">{children}</td>;
 }
 
 function AuditTargetCell({ entry }: { entry: AuditEntry }) {

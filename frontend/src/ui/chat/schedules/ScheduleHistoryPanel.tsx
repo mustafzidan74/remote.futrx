@@ -65,7 +65,7 @@ export function ScheduleHistoryPanel({
   }
 
   return (
-    <section class="mt-3 rounded-md border border-white/[0.08] bg-black/25 p-2.5">
+    <section class="mt-3 rounded-md border border-line bg-inset p-2.5">
       <header class="flex items-center gap-2">
         <h4 class="flex-1 text-[12px] font-medium text-ink-100">
           Run history — {task.name}
@@ -74,7 +74,7 @@ export function ScheduleHistoryPanel({
           type="button"
           onClick={() => void reload()}
           disabled={loading}
-          class="h-7 w-7 rounded-md border border-white/10 bg-white/[0.03] text-ink-300 grid place-items-center hover:bg-white/[0.08] disabled:opacity-45"
+          class="h-7 w-7 rounded-md border border-line bg-tint text-ink-300 grid place-items-center hover:bg-tint-strong disabled:opacity-45"
           title="Reload history"
           aria-label="Reload run history"
         >
@@ -83,7 +83,7 @@ export function ScheduleHistoryPanel({
         <button
           type="button"
           onClick={onClose}
-          class="h-7 w-7 rounded-md border border-white/10 bg-white/[0.03] text-ink-300 grid place-items-center hover:bg-white/[0.08]"
+          class="h-7 w-7 rounded-md border border-line bg-tint text-ink-300 grid place-items-center hover:bg-tint-strong"
           title="Close history"
           aria-label="Close run history"
         >
@@ -155,7 +155,7 @@ function RunRow({
 
   return (
     <>
-      <tr class="border-t border-white/[0.06] align-top">
+      <tr class="border-t border-line align-top">
         <td class="py-1.5 pr-2 text-ink-200 whitespace-nowrap">
           {formatTimestamp(record.startedAt)}
         </td>
@@ -179,7 +179,7 @@ function RunRow({
             class={`inline-flex h-6 items-center gap-1 rounded border px-1.5 text-[10.5px]
                     ${open
                       ? "border-accent-blue/35 bg-accent-blue/[0.14] text-accent-blue"
-                      : "border-white/10 bg-white/[0.03] text-ink-300 hover:bg-white/[0.08]"}`}
+                      : "border-line bg-tint text-ink-300 hover:bg-tint-strong"}`}
           >
             <FileText class="w-3 h-3" />
             {open ? "Hide" : "Details"}
@@ -243,7 +243,7 @@ function RunDetails({
   const summary = parseDiffStat(stat);
 
   return (
-    <div class="rounded-md border border-white/[0.07] bg-black/30 p-2.5 text-[11.5px] leading-5">
+    <div class="rounded-md border border-line bg-inset p-2.5 text-[11.5px] leading-5">
       {record.summary && (
         <p class="whitespace-pre-wrap break-words text-ink-300">{record.summary}</p>
       )}

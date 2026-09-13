@@ -170,7 +170,7 @@ export function CreateProjectModal({
             disabled={!canSubmit}
             class={`inline-flex items-center gap-[7px] rounded-lg border border-transparent px-[15px] py-2 text-[13px] font-medium transition-colors ${
               validation.ok
-                ? "bg-accent-blue text-ink-900"
+                ? "bg-accent-blue text-on-accent"
                 : "cursor-not-allowed bg-tint-strong text-ink-400"
             } ${creating ? "opacity-80" : ""}`}
           >

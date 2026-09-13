@@ -82,19 +82,19 @@ export function ThreadHeader({
   
 
   return (
-    <header class="codex-header top-chrome z-20 flex flex-none flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-white/10 bg-[#101318] px-3 py-2 md:bg-[#101318]/95 md:backdrop-blur">
+    <header class="codex-header top-chrome z-20 flex flex-none flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-line bg-surface px-3 py-2 md:bg-surface/95 md:backdrop-blur">
       <div class="codex-thread-heading flex min-h-9 min-w-0 flex-1 basis-full items-center gap-2 sm:basis-0">
         <button
           type="button"
           onClick={onHamburger}
-          class="md:hidden h-9 w-9 rounded-md text-ink-100 hover:bg-white/[0.08] grid place-items-center flex-none"
+          class="md:hidden h-9 w-9 rounded-md text-ink-100 hover:bg-tint-strong grid place-items-center flex-none"
           aria-label="Open chats"
           title="Chats"
         >
           <Menu class="w-5 h-5" />
         </button>
 
-        <div class="hidden sm:grid h-8 w-8 rounded-md bg-white/[0.05] border border-white/10 text-ink-300 place-items-center flex-none">
+        <div class="hidden sm:grid h-8 w-8 rounded-md bg-tint border border-line text-ink-300 place-items-center flex-none">
           <MessageSquare class="w-4 h-4" />
         </div>
 
@@ -225,7 +225,7 @@ function RegenerateTitleButton({ chatId }: { chatId: string }) {
       aria-label="Rename this chat with the auxiliary model"
       title={failed ? `Rename failed: ${failed}` : "Rename with the auxiliary model"}
       class={`grid h-7 w-7 flex-none place-items-center rounded-md text-ink-400 transition
-              hover:bg-white/[0.08] hover:text-ink-100 disabled:opacity-50
+              hover:bg-tint-strong hover:text-ink-100 disabled:opacity-50
               ${failed ? "text-accent-red" : ""}`}
     >
       {busy ? <Loader class="h-3.5 w-3.5 animate-spin" /> : <RotateCcw class="h-3.5 w-3.5" />}

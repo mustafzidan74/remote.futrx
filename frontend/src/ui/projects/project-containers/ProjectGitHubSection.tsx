@@ -148,7 +148,7 @@ export function ProjectGitHubSection({
               }}
               disabled={busy || !actions.canOpenPR}
               title={actions.canOpenPR ? "Open a pull request from /workspace" : actions.blockedReason}
-              class="h-10 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+              class="h-10 px-3 rounded-md bg-accent-blue text-on-accent hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
             >
               <GitFork class="w-3.5 h-3.5" />
               Open pull request
@@ -167,7 +167,7 @@ export function ProjectGitHubSection({
                   }
                 }}
                 disabled={busy}
-                class="h-10 px-3 rounded-md border border-white/10 text-ink-100 hover:bg-white/[0.06] text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+                class="h-10 px-3 rounded-md border border-line text-ink-100 hover:bg-tint-strong text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
               >
                 {busy ? <Loader class="w-3.5 h-3.5 animate-spin" /> : <Download class="w-3.5 h-3.5" />}
                 Clone into /workspace
@@ -178,7 +178,7 @@ export function ProjectGitHubSection({
               onClick={() => void onLoadPulls()}
               disabled={pulls.loading || !actions.canListPRs}
               title={actions.canListPRs ? "List the open pull requests" : actions.blockedReason}
-              class="h-10 px-3 rounded-md border border-white/10 text-ink-100 hover:bg-white/[0.06] text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+              class="h-10 px-3 rounded-md border border-line text-ink-100 hover:bg-tint-strong text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
             >
               {pulls.loading ? (
                 <Loader class="w-3.5 h-3.5 animate-spin" />
@@ -261,14 +261,14 @@ function LinkForm({
           placeholder="owner/repo or https://github.com/owner/repo"
           autocomplete="off"
           spellcheck={false}
-          class="w-full h-10 rounded-md bg-black/30 border border-white/10 px-3 text-sm text-ink-100
+          class="w-full h-10 rounded-md bg-inset border border-line px-3 text-sm text-ink-100
                  placeholder:text-ink-400 focus:outline-none focus:border-accent-blue font-mono"
         />
       </label>
       <button
         type="submit"
         disabled={busy || !value.trim()}
-        class="h-10 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+        class="h-10 px-3 rounded-md bg-accent-blue text-on-accent hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
       >
         {busy && <Loader class="w-3.5 h-3.5 animate-spin" />}
         Link repository
@@ -293,7 +293,7 @@ function LinkedRepository({
   onUnlink: () => Promise<void>;
 }) {
   return (
-    <div class="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 space-y-2">
+    <div class="rounded-md border border-line bg-tint px-3 py-2.5 space-y-2">
       <div class="flex items-start gap-2 flex-wrap">
         <a
           href={repoUrl(status)}
@@ -305,7 +305,7 @@ function LinkedRepository({
           <ExternalLink class="w-3.5 h-3.5 flex-none" />
         </a>
         {status.defaultBranch && (
-          <span class="text-[11px] px-1.5 py-0.5 rounded border border-white/10 text-ink-300 font-mono">
+          <span class="text-[11px] px-1.5 py-0.5 rounded border border-line text-ink-300 font-mono">
             {status.defaultBranch}
           </span>
         )}
@@ -314,7 +314,7 @@ function LinkedRepository({
           type="button"
           onClick={() => void onUnlink()}
           disabled={busy}
-          class="h-8 px-2.5 rounded-md border border-white/10 text-ink-300 hover:text-accent-red hover:bg-white/[0.06] text-[12px] disabled:opacity-50"
+          class="h-8 px-2.5 rounded-md border border-line text-ink-300 hover:text-accent-red hover:bg-tint-strong text-[12px] disabled:opacity-50"
         >
           Unlink
         </button>
@@ -368,7 +368,7 @@ function PullRequestList({
   if (!record.data) return null;
   if (record.data.length === 0) {
     return (
-      <div class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[12.5px] text-ink-300">
+      <div class="rounded-md border border-line bg-tint px-3 py-2.5 text-[12.5px] text-ink-300">
         No open pull requests.
       </div>
     );
@@ -408,7 +408,7 @@ function PullRequestRow({
   const chatId = chosen || chats[0]?.id || "";
 
   return (
-    <div class="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 space-y-2">
+    <div class="rounded-md border border-line bg-tint px-3 py-2.5 space-y-2">
       <div class="flex items-start gap-2 flex-wrap min-w-0">
         <a
           href={pull.url}
@@ -421,7 +421,7 @@ function PullRequestRow({
           <ExternalLink class="w-3 h-3 flex-none" />
         </a>
         {pull.draft && (
-          <span class="text-[11px] px-1.5 py-0.5 rounded border border-white/10 text-ink-400">
+          <span class="text-[11px] px-1.5 py-0.5 rounded border border-line text-ink-400">
             draft
           </span>
         )}
@@ -443,7 +443,7 @@ function PullRequestRow({
             <select
               value={chatId}
               onChange={(event) => setChosen((event.currentTarget as HTMLSelectElement).value)}
-              class="h-9 rounded-md bg-black/30 border border-white/10 px-2 text-[12.5px] text-ink-100 max-w-[220px]"
+              class="h-9 rounded-md bg-inset border border-line px-2 text-[12.5px] text-ink-100 max-w-[220px]"
             >
               {chats.map((chat) => (
                 <option key={chat.id} value={chat.id}>
@@ -455,7 +455,7 @@ function PullRequestRow({
               type="button"
               onClick={() => void onImport(pull.number, chatId)}
               disabled={busy || !chatId}
-              class="h-9 px-2.5 rounded-md border border-white/10 text-ink-100 hover:bg-white/[0.06] text-[12.5px] disabled:opacity-50 inline-flex items-center gap-1.5"
+              class="h-9 px-2.5 rounded-md border border-line text-ink-100 hover:bg-tint-strong text-[12.5px] disabled:opacity-50 inline-flex items-center gap-1.5"
             >
               <MessageSquare class="w-3.5 h-3.5" />
               Import review comments
@@ -471,7 +471,7 @@ const TONE_CLASS: Record<ChecksTone, string> = {
   ok: "border-accent-green/30 text-accent-green",
   warn: "border-accent-orange/30 text-accent-orange",
   bad: "border-accent-red/30 text-accent-red",
-  muted: "border-white/10 text-ink-400",
+  muted: "border-line text-ink-400",
 };
 
 export function ChecksBadge({ tone, text }: { tone: ChecksTone; text: string }) {

@@ -110,14 +110,14 @@ export function PreviewPopover({
       style={style}
       class="popover-surface theme-menu-surface fixed z-50 flex flex-col"
     >
-      <div class="flex flex-none items-center gap-2 border-b border-white/[0.07] px-3 py-2">
+      <div class="flex flex-none items-center gap-2 border-b border-line px-3 py-2">
         <div dir="auto" title={title} class="bidi-auto min-w-0 flex-1 truncate text-[12px] font-semibold text-ink-100">
           {title}
         </div>
         <button
           type="button"
           onClick={onClose}
-          class="grid h-6 w-6 flex-none place-items-center rounded text-ink-300 hover:bg-white/[0.08] hover:text-ink-50"
+          class="grid h-6 w-6 flex-none place-items-center rounded text-ink-300 hover:bg-tint-strong hover:text-ink-50"
           aria-label="Close preview links"
           title="Close"
         >

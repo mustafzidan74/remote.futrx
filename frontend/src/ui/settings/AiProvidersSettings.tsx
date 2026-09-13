@@ -45,7 +45,7 @@ import {
 } from "../primitives/icons";
 
 const inputClass =
-  "h-9 w-full rounded-md border border-white/10 bg-black/30 px-2.5 text-[13px] text-ink-50 " +
+  "h-9 w-full rounded-md border border-line bg-inset px-2.5 text-[13px] text-ink-50 " +
   "placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none disabled:opacity-60";
 
 /** The dot beside a provider's name, in the board's shared tones. */
@@ -84,7 +84,7 @@ export function AiProvidersSettings() {
 
   return (
     <div class="space-y-4">
-      <section class="rounded-lg border border-white/10 bg-[#101318] p-4">
+      <section class="rounded-lg border border-line bg-surface p-4">
         <div class="flex items-start gap-2">
           <Network class="mt-0.5 h-4 w-4 flex-none text-accent-blue" aria-hidden="true" />
           <div class="min-w-0 text-[12.5px] leading-relaxed text-ink-300">
@@ -131,14 +131,14 @@ export function AiProvidersSettings() {
         <button
           type="button"
           onClick={() => setDraft(emptyProviderForm())}
-          class="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent-blue px-3 text-[13px] font-medium text-ink-900 hover:bg-accent-blue/85"
+          class="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent-blue px-3 text-[13px] font-medium text-on-accent hover:bg-accent-blue/85"
         >
           <Plus class="h-4 w-4" /> Add provider
         </button>
       </div>
 
       {editor.loading && !view ? (
-        <div class="rounded-lg border border-white/10 bg-[#101318] px-4 py-6 text-[13px] text-ink-300">
+        <div class="rounded-lg border border-line bg-surface px-4 py-6 text-[13px] text-ink-300">
           Loading the provider pool…
         </div>
       ) : providers.length === 0 ? (
@@ -148,9 +148,9 @@ export function AiProvidersSettings() {
           hint="Add one free tier and the platform's own text jobs can use it. Add a second and they keep working when the first runs out."
         />
       ) : (
-        <div class="overflow-x-auto rounded-lg border border-white/10 bg-[#101318]">
+        <div class="overflow-x-auto rounded-lg border border-line bg-surface">
           <table class="w-full min-w-[62rem] text-left text-[12.5px]">
-            <thead class="border-b border-white/[0.08] text-[11px] uppercase tracking-wide text-ink-400">
+            <thead class="border-b border-line text-[11px] uppercase tracking-wide text-ink-400">
               <tr>
                 <th class="px-3 py-2 font-medium">Provider</th>
                 <th class="px-3 py-2 font-medium">Models</th>
@@ -267,7 +267,7 @@ function PoolPolicy({ editor }: { editor: AiProvidersEditor }) {
             setPreferred(null);
           }}
           disabled={editor.saving || !dirty}
-          class="h-9 rounded-md bg-accent-blue px-4 text-[13px] font-semibold text-ink-900 disabled:opacity-50"
+          class="h-9 rounded-md bg-accent-blue px-4 text-[13px] font-semibold text-on-accent disabled:opacity-50"
         >
           {editor.saving ? "Saving…" : "Save policy"}
         </button>
@@ -329,7 +329,7 @@ function ProviderRow({
 
   return (
     <>
-      <tr class="border-b border-white/[0.05] align-top last:border-b-0">
+      <tr class="border-b border-line align-top last:border-b-0">
         <td class="px-3 py-2.5">
           <div class="flex items-start gap-2">
             <span
@@ -388,7 +388,7 @@ function ProviderRow({
 
         <td class="px-3 py-2.5">
           <div class="flex items-center gap-1">
-            <span class="grid h-6 w-6 flex-none place-items-center rounded bg-white/[0.07] text-[11px] tabular-nums text-ink-300">
+            <span class="grid h-6 w-6 flex-none place-items-center rounded bg-tint-strong text-[11px] tabular-nums text-ink-300">
               {index + 1}
             </span>
             <IconButton
@@ -424,7 +424,7 @@ function ProviderRow({
               onClick={onTest}
               disabled={testing}
               title="Ask this provider for one short sentence and report how long it took"
-              class="inline-flex h-8 items-center gap-1 rounded px-2 text-[11px] text-ink-300 hover:bg-white/[0.08] hover:text-ink-100 disabled:opacity-50"
+              class="inline-flex h-8 items-center gap-1 rounded px-2 text-[11px] text-ink-300 hover:bg-tint-strong hover:text-ink-100 disabled:opacity-50"
             >
               {testing ? <Loader class="h-3 w-3 animate-spin" /> : <Zap class="h-3 w-3" />}
               {testing ? "testing…" : "test"}
@@ -434,7 +434,7 @@ function ProviderRow({
               onClick={onDiscover}
               disabled={testing}
               title="Ask this provider which models it serves right now, and compare with the ones configured here"
-              class="inline-flex h-8 items-center gap-1 rounded px-2 text-[11px] text-ink-300 hover:bg-white/[0.08] hover:text-ink-100 disabled:opacity-50"
+              class="inline-flex h-8 items-center gap-1 rounded px-2 text-[11px] text-ink-300 hover:bg-tint-strong hover:text-ink-100 disabled:opacity-50"
             >
               <RotateCcw class="h-3 w-3" />
               models
@@ -442,7 +442,7 @@ function ProviderRow({
             <button
               type="button"
               onClick={onEdit}
-              class="h-8 rounded px-2 text-[11px] text-ink-300 hover:bg-white/[0.08] hover:text-ink-100"
+              class="h-8 rounded px-2 text-[11px] text-ink-300 hover:bg-tint-strong hover:text-ink-100"
             >
               edit
             </button>
@@ -451,7 +451,7 @@ function ProviderRow({
               onClick={remove}
               disabled={busy}
               aria-label={`Remove ${provider.label}`}
-              class="grid h-8 w-8 place-items-center rounded text-ink-300 hover:bg-white/[0.08] hover:text-accent-red disabled:opacity-50"
+              class="grid h-8 w-8 place-items-center rounded text-ink-300 hover:bg-tint-strong hover:text-accent-red disabled:opacity-50"
             >
               <Trash class="h-3.5 w-3.5" />
             </button>
@@ -460,7 +460,7 @@ function ProviderRow({
       </tr>
 
       {(testResult || lastError || provider.notes) && (
-        <tr class="border-b border-white/[0.05] last:border-b-0">
+        <tr class="border-b border-line last:border-b-0">
           <td colSpan={6} class="px-3 pb-2.5 text-[11.5px]">
             {provider.notes && (
               <div class="text-ink-400" dir="auto">
@@ -558,7 +558,7 @@ function DiscoveryPanel({
       class={`mt-1.5 rounded-md border px-2.5 py-2 leading-relaxed ${
         broken
           ? "border-accent-orange/30 bg-accent-orange/[0.08] text-ink-100"
-          : "border-white/10 bg-white/[0.04] text-ink-100"
+          : "border-line bg-tint text-ink-100"
       }`}
     >
       {broken ? (
@@ -573,7 +573,7 @@ function DiscoveryPanel({
           <button
             type="button"
             onClick={() => onAdopt(configured.filter((id) => !discovery.missing.includes(id)))}
-            class="mt-1.5 h-8 rounded-md bg-accent-blue px-2.5 text-[11.5px] font-medium text-ink-900 hover:bg-accent-blue/85"
+            class="mt-1.5 h-8 rounded-md bg-accent-blue px-2.5 text-[11.5px] font-medium text-on-accent hover:bg-accent-blue/85"
           >
             Drop them
           </button>
@@ -645,7 +645,7 @@ function UsageBar({
         )}
       </svg>
       <span
-        class="mt-1 inline-block rounded border border-white/10 px-1 text-[10px] leading-[1.5] text-ink-400"
+        class="mt-1 inline-block rounded border border-line px-1 text-[10px] leading-[1.5] text-ink-400"
         title={source}
       >
         {meter.source === "reported" ? "reported" : "counted"}
@@ -695,7 +695,7 @@ function ProviderDialog({
   return (
     <form
       onSubmit={submit}
-      class="space-y-3 rounded-lg border border-white/10 bg-[#101318] p-4"
+      class="space-y-3 rounded-lg border border-line bg-surface p-4"
       aria-label={draft.existing ? `Edit ${draft.label || draft.id}` : "Add provider"}
     >
       <div class="text-[14.5px] font-semibold text-ink-50">
@@ -751,7 +751,7 @@ function ProviderDialog({
         />
       </Field>
 
-      <div class="grid gap-3 rounded-md border border-white/10 bg-white/[0.02] p-3 sm:grid-cols-2">
+      <div class="grid gap-3 rounded-md border border-line bg-tint p-3 sm:grid-cols-2">
         <Field label="API key">
           <input
             type="password"
@@ -770,7 +770,7 @@ function ProviderDialog({
                 <button
                   type="button"
                   onClick={() => patch({ clearApiKey: false })}
-                  class="rounded border border-white/10 px-1.5 py-0.5 text-ink-200 hover:bg-white/[0.07]"
+                  class="rounded border border-line px-1.5 py-0.5 text-ink-200 hover:bg-tint-strong"
                 >
                   Keep it
                 </button>
@@ -781,7 +781,7 @@ function ProviderDialog({
                 <button
                   type="button"
                   onClick={() => patch({ apiKey: "", clearApiKey: true })}
-                  class="rounded border border-white/10 px-1.5 py-0.5 text-ink-200 hover:bg-white/[0.07]"
+                  class="rounded border border-line px-1.5 py-0.5 text-ink-200 hover:bg-tint-strong"
                 >
                   Remove key
                 </button>
@@ -817,11 +817,11 @@ function ProviderDialog({
           spellcheck={false}
           dir="ltr"
           placeholder={"llama-3.3-70b-versatile | Llama 3.3 70B | 131072 | text,code"}
-          class="bidi-ltr w-full resize-y rounded-md border border-white/10 bg-black/30 px-2.5 py-1.5 font-mono text-[12.5px] leading-[1.45] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
+          class="bidi-ltr w-full resize-y rounded-md border border-line bg-inset px-2.5 py-1.5 font-mono text-[12.5px] leading-[1.45] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
         />
       </Field>
 
-      <fieldset class="space-y-2 rounded-md border border-white/10 bg-white/[0.02] p-3">
+      <fieldset class="space-y-2 rounded-md border border-line bg-tint p-3">
         <legend class="text-[11.5px] font-medium text-ink-300">Documented free-tier limits</legend>
         <p class="text-[11px] leading-relaxed text-ink-400">
           Leave a field blank when the vendor documents no cap for that window — blank means “not
@@ -853,7 +853,7 @@ function ProviderDialog({
         />
       </Field>
 
-      <label class="flex cursor-pointer items-start gap-2.5 rounded-md border border-white/10 bg-white/[0.03] p-2.5">
+      <label class="flex cursor-pointer items-start gap-2.5 rounded-md border border-line bg-tint p-2.5">
         <input
           type="checkbox"
           checked={draft.enabled}
@@ -880,7 +880,7 @@ function ProviderDialog({
         <button
           type="submit"
           disabled={saving}
-          class="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent-blue px-3 text-[13px] font-medium text-ink-900 hover:bg-accent-blue/85 disabled:opacity-50"
+          class="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent-blue px-3 text-[13px] font-medium text-on-accent hover:bg-accent-blue/85 disabled:opacity-50"
         >
           {saving ? <Loader class="h-4 w-4 animate-spin" /> : <Check class="h-4 w-4" />}
           {draft.existing ? "Save" : "Add"}
@@ -888,7 +888,7 @@ function ProviderDialog({
         <button
           type="button"
           onClick={onCancel}
-          class="h-9 rounded-md px-3 text-[13px] text-ink-300 hover:bg-white/[0.08] hover:text-ink-100"
+          class="h-9 rounded-md px-3 text-[13px] text-ink-300 hover:bg-tint-strong hover:text-ink-100"
         >
           Cancel
         </button>
@@ -927,7 +927,7 @@ function Toggle({
   hint: string;
 }) {
   return (
-    <label class="flex cursor-pointer items-start gap-2.5 rounded-md border border-white/10 bg-white/[0.03] p-2.5">
+    <label class="flex cursor-pointer items-start gap-2.5 rounded-md border border-line bg-tint p-2.5">
       <input
         type="checkbox"
         checked={checked}
@@ -960,7 +960,7 @@ function IconButton({
       disabled={disabled}
       aria-label={label}
       title={label}
-      class="grid h-8 w-8 flex-none place-items-center rounded-md text-ink-300 hover:bg-white/[0.08] hover:text-ink-100 disabled:opacity-30"
+      class="grid h-8 w-8 flex-none place-items-center rounded-md text-ink-300 hover:bg-tint-strong hover:text-ink-100 disabled:opacity-30"
     >
       <Icon class="h-3.5 w-3.5" />
     </button>
@@ -979,9 +979,9 @@ function Panel({
   children: preact.ComponentChildren;
 }) {
   return (
-    <section class="overflow-hidden rounded-lg border border-white/10 bg-[#101318]">
-      <header class="flex items-start gap-3 border-b border-white/[0.06] px-4 py-3">
-        <div class="mt-0.5 grid h-9 w-9 flex-none place-items-center rounded-md border border-white/10 bg-white/[0.06]">
+    <section class="overflow-hidden rounded-lg border border-line bg-surface">
+      <header class="flex items-start gap-3 border-b border-line px-4 py-3">
+        <div class="mt-0.5 grid h-9 w-9 flex-none place-items-center rounded-md border border-line bg-tint-strong">
           <Icon class="h-4 w-4 text-ink-200" />
         </div>
         <div class="min-w-0 flex-1">

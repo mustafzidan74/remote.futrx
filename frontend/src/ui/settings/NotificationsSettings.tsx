@@ -22,7 +22,7 @@ const WHATSAPP_PROVIDERS: Array<{ value: WhatsAppProvider; label: string }> = [
 ];
 
 const inputClass =
-  "w-full h-10 rounded-md bg-black/30 border border-white/10 px-3 text-sm text-ink-100 " +
+  "w-full h-10 rounded-md bg-inset border border-line px-3 text-sm text-ink-100 " +
   "placeholder:text-ink-400 focus:outline-none focus:border-accent-blue";
 
 const EVENT_ROWS: Array<{ key: keyof NotificationEventToggles; label: string; hint: string }> = [
@@ -88,9 +88,9 @@ export function NotificationsSettings() {
   } = useNotificationsSettingsController();
 
   return (
-    <section class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-      <header class="px-4 py-3 flex items-start gap-3 border-b border-white/[0.06]">
-        <div class="h-9 w-9 rounded-md bg-white/[0.06] border border-white/10 grid place-items-center flex-none">
+    <section class="rounded-lg border border-line bg-surface overflow-hidden">
+      <header class="px-4 py-3 flex items-start gap-3 border-b border-line">
+        <div class="h-9 w-9 rounded-md bg-tint-strong border border-line grid place-items-center flex-none">
           <Bell class="w-4 h-4 text-ink-200" />
         </div>
         <div class="flex-1 min-w-0">
@@ -114,7 +114,7 @@ export function NotificationsSettings() {
       </header>
 
       <form onSubmit={save} class="p-3 space-y-3">
-        <label class="flex items-start gap-2.5 rounded-md border border-white/10 bg-white/[0.03] p-2.5 cursor-pointer">
+        <label class="flex items-start gap-2.5 rounded-md border border-line bg-tint p-2.5 cursor-pointer">
           <input
             type="checkbox"
             checked={notificationsEnabled}
@@ -133,14 +133,14 @@ export function NotificationsSettings() {
 
         <fieldset class="space-y-3">
           <legend class="text-xs font-semibold text-ink-200 uppercase tracking-wide">Telegram</legend>
-          <div class="rounded-md border border-white/10 bg-white/[0.03] p-2.5 text-[12px] text-ink-300 leading-relaxed">
+          <div class="rounded-md border border-line bg-tint p-2.5 text-[12px] text-ink-300 leading-relaxed">
             Message <span class="text-ink-100">@BotFather</span> on Telegram, send{" "}
-            <code class="rounded bg-black/30 border border-white/10 px-1 py-0.5 text-[11.5px]">
+            <code class="rounded bg-inset border border-line px-1 py-0.5 text-[11.5px]">
               /newbot
             </code>
             , and paste the token it gives you. Then send your bot a message and read your chat ID
             from{" "}
-            <code class="rounded bg-black/30 border border-white/10 px-1 py-0.5 text-[11.5px] break-all">
+            <code class="rounded bg-inset border border-line px-1 py-0.5 text-[11.5px] break-all">
               https://api.telegram.org/bot&lt;token&gt;/getUpdates
             </code>
             .
@@ -167,7 +167,7 @@ export function NotificationsSettings() {
               }
               autocomplete="new-password"
               spellcheck={false}
-              class="w-full h-10 rounded-md bg-black/30 border border-white/10 px-3 text-sm text-ink-100 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue"
+              class="w-full h-10 rounded-md bg-inset border border-line px-3 text-sm text-ink-100 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue"
             />
           </label>
           <label class="block space-y-1.5">
@@ -179,7 +179,7 @@ export function NotificationsSettings() {
               placeholder="-1001234567890"
               autocomplete="off"
               spellcheck={false}
-              class="w-full h-10 rounded-md bg-black/30 border border-white/10 px-3 text-sm text-ink-100 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue"
+              class="w-full h-10 rounded-md bg-inset border border-line px-3 text-sm text-ink-100 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue"
             />
           </label>
           {settings?.telegram.configured && (
@@ -187,7 +187,7 @@ export function NotificationsSettings() {
               type="button"
               onClick={() => void clearTelegramToken()}
               disabled={saving}
-              class="h-8 px-2.5 rounded-md border border-white/10 text-ink-300 hover:text-ink-100 hover:bg-white/[0.06] text-[12px] disabled:opacity-50"
+              class="h-8 px-2.5 rounded-md border border-line text-ink-300 hover:text-ink-100 hover:bg-tint-strong text-[12px] disabled:opacity-50"
             >
               Remove stored bot token
             </button>
@@ -217,7 +217,7 @@ export function NotificationsSettings() {
 
           {whatsapp.provider === "cloud" && (
             <>
-              <div class="rounded-md border border-white/10 bg-white/[0.03] p-2.5 text-[12px] text-ink-300 leading-relaxed">
+              <div class="rounded-md border border-line bg-tint p-2.5 text-[12px] text-ink-300 leading-relaxed">
                 Meta only delivers free-form text inside the 24-hour window that opens when the
                 recipient messages your business number. Outside it a pre-approved template is
                 required — name one below and Remote sends the message as that template, with the
@@ -314,7 +314,7 @@ export function NotificationsSettings() {
                   type="button"
                   onClick={() => void clearWhatsAppAccessToken()}
                   disabled={saving}
-                  class="h-8 px-2.5 rounded-md border border-white/10 text-ink-300 hover:text-ink-100 hover:bg-white/[0.06] text-[12px] disabled:opacity-50"
+                  class="h-8 px-2.5 rounded-md border border-line text-ink-300 hover:text-ink-100 hover:bg-tint-strong text-[12px] disabled:opacity-50"
                 >
                   Remove stored access token
                 </button>
@@ -324,7 +324,7 @@ export function NotificationsSettings() {
 
           {whatsapp.provider === "callmebot" && (
             <>
-              <div class="rounded-md border border-white/10 bg-white/[0.03] p-2.5 text-[12px] text-ink-300 leading-relaxed">
+              <div class="rounded-md border border-line bg-tint p-2.5 text-[12px] text-ink-300 leading-relaxed">
                 Message the CallMeBot number on WhatsApp with the activation phrase from its
                 instructions; the bot replies with a personal API key. Messages then arrive from
                 that number as short plain text, one line plus the link.
@@ -378,7 +378,7 @@ export function NotificationsSettings() {
                   type="button"
                   onClick={() => void clearCallMeBotApiKey()}
                   disabled={saving}
-                  class="h-8 px-2.5 rounded-md border border-white/10 text-ink-300 hover:text-ink-100 hover:bg-white/[0.06] text-[12px] disabled:opacity-50"
+                  class="h-8 px-2.5 rounded-md border border-line text-ink-300 hover:text-ink-100 hover:bg-tint-strong text-[12px] disabled:opacity-50"
                 >
                   Remove stored API key
                 </button>
@@ -389,9 +389,9 @@ export function NotificationsSettings() {
 
         <fieldset class="space-y-3">
           <legend class="text-xs font-semibold text-ink-200 uppercase tracking-wide">Webhook</legend>
-          <div class="rounded-md border border-white/10 bg-white/[0.03] p-2.5 text-[12px] text-ink-300 leading-relaxed">
+          <div class="rounded-md border border-line bg-tint p-2.5 text-[12px] text-ink-300 leading-relaxed">
             Remote POSTs a JSON body to this URL. With a shared secret set, each request carries{" "}
-            <code class="rounded bg-black/30 border border-white/10 px-1 py-0.5 text-[11.5px] break-all">
+            <code class="rounded bg-inset border border-line px-1 py-0.5 text-[11.5px] break-all">
               X-Remote-Signature: sha256=&lt;hmac&gt;
             </code>{" "}
             over the exact body.
@@ -405,7 +405,7 @@ export function NotificationsSettings() {
               placeholder="https://hooks.example.com/remote"
               autocomplete="off"
               spellcheck={false}
-              class="w-full h-10 rounded-md bg-black/30 border border-white/10 px-3 text-sm text-ink-100 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue"
+              class="w-full h-10 rounded-md bg-inset border border-line px-3 text-sm text-ink-100 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue"
             />
           </label>
           <label class="block space-y-1.5">
@@ -420,7 +420,7 @@ export function NotificationsSettings() {
                   : "Used to sign each request"
               }
               autocomplete="new-password"
-              class="w-full h-10 rounded-md bg-black/30 border border-white/10 px-3 text-sm text-ink-100 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue"
+              class="w-full h-10 rounded-md bg-inset border border-line px-3 text-sm text-ink-100 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue"
             />
           </label>
           {settings?.webhook.secretMasked && (
@@ -428,7 +428,7 @@ export function NotificationsSettings() {
               type="button"
               onClick={() => void clearWebhookSecret()}
               disabled={saving}
-              class="h-8 px-2.5 rounded-md border border-white/10 text-ink-300 hover:text-ink-100 hover:bg-white/[0.06] text-[12px] disabled:opacity-50"
+              class="h-8 px-2.5 rounded-md border border-line text-ink-300 hover:text-ink-100 hover:bg-tint-strong text-[12px] disabled:opacity-50"
             >
               Remove stored webhook secret
             </button>
@@ -440,7 +440,7 @@ export function NotificationsSettings() {
           {EVENT_ROWS.map((row) => (
             <label
               key={row.key}
-              class="flex items-start gap-2.5 rounded-md border border-white/10 bg-white/[0.03] p-2.5 cursor-pointer"
+              class="flex items-start gap-2.5 rounded-md border border-line bg-tint p-2.5 cursor-pointer"
             >
               <input
                 type="checkbox"
@@ -468,7 +468,7 @@ export function NotificationsSettings() {
           <legend class="text-xs font-semibold text-ink-200 uppercase tracking-wide">
             Weekly cost report
           </legend>
-          <label class="flex items-start gap-2.5 rounded-md border border-white/10 bg-white/[0.03] p-2.5 cursor-pointer">
+          <label class="flex items-start gap-2.5 rounded-md border border-line bg-tint p-2.5 cursor-pointer">
             <input
               type="checkbox"
               checked={digest.enabled}
@@ -550,7 +550,7 @@ export function NotificationsSettings() {
           <button
             type="submit"
             disabled={saving || loading}
-            class="h-10 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+            class="h-10 px-3 rounded-md bg-accent-blue text-on-accent hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
           >
             {saving && <Loader class="w-3.5 h-3.5 animate-spin" />}
             Save notifications
@@ -559,7 +559,7 @@ export function NotificationsSettings() {
             type="button"
             onClick={() => void sendTest()}
             disabled={testing || saving || loading}
-            class="h-10 px-3 rounded-md border border-white/10 text-ink-100 hover:bg-white/[0.06] text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+            class="h-10 px-3 rounded-md border border-line text-ink-100 hover:bg-tint-strong text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
           >
             {testing ? <Loader class="w-3.5 h-3.5 animate-spin" /> : <Send class="w-3.5 h-3.5" />}
             Send test
@@ -568,7 +568,7 @@ export function NotificationsSettings() {
             type="button"
             onClick={() => void sendDigestNow()}
             disabled={sendingDigest || testing || saving || loading}
-            class="h-10 px-3 rounded-md border border-white/10 text-ink-100 hover:bg-white/[0.06] text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+            class="h-10 px-3 rounded-md border border-line text-ink-100 hover:bg-tint-strong text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
           >
             {sendingDigest ? (
               <Loader class="w-3.5 h-3.5 animate-spin" />
@@ -584,7 +584,7 @@ export function NotificationsSettings() {
             {testResults.map((result) => (
               <li
                 key={result.sink}
-                class="flex items-start gap-2 rounded-md border border-white/10 bg-white/[0.03] p-2.5 text-[12px]"
+                class="flex items-start gap-2 rounded-md border border-line bg-tint p-2.5 text-[12px]"
               >
                 {result.delivered ? (
                   <Check class="w-3.5 h-3.5 mt-0.5 flex-none text-accent-green" />

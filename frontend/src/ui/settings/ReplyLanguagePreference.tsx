@@ -34,9 +34,9 @@ export function ReplyLanguagePreference({
   const selectValue = custom || showCustom ? CUSTOM_LANGUAGE_VALUE : language;
 
   return (
-    <section class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-      <header class="px-4 py-3 flex items-start gap-3 border-b border-white/[0.06]">
-        <div class="mt-0.5 w-9 h-9 rounded-md bg-white/[0.06] border border-white/10 grid place-items-center flex-none">
+    <section class="rounded-lg border border-line bg-surface overflow-hidden">
+      <header class="px-4 py-3 flex items-start gap-3 border-b border-line">
+        <div class="mt-0.5 w-9 h-9 rounded-md bg-tint-strong border border-line grid place-items-center flex-none">
           <Globe class="w-4 h-4 text-ink-200" />
         </div>
         <div class="flex-1 min-w-0">
@@ -61,7 +61,7 @@ export function ReplyLanguagePreference({
             setShowCustom(false);
             onChange(next);
           }}
-          class="w-full h-10 rounded-md bg-[#0b0d11] border border-white/10 px-3
+          class="w-full h-10 rounded-md bg-inset border border-line px-3
                  text-[13.5px] text-ink-100 focus:outline-none focus:border-accent-blue/70
                  disabled:cursor-wait"
         >
@@ -81,7 +81,7 @@ export function ReplyLanguagePreference({
             placeholder="Levantine Arabic"
             disabled={disabled}
             onInput={(event) => onChange((event.currentTarget as HTMLInputElement).value)}
-            class="w-full h-10 rounded-md bg-[#0b0d11] border border-white/10 px-3
+            class="w-full h-10 rounded-md bg-inset border border-line px-3
                    text-[13.5px] text-ink-100 placeholder:text-ink-400
                    focus:outline-none focus:border-accent-blue/70"
           />

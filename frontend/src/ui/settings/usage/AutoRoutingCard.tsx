@@ -18,12 +18,12 @@ export function AutoRoutingCard({ summary }: { summary: RoutingUsageSummary }) {
   const savedTone = saved >= 0 ? "text-accent-green" : "text-accent-orange";
 
   return (
-    <section class="rounded-lg border border-white/10 bg-[#101318] px-4 py-3">
+    <section class="rounded-lg border border-line bg-surface px-4 py-3">
       <div class="flex flex-wrap items-center gap-2">
         <Zap class="h-4 w-4 flex-none text-accent-blue" aria-hidden="true" />
         <div class="text-[14.5px] font-semibold text-ink-50">Auto routing</div>
         {!summary.enabled && (
-          <span class="rounded-full bg-white/[0.07] px-2 py-0.5 text-[11px] text-ink-300">
+          <span class="rounded-full bg-tint-strong px-2 py-0.5 text-[11px] text-ink-300">
             currently off
           </span>
         )}
@@ -60,7 +60,7 @@ export function AutoRoutingCard({ summary }: { summary: RoutingUsageSummary }) {
           {share !== null && (
             <div class="mt-3">
               <div
-                class="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]"
+                class="h-1.5 w-full overflow-hidden rounded-full bg-tint-strong"
                 role="img"
                 aria-label={`${Math.round(share * 100)} percent of routed runs went to the cheap model`}
               >
@@ -86,7 +86,7 @@ export function AutoRoutingCard({ summary }: { summary: RoutingUsageSummary }) {
                 {summary.topRules.map((rule) => (
                   <li
                     key={rule.ruleId}
-                    class="flex items-center justify-between gap-3 rounded-md bg-white/[0.03] px-2.5 py-1.5"
+                    class="flex items-center justify-between gap-3 rounded-md bg-tint px-2.5 py-1.5"
                   >
                     <span class="min-w-0 truncate text-[12.5px] text-ink-100" title={rule.ruleId}>
                       {rule.label}
@@ -117,7 +117,7 @@ function Stat({
   tone?: string;
 }) {
   return (
-    <div class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2">
+    <div class="rounded-md border border-line bg-tint px-3 py-2">
       <div class="text-[11.5px] uppercase tracking-wide text-ink-300">{label}</div>
       <div class={`mt-0.5 text-[19px] font-semibold tabular-nums ${tone}`}>{value}</div>
       {detail && <div class="mt-0.5 truncate text-[11.5px] text-ink-300">{detail}</div>}

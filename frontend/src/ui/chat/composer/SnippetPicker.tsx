@@ -108,7 +108,7 @@ export function SnippetPicker({
           <FileText class="h-4 w-4 flex-none text-ink-400" aria-hidden="true" />
         )}
         <span class="truncate font-semibold text-ink-100">Snippets</span>
-        <span class="rounded bg-white/10 px-1 py-0.5 text-[10px] leading-none text-ink-300">
+        <span class="rounded bg-tint-active px-1 py-0.5 text-[10px] leading-none text-ink-300">
           {library.loading ? "..." : library.snippets.length}
         </span>
         <ChevronDown class="h-4 w-4 flex-none text-ink-400" aria-hidden="true" />
@@ -122,7 +122,7 @@ export function SnippetPicker({
         >
           {editing ? (
             <>
-              <div class="border-b border-white/10 bg-[#191a1f] px-3 py-2 text-[11px] leading-4 text-ink-400">
+              <div class="border-b border-line bg-surface px-3 py-2 text-[11px] leading-4 text-ink-400">
                 {editing.id ? "Edit snippet" : "New snippet"}
               </div>
               <div class="max-h-[420px] overflow-y-auto">
@@ -136,14 +136,14 @@ export function SnippetPicker({
             </>
           ) : (
             <>
-              <div class="border-b border-white/10 bg-[#191a1f] px-3 py-2">
+              <div class="border-b border-line bg-surface px-3 py-2">
                 <input
                   type="search"
                   value={query}
                   onInput={(event) => setQuery((event.currentTarget as HTMLInputElement).value)}
                   placeholder="Search your snippets"
                   autocomplete="off"
-                  class="w-full h-8 rounded-md bg-black/30 border border-white/10 px-2.5 text-[12.5px]
+                  class="w-full h-8 rounded-md bg-inset border border-line px-2.5 text-[12.5px]
                          text-ink-100 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue"
                 />
               </div>
@@ -163,7 +163,7 @@ export function SnippetPicker({
                   visible.map((snippet) => (
                     <div
                       key={snippet.id}
-                      class="group/snippet flex items-start gap-1 px-1.5 hover:bg-white/[0.05]"
+                      class="group/snippet flex items-start gap-1 px-1.5 hover:bg-tint"
                     >
                       <button
                         type="button"
@@ -178,7 +178,7 @@ export function SnippetPicker({
                             {snippet.title}
                           </span>
                           {snippet.shortcut && (
-                            <span class="flex-none rounded bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] text-ink-400">
+                            <span class="flex-none rounded bg-tint-strong px-1.5 py-0.5 font-mono text-[10px] text-ink-400">
                               /s-{snippet.shortcut}
                             </span>
                           )}
@@ -199,7 +199,7 @@ export function SnippetPicker({
                         <button
                           type="button"
                           onClick={() => setEditing({ id: snippet.id, input: snippetInputFrom(snippet) })}
-                          class="grid h-7 w-7 place-items-center rounded text-ink-300 hover:bg-white/[0.08] hover:text-ink-50"
+                          class="grid h-7 w-7 place-items-center rounded text-ink-300 hover:bg-tint-strong hover:text-ink-50"
                           aria-label={`Edit ${snippet.title}`}
                           title="Edit"
                         >
@@ -211,7 +211,7 @@ export function SnippetPicker({
                             if (!confirm(`Delete the snippet "${snippet.title}"?`)) return;
                             void library.remove(snippet.id);
                           }}
-                          class="grid h-7 w-7 place-items-center rounded text-ink-300 hover:bg-white/[0.08] hover:text-accent-red"
+                          class="grid h-7 w-7 place-items-center rounded text-ink-300 hover:bg-tint-strong hover:text-accent-red"
                           aria-label={`Delete ${snippet.title}`}
                           title="Delete"
                         >
@@ -223,12 +223,12 @@ export function SnippetPicker({
                 )}
               </div>
 
-              <div class="flex flex-wrap items-center gap-1.5 border-t border-white/10 px-2 py-2">
+              <div class="flex flex-wrap items-center gap-1.5 border-t border-line px-2 py-2">
                 <button
                   type="button"
                   onClick={() => setEditing({ input: newSnippetInput(draft) })}
-                  class="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 px-2.5
-                         text-[12px] text-ink-100 hover:bg-white/[0.06]"
+                  class="inline-flex h-8 items-center gap-1.5 rounded-md border border-line px-2.5
+                         text-[12px] text-ink-100 hover:bg-tint-strong"
                 >
                   <Plus class="h-3.5 w-3.5" />
                   {draft.trim() ? "Save this draft" : "New snippet"}
@@ -236,8 +236,8 @@ export function SnippetPicker({
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  class="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 px-2.5
-                         text-[12px] text-ink-200 hover:bg-white/[0.06]"
+                  class="inline-flex h-8 items-center gap-1.5 rounded-md border border-line px-2.5
+                         text-[12px] text-ink-200 hover:bg-tint-strong"
                   title="Merge a snippets.json file into your library"
                 >
                   <Upload class="h-3.5 w-3.5" />
@@ -247,8 +247,8 @@ export function SnippetPicker({
                   type="button"
                   onClick={library.exportDocument}
                   disabled={library.all.length === 0}
-                  class="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 px-2.5
-                         text-[12px] text-ink-200 hover:bg-white/[0.06] disabled:opacity-50"
+                  class="inline-flex h-8 items-center gap-1.5 rounded-md border border-line px-2.5
+                         text-[12px] text-ink-200 hover:bg-tint-strong disabled:opacity-50"
                   title="Download your whole library as JSON"
                 >
                   <Download class="h-3.5 w-3.5" />

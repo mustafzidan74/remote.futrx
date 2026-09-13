@@ -170,8 +170,8 @@ export function Sidebar({
               aria-current={homeActive ? "page" : undefined}
               class={`h-10 w-10 rounded-md grid place-items-center transition ${
                 homeActive
-                  ? "bg-white/[0.10] text-ink-50"
-                  : "bg-white/5 text-ink-300 hover:bg-white/[0.09] hover:text-ink-50"
+                  ? "bg-tint-active text-ink-50"
+                  : "bg-tint text-ink-300 hover:bg-tint-strong hover:text-ink-50"
               }`}
               aria-label="Home"
               title="Home"
@@ -217,8 +217,8 @@ export function Sidebar({
             aria-current={homeActive ? "page" : undefined}
             class={`w-full flex items-center gap-2.5 rounded-md px-2.5 h-9 text-[13px] font-medium transition ${
               homeActive
-                ? "bg-white/[0.10] text-ink-50"
-                : "text-ink-200 hover:bg-white/[0.06] hover:text-ink-50"
+                ? "bg-tint-active text-ink-50"
+                : "text-ink-200 hover:bg-tint-strong hover:text-ink-50"
             }`}
           >
             <Home class="w-4 h-4 flex-none" />

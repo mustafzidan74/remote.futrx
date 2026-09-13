@@ -35,7 +35,7 @@ export function RecentChats({
         type="button"
         onClick={onToggle}
         class="flex h-8 w-full items-center gap-1.5 rounded-md px-2 text-ink-300 transition
-               hover:bg-white/[0.04] hover:text-ink-100"
+               hover:bg-tint hover:text-ink-100"
         aria-expanded={open}
         aria-controls="sidebar-recent-chats"
       >
@@ -56,13 +56,13 @@ export function RecentChats({
                 type="button"
                 onClick={() => onSelectChat(chat.id)}
                 class={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition
-                        ${active ? "bg-accent-blue/[0.14] text-ink-50" : "text-ink-100 hover:bg-white/[0.05]"}`}
+                        ${active ? "bg-accent-blue/[0.14] text-ink-50" : "text-ink-100 hover:bg-tint"}`}
               >
                 {chat.running ? (
                   <Loader class="h-3 w-3 flex-none animate-spin text-accent-blue" />
                 ) : (
                   <span
-                    class={`h-2 w-2 flex-none rounded-full ${unread ? "bg-accent-green" : "bg-white/15"}`}
+                    class={`h-2 w-2 flex-none rounded-full ${unread ? "bg-accent-green" : "bg-tint-active"}`}
                     title={unread ? "Unread" : undefined}
                   />
                 )}

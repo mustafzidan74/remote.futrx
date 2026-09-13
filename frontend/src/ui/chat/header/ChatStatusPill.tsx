@@ -61,7 +61,7 @@ export function ChatStatusPill({
   return (
     <div
       class={`codex-chat-status-pill flex h-8 flex-none items-center gap-1.5 rounded-full border py-1 ps-2.5
-              ${flying ? "border-accent-blue/30 bg-accent-blue/[0.12] text-accent-blue pe-1" : "border-white/10 bg-white/[0.04] text-ink-200 pe-2.5"}`}
+              ${flying ? "border-accent-blue/30 bg-accent-blue/[0.12] text-accent-blue pe-1" : "border-line bg-tint text-ink-200 pe-2.5"}`}
       title={title}
     >
       <span

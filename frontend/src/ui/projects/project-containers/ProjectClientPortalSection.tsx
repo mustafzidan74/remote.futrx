@@ -91,7 +91,7 @@ export function ProjectClientPortalSection({
         {TOGGLES.map((toggle) => (
           <label
             key={toggle.key}
-            class="flex items-start gap-2.5 rounded-md border border-white/10 bg-white/[0.03] p-2.5 cursor-pointer"
+            class="flex items-start gap-2.5 rounded-md border border-line bg-tint p-2.5 cursor-pointer"
           >
             <input
               type="checkbox"
@@ -126,7 +126,7 @@ export function ProjectClientPortalSection({
           placeholder="Shown instead of the project name"
           maxLength={80}
           autocomplete="off"
-          class="w-full h-10 rounded-md bg-black/30 border border-white/10 px-3 text-sm text-ink-100
+          class="w-full h-10 rounded-md bg-inset border border-line px-3 text-sm text-ink-100
                  placeholder:text-ink-400 focus:outline-none focus:border-accent-blue"
         />
       </label>
@@ -144,7 +144,7 @@ export function ProjectClientPortalSection({
           rows={4}
           maxLength={2000}
           placeholder="Plain text. Line breaks are kept; everything else is escaped."
-          class="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm text-ink-100
+          class="w-full rounded-md bg-inset border border-line px-3 py-2 text-sm text-ink-100
                  placeholder:text-ink-400 focus:outline-none focus:border-accent-blue resize-y"
         />
       </label>
@@ -160,7 +160,7 @@ export function ProjectClientPortalSection({
               type="button"
               onClick={() => void run("save")}
               disabled={busy !== null}
-              class="h-10 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+              class="h-10 px-3 rounded-md bg-accent-blue text-on-accent hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
             >
               {busy === "save" && <Loader class="w-3.5 h-3.5 animate-spin" />}
               Save portal settings
@@ -172,7 +172,7 @@ export function ProjectClientPortalSection({
                 void run("rotate", { enabled: true, rotate: true });
               }}
               disabled={busy !== null}
-              class="h-10 px-3 rounded-md border border-white/10 text-ink-100 hover:bg-white/[0.06] text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+              class="h-10 px-3 rounded-md border border-line text-ink-100 hover:bg-tint-strong text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
             >
               {busy === "rotate" && <Loader class="w-3.5 h-3.5 animate-spin" />}
               Rotate link
@@ -185,7 +185,7 @@ export function ProjectClientPortalSection({
                 void run("disable", { enabled: false });
               }}
               disabled={busy !== null}
-              class="h-10 px-3 rounded-md border border-white/10 text-ink-300 hover:text-accent-red hover:bg-white/[0.06] text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+              class="h-10 px-3 rounded-md border border-line text-ink-300 hover:text-accent-red hover:bg-tint-strong text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
             >
               {busy === "disable" && <Loader class="w-3.5 h-3.5 animate-spin" />}
               Disable
@@ -196,7 +196,7 @@ export function ProjectClientPortalSection({
             type="button"
             onClick={() => void run("enable", { enabled: true })}
             disabled={busy !== null}
-            class="h-10 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+            class="h-10 px-3 rounded-md bg-accent-blue text-on-accent hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
           >
             {busy === "enable" && <Loader class="w-3.5 h-3.5 animate-spin" />}
             Enable client portal
@@ -238,7 +238,7 @@ function IssuedPortalLink({ url, onDismiss }: { url: string; onDismiss: () => vo
         <button
           type="button"
           onClick={onDismiss}
-          class="h-8 w-8 ml-auto rounded text-ink-300 hover:text-ink-50 hover:bg-white/[0.08] grid place-items-center"
+          class="h-8 w-8 ml-auto rounded text-ink-300 hover:text-ink-50 hover:bg-tint-strong grid place-items-center"
           aria-label="Hide link"
           title="Hide link"
         >
@@ -250,7 +250,7 @@ function IssuedPortalLink({ url, onDismiss }: { url: string; onDismiss: () => vo
         <button
           type="button"
           onClick={copy}
-          class="h-8 px-2.5 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[12px] font-medium inline-flex items-center gap-1.5 flex-none"
+          class="h-8 px-2.5 rounded-md bg-accent-blue text-on-accent hover:bg-accent-blue/85 text-[12px] font-medium inline-flex items-center gap-1.5 flex-none"
         >
           {copied ? <Check class="w-3.5 h-3.5" /> : null}
           {copied ? "Copied" : "Copy"}

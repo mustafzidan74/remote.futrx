@@ -68,7 +68,7 @@ export function AgentEndpointsSettings({
 
   return (
     <div class="space-y-4">
-      <div class="rounded-lg border border-white/10 bg-[#101318] p-4">
+      <div class="rounded-lg border border-line bg-surface p-4">
         <div class="flex items-start gap-2">
           <Globe class="mt-0.5 h-4 w-4 flex-none text-accent-blue" aria-hidden="true" />
           <div class="min-w-0 text-[12.5px] leading-relaxed text-ink-300">
@@ -120,14 +120,14 @@ export function AgentEndpointsSettings({
         <button
           type="button"
           onClick={openCreate}
-          class="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent-blue px-3 text-[13px] font-medium text-ink-900 hover:bg-accent-blue/85"
+          class="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent-blue px-3 text-[13px] font-medium text-on-accent hover:bg-accent-blue/85"
         >
           <Plus class="h-4 w-4" /> Add endpoint
         </button>
       </div>
 
       {register.loading && !register.endpoints ? (
-        <div class="rounded-lg border border-white/10 bg-[#101318] px-4 py-6 text-[13px] text-ink-300">
+        <div class="rounded-lg border border-line bg-surface px-4 py-6 text-[13px] text-ink-300">
           Loading the register…
         </div>
       ) : endpoints.length === 0 ? (
@@ -137,9 +137,9 @@ export function AgentEndpointsSettings({
           hint="Add one and any chat can be pointed at it from the composer's agent pill."
         />
       ) : (
-        <div class="overflow-x-auto rounded-lg border border-white/10 bg-[#101318]">
+        <div class="overflow-x-auto rounded-lg border border-line bg-surface">
           <table class="w-full min-w-[48rem] text-left text-[12.5px]">
-            <thead class="border-b border-white/[0.08] text-[11px] uppercase tracking-wide text-ink-400">
+            <thead class="border-b border-line text-[11px] uppercase tracking-wide text-ink-400">
               <tr>
                 <th class="px-3 py-2 font-medium">Endpoint</th>
                 <th class="px-3 py-2 font-medium">CLI</th>
@@ -252,7 +252,7 @@ function EndpointRow({
 
   return (
     <>
-      <tr class="border-b border-white/[0.05] align-top last:border-b-0">
+      <tr class="border-b border-line align-top last:border-b-0">
         <td class="px-3 py-2">
           <div class="font-medium text-ink-50">{endpoint.label}</div>
           <div class="max-w-[20rem] truncate font-mono text-[11px] text-ink-400">
@@ -278,14 +278,14 @@ function EndpointRow({
               type="button"
               onClick={() => void toggle()}
               disabled={busy}
-              class="h-8 rounded-md px-2 text-[12px] text-ink-200 hover:bg-white/[0.08] disabled:opacity-50"
+              class="h-8 rounded-md px-2 text-[12px] text-ink-200 hover:bg-tint-strong disabled:opacity-50"
             >
               {endpoint.enabled ? "Disable" : "Enable"}
             </button>
             <button
               type="button"
               onClick={onEdit}
-              class="h-8 rounded-md px-2 text-[12px] text-ink-200 hover:bg-white/[0.08]"
+              class="h-8 rounded-md px-2 text-[12px] text-ink-200 hover:bg-tint-strong"
             >
               Edit
             </button>
@@ -293,7 +293,7 @@ function EndpointRow({
               type="button"
               onClick={() => void remove()}
               disabled={busy}
-              class="grid h-8 w-8 place-items-center rounded-md text-ink-300 hover:bg-white/[0.08] hover:text-accent-red disabled:opacity-50"
+              class="grid h-8 w-8 place-items-center rounded-md text-ink-300 hover:bg-tint-strong hover:text-accent-red disabled:opacity-50"
               aria-label={`Delete ${endpoint.label}`}
             >
               <Trash class="h-4 w-4" />
@@ -302,7 +302,7 @@ function EndpointRow({
         </td>
       </tr>
 
-      <tr class="border-b border-white/[0.05] last:border-b-0">
+      <tr class="border-b border-line last:border-b-0">
         <td colSpan={6} class="px-3 pb-3">
           {endpoint.notes && (
             <div class="mb-2 text-[11.5px] leading-relaxed text-ink-400">{endpoint.notes}</div>
@@ -313,7 +313,7 @@ function EndpointRow({
               <select
                 value={projectId}
                 onChange={(event) => setProjectId((event.target as HTMLSelectElement).value)}
-                class="mt-0.5 h-8 rounded-md border border-white/10 bg-black/30 px-2 text-[12px] text-ink-100"
+                class="mt-0.5 h-8 rounded-md border border-line bg-inset px-2 text-[12px] text-ink-100"
               >
                 {projects.length === 0 && <option value="">No projects</option>}
                 {projects.map((project) => (
@@ -329,7 +329,7 @@ function EndpointRow({
                 <select
                   value={model}
                   onChange={(event) => setModel((event.target as HTMLSelectElement).value)}
-                  class="mt-0.5 h-8 rounded-md border border-white/10 bg-black/30 px-2 text-[12px] text-ink-100"
+                  class="mt-0.5 h-8 rounded-md border border-line bg-inset px-2 text-[12px] text-ink-100"
                 >
                   {(endpoint.models ?? []).map((candidate) => (
                     <option key={candidate.id} value={candidate.id}>
@@ -343,7 +343,7 @@ function EndpointRow({
               type="button"
               onClick={() => void test()}
               disabled={busy}
-              class="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 px-2.5 text-[12px] text-ink-200 hover:bg-white/[0.08] disabled:opacity-50"
+              class="inline-flex h-8 items-center gap-1.5 rounded-md border border-line px-2.5 text-[12px] text-ink-200 hover:bg-tint-strong disabled:opacity-50"
             >
               {busy ? <Loader class="h-3.5 w-3.5 animate-spin" /> : <Play class="h-3.5 w-3.5" />}
               Run a two-word prompt
@@ -361,7 +361,7 @@ function EndpointRow({
             </div>
           )}
           {result && (
-            <div class="mt-2 rounded-md border border-white/10 bg-black/30 p-2">
+            <div class="mt-2 rounded-md border border-line bg-inset p-2">
               <div
                 class={`flex items-center gap-1.5 text-[11.5px] font-medium ${
                   result.ok ? "text-accent-green" : "text-accent-red"
@@ -444,7 +444,7 @@ function EndpointDialog({
   return (
     <form
       onSubmit={submit}
-      class="space-y-3 rounded-lg border border-white/10 bg-[#101318] p-4"
+      class="space-y-3 rounded-lg border border-line bg-surface p-4"
     >
       <div class="text-[13px] font-medium text-ink-100">
         {creating ? "Add an agent endpoint" : `Edit ${draft.label || editingId}`}
@@ -460,7 +460,7 @@ function EndpointDialog({
             disabled={!creating}
             onInput={(event) => patch({ id: (event.target as HTMLInputElement).value })}
             placeholder="zhipu-glm"
-            class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2 font-mono text-[12.5px] text-ink-100 disabled:opacity-60"
+            class="h-9 w-full rounded-md border border-line bg-inset px-2 font-mono text-[12.5px] text-ink-100 disabled:opacity-60"
           />
         </Field>
         <Field label="Label" hint="Shown in the composer and in the chat's badge.">
@@ -468,7 +468,7 @@ function EndpointDialog({
             value={draft.label}
             onInput={(event) => patch({ label: (event.target as HTMLInputElement).value })}
             placeholder="Zhipu GLM"
-            class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2 text-[12.5px] text-ink-100"
+            class="h-9 w-full rounded-md border border-line bg-inset px-2 text-[12.5px] text-ink-100"
           />
         </Field>
       </div>
@@ -485,8 +485,8 @@ function EndpointDialog({
               onClick={() => patch({ cli })}
               class={`h-9 flex-1 rounded-md px-2 text-[12.5px] font-medium transition ${
                 draft.cli === cli
-                  ? "bg-accent-blue text-ink-900"
-                  : "bg-white/[0.05] text-ink-200 hover:bg-white/[0.09]"
+                  ? "bg-accent-blue text-on-accent"
+                  : "bg-tint text-ink-200 hover:bg-tint-strong"
               }`}
               aria-pressed={draft.cli === cli}
             >
@@ -508,7 +508,7 @@ function EndpointDialog({
           value={draft.baseUrl}
           onInput={(event) => patch({ baseUrl: (event.target as HTMLInputElement).value })}
           placeholder="https://open.bigmodel.cn/api/anthropic"
-          class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2 font-mono text-[12px] text-ink-100"
+          class="h-9 w-full rounded-md border border-line bg-inset px-2 font-mono text-[12px] text-ink-100"
         />
       </Field>
 
@@ -522,7 +522,7 @@ function EndpointDialog({
             onChange={(event) =>
               patch({ wireApi: (event.target as HTMLSelectElement).value as "responses" | "chat" })
             }
-            class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2 text-[12.5px] text-ink-100"
+            class="h-9 w-full rounded-md border border-line bg-inset px-2 text-[12.5px] text-ink-100"
           >
             <option value="responses">Responses API</option>
             <option value="chat">Chat Completions</option>
@@ -539,7 +539,7 @@ function EndpointDialog({
           onInput={(event) => patch({ apiKeyRef: (event.target as HTMLInputElement).value })}
           placeholder="ZHIPU_API_KEY"
           list="agent-endpoint-vault-keys"
-          class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2 font-mono text-[12.5px] text-ink-100"
+          class="h-9 w-full rounded-md border border-line bg-inset px-2 font-mono text-[12.5px] text-ink-100"
         />
         <datalist id="agent-endpoint-vault-keys">
           {candidates.map((secret) => (
@@ -557,7 +557,7 @@ function EndpointDialog({
           onInput={(event) => patch({ modelLines: (event.target as HTMLTextAreaElement).value })}
           rows={4}
           placeholder={"glm-4.6 = GLM-4.6\nglm-4.5-air = GLM-4.5 Air"}
-          class="w-full rounded-md border border-white/10 bg-black/30 p-2 font-mono text-[12px] text-ink-100"
+          class="w-full rounded-md border border-line bg-inset p-2 font-mono text-[12px] text-ink-100"
         />
       </Field>
 
@@ -567,7 +567,7 @@ function EndpointDialog({
           onInput={(event) => patch({ headerLines: (event.target as HTMLTextAreaElement).value })}
           rows={2}
           placeholder="HTTP-Referer: https://example.com"
-          class="w-full rounded-md border border-white/10 bg-black/30 p-2 font-mono text-[12px] text-ink-100"
+          class="w-full rounded-md border border-line bg-inset p-2 font-mono text-[12px] text-ink-100"
         />
       </Field>
 
@@ -575,7 +575,7 @@ function EndpointDialog({
         <input
           value={draft.notes}
           onInput={(event) => patch({ notes: (event.target as HTMLInputElement).value })}
-          class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2 text-[12.5px] text-ink-100"
+          class="h-9 w-full rounded-md border border-line bg-inset px-2 text-[12.5px] text-ink-100"
         />
       </Field>
 
@@ -599,14 +599,14 @@ function EndpointDialog({
         <button
           type="button"
           onClick={onCancel}
-          class="h-9 rounded-md px-3 text-[13px] text-ink-200 hover:bg-white/[0.08]"
+          class="h-9 rounded-md px-3 text-[13px] text-ink-200 hover:bg-tint-strong"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={busy}
-          class="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent-blue px-3 text-[13px] font-medium text-ink-900 hover:bg-accent-blue/85 disabled:opacity-60"
+          class="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent-blue px-3 text-[13px] font-medium text-on-accent hover:bg-accent-blue/85 disabled:opacity-60"
         >
           {busy && <Loader class="h-3.5 w-3.5 animate-spin" />}
           {creating ? "Add endpoint" : "Save changes"}

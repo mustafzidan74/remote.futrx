@@ -37,7 +37,7 @@ export function PlaybooksSettings({ editor }: { editor: PlaybookLibraryEditor })
 
   return (
     <div class="space-y-4">
-      <div class="rounded-lg border border-white/10 bg-[#101318] p-4">
+      <div class="rounded-lg border border-line bg-surface p-4">
         <div class="flex items-start gap-2">
           <Zap class="mt-0.5 h-4 w-4 flex-none text-accent-blue" aria-hidden="true" />
           <div class="min-w-0 text-[12.5px] leading-relaxed text-ink-300">
@@ -45,19 +45,19 @@ export function PlaybooksSettings({ editor }: { editor: PlaybookLibraryEditor })
             skills, mode, and provider, then loads its prompt into the composer.
             <div class="mt-1.5">
               Prompts may use{" "}
-              <code class="rounded bg-white/[0.07] px-1 font-mono text-[11px] text-ink-100">
+              <code class="rounded bg-tint-strong px-1 font-mono text-[11px] text-ink-100">
                 {"{{project}}"}
               </code>
               ,{" "}
-              <code class="rounded bg-white/[0.07] px-1 font-mono text-[11px] text-ink-100">
+              <code class="rounded bg-tint-strong px-1 font-mono text-[11px] text-ink-100">
                 {"{{slug}}"}
               </code>
               , and{" "}
-              <code class="rounded bg-white/[0.07] px-1 font-mono text-[11px] text-ink-100">
+              <code class="rounded bg-tint-strong px-1 font-mono text-[11px] text-ink-100">
                 {"{{previewUrl}}"}
               </code>
               . Any other placeholder — such as{" "}
-              <code class="rounded bg-white/[0.07] px-1 font-mono text-[11px] text-ink-100">
+              <code class="rounded bg-tint-strong px-1 font-mono text-[11px] text-ink-100">
                 {"{{askUrl}}"}
               </code>{" "}
               — is left in the composer for the user to fill in, and such a prompt is never sent
@@ -70,7 +70,7 @@ export function PlaybooksSettings({ editor }: { editor: PlaybookLibraryEditor })
       {editor.error && <ErrorBanner message={editor.error} />}
 
       {editor.loading ? (
-        <div class="rounded-lg border border-white/10 bg-[#101318] px-4 py-6 text-[13px] text-ink-300">
+        <div class="rounded-lg border border-line bg-surface px-4 py-6 text-[13px] text-ink-300">
           Loading playbooks…
         </div>
       ) : (
@@ -105,8 +105,8 @@ export function PlaybooksSettings({ editor }: { editor: PlaybookLibraryEditor })
         <button
           type="button"
           onClick={addPlaybook}
-          class="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.05] px-3
-                 text-[12.5px] font-medium text-ink-100 transition hover:bg-white/[0.09]"
+          class="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-tint px-3
+                 text-[12.5px] font-medium text-ink-100 transition hover:bg-tint-strong"
         >
           <Plus class="h-3.5 w-3.5" />
           Add playbook
@@ -116,7 +116,7 @@ export function PlaybooksSettings({ editor }: { editor: PlaybookLibraryEditor })
           onClick={() => void editor.save()}
           disabled={editor.saving || !editor.dirty || editor.problem !== null}
           class="inline-flex h-8 items-center gap-1.5 rounded-md bg-accent-blue px-3 text-[12.5px]
-                 font-medium text-ink-900 transition hover:bg-accent-blue/85 disabled:opacity-40"
+                 font-medium text-on-accent transition hover:bg-accent-blue/85 disabled:opacity-40"
         >
           {editor.saving ? <Loader class="h-3.5 w-3.5 animate-spin" /> : <Check class="h-3.5 w-3.5" />}
           {editor.saving ? "Saving…" : "Save library"}
@@ -125,8 +125,8 @@ export function PlaybooksSettings({ editor }: { editor: PlaybookLibraryEditor })
           type="button"
           onClick={editor.reset}
           disabled={editor.saving || !editor.dirty}
-          class="inline-flex h-8 items-center rounded-md border border-white/10 bg-white/[0.05] px-3
-                 text-[12.5px] font-medium text-ink-200 transition hover:bg-white/[0.09] disabled:opacity-40"
+          class="inline-flex h-8 items-center rounded-md border border-line bg-tint px-3
+                 text-[12.5px] font-medium text-ink-200 transition hover:bg-tint-strong disabled:opacity-40"
         >
           Discard changes
         </button>
@@ -167,7 +167,7 @@ function PlaybookCard({
   const selectedCount = playbook.skills?.length ?? 0;
 
   return (
-    <div class="rounded-lg border border-white/10 bg-[#101318] p-3">
+    <div class="rounded-lg border border-line bg-surface p-3">
       <div class="flex items-center gap-2">
         <input
           value={playbook.icon ?? ""}
@@ -175,7 +175,7 @@ function PlaybookCard({
           maxLength={8}
           aria-label="Emoji"
           placeholder="⚡"
-          class="h-8 w-12 flex-none rounded-md border border-white/10 bg-[#0b0d11] px-2 text-center text-[15px] text-ink-50
+          class="h-8 w-12 flex-none rounded-md border border-line bg-inset px-2 text-center text-[15px] text-ink-50
                  focus:border-accent-blue/50 focus:outline-none"
         />
         <input
@@ -183,7 +183,7 @@ function PlaybookCard({
           onInput={(event) => onChange({ title: (event.currentTarget as HTMLInputElement).value })}
           aria-label="Title"
           placeholder="Title"
-          class="h-8 min-w-0 flex-1 rounded-md border border-white/10 bg-[#0b0d11] px-2.5 text-[13px] text-ink-50
+          class="h-8 min-w-0 flex-1 rounded-md border border-line bg-inset px-2.5 text-[13px] text-ink-50
                  focus:border-accent-blue/50 focus:outline-none"
         />
         <button
@@ -192,7 +192,7 @@ function PlaybookCard({
           disabled={index === 0}
           aria-label="Move up"
           title="Move up"
-          class="grid h-8 w-8 flex-none place-items-center rounded-md text-ink-300 hover:bg-white/[0.08] hover:text-ink-50 disabled:opacity-30"
+          class="grid h-8 w-8 flex-none place-items-center rounded-md text-ink-300 hover:bg-tint-strong hover:text-ink-50 disabled:opacity-30"
         >
           <ArrowUp class="h-3.5 w-3.5" />
         </button>
@@ -202,7 +202,7 @@ function PlaybookCard({
           disabled={index === total - 1}
           aria-label="Move down"
           title="Move down"
-          class="grid h-8 w-8 flex-none place-items-center rounded-md text-ink-300 hover:bg-white/[0.08] hover:text-ink-50 disabled:opacity-30"
+          class="grid h-8 w-8 flex-none place-items-center rounded-md text-ink-300 hover:bg-tint-strong hover:text-ink-50 disabled:opacity-30"
         >
           <ArrowDown class="h-3.5 w-3.5" />
         </button>
@@ -222,7 +222,7 @@ function PlaybookCard({
         onInput={(event) => onChange({ hint: (event.currentTarget as HTMLInputElement).value })}
         aria-label="One-line hint"
         placeholder="One-line hint shown under the title in the composer menu"
-        class="mt-2 h-8 w-full rounded-md border border-white/10 bg-[#0b0d11] px-2.5 text-[12.5px] text-ink-100
+        class="mt-2 h-8 w-full rounded-md border border-line bg-inset px-2.5 text-[12.5px] text-ink-100
                placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
       />
 
@@ -232,7 +232,7 @@ function PlaybookCard({
         rows={6}
         aria-label="Prompt"
         placeholder="The prompt this playbook loads into the composer"
-        class="mt-2 w-full resize-y rounded-md border border-white/10 bg-[#0b0d11] px-2.5 py-2 font-mono text-[12px]
+        class="mt-2 w-full resize-y rounded-md border border-line bg-inset px-2.5 py-2 font-mono text-[12px]
                leading-5 text-ink-100 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
       />
 
@@ -244,7 +244,7 @@ function PlaybookCard({
             onChange={(event) =>
               onChange({ mode: (event.currentTarget as HTMLSelectElement).value as ChatMode | "" })
             }
-            class="h-8 rounded-md border border-white/10 bg-[#0b0d11] px-1.5 text-[11.5px] text-ink-100 focus:outline-none"
+            class="h-8 rounded-md border border-line bg-inset px-1.5 text-[11.5px] text-ink-100 focus:outline-none"
           >
             <option value="">Keep chat's mode</option>
             {CHAT_MODE_OPTIONS.map((option) => (
@@ -264,7 +264,7 @@ function PlaybookCard({
                 provider: (event.currentTarget as HTMLSelectElement).value as ChatProvider | "",
               })
             }
-            class="h-8 rounded-md border border-white/10 bg-[#0b0d11] px-1.5 text-[11.5px] text-ink-100 focus:outline-none"
+            class="h-8 rounded-md border border-line bg-inset px-1.5 text-[11.5px] text-ink-100 focus:outline-none"
           >
             <option value="">Keep chat's provider</option>
             {CHAT_PROVIDER_OPTIONS.map((option) => (
@@ -278,12 +278,12 @@ function PlaybookCard({
         <button
           type="button"
           onClick={() => setSkillsOpen((open) => !open)}
-          class="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.05] px-2.5
-                 text-[11.5px] font-medium text-ink-200 transition hover:bg-white/[0.09]"
+          class="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-tint px-2.5
+                 text-[11.5px] font-medium text-ink-200 transition hover:bg-tint-strong"
           aria-expanded={skillsOpen}
         >
           Skills
-          <span class="rounded bg-white/10 px-1 py-0.5 text-[10px] leading-none text-ink-300">
+          <span class="rounded bg-tint-active px-1 py-0.5 text-[10px] leading-none text-ink-300">
             {selectedCount}
           </span>
         </button>
@@ -294,7 +294,7 @@ function PlaybookCard({
           {(playbook.skills ?? []).map((skill) => (
             <span
               key={`${skill.source ?? ""}:${skill.command ?? skill.name}`}
-              class="rounded-md border border-white/10 bg-white/[0.05] px-1.5 py-0.5 font-mono text-[10.5px] text-ink-200"
+              class="rounded-md border border-line bg-tint px-1.5 py-0.5 font-mono text-[10.5px] text-ink-200"
             >
               {skill.command || skill.name}
             </span>
@@ -313,7 +313,7 @@ function PlaybookCard({
       )}
 
       {skillsOpen && (
-        <div class="mt-2 max-h-56 overflow-y-auto rounded-md border border-white/10 bg-[#0b0d11] p-1">
+        <div class="mt-2 max-h-56 overflow-y-auto rounded-md border border-line bg-inset p-1">
           {skillsLoading ? (
             <div class="px-2 py-2 text-[12px] text-ink-400">Loading skills…</div>
           ) : skills.length === 0 ? (
@@ -327,18 +327,18 @@ function PlaybookCard({
                   type="button"
                   onClick={() => onToggleSkill(skill)}
                   class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[12px] transition
-                          ${selected ? "bg-accent-blue/[0.14] text-accent-blue" : "text-ink-200 hover:bg-white/[0.07]"}`}
+                          ${selected ? "bg-accent-blue/[0.14] text-accent-blue" : "text-ink-200 hover:bg-tint-strong"}`}
                 >
                   <span
                     class={`grid h-3.5 w-3.5 flex-none place-items-center rounded-sm border
-                            ${selected ? "border-accent-blue bg-accent-blue/30" : "border-white/20"}`}
+                            ${selected ? "border-accent-blue bg-accent-blue/30" : "border-line-strong"}`}
                     aria-hidden="true"
                   >
                     {selected && <Check class="h-2.5 w-2.5" />}
                   </span>
                   <span class="min-w-0 flex-1 truncate font-mono">{skill.command || skill.name}</span>
                   {skill.source && (
-                    <span class="flex-none rounded bg-white/[0.08] px-1 py-0.5 text-[10px] uppercase text-ink-400">
+                    <span class="flex-none rounded bg-tint-strong px-1 py-0.5 text-[10px] uppercase text-ink-400">
                       {skill.source}
                     </span>
                   )}

@@ -48,7 +48,7 @@ export function AttachmentChip({
           <X class="w-3 h-3" />
         </button>
         {pending && (
-          <div class="absolute bottom-0 left-0 right-0 h-1 bg-black/40">
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-inset">
             <div
               class="h-full bg-accent-blue transition-[width] duration-100"
               style={{ width: `${pct * 100}%` }}

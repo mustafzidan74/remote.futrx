@@ -32,9 +32,9 @@ export function ReplyPreferencesSettings({ editor }: { editor: AgentPreferencesE
     : languageSelectValue(draft.replyLanguage);
 
   return (
-    <section class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-      <header class="px-4 py-3 flex items-start gap-3 border-b border-white/[0.06]">
-        <div class="mt-0.5 w-9 h-9 rounded-md bg-white/[0.06] border border-white/10 grid place-items-center flex-none">
+    <section class="rounded-lg border border-line bg-surface overflow-hidden">
+      <header class="px-4 py-3 flex items-start gap-3 border-b border-line">
+        <div class="mt-0.5 w-9 h-9 rounded-md bg-tint-strong border border-line grid place-items-center flex-none">
           <Globe class="w-4 h-4 text-ink-200" />
         </div>
         <div class="flex-1 min-w-0">
@@ -64,7 +64,7 @@ export function ReplyPreferencesSettings({ editor }: { editor: AgentPreferencesE
                 replyLanguage: next === CUSTOM_LANGUAGE_VALUE ? "" : next,
               });
             }}
-            class="mt-1.5 w-full max-w-md h-10 rounded-md bg-[#0b0d11] border border-white/10 px-3
+            class="mt-1.5 w-full max-w-md h-10 rounded-md bg-inset border border-line px-3
                    text-[13.5px] text-ink-100 focus:outline-none focus:border-accent-blue/70"
           >
             {REPLY_LANGUAGE_OPTIONS.map((option) => (
@@ -88,7 +88,7 @@ export function ReplyPreferencesSettings({ editor }: { editor: AgentPreferencesE
                   replyLanguage: (event.currentTarget as HTMLInputElement).value,
                 })
               }
-              class="mt-1.5 w-full max-w-md h-10 rounded-md bg-[#0b0d11] border border-white/10 px-3
+              class="mt-1.5 w-full max-w-md h-10 rounded-md bg-inset border border-line px-3
                      text-[13.5px] text-ink-100 placeholder:text-ink-400
                      focus:outline-none focus:border-accent-blue/70"
             />
@@ -112,7 +112,7 @@ export function ReplyPreferencesSettings({ editor }: { editor: AgentPreferencesE
                   class={`text-left rounded-md border px-3 py-2 transition ${
                     selected
                       ? "border-accent-blue/60 bg-accent-blue/10"
-                      : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+                      : "border-line bg-tint hover:bg-tint-strong"
                   }`}
                 >
                   <span class="block text-[13px] text-ink-50">{option.label}</span>
@@ -139,7 +139,7 @@ export function ReplyPreferencesSettings({ editor }: { editor: AgentPreferencesE
                 extraInstructions: (event.currentTarget as HTMLTextAreaElement).value,
               })
             }
-            class="mt-1.5 w-full rounded-md bg-[#0b0d11] border border-white/10 px-3 py-2
+            class="mt-1.5 w-full rounded-md bg-inset border border-line px-3 py-2
                    text-[13.5px] text-ink-100 placeholder:text-ink-400 leading-relaxed
                    focus:outline-none focus:border-accent-blue/70"
           />
@@ -163,7 +163,7 @@ export function ReplyPreferencesSettings({ editor }: { editor: AgentPreferencesE
                   class={`text-left rounded-md border px-3 py-2 transition ${
                     selected
                       ? "border-accent-blue/60 bg-accent-blue/10"
-                      : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+                      : "border-line bg-tint hover:bg-tint-strong"
                   }`}
                 >
                   <span class="block text-[13px] text-ink-50">{option.label}</span>
@@ -174,7 +174,7 @@ export function ReplyPreferencesSettings({ editor }: { editor: AgentPreferencesE
           </div>
         </fieldset>
 
-        <div class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2">
+        <div class="rounded-md border border-line bg-tint px-3 py-2">
           <div class="text-[11px] uppercase tracking-wider text-ink-400 font-semibold">
             What agents are told
           </div>
@@ -193,7 +193,7 @@ export function ReplyPreferencesSettings({ editor }: { editor: AgentPreferencesE
             type="button"
             disabled={!editor.dirty || editor.saving || !!editor.problem}
             onClick={() => void editor.save()}
-            class="h-9 px-3 rounded-md bg-accent-blue text-ink-900 text-[13px] font-medium
+            class="h-9 px-3 rounded-md bg-accent-blue text-on-accent text-[13px] font-medium
                    hover:bg-accent-blue/85 disabled:opacity-40 disabled:cursor-not-allowed transition"
           >
             {editor.saving ? "Saving…" : "Save preferences"}
@@ -205,8 +205,8 @@ export function ReplyPreferencesSettings({ editor }: { editor: AgentPreferencesE
               setCustomSelected(false);
               editor.reset();
             }}
-            class="h-9 px-3 rounded-md border border-white/10 text-ink-200 text-[13px]
-                   hover:bg-white/[0.06] disabled:opacity-40 disabled:cursor-not-allowed transition"
+            class="h-9 px-3 rounded-md border border-line text-ink-200 text-[13px]
+                   hover:bg-tint-strong disabled:opacity-40 disabled:cursor-not-allowed transition"
           >
             Discard
           </button>

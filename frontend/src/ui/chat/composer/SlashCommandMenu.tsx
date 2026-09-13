@@ -44,7 +44,7 @@ export function SlashCommandMenu({
   return (
     <div
       class="theme-menu-surface absolute bottom-full left-0 right-0 z-40 mb-2 overflow-hidden rounded-lg
-             border border-white/10 bg-[#14161d] shadow-2xl"
+             border border-line bg-surface shadow-2xl"
       role="listbox"
       aria-label="Slash commands"
     >
@@ -71,7 +71,7 @@ export function SlashCommandMenu({
                 onMouseEnter={() => onHover(index)}
                 onClick={(event) => onSelect(entry, { send: event.shiftKey })}
                 class={`flex w-full items-baseline gap-2 px-3 py-1.5 text-left focus:outline-none ${
-                  active ? "bg-white/[0.09]" : "hover:bg-white/[0.05]"
+                  active ? "bg-tint-strong" : "hover:bg-tint"
                 }`}
               >
                 <GroupIcon group={entry.group} />
@@ -91,7 +91,7 @@ export function SlashCommandMenu({
           );
         })}
       </div>
-      <div class="border-t border-white/[0.07] bg-[#191a1f] px-3 py-1.5 text-[10.5px] leading-4 text-ink-400">
+      <div class="border-t border-line bg-surface px-3 py-1.5 text-[10.5px] leading-4 text-ink-400">
         {query ? `Matching "${query}" · ` : ""}
         <span class="font-mono">↑↓</span> to move, <span class="font-mono">Enter</span> to pick,
         <span class="font-mono"> Shift+Enter</span> runs a playbook straight away,

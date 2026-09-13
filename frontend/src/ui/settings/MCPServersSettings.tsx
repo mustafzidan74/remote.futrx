@@ -69,7 +69,7 @@ export function MCPServersSettings({
 
   return (
     <div class="space-y-4">
-      <div class="rounded-lg border border-white/10 bg-[#101318] p-4">
+      <div class="rounded-lg border border-line bg-surface p-4">
         <div class="flex items-start gap-2">
           <Package class="mt-0.5 h-4 w-4 flex-none text-accent-blue" aria-hidden="true" />
           <div class="min-w-0 text-[12.5px] leading-relaxed text-ink-300">
@@ -110,14 +110,14 @@ export function MCPServersSettings({
         <button
           type="button"
           onClick={() => openCreate()}
-          class="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent-blue px-3 text-[13px] font-medium text-ink-900 hover:bg-accent-blue/85"
+          class="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent-blue px-3 text-[13px] font-medium text-on-accent hover:bg-accent-blue/85"
         >
           <Plus class="h-4 w-4" /> Add server
         </button>
       </div>
 
       {registry.loading && !registry.servers ? (
-        <div class="rounded-lg border border-white/10 bg-[#101318] px-4 py-6 text-[13px] text-ink-300">
+        <div class="rounded-lg border border-line bg-surface px-4 py-6 text-[13px] text-ink-300">
           Loading the registry…
         </div>
       ) : servers.length === 0 ? (
@@ -127,9 +127,9 @@ export function MCPServersSettings({
           hint="Add one and every scoped project's agent gains its tools on the next run."
         />
       ) : (
-        <div class="overflow-x-auto rounded-lg border border-white/10 bg-[#101318]">
+        <div class="overflow-x-auto rounded-lg border border-line bg-surface">
           <table class="w-full min-w-[46rem] text-left text-[12.5px]">
-            <thead class="border-b border-white/[0.08] text-[11px] uppercase tracking-wide text-ink-400">
+            <thead class="border-b border-line text-[11px] uppercase tracking-wide text-ink-400">
               <tr>
                 <th class="px-3 py-2 font-medium">Name</th>
                 <th class="px-3 py-2 font-medium">Transport</th>
@@ -156,7 +156,7 @@ export function MCPServersSettings({
       )}
 
       {!draft && (
-        <div class="rounded-lg border border-white/10 bg-[#101318] p-4">
+        <div class="rounded-lg border border-line bg-surface p-4">
           <div class="text-[12.5px] font-medium text-ink-200">Examples to start from</div>
           <div class="mt-1 text-[11.5px] text-ink-400">
             Prefills only — nothing is enabled until you save it with a scope.
@@ -168,7 +168,7 @@ export function MCPServersSettings({
                 type="button"
                 title={template.hint}
                 onClick={() => openCreate(template)}
-                class="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 px-2.5 text-[12px] text-ink-200 hover:bg-white/[0.08]"
+                class="inline-flex h-8 items-center gap-1.5 rounded-md border border-line px-2.5 text-[12px] text-ink-200 hover:bg-tint-strong"
               >
                 <Plus class="h-3.5 w-3.5" />
                 {template.label}
@@ -257,7 +257,7 @@ function ServerRow({
 
   return (
     <>
-      <tr class="border-b border-white/[0.05] align-top last:border-b-0">
+      <tr class="border-b border-line align-top last:border-b-0">
         <td class="px-3 py-2 font-mono text-ink-50">{server.name}</td>
         <td class="px-3 py-2 text-ink-200">{TRANSPORT_LABELS[server.transport]}</td>
         <td class="max-w-[18rem] truncate px-3 py-2 font-mono text-ink-300">
@@ -277,14 +277,14 @@ function ServerRow({
             <button
               type="button"
               onClick={() => setTesting((current) => !current)}
-              class="h-8 rounded px-2 text-[11px] text-ink-300 hover:bg-white/[0.08] hover:text-ink-100"
+              class="h-8 rounded px-2 text-[11px] text-ink-300 hover:bg-tint-strong hover:text-ink-100"
             >
               test
             </button>
             <button
               type="button"
               onClick={onEdit}
-              class="h-8 rounded px-2 text-[11px] text-ink-300 hover:bg-white/[0.08] hover:text-ink-100"
+              class="h-8 rounded px-2 text-[11px] text-ink-300 hover:bg-tint-strong hover:text-ink-100"
             >
               edit
             </button>
@@ -293,7 +293,7 @@ function ServerRow({
               onClick={remove}
               disabled={busy}
               aria-label={`Delete ${server.name}`}
-              class="grid h-8 w-8 place-items-center rounded text-ink-300 hover:bg-white/[0.08] hover:text-accent-red disabled:opacity-50"
+              class="grid h-8 w-8 place-items-center rounded text-ink-300 hover:bg-tint-strong hover:text-accent-red disabled:opacity-50"
             >
               <Trash class="h-3.5 w-3.5" />
             </button>
@@ -306,7 +306,7 @@ function ServerRow({
         result ||
         unsupported.length > 0 ||
         (server.secretRefs?.length ?? 0) > 0) && (
-        <tr class="border-b border-white/[0.05] last:border-b-0">
+        <tr class="border-b border-line last:border-b-0">
           <td colSpan={6} class="px-3 pb-2 text-[11.5px]">
             {server.description && (
               <div class="text-ink-400" dir="auto">
@@ -332,7 +332,7 @@ function ServerRow({
                 <select
                   value={projectId}
                   onChange={(event) => setProjectId((event.target as HTMLSelectElement).value)}
-                  class="h-8 rounded-md border border-white/10 bg-black/30 px-2 text-[12px] text-ink-50 focus:border-accent-blue/50 focus:outline-none"
+                  class="h-8 rounded-md border border-line bg-inset px-2 text-[12px] text-ink-50 focus:border-accent-blue/50 focus:outline-none"
                 >
                   {projects.length === 0 && <option value="">No projects</option>}
                   {projects.map((project) => (
@@ -345,7 +345,7 @@ function ServerRow({
                   type="button"
                   onClick={test}
                   disabled={busy}
-                  class="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 px-2.5 text-[12px] text-ink-200 hover:bg-white/[0.08] disabled:opacity-50"
+                  class="inline-flex h-8 items-center gap-1.5 rounded-md border border-line px-2.5 text-[12px] text-ink-200 hover:bg-tint-strong disabled:opacity-50"
                 >
                   {busy && <Loader class="h-3.5 w-3.5 animate-spin" />}
                   Run handshake
@@ -362,7 +362,7 @@ function ServerRow({
                   {result.ok ? "Responded" : "Failed"} in {result.durationMs} ms
                 </div>
                 {result.output && (
-                  <pre class="mt-1 max-h-60 overflow-auto whitespace-pre-wrap break-all rounded-md border border-white/10 bg-black/30 p-2 font-mono text-[11px] text-ink-300">
+                  <pre class="mt-1 max-h-60 overflow-auto whitespace-pre-wrap break-all rounded-md border border-line bg-inset p-2 font-mono text-[11px] text-ink-300">
                     {result.output}
                   </pre>
                 )}
@@ -433,7 +433,7 @@ export function ServerDialog({
   return (
     <form
       onSubmit={submit}
-      class="space-y-3 rounded-lg border border-white/10 bg-[#101318] p-4"
+      class="space-y-3 rounded-lg border border-line bg-surface p-4"
       aria-label={creating ? "Add MCP server" : `Edit ${editingName}`}
     >
       <div class="text-[14.5px] font-semibold text-ink-50">
@@ -447,7 +447,7 @@ export function ServerDialog({
             disabled={!creating}
             onInput={(event) => patch({ name: (event.target as HTMLInputElement).value })}
             placeholder="playwright"
-            class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2.5 font-mono text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none disabled:opacity-60"
+            class="h-9 w-full rounded-md border border-line bg-inset px-2.5 font-mono text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none disabled:opacity-60"
           />
         </Field>
         <Field label="Transport">
@@ -456,7 +456,7 @@ export function ServerDialog({
             onChange={(event) =>
               patch({ transport: (event.target as HTMLSelectElement).value as MCPTransport })
             }
-            class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2.5 text-[13px] text-ink-50 focus:border-accent-blue/50 focus:outline-none"
+            class="h-9 w-full rounded-md border border-line bg-inset px-2.5 text-[13px] text-ink-50 focus:border-accent-blue/50 focus:outline-none"
           >
             {(Object.keys(TRANSPORT_LABELS) as MCPTransport[]).map((transport) => (
               <option key={transport} value={transport}>
@@ -468,13 +468,13 @@ export function ServerDialog({
       </div>
 
       {draft.transport === "stdio" ? (
-        <div class="space-y-3 rounded-md border border-white/10 bg-white/[0.02] p-3">
+        <div class="space-y-3 rounded-md border border-line bg-tint p-3">
           <Field label="Command">
             <input
               value={draft.command}
               onInput={(event) => patch({ command: (event.target as HTMLInputElement).value })}
               placeholder="npx"
-              class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2.5 font-mono text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
+              class="h-9 w-full rounded-md border border-line bg-inset px-2.5 font-mono text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
             />
           </Field>
           <Field label="Arguments" hint="One per line.">
@@ -484,7 +484,7 @@ export function ServerDialog({
               rows={3}
               spellcheck={false}
               placeholder={"@playwright/mcp@latest"}
-              class="w-full resize-y rounded-md border border-white/10 bg-black/30 px-2.5 py-1.5 font-mono text-[12.5px] leading-[1.45] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
+              class="w-full resize-y rounded-md border border-line bg-inset px-2.5 py-1.5 font-mono text-[12.5px] leading-[1.45] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
             />
           </Field>
           <Field label="Environment" hint="NAME=value, one per line. Use ${KEY} for a vault value.">
@@ -494,18 +494,18 @@ export function ServerDialog({
               rows={3}
               spellcheck={false}
               placeholder={"PGPASSWORD=${PG_PASSWORD}"}
-              class="w-full resize-y rounded-md border border-white/10 bg-black/30 px-2.5 py-1.5 font-mono text-[12.5px] leading-[1.45] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
+              class="w-full resize-y rounded-md border border-line bg-inset px-2.5 py-1.5 font-mono text-[12.5px] leading-[1.45] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
             />
           </Field>
         </div>
       ) : (
-        <div class="space-y-3 rounded-md border border-white/10 bg-white/[0.02] p-3">
+        <div class="space-y-3 rounded-md border border-line bg-tint p-3">
           <Field label="URL">
             <input
               value={draft.url}
               onInput={(event) => patch({ url: (event.target as HTMLInputElement).value })}
               placeholder="https://jira.example.com/mcp"
-              class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2.5 font-mono text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
+              class="h-9 w-full rounded-md border border-line bg-inset px-2.5 font-mono text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
             />
           </Field>
           <Field
@@ -520,7 +520,7 @@ export function ServerDialog({
               rows={3}
               spellcheck={false}
               placeholder={"Authorization: Bearer ${JIRA_TOKEN}"}
-              class="w-full resize-y rounded-md border border-white/10 bg-black/30 px-2.5 py-1.5 font-mono text-[12.5px] leading-[1.45] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
+              class="w-full resize-y rounded-md border border-line bg-inset px-2.5 py-1.5 font-mono text-[12.5px] leading-[1.45] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
             />
           </Field>
         </div>
@@ -531,7 +531,7 @@ export function ServerDialog({
           value={draft.description}
           onInput={(event) => patch({ description: (event.target as HTMLInputElement).value })}
           placeholder="What this server is for"
-          class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2.5 text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
+          class="h-9 w-full rounded-md border border-line bg-inset px-2.5 text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
         />
       </Field>
 
@@ -551,7 +551,7 @@ export function ServerDialog({
         <button
           type="submit"
           disabled={submitting}
-          class="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent-blue px-3 text-[13px] font-medium text-ink-900 hover:bg-accent-blue/85 disabled:opacity-50"
+          class="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent-blue px-3 text-[13px] font-medium text-on-accent hover:bg-accent-blue/85 disabled:opacity-50"
         >
           {submitting ? <Loader class="h-4 w-4 animate-spin" /> : <Check class="h-4 w-4" />}
           {creating ? "Add" : "Save"}
@@ -559,7 +559,7 @@ export function ServerDialog({
         <button
           type="button"
           onClick={onCancel}
-          class="h-9 rounded-md px-3 text-[13px] text-ink-300 hover:bg-white/[0.08] hover:text-ink-100"
+          class="h-9 rounded-md px-3 text-[13px] text-ink-300 hover:bg-tint-strong hover:text-ink-100"
         >
           Cancel
         </button>
@@ -638,7 +638,7 @@ function SecretRefPicker({
           No environment entries in the Secrets vault yet.
         </div>
       ) : (
-        <div class="max-h-32 space-y-1 overflow-y-auto rounded-md border border-white/10 bg-black/20 p-2">
+        <div class="max-h-32 space-y-1 overflow-y-auto rounded-md border border-line bg-inset p-2">
           {candidates.map((secret) => (
             <label key={secret.key} class="flex items-center gap-2 text-[12.5px] text-ink-200">
               <input
@@ -703,7 +703,7 @@ function ScopePicker({
         </label>
       </div>
       {!draft.scopeAll && (
-        <div class="max-h-40 space-y-1 overflow-y-auto rounded-md border border-white/10 bg-black/20 p-2">
+        <div class="max-h-40 space-y-1 overflow-y-auto rounded-md border border-line bg-inset p-2">
           {projects.length === 0 && <div class="text-[12px] text-ink-400">No projects yet.</div>}
           {projects.map((project) => (
             <label key={project.id} class="flex items-center gap-2 text-[12.5px] text-ink-200">

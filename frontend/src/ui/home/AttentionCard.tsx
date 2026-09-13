@@ -57,8 +57,8 @@ export function AttentionCard({
                   <button
                     type="button"
                     onClick={() => onAct(alert)}
-                    class="mt-0.5 flex-none rounded-md bg-white/[0.08] px-2.5 py-1.5 text-[12px]
-                           font-medium text-ink-100 transition hover:bg-white/[0.12]"
+                    class="mt-0.5 flex-none rounded-md bg-tint-strong px-2.5 py-1.5 text-[12px]
+                           font-medium text-ink-100 transition hover:bg-tint-active"
                   >
                     {view.actionLabel}
                   </button>

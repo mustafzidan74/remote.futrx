@@ -44,8 +44,8 @@ export function ThreadEmptyState({
                 type="button"
                 onClick={() => void playbooks?.run(playbook)}
                 disabled={playbooks?.running !== null}
-                class="flex w-full items-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 py-2
-                       text-left text-ink-100 transition hover:bg-white/[0.08]
+                class="flex w-full items-center gap-2 rounded-md border border-line bg-tint px-3 py-2
+                       text-left text-ink-100 transition hover:bg-tint-strong
                        disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Zap class="h-4 w-4 flex-none text-accent-blue" aria-hidden="true" />

@@ -83,12 +83,12 @@ export function Dashboard({
     <div class="flex min-h-0 flex-1 flex-col">
       <header
         class="codex-header top-chrome z-20 flex min-h-[52px] flex-none items-center gap-2
-               border-b border-white/10 bg-[#101318] px-3 pb-2"
+               border-b border-line bg-surface px-3 pb-2"
       >
         <button
           type="button"
           onClick={handlers.onHamburger}
-          class="grid h-10 w-10 place-items-center rounded-md text-ink-100 hover:bg-white/[0.08] md:hidden"
+          class="grid h-10 w-10 place-items-center rounded-md text-ink-100 hover:bg-tint-strong md:hidden"
           aria-label="Toggle sidebar"
         >
           <Menu class="h-5 w-5" />
@@ -103,8 +103,8 @@ export function Dashboard({
           type="button"
           onClick={() => void data.refresh()}
           disabled={refreshing || loading}
-          class="inline-flex h-8 flex-none items-center gap-1.5 rounded-md bg-white/[0.08] px-2.5
-                 text-[12px] font-medium text-ink-100 transition hover:bg-white/[0.12] disabled:opacity-50"
+          class="inline-flex h-8 flex-none items-center gap-1.5 rounded-md bg-tint-strong px-2.5
+                 text-[12px] font-medium text-ink-100 transition hover:bg-tint-active disabled:opacity-50"
           title="Refresh now"
         >
           <RotateCcw class={`h-3.5 w-3.5${refreshing ? " animate-spin" : ""}`} />
@@ -249,7 +249,7 @@ function PlatformStrip({ platform, now }: { platform: DashboardPlatform; now: nu
       : undefined;
 
   return (
-    <section class="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-lg border border-white/10 bg-[#101318] px-4 py-3">
+    <section class="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-lg border border-line bg-surface px-4 py-3">
       <div class="flex items-center gap-2">
         <Server class="h-4 w-4 flex-none text-ink-300" />
         <span class={`h-2 w-2 flex-none rounded-full ${TONE_DOT[tone]}`} aria-hidden="true" />
@@ -302,10 +302,10 @@ function KpiSkeleton() {
   return (
     <div class="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-hidden="true">
       {Array.from({ length: 4 }, (_, index) => (
-        <div key={index} class="rounded-lg border border-white/10 bg-[#101318] p-3.5">
-          <span class="block h-3 w-2/3 animate-pulse rounded bg-white/[0.07]" />
-          <span class="mt-3 block h-6 w-1/3 animate-pulse rounded bg-white/[0.07]" />
-          <span class="mt-2 block h-2.5 w-3/4 animate-pulse rounded bg-white/[0.05]" />
+        <div key={index} class="rounded-lg border border-line bg-surface p-3.5">
+          <span class="block h-3 w-2/3 animate-pulse rounded bg-tint-strong" />
+          <span class="mt-3 block h-6 w-1/3 animate-pulse rounded bg-tint-strong" />
+          <span class="mt-2 block h-2.5 w-3/4 animate-pulse rounded bg-tint" />
         </div>
       ))}
     </div>

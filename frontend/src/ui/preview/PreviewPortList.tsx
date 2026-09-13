@@ -159,7 +159,7 @@ export function PreviewPortList({
           onClick={() => void links.refresh()}
           disabled={links.loading || links.unavailable !== null}
           class="inline-flex h-8 items-center gap-1.5 rounded px-2 text-[11px] font-medium text-ink-300
-                 transition hover:bg-white/[0.07] hover:text-ink-100 disabled:opacity-40"
+                 transition hover:bg-tint-strong hover:text-ink-100 disabled:opacity-40"
         >
           {links.loading ? (
             <Loader class="h-3 w-3 animate-spin" />
@@ -205,7 +205,7 @@ function PortRow({
   onScreenshot: (port: number) => void;
 }) {
   return (
-    <div class="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-2">
+    <div class="rounded-md border border-line bg-tint px-2.5 py-2">
       <div class="flex items-center gap-2">
         <span class="font-mono text-[12.5px] font-semibold text-ink-50">:{row.port}</span>
         {platformPortLabel(row.port) ? (
@@ -222,14 +222,14 @@ function PortRow({
         <span class="ml-auto flex flex-none items-center gap-1">
           {!row.shareable && (
             <span
-              class="rounded-md border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-ink-300"
+              class="rounded-md border border-line bg-tint-strong px-1.5 py-0.5 text-[10px] text-ink-300"
               title="Platform port — the share service refuses public links for it"
             >
               platform
             </span>
           )}
           {row.shareCount > 0 && (
-            <span class="rounded-md border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-ink-300">
+            <span class="rounded-md border border-line bg-tint-strong px-1.5 py-0.5 text-[10px] text-ink-300">
               {row.shareCount} link{row.shareCount === 1 ? "" : "s"}
             </span>
           )}
@@ -246,7 +246,7 @@ function PortRow({
           target="_blank"
           rel="noopener noreferrer"
           class="inline-flex h-8 items-center gap-1.5 rounded-md bg-accent-blue px-2.5 text-[11.5px]
-                 font-medium text-ink-900 transition hover:bg-accent-blue/85"
+                 font-medium text-on-accent transition hover:bg-accent-blue/85"
         >
           <ExternalLink class="h-3 w-3" />
           Open
@@ -255,8 +255,8 @@ function PortRow({
           type="button"
           onClick={() => onCopy(row.port, url)}
           disabled={copying}
-          class="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.05] px-2.5
-                 text-[11.5px] font-medium text-ink-200 transition hover:bg-white/[0.09] hover:text-ink-100 disabled:opacity-50"
+          class="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-tint px-2.5
+                 text-[11.5px] font-medium text-ink-200 transition hover:bg-tint-strong hover:text-ink-100 disabled:opacity-50"
         >
           {copied ? <Check class="h-3 w-3" /> : <Copy class="h-3 w-3" />}
           {copied ? "Copied" : "Copy URL"}
@@ -267,8 +267,8 @@ function PortRow({
             onClick={() => onOpenInAgentBrowser(row.port)}
             disabled={agentBrowserBusy}
             title="Load this port in the project's shared Agent Browser, inside the container"
-            class="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.05] px-2.5
-                   text-[11.5px] font-medium text-ink-200 transition hover:bg-white/[0.09] hover:text-ink-100 disabled:opacity-50"
+            class="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-tint px-2.5
+                   text-[11.5px] font-medium text-ink-200 transition hover:bg-tint-strong hover:text-ink-100 disabled:opacity-50"
           >
             {agentBrowserBusy ? (
               <Loader class="h-3 w-3 animate-spin" />
@@ -287,8 +287,8 @@ function PortRow({
               onClick={() => onScreenshot(row.port)}
               disabled={screenshotBusy}
               title="Photograph this port now and share the picture"
-              class="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.05] px-2.5
-                     text-[11.5px] font-medium text-ink-200 transition hover:bg-white/[0.09] hover:text-ink-100 disabled:opacity-50"
+              class="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-tint px-2.5
+                     text-[11.5px] font-medium text-ink-200 transition hover:bg-tint-strong hover:text-ink-100 disabled:opacity-50"
             >
               {screenshotBusy ? (
                 <Loader class="h-3 w-3 animate-spin" />
@@ -302,8 +302,8 @@ function PortRow({
               onClick={() => onShare(row.port)}
               disabled={sharing}
               title={`Create a public link that works for ${PREVIEW_SHARE_TTL_HOURS} hours`}
-              class="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.05] px-2.5
-                     text-[11.5px] font-medium text-ink-200 transition hover:bg-white/[0.09] hover:text-ink-100 disabled:opacity-50"
+              class="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-tint px-2.5
+                     text-[11.5px] font-medium text-ink-200 transition hover:bg-tint-strong hover:text-ink-100 disabled:opacity-50"
             >
               {sharing ? (
                 <Loader class="h-3 w-3 animate-spin" />
@@ -339,7 +339,7 @@ function IssuedShareLink({ url, copied }: { url: string; copied: boolean }) {
 
 function PreviewNotice({ text, hint }: { text: string; hint?: string }) {
   return (
-    <div class="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-2">
+    <div class="rounded-md border border-line bg-tint px-2.5 py-2">
       <div class="text-[11.5px] text-ink-200">{text}</div>
       {hint && <div class="mt-1 text-[10.5px] leading-relaxed text-ink-400">{hint}</div>}
     </div>

@@ -86,7 +86,7 @@ export function AutopilotControl({
           role="dialog"
           aria-label="Autopilot settings"
         >
-          <div class="border-b border-white/10 bg-[#191a1f] px-3 py-2">
+          <div class="border-b border-line bg-surface px-3 py-2">
             <div class="text-[12px] font-semibold text-ink-100">Autopilot</div>
             <p class="mt-1 text-[11px] leading-4 text-ink-400">
               When the agent ends a turn without saying it is done, Remote sends it one more
@@ -116,7 +116,7 @@ export function AutopilotControl({
                       maxRounds: (event.currentTarget as HTMLInputElement).value,
                     }))
                   }
-                  class="h-8 w-full rounded-md border border-white/10 bg-white/[0.04] px-2 text-[12.5px] text-ink-50
+                  class="h-8 w-full rounded-md border border-line bg-tint px-2 text-[12.5px] text-ink-50
                          focus:border-accent-blue/40 focus:outline-none"
                 />
               </label>
@@ -134,7 +134,7 @@ export function AutopilotControl({
                       maxDurationMin: (event.currentTarget as HTMLInputElement).value,
                     }))
                   }
-                  class="h-8 w-full rounded-md border border-white/10 bg-white/[0.04] px-2 text-[12.5px] text-ink-50
+                  class="h-8 w-full rounded-md border border-line bg-tint px-2 text-[12.5px] text-ink-50
                          focus:border-accent-blue/40 focus:outline-none"
                 />
               </label>
@@ -153,8 +153,8 @@ export function AutopilotControl({
                       setOpen(false);
                       onDisarm();
                     }}
-                    class="h-8 flex-1 rounded-md border border-white/10 bg-white/[0.05] text-[12px] font-semibold
-                           text-ink-100 hover:bg-white/[0.09]"
+                    class="h-8 flex-1 rounded-md border border-line bg-tint text-[12px] font-semibold
+                           text-ink-100 hover:bg-tint-strong"
                   >
                     Stop autopilot
                   </button>

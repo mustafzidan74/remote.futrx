@@ -35,7 +35,7 @@ export function ComposerStatusNote({
       <button
         type="button"
         onClick={onDismiss}
-        class="grid h-5 w-5 flex-none place-items-center rounded text-ink-300 hover:bg-white/[0.08] hover:text-ink-50"
+        class="grid h-5 w-5 flex-none place-items-center rounded text-ink-300 hover:bg-tint-strong hover:text-ink-50"
         aria-label="Dismiss"
       >
         <X class="h-3 w-3" />
@@ -51,7 +51,7 @@ const TONES = {
     Icon: Info,
   },
   busy: {
-    box: "border-white/10 bg-white/[0.04]",
+    box: "border-line bg-tint",
     icon: "text-ink-300",
     Icon: Loader,
   },

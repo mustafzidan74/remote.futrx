@@ -29,7 +29,7 @@ export function GlobalSkillsSettings({
 
   if (!isAdmin) {
     return (
-      <section class="rounded-lg border border-white/10 bg-[#101318] p-4 text-[13px] leading-relaxed text-ink-300">
+      <section class="rounded-lg border border-line bg-surface p-4 text-[13px] leading-relaxed text-ink-300">
         Global skills are managed by server administrators. Skills published
         here appear in every project's skill picker.
       </section>
@@ -93,8 +93,8 @@ export function GlobalSkillsSettings({
 
   return (
     <section class="space-y-4">
-      <div class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-        <header class="px-4 py-3 flex items-start gap-3 border-b border-white/[0.06]">
+      <div class="rounded-lg border border-line bg-surface overflow-hidden">
+        <header class="px-4 py-3 flex items-start gap-3 border-b border-line">
           <div class="flex-1 min-w-0">
             <div class="text-[14.5px] font-semibold text-ink-50">Global skills</div>
             <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug">
@@ -125,8 +125,8 @@ export function GlobalSkillsSettings({
               type="button"
               onClick={() => setImportOpen((open) => !open)}
               disabled={busy}
-              class="inline-flex h-8 items-center gap-1.5 rounded-md bg-white/[0.06] px-3 text-[12.5px]
-                     font-medium text-ink-200 hover:bg-white/[0.1] disabled:opacity-50"
+              class="inline-flex h-8 items-center gap-1.5 rounded-md bg-tint-strong px-3 text-[12.5px]
+                     font-medium text-ink-200 hover:bg-tint-active disabled:opacity-50"
             >
               <Download class="w-3.5 h-3.5" /> Import from project
             </button>
@@ -163,14 +163,14 @@ export function GlobalSkillsSettings({
               {library.skills.map((skill) => (
                 <li
                   key={skill.name}
-                  class="flex items-start gap-3 rounded-md border border-white/[0.06] bg-[#0f1217] px-3 py-2.5"
+                  class="flex items-start gap-3 rounded-md border border-line bg-surface px-3 py-2.5"
                 >
                   <div class="min-w-0 flex-1">
                     <div class="flex flex-wrap items-center gap-2">
                       <span class="text-[13px] font-medium text-ink-100">
                         {skill.title || skill.name}
                       </span>
-                      <span class="rounded bg-white/[0.08] px-1.5 py-0.5 text-[10px] uppercase text-ink-400">
+                      <span class="rounded bg-tint-strong px-1.5 py-0.5 text-[10px] uppercase text-ink-400">
                         {skill.name}
                       </span>
                       {skill.alwaysOn && (
@@ -197,7 +197,7 @@ export function GlobalSkillsSettings({
                       class={`inline-flex h-8 items-center gap-1 rounded px-2 text-[11.5px] disabled:opacity-50 ${
                         skill.alwaysOn
                           ? "bg-accent-blue/[0.16] text-accent-blue hover:bg-accent-blue/[0.22]"
-                          : "text-ink-400 hover:bg-white/[0.08] hover:text-ink-100"
+                          : "text-ink-400 hover:bg-tint-strong hover:text-ink-100"
                       }`}
                     >
                       <Check class="w-3.5 h-3.5" /> Always on
@@ -206,7 +206,7 @@ export function GlobalSkillsSettings({
                       type="button"
                       onClick={() => void startEdit(skill)}
                       disabled={busy}
-                      class="inline-flex h-8 w-8 items-center justify-center rounded text-ink-400 hover:bg-white/[0.08] hover:text-ink-100 disabled:opacity-50"
+                      class="inline-flex h-8 w-8 items-center justify-center rounded text-ink-400 hover:bg-tint-strong hover:text-ink-100 disabled:opacity-50"
                       title={`Edit ${skill.name}`}
                       aria-label={`Edit ${skill.name}`}
                     >
@@ -268,8 +268,8 @@ function SkillEditor({
   const extraPaths = Object.keys(draft.extraFiles).sort();
 
   return (
-    <div class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-      <header class="px-4 py-3 border-b border-white/[0.06]">
+    <div class="rounded-lg border border-line bg-surface overflow-hidden">
+      <header class="px-4 py-3 border-b border-line">
         <div class="text-[14.5px] font-semibold text-ink-50">
           {editing ? `Edit ${editing}` : "New global skill"}
         </div>
@@ -296,7 +296,7 @@ function SkillEditor({
                 })
               }
               placeholder="code-review-guard"
-              class="h-9 flex-1 rounded-md border border-white/10 bg-[#0b0d11] px-2.5 text-[13px]
+              class="h-9 flex-1 rounded-md border border-line bg-inset px-2.5 text-[13px]
                      text-ink-100 placeholder:text-ink-400 focus:outline-none disabled:opacity-60"
             />
             {editing === null && metadata.name && (
@@ -305,7 +305,7 @@ function SkillEditor({
                 onClick={() =>
                   onChange({ ...draft, name: globalSkillsState.suggestName(metadata.name) })
                 }
-                class="h-9 rounded-md bg-white/[0.06] px-3 text-[12px] text-ink-200 hover:bg-white/[0.1]"
+                class="h-9 rounded-md bg-tint-strong px-3 text-[12px] text-ink-200 hover:bg-tint-active"
               >
                 Use "{globalSkillsState.suggestName(metadata.name)}"
               </button>
@@ -322,7 +322,7 @@ function SkillEditor({
             }
             rows={16}
             spellcheck={false}
-            class="mt-1 w-full rounded-md border border-white/10 bg-[#0b0d11] p-2.5 font-mono text-[12.5px]
+            class="mt-1 w-full rounded-md border border-line bg-inset p-2.5 font-mono text-[12.5px]
                    leading-5 text-ink-100 focus:outline-none"
           />
         </label>
@@ -338,7 +338,7 @@ function SkillEditor({
                   delete next[path];
                   onChange({ ...draft, extraFiles: next });
                 }}
-                class="inline-flex h-6 w-6 items-center justify-center rounded text-ink-400 hover:bg-white/[0.08] hover:text-ink-100"
+                class="inline-flex h-6 w-6 items-center justify-center rounded text-ink-400 hover:bg-tint-strong hover:text-ink-100"
                 aria-label={`Remove ${path}`}
               >
                 <X class="w-3 h-3" />
@@ -357,7 +357,7 @@ function SkillEditor({
               }
               rows={6}
               spellcheck={false}
-              class="mt-1 w-full rounded-md border border-white/10 bg-[#0b0d11] p-2.5 font-mono text-[12.5px]
+              class="mt-1 w-full rounded-md border border-line bg-inset p-2.5 font-mono text-[12.5px]
                      leading-5 text-ink-100 focus:outline-none"
             />
           </label>
@@ -368,7 +368,7 @@ function SkillEditor({
             value={newFilePath}
             onInput={(event) => setNewFilePath((event.currentTarget as HTMLInputElement).value)}
             placeholder="references/checklist.md"
-            class="h-9 flex-1 rounded-md border border-white/10 bg-[#0b0d11] px-2.5 text-[13px]
+            class="h-9 flex-1 rounded-md border border-line bg-inset px-2.5 text-[13px]
                    text-ink-100 placeholder:text-ink-400 focus:outline-none"
           />
           <button
@@ -381,7 +381,7 @@ function SkillEditor({
               });
               setNewFilePath("");
             }}
-            class="h-9 rounded-md bg-white/[0.06] px-3 text-[12.5px] text-ink-200 hover:bg-white/[0.1] disabled:opacity-40"
+            class="h-9 rounded-md bg-tint-strong px-3 text-[12.5px] text-ink-200 hover:bg-tint-active disabled:opacity-40"
           >
             Add file
           </button>
@@ -413,7 +413,7 @@ function SkillEditor({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            class="h-9 rounded-md px-3.5 text-[13px] text-ink-300 hover:bg-white/[0.06] disabled:opacity-50"
+            class="h-9 rounded-md px-3.5 text-[13px] text-ink-300 hover:bg-tint-strong disabled:opacity-50"
           >
             Cancel
           </button>
@@ -439,7 +439,7 @@ function ImportFromProject({
   const [name, setName] = useState("");
 
   return (
-    <div class="rounded-md border border-white/[0.08] bg-[#0f1217] p-3 space-y-2">
+    <div class="rounded-md border border-line bg-surface p-3 space-y-2">
       <div class="text-[12.5px] text-ink-300">
         Copies <code>.agents/skills/&lt;skill&gt;</code> from a project workspace
         into the global library. The project keeps its own copy.
@@ -448,7 +448,7 @@ function ImportFromProject({
         <select
           value={projectId}
           onChange={(event) => setProjectId((event.currentTarget as HTMLSelectElement).value)}
-          class="h-9 min-w-[10rem] rounded-md border border-white/10 bg-[#0b0d11] px-2 text-[13px] text-ink-100"
+          class="h-9 min-w-[10rem] rounded-md border border-line bg-inset px-2 text-[13px] text-ink-100"
         >
           {projects.length === 0 && <option value="">No projects</option>}
           {projects.map((project) => (
@@ -461,14 +461,14 @@ function ImportFromProject({
           value={skill}
           onInput={(event) => setSkill((event.currentTarget as HTMLInputElement).value)}
           placeholder="project skill name"
-          class="h-9 flex-1 min-w-[10rem] rounded-md border border-white/10 bg-[#0b0d11] px-2.5 text-[13px]
+          class="h-9 flex-1 min-w-[10rem] rounded-md border border-line bg-inset px-2.5 text-[13px]
                  text-ink-100 placeholder:text-ink-400 focus:outline-none"
         />
         <input
           value={name}
           onInput={(event) => setName((event.currentTarget as HTMLInputElement).value)}
           placeholder="global name (optional)"
-          class="h-9 flex-1 min-w-[10rem] rounded-md border border-white/10 bg-[#0b0d11] px-2.5 text-[13px]
+          class="h-9 flex-1 min-w-[10rem] rounded-md border border-line bg-inset px-2.5 text-[13px]
                  text-ink-100 placeholder:text-ink-400 focus:outline-none"
         />
       </div>
@@ -485,7 +485,7 @@ function ImportFromProject({
         <button
           type="button"
           onClick={onCancel}
-          class="h-8 rounded-md px-3 text-[12.5px] text-ink-300 hover:bg-white/[0.06]"
+          class="h-8 rounded-md px-3 text-[12.5px] text-ink-300 hover:bg-tint-strong"
         >
           Cancel
         </button>

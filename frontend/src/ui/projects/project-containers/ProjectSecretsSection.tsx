@@ -288,7 +288,7 @@ function SecretRow({
 function InheritedSecrets({ list }: { list: InheritedSecret[] }) {
   if (list.length === 0) return null;
   return (
-    <section class="rounded-md border border-white/[0.08] bg-white/[0.02] p-3 space-y-2">
+    <section class="rounded-md border border-line bg-tint p-3 space-y-2">
       <div class="flex items-center gap-2">
         <Key class="w-3.5 h-3.5 flex-none text-accent-blue" aria-hidden="true" />
         <div class="text-[12.5px] font-medium text-ink-100">Inherited from the vault</div>

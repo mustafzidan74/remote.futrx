@@ -145,7 +145,7 @@ export function UserMessage({
                 type="button"
                 onClick={() => onRewind(t, text)}
                 class="inline-flex items-center gap-1.5 h-8 px-2 rounded-md text-[12px]
-                       text-ink-300 hover:text-ink-100 hover:bg-white/[0.07]"
+                       text-ink-300 hover:text-ink-100 hover:bg-tint-strong"
                 title="Rewind and edit from here"
               >
                 <RotateCcw class="w-3.5 h-3.5" />
@@ -157,7 +157,7 @@ export function UserMessage({
                 type="button"
                 onClick={() => onSaveSnippet(text)}
                 class="inline-flex items-center gap-1.5 h-8 px-2 rounded-md text-[12px]
-                       text-ink-300 hover:text-ink-100 hover:bg-white/[0.07]"
+                       text-ink-300 hover:text-ink-100 hover:bg-tint-strong"
                 title="Save this message as a snippet"
               >
                 <FileText class="w-3.5 h-3.5" />

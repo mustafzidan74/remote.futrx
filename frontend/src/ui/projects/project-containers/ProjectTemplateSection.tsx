@@ -17,7 +17,7 @@ import { formatEpochMillis } from "./projectContainerFormat";
 export function TemplateBadge({ template }: { template: ProjectTemplateStatus }) {
   return (
     <span
-      class="inline-flex items-center h-5 px-1.5 rounded bg-white/[0.06] text-[11px] font-medium text-ink-200"
+      class="inline-flex items-center h-5 px-1.5 rounded bg-tint-strong text-[11px] font-medium text-ink-200"
       title={`Project template: ${template.title || template.name}`}
     >
       {template.title || template.name}
@@ -38,7 +38,7 @@ export function TemplateStatusBadge({ status }: { status: ProjectTemplateStatus[
       ? "text-accent-red bg-accent-red/[0.12]"
       : status === "running"
       ? "text-accent-blue bg-accent-blue/[0.12]"
-      : "text-ink-300 bg-white/[0.06]";
+      : "text-ink-300 bg-tint-strong";
   return (
     <span class={`inline-flex items-center h-5 px-1.5 rounded text-[11px] font-medium ${tone}`}>
       {statusLabel(status)}
@@ -137,14 +137,14 @@ function TemplateAdminAccess({
   };
 
   return (
-    <div class="mt-3 rounded-md border border-white/10 bg-white/[0.03] p-2.5">
+    <div class="mt-3 rounded-md border border-line bg-tint p-2.5">
       <div class="flex items-center justify-between gap-2">
         <span class="text-[12px] font-medium text-ink-200">{admin.label}</span>
         <button
           type="button"
           onClick={() => void copyLogin()}
           class="inline-flex items-center gap-1.5 h-8 px-2 rounded text-[11.5px] text-ink-200
-                 hover:text-ink-50 hover:bg-white/[0.08]"
+                 hover:text-ink-50 hover:bg-tint-strong"
         >
           <Copy class="w-3.5 h-3.5" />
           {copied ? "Copied" : "Copy login"}
@@ -179,7 +179,7 @@ function TemplateAdminAccess({
                   type="button"
                   onClick={() => setRevealed((shown) => !shown)}
                   class="h-6 w-6 flex-none grid place-items-center rounded text-ink-300
-                         hover:text-ink-50 hover:bg-white/[0.08]"
+                         hover:text-ink-50 hover:bg-tint-strong"
                   aria-label={revealed ? "Hide password" : "Reveal password"}
                 >
                   {revealed ? <EyeOff class="w-3.5 h-3.5" /> : <Eye class="w-3.5 h-3.5" />}

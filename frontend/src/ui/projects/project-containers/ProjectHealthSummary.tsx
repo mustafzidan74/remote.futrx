@@ -7,7 +7,7 @@ const TONE: Record<string, string> = {
   ok: "text-accent-green bg-accent-green/[0.12]",
   warn: "text-accent-yellow bg-accent-yellow/[0.12]",
   crit: "text-accent-red bg-accent-red/[0.12]",
-  unknown: "text-ink-300 bg-white/[0.06]",
+  unknown: "text-ink-300 bg-tint-strong",
 };
 
 const LABEL: Record<string, string> = {

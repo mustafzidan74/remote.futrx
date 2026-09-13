@@ -42,7 +42,7 @@ import {
 } from "../primitives/icons";
 
 const inputClass =
-  "w-full h-9 rounded-md bg-black/30 border border-white/10 px-2.5 text-[13px] text-ink-100 " +
+  "w-full h-9 rounded-md bg-inset border border-line px-2.5 text-[13px] text-ink-100 " +
   "placeholder:text-ink-400 focus:outline-none focus:border-accent-blue";
 
 const TONE_DOT: Record<SiteTone, string> = {
@@ -107,16 +107,16 @@ export function ClientSitesSettings({
 
   return (
     <div class="space-y-4">
-      <section class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-        <header class="px-4 py-3 flex items-start gap-3 border-b border-white/[0.06]">
-          <div class="h-9 w-9 rounded-md bg-white/[0.06] border border-white/10 grid place-items-center flex-none">
+      <section class="rounded-lg border border-line bg-surface overflow-hidden">
+        <header class="px-4 py-3 flex items-start gap-3 border-b border-line">
+          <div class="h-9 w-9 rounded-md bg-tint-strong border border-line grid place-items-center flex-none">
             <Globe class="w-4 h-4 text-ink-200" />
           </div>
           <div class="flex-1 min-w-0">
             <div class="text-[14.5px] font-semibold text-ink-50">Client sites</div>
             <div class="text-[12px] text-ink-300 mt-1 leading-relaxed">
               An always-on watcher for the websites you built for other people. Each site gets one{" "}
-              <code class="rounded bg-black/30 border border-white/10 px-1 py-0.5 text-[11px]">HEAD</code>{" "}
+              <code class="rounded bg-inset border border-line px-1 py-0.5 text-[11px]">HEAD</code>{" "}
               request per interval from this server — no agent runs, no tokens, no container time.
               You are alerted after two consecutive failures, and again when it comes back.
             </div>
@@ -125,8 +125,8 @@ export function ClientSitesSettings({
             type="button"
             onClick={() => void sites.refresh()}
             disabled={sites.refreshing || sites.loading}
-            class="h-8 flex-none px-2.5 rounded-md border border-white/10 text-ink-200 text-[12px]
-                   hover:bg-white/[0.07] disabled:opacity-50 inline-flex items-center gap-1.5"
+            class="h-8 flex-none px-2.5 rounded-md border border-line text-ink-200 text-[12px]
+                   hover:bg-tint-strong disabled:opacity-50 inline-flex items-center gap-1.5"
             title="Refresh now"
           >
             <RotateCcw class={`w-3.5 h-3.5${sites.refreshing ? " animate-spin" : ""}`} />
@@ -147,8 +147,8 @@ export function ClientSitesSettings({
                     setEditing(null);
                   }}
                   disabled={rows.length >= sites.maxSites}
-                  class="h-8 px-2.5 rounded-md border border-white/10 text-ink-200 text-[12px]
-                         hover:bg-white/[0.07] disabled:opacity-50 inline-flex items-center gap-1.5"
+                  class="h-8 px-2.5 rounded-md border border-line text-ink-200 text-[12px]
+                         hover:bg-tint-strong disabled:opacity-50 inline-flex items-center gap-1.5"
                 >
                   <Upload class="w-3.5 h-3.5" /> Bulk import
                 </button>
@@ -216,13 +216,13 @@ export function ClientSitesSettings({
           {sites.loading && rows.length === 0 ? (
             <TableSkeleton />
           ) : rows.length === 0 ? (
-            <p class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-6 text-center text-[12.5px] leading-relaxed text-ink-300">
+            <p class="rounded-md border border-line bg-tint px-3 py-6 text-center text-[12.5px] leading-relaxed text-ink-300">
               {isAdmin
                 ? "No client sites yet. Add one, or paste a list of addresses with Bulk import."
                 : "No client sites are linked to your projects."}
             </p>
           ) : (
-            <div class="overflow-x-auto rounded-md border border-white/10">
+            <div class="overflow-x-auto rounded-md border border-line">
               <table class="w-full min-w-[860px] text-[12.5px]">
                 <thead>
                   <tr class="text-left text-[11px] uppercase tracking-wide text-ink-400">
@@ -306,7 +306,7 @@ function SiteRow({
   const tls = describeTls(site);
 
   return (
-    <tr class="border-t border-white/[0.06] align-middle">
+    <tr class="border-t border-line align-middle">
       <td class="px-3 py-2">
         <div class="flex items-center gap-2 min-w-0">
           <span class="grid h-3 w-3 flex-none place-items-center" title={dot.title}>
@@ -353,8 +353,8 @@ function SiteRow({
             type="button"
             onClick={onCheck}
             disabled={checking}
-            class="h-7 px-2 rounded-md border border-white/10 text-ink-200 text-[11.5px]
-                   hover:bg-white/[0.07] disabled:opacity-50 inline-flex items-center gap-1"
+            class="h-7 px-2 rounded-md border border-line text-ink-200 text-[11.5px]
+                   hover:bg-tint-strong disabled:opacity-50 inline-flex items-center gap-1"
             title="Run every check for this site now and show the raw results"
           >
             {checking ? (
@@ -369,7 +369,7 @@ function SiteRow({
               <button
                 type="button"
                 onClick={onEdit}
-                class="h-7 px-2 rounded-md border border-white/10 text-ink-200 text-[11.5px] hover:bg-white/[0.07]"
+                class="h-7 px-2 rounded-md border border-line text-ink-200 text-[11.5px] hover:bg-tint-strong"
               >
                 Edit
               </button>
@@ -385,7 +385,7 @@ function SiteRow({
                   <button
                     type="button"
                     onClick={onCancelDelete}
-                    class="grid h-7 w-7 place-items-center rounded-md text-ink-300 hover:bg-white/[0.07]"
+                    class="grid h-7 w-7 place-items-center rounded-md text-ink-300 hover:bg-tint-strong"
                     aria-label="Cancel"
                   >
                     <X class="w-3.5 h-3.5" />
@@ -395,7 +395,7 @@ function SiteRow({
                 <button
                   type="button"
                   onClick={onDelete}
-                  class="grid h-7 w-7 place-items-center rounded-md text-ink-300 hover:bg-white/[0.07] hover:text-accent-red"
+                  class="grid h-7 w-7 place-items-center rounded-md text-ink-300 hover:bg-tint-strong hover:text-accent-red"
                   aria-label={`Stop watching ${siteName(site)}`}
                 >
                   <Trash class="w-3.5 h-3.5" />
@@ -486,7 +486,7 @@ function SiteEditor({
   return (
     <form
       onSubmit={onSubmit}
-      class="rounded-md border border-white/10 bg-white/[0.03] p-3 space-y-3"
+      class="rounded-md border border-line bg-tint p-3 space-y-3"
     >
       <div class="text-[13px] font-semibold text-ink-100">
         {editingExisting ? "Edit site" : "Add a client site"}
@@ -652,7 +652,7 @@ function SiteEditor({
             <button
               type="button"
               onClick={() => set("extraUrls", form.extraUrls.filter((_, at) => at !== index))}
-              class="grid h-9 w-9 flex-none place-items-center rounded-md text-ink-300 hover:bg-white/[0.07]"
+              class="grid h-9 w-9 flex-none place-items-center rounded-md text-ink-300 hover:bg-tint-strong"
               aria-label="Remove this page"
             >
               <X class="w-3.5 h-3.5" />
@@ -663,7 +663,7 @@ function SiteEditor({
           <button
             type="button"
             onClick={() => set("extraUrls", [...form.extraUrls, { label: "", url: "" }])}
-            class="h-8 px-2.5 rounded-md border border-white/10 text-ink-200 text-[12px] hover:bg-white/[0.07] inline-flex items-center gap-1.5"
+            class="h-8 px-2.5 rounded-md border border-line text-ink-200 text-[12px] hover:bg-tint-strong inline-flex items-center gap-1.5"
           >
             <Plus class="w-3.5 h-3.5" /> Add a page
           </button>
@@ -699,7 +699,7 @@ function SiteEditor({
             <button
               type="button"
               onClick={() => set("headers", form.headers.filter((_, at) => at !== index))}
-              class="grid h-9 w-9 flex-none place-items-center rounded-md text-ink-300 hover:bg-white/[0.07]"
+              class="grid h-9 w-9 flex-none place-items-center rounded-md text-ink-300 hover:bg-tint-strong"
               aria-label="Remove this header"
             >
               <X class="w-3.5 h-3.5" />
@@ -709,7 +709,7 @@ function SiteEditor({
         <button
           type="button"
           onClick={() => set("headers", [...form.headers, { name: "", value: "" }])}
-          class="h-8 px-2.5 rounded-md border border-white/10 text-ink-200 text-[12px] hover:bg-white/[0.07] inline-flex items-center gap-1.5"
+          class="h-8 px-2.5 rounded-md border border-line text-ink-200 text-[12px] hover:bg-tint-strong inline-flex items-center gap-1.5"
         >
           <Plus class="w-3.5 h-3.5" /> Add a header
         </button>
@@ -755,7 +755,7 @@ function SiteEditor({
         <button
           type="button"
           onClick={onCancel}
-          class="h-9 px-3 rounded-md border border-white/10 text-ink-200 text-[13px] hover:bg-white/[0.07]"
+          class="h-9 px-3 rounded-md border border-line text-ink-200 text-[13px] hover:bg-tint-strong"
         >
           Cancel
         </button>
@@ -813,14 +813,14 @@ function ImportPanel({
   }
 
   return (
-    <form onSubmit={run} class="rounded-md border border-white/10 bg-white/[0.03] p-3 space-y-3">
+    <form onSubmit={run} class="rounded-md border border-line bg-tint p-3 space-y-3">
       <div class="flex items-center gap-2">
         <span class="text-[13px] font-semibold text-ink-100">Bulk import</span>
         <span class="flex-1" />
         <button
           type="button"
           onClick={onClose}
-          class="grid h-7 w-7 place-items-center rounded-md text-ink-300 hover:bg-white/[0.07]"
+          class="grid h-7 w-7 place-items-center rounded-md text-ink-300 hover:bg-tint-strong"
           aria-label="Close bulk import"
         >
           <X class="w-3.5 h-3.5" />
@@ -837,12 +837,12 @@ function ImportPanel({
           rows={5}
           spellcheck={false}
           placeholder={"shop.example.com\nblog.example.com   # the client's news site\nhttps://app.example.com/health"}
-          class="w-full rounded-md bg-black/30 border border-white/10 px-2.5 py-2 text-[12.5px]
+          class="w-full rounded-md bg-inset border border-line px-2.5 py-2 text-[12.5px]
                  font-mono text-ink-100 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue"
         />
       </label>
 
-      <label class="flex items-start gap-2.5 rounded-md border border-white/10 bg-white/[0.03] p-2.5 cursor-pointer">
+      <label class="flex items-start gap-2.5 rounded-md border border-line bg-tint p-2.5 cursor-pointer">
         <input
           type="checkbox"
           checked={fromProjects}
@@ -853,7 +853,7 @@ function ImportPanel({
           <span class="block text-[12.5px] text-ink-100">Also take domains from the projects</span>
           <span class="block text-[12px] text-ink-300 leading-relaxed">
             Reads each project's own{" "}
-            <code class="rounded bg-black/30 border border-white/10 px-1 py-0.5 text-[11px]">
+            <code class="rounded bg-inset border border-line px-1 py-0.5 text-[11px]">
               HESTIA_DOMAIN
             </code>
             -style secrets and links every site it finds to the project it came from, so that
@@ -900,7 +900,7 @@ function ImportPanel({
       </div>
 
       {result && (
-        <div class="space-y-1 rounded-md border border-white/10 bg-black/20 p-2.5 text-[12px] leading-relaxed">
+        <div class="space-y-1 rounded-md border border-line bg-inset p-2.5 text-[12px] leading-relaxed">
           <div class="text-accent-green">
             Added {result.created.length} site{result.created.length === 1 ? "" : "s"}.
           </div>
@@ -935,7 +935,7 @@ function CheckReportPanel({
   onDismiss: () => void;
 }) {
   return (
-    <section class="rounded-md border border-white/10 bg-black/20 p-3 space-y-2">
+    <section class="rounded-md border border-line bg-inset p-3 space-y-2">
       <div class="flex items-center gap-2">
         <span class="text-[13px] font-semibold text-ink-100">
           Check of {siteName(report.site)}
@@ -947,7 +947,7 @@ function CheckReportPanel({
         <button
           type="button"
           onClick={onDismiss}
-          class="grid h-7 w-7 place-items-center rounded-md text-ink-300 hover:bg-white/[0.07]"
+          class="grid h-7 w-7 place-items-center rounded-md text-ink-300 hover:bg-tint-strong"
           aria-label="Dismiss the check result"
         >
           <X class="w-3.5 h-3.5" />
@@ -958,7 +958,7 @@ function CheckReportPanel({
           const tone: SiteTone =
             endpoint.status === "up" ? "green" : endpoint.status === "slow" ? "amber" : "red";
           return (
-            <div key={endpoint.url} class="rounded border border-white/[0.06] bg-white/[0.02] p-2">
+            <div key={endpoint.url} class="rounded border border-line bg-tint p-2">
               <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
                 <span class={`inline-flex items-center gap-1.5 ${TONE_TEXT[tone]}`}>
                   <span class={`h-2 w-2 rounded-full ${TONE_DOT[tone]}`} aria-hidden="true" />
@@ -1003,11 +1003,11 @@ function TableSkeleton() {
   return (
     <div class="space-y-2" aria-hidden="true">
       {Array.from({ length: 3 }, (_, index) => (
-        <div key={index} class="flex items-center gap-3 rounded-md bg-white/[0.04] p-3">
-          <span class="h-3 w-3 flex-none animate-pulse rounded-full bg-white/[0.07]" />
+        <div key={index} class="flex items-center gap-3 rounded-md bg-tint p-3">
+          <span class="h-3 w-3 flex-none animate-pulse rounded-full bg-tint-strong" />
           <span class="flex-1 space-y-1.5">
-            <span class="block h-3 w-1/4 animate-pulse rounded bg-white/[0.07]" />
-            <span class="block h-2.5 w-1/2 animate-pulse rounded bg-white/[0.05]" />
+            <span class="block h-3 w-1/4 animate-pulse rounded bg-tint-strong" />
+            <span class="block h-2.5 w-1/2 animate-pulse rounded bg-tint" />
           </span>
         </div>
       ))}

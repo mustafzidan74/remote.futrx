@@ -100,7 +100,7 @@ export function DeleteProjectModal({
             type="button"
             onClick={() => void confirmationState.submit()}
             disabled={!confirmationState.isConfirmed || confirmationState.deleting}
-            class="inline-flex items-center gap-[7px] rounded-lg border border-accent-red/40 bg-accent-red px-[15px] py-2 text-[13px] font-semibold text-ink-900 transition-colors hover:bg-accent-red/90 disabled:cursor-not-allowed disabled:border-line disabled:bg-tint-strong disabled:text-ink-400"
+            class="inline-flex items-center gap-[7px] rounded-lg border border-accent-red/40 bg-accent-red px-[15px] py-2 text-[13px] font-semibold text-on-accent transition-colors hover:bg-accent-red/90 disabled:cursor-not-allowed disabled:border-line disabled:bg-tint-strong disabled:text-ink-400"
           >
             {confirmationState.deleting && <Loader class="h-3.5 w-3.5 animate-spin" />}
             {confirmationState.deleting ? "Deleting…" : "Delete project"}

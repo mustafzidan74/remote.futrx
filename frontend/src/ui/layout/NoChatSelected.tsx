@@ -41,7 +41,7 @@ export function NoChatSelected({
       <div class="flex-1 overflow-y-auto touch-scroll grid place-items-center p-5">
         {hasProjects ? (
           <div class="max-w-sm space-y-5 text-center">
-            <div class="mx-auto w-16 h-16 rounded-lg bg-white/[0.06] border border-white/10 grid place-items-center">
+            <div class="mx-auto w-16 h-16 rounded-lg bg-tint-strong border border-line grid place-items-center">
               <MessageSquare class="w-8 h-8 opacity-70" />
             </div>
             <div class="text-ink-200">
@@ -56,7 +56,7 @@ export function NoChatSelected({
                 type="button"
                 onClick={onNewProject}
                 class="inline-flex items-center gap-2 bg-accent-blue hover:bg-accent-blue/85 active:scale-[0.99]
-                       text-ink-900 text-sm font-medium px-4 h-11 rounded-md transition"
+                       text-on-accent text-sm font-medium px-4 h-11 rounded-md transition"
               >
                 <Folder class="w-4 h-4" /> New project
               </button>
@@ -89,8 +89,8 @@ export function NoChatSelected({
                 <button
                   type="button"
                   onClick={onOpenAgentSettings}
-                  class="inline-flex h-9 items-center gap-2 rounded-md bg-white/[0.08] px-3 text-[13px]
-                         font-medium text-ink-100 transition hover:bg-white/[0.12]"
+                  class="inline-flex h-9 items-center gap-2 rounded-md bg-tint-strong px-3 text-[13px]
+                         font-medium text-ink-100 transition hover:bg-tint-active"
                 >
                   Open agent settings
                 </button>
@@ -106,7 +106,7 @@ export function NoChatSelected({
                   type="button"
                   onClick={onNewProject}
                   class="inline-flex h-9 items-center gap-2 rounded-md bg-accent-blue px-3 text-[13px]
-                         font-medium text-ink-900 transition hover:bg-accent-blue/85"
+                         font-medium text-on-accent transition hover:bg-accent-blue/85"
                 >
                   <Plus class="w-4 h-4" /> New project
                 </button>
@@ -144,9 +144,9 @@ function WelcomeStep({
   children: ComponentChildren;
 }) {
   return (
-    <li class="flex items-start gap-3 rounded-lg border border-white/10 bg-[#101318] p-3.5">
+    <li class="flex items-start gap-3 rounded-lg border border-line bg-surface p-3.5">
       <span
-        class="grid h-8 w-8 flex-none place-items-center rounded-md bg-white/[0.06] text-ink-200"
+        class="grid h-8 w-8 flex-none place-items-center rounded-md bg-tint-strong text-ink-200"
         aria-hidden="true"
       >
         <Icon class="h-4 w-4" />

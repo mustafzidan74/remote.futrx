@@ -22,7 +22,7 @@ export function Meter({
         <span class="font-mono tabular-nums text-ink-300">{detail}</span>
       </div>
       <div
-        class="mt-1.5 h-2 rounded-full bg-white/[0.06] overflow-hidden"
+        class="mt-1.5 h-2 rounded-full bg-tint-strong overflow-hidden"
         role="progressbar"
         aria-label={label}
         aria-valuemin={0}

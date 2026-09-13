@@ -207,8 +207,8 @@ export function ProviderModelPill({
                     }}
                     class={`h-8 rounded-md px-2 text-[12px] font-semibold transition
                             ${active
-                              ? "bg-accent-blue text-ink-900"
-                              : "bg-white/[0.05] text-ink-200 hover:bg-white/[0.09] hover:text-ink-50"}`}
+                              ? "bg-accent-blue text-on-accent"
+                              : "bg-tint text-ink-200 hover:bg-tint-strong hover:text-ink-50"}`}
                     aria-pressed={active}
                   >
                     {option.label}
@@ -229,7 +229,7 @@ export function ProviderModelPill({
                     onModelPolicyChange("auto");
                   }}
                   class={`flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left transition
-                          ${auto ? "bg-accent-blue/[0.14] text-accent-blue" : "text-ink-100 hover:bg-white/[0.07]"}`}
+                          ${auto ? "bg-accent-blue/[0.14] text-accent-blue" : "text-ink-100 hover:bg-tint-strong"}`}
                   role="option"
                   aria-selected={auto}
                 >
@@ -252,7 +252,7 @@ export function ProviderModelPill({
                   type="button"
                   onClick={() => pickModel(model)}
                   class={`w-full rounded-md px-2.5 py-2 text-left ${
-                    auto ? "text-ink-100 hover:bg-white/[0.07]" : "bg-accent-blue/[0.14] text-accent-blue"
+                    auto ? "text-ink-100 hover:bg-tint-strong" : "bg-accent-blue/[0.14] text-accent-blue"
                   }`}
                   role="option"
                   aria-selected={!auto}
@@ -269,7 +269,7 @@ export function ProviderModelPill({
                     type="button"
                     onClick={() => pickModel(option.value)}
                     class={`flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left transition
-                            ${active ? "bg-accent-blue/[0.14] text-accent-blue" : "text-ink-100 hover:bg-white/[0.07]"}`}
+                            ${active ? "bg-accent-blue/[0.14] text-accent-blue" : "text-ink-100 hover:bg-tint-strong"}`}
                     role="option"
                     aria-selected={active}
                   >
@@ -306,7 +306,7 @@ export function ProviderModelPill({
                       class={`flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left transition
                               ${active
                                 ? "bg-accent-red/[0.14] text-accent-red"
-                                : "text-ink-100 hover:bg-white/[0.07]"}`}
+                                : "text-ink-100 hover:bg-tint-strong"}`}
                       role="option"
                       aria-selected={active}
                     >
@@ -348,7 +348,7 @@ export function ProviderModelPill({
                       class={`flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left transition
                               ${active
                                 ? "bg-accent-green/[0.14] text-accent-green"
-                                : "text-ink-100 hover:bg-white/[0.07]"}`}
+                                : "text-ink-100 hover:bg-tint-strong"}`}
                       role="option"
                       aria-selected={active}
                     >

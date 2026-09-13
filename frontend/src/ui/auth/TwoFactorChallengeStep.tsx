@@ -39,7 +39,7 @@ export function TwoFactorChallengeStep({
             autoFocus
             value={code}
             onInput={(event) => onCodeChange((event.currentTarget as HTMLInputElement).value)}
-            class="w-full h-11 rounded-md bg-[#101318] border border-white/10 px-3 text-sm text-ink-100 tracking-widest focus:outline-none focus:border-accent-blue"
+            class="w-full h-11 rounded-md bg-surface border border-line px-3 text-sm text-ink-100 tracking-widest focus:outline-none focus:border-accent-blue"
           />
         </label>
         {error && (
@@ -58,7 +58,7 @@ export function TwoFactorChallengeStep({
         <button
           type="button"
           onClick={onCancel}
-          class="w-full h-10 rounded-md text-ink-300 hover:text-ink-100 hover:bg-white/[0.05] text-[13px]"
+          class="w-full h-10 rounded-md text-ink-300 hover:text-ink-100 hover:bg-tint text-[13px]"
         >
           Cancel and sign in again
         </button>

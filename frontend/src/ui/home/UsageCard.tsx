@@ -48,7 +48,7 @@ export function UsageCard({
       Icon={Zap}
       action={
         <div class="flex items-center gap-2">
-          <div class="inline-flex overflow-hidden rounded-md border border-white/10">
+          <div class="inline-flex overflow-hidden rounded-md border border-line">
             {(["cost", "tokens"] as UsageChartMetric[]).map((option) => (
               <button
                 key={option}
@@ -57,8 +57,8 @@ export function UsageCard({
                 aria-pressed={metric === option}
                 class={`h-7 px-2.5 text-[11.5px] font-medium transition-colors ${
                   metric === option
-                    ? "bg-white/[0.10] text-ink-50"
-                    : "text-ink-300 hover:bg-white/[0.05] hover:text-ink-100"
+                    ? "bg-tint-active text-ink-50"
+                    : "text-ink-300 hover:bg-tint hover:text-ink-100"
                 }`}
               >
                 {option === "cost" ? "Cost" : "Tokens"}
@@ -69,7 +69,7 @@ export function UsageCard({
             type="button"
             onClick={onOpenUsage}
             class="grid h-7 w-7 place-items-center rounded-md text-ink-300 transition
-                   hover:bg-white/[0.09] hover:text-ink-100"
+                   hover:bg-tint-strong hover:text-ink-100"
             title="Open the full usage report"
             aria-label="Open the full usage report"
           >

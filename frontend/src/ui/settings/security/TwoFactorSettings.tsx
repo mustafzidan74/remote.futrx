@@ -13,9 +13,9 @@ export function TwoFactorSettings({ controller }: { controller: SecuritySettings
   const twoFactorEnabled = settings?.twoFactorEnabled ?? false;
 
   return (
-    <section class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-      <header class="px-4 py-3 flex items-start gap-3 border-b border-white/[0.06]">
-        <div class="h-9 w-9 rounded-md bg-white/[0.06] border border-white/10 grid place-items-center flex-none">
+    <section class="rounded-lg border border-line bg-surface overflow-hidden">
+      <header class="px-4 py-3 flex items-start gap-3 border-b border-line">
+        <div class="h-9 w-9 rounded-md bg-tint-strong border border-line grid place-items-center flex-none">
           <ShieldCheck class="w-4 h-4 text-ink-200" />
         </div>
         <div class="flex-1 min-w-0">
@@ -75,14 +75,14 @@ export function TwoFactorSettings({ controller }: { controller: SecuritySettings
             <button
               type="button"
               onClick={flow.showRegenerateForm}
-              class="h-9 px-2.5 rounded bg-white/[0.08] hover:bg-white/[0.12] text-ink-100 text-[12.5px] font-medium inline-flex items-center gap-1.5"
+              class="h-9 px-2.5 rounded bg-tint-strong hover:bg-tint-active text-ink-100 text-[12.5px] font-medium inline-flex items-center gap-1.5"
             >
               Regenerate codes
             </button>
             <button
               type="button"
               onClick={flow.showDisableForm}
-              class="h-9 px-2.5 rounded bg-white/[0.08] hover:bg-white/[0.12] text-ink-100 text-[12.5px] font-medium inline-flex items-center gap-1.5"
+              class="h-9 px-2.5 rounded bg-tint-strong hover:bg-tint-active text-ink-100 text-[12.5px] font-medium inline-flex items-center gap-1.5"
             >
               <Key class="w-3.5 h-3.5" /> Disable two-factor authentication
             </button>

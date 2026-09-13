@@ -106,8 +106,8 @@ export function ProjectGitHubPRDialog({
       aria-modal="true"
       aria-label="Open a pull request"
     >
-      <div class="w-full max-w-lg rounded-lg border border-white/10 bg-[#101318] shadow-xl max-h-full overflow-y-auto">
-        <header class="px-4 py-3 border-b border-white/[0.06] flex items-center gap-2">
+      <div class="w-full max-w-lg rounded-lg border border-line bg-surface shadow-xl max-h-full overflow-y-auto">
+        <header class="px-4 py-3 border-b border-line flex items-center gap-2">
           <div class="flex-1 min-w-0">
             <div class="text-[14.5px] font-semibold text-ink-50">Open a pull request</div>
             <div class="text-[12px] text-ink-300 truncate">
@@ -117,7 +117,7 @@ export function ProjectGitHubPRDialog({
           <button
             type="button"
             onClick={onClose}
-            class="h-8 w-8 rounded-md text-ink-300 hover:text-ink-50 hover:bg-white/[0.08] grid place-items-center"
+            class="h-8 w-8 rounded-md text-ink-300 hover:text-ink-50 hover:bg-tint-strong grid place-items-center"
             aria-label="Close"
           >
             <X class="w-4 h-4" />
@@ -141,7 +141,7 @@ export function ProjectGitHubPRDialog({
               placeholder="Leave empty to let gh fill it from the commits"
               maxLength={200}
               autocomplete="off"
-              class="w-full h-10 rounded-md bg-black/30 border border-white/10 px-3 text-sm text-ink-100
+              class="w-full h-10 rounded-md bg-inset border border-line px-3 text-sm text-ink-100
                      placeholder:text-ink-400 focus:outline-none focus:border-accent-blue"
             />
           </label>
@@ -152,7 +152,7 @@ export function ProjectGitHubPRDialog({
               value={body}
               onInput={(event) => setBody((event.currentTarget as HTMLTextAreaElement).value)}
               rows={4}
-              class="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm text-ink-100
+              class="w-full rounded-md bg-inset border border-line px-3 py-2 text-sm text-ink-100
                      placeholder:text-ink-400 focus:outline-none focus:border-accent-blue resize-y"
             />
           </label>
@@ -168,12 +168,12 @@ export function ProjectGitHubPRDialog({
               placeholder={effectiveHead}
               autocomplete="off"
               spellcheck={false}
-              class="w-full h-10 rounded-md bg-black/30 border border-white/10 px-3 text-sm text-ink-100
+              class="w-full h-10 rounded-md bg-inset border border-line px-3 text-sm text-ink-100
                      placeholder:text-ink-400 focus:outline-none focus:border-accent-blue font-mono"
             />
           </label>
 
-          <label class="flex items-start gap-2.5 rounded-md border border-white/10 bg-white/[0.03] p-2.5 cursor-pointer">
+          <label class="flex items-start gap-2.5 rounded-md border border-line bg-tint p-2.5 cursor-pointer">
             <input
               type="checkbox"
               checked={commit}
@@ -202,8 +202,8 @@ export function ProjectGitHubPRDialog({
                     onClick={() => void suggest()}
                     disabled={suggesting || busy}
                     title="Draft a conventional-commit subject from the changed paths and line counts"
-                    class="inline-flex h-6 items-center gap-1 rounded border border-white/10 px-1.5
-                           text-[11px] text-ink-200 hover:bg-white/[0.07] disabled:opacity-50"
+                    class="inline-flex h-6 items-center gap-1 rounded border border-line px-1.5
+                           text-[11px] text-ink-200 hover:bg-tint-strong disabled:opacity-50"
                   >
                     {suggesting ? (
                       <Loader class="h-3 w-3 animate-spin" />
@@ -223,7 +223,7 @@ export function ProjectGitHubPRDialog({
                 placeholder={status.defaultCommitMessage}
                 maxLength={200}
                 autocomplete="off"
-                class="w-full h-10 rounded-md bg-black/30 border border-white/10 px-3 text-sm text-ink-100
+                class="w-full h-10 rounded-md bg-inset border border-line px-3 text-sm text-ink-100
                        placeholder:text-ink-400 focus:outline-none focus:border-accent-blue"
               />
               <span class="block text-[11.5px] text-ink-400 leading-relaxed">
@@ -237,12 +237,12 @@ export function ProjectGitHubPRDialog({
           )}
         </div>
 
-        <footer class="px-4 py-3 border-t border-white/[0.06] flex items-center justify-end gap-2">
+        <footer class="px-4 py-3 border-t border-line flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
             disabled={busy}
-            class="h-10 px-3 rounded-md border border-white/10 text-ink-300 hover:text-ink-50 hover:bg-white/[0.06] text-[13px] disabled:opacity-50"
+            class="h-10 px-3 rounded-md border border-line text-ink-300 hover:text-ink-50 hover:bg-tint-strong text-[13px] disabled:opacity-50"
           >
             Cancel
           </button>
@@ -250,7 +250,7 @@ export function ProjectGitHubPRDialog({
             type="button"
             onClick={() => void submit()}
             disabled={busy || !effectiveHead}
-            class="h-10 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+            class="h-10 px-3 rounded-md bg-accent-blue text-on-accent hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
           >
             {busy && <Loader class="w-3.5 h-3.5 animate-spin" />}
             Push and open

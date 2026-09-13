@@ -12,7 +12,7 @@ import type { AuxModelProvider } from "../../models/auxModel";
 import { AlertCircle, Check, Loader, MemoryStick, X, Zap } from "../primitives/icons";
 
 const inputClass =
-  "w-full h-10 rounded-md bg-black/30 border border-white/10 px-3 text-sm text-ink-100 " +
+  "w-full h-10 rounded-md bg-inset border border-line px-3 text-sm text-ink-100 " +
   "placeholder:text-ink-400 focus:outline-none focus:border-accent-blue";
 
 /**
@@ -37,9 +37,9 @@ export function AuxModelSettings() {
   }
 
   return (
-    <section class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-      <header class="px-4 py-3 flex items-start gap-3 border-b border-white/[0.06]">
-        <div class="h-9 w-9 rounded-md bg-white/[0.06] border border-white/10 grid place-items-center flex-none">
+    <section class="rounded-lg border border-line bg-surface overflow-hidden">
+      <header class="px-4 py-3 flex items-start gap-3 border-b border-line">
+        <div class="h-9 w-9 rounded-md bg-tint-strong border border-line grid place-items-center flex-none">
           <MemoryStick class="w-4 h-4 text-ink-200" />
         </div>
         <div class="flex-1 min-w-0">
@@ -65,7 +65,7 @@ export function AuxModelSettings() {
       </header>
 
       <form onSubmit={save} class="p-3 space-y-3">
-        <label class="flex items-start gap-2.5 rounded-md border border-white/10 bg-white/[0.03] p-2.5 cursor-pointer">
+        <label class="flex items-start gap-2.5 rounded-md border border-line bg-tint p-2.5 cursor-pointer">
           <input
             type="checkbox"
             checked={form.enabled}
@@ -170,8 +170,8 @@ export function AuxModelSettings() {
                     type="button"
                     onClick={editor.clearApiKey}
                     disabled={editor.saving}
-                    class="inline-flex items-center gap-1 rounded border border-white/10 px-1.5 py-0.5
-                           text-ink-200 hover:bg-white/[0.07] disabled:opacity-50"
+                    class="inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5
+                           text-ink-200 hover:bg-tint-strong disabled:opacity-50"
                   >
                     <X class="w-3 h-3" /> Remove stored key
                   </button>
@@ -240,7 +240,7 @@ export function AuxModelSettings() {
             {(settings?.jobLabels ?? []).map((job) => (
               <div
                 key={job.id}
-                class="flex flex-wrap items-center gap-2.5 rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-2"
+                class="flex flex-wrap items-center gap-2.5 rounded-md border border-line bg-tint px-2.5 py-2"
               >
                 <span class="min-w-[12rem] flex-1">
                   <span class="block text-[13px] text-ink-100">{job.label}</span>
@@ -316,7 +316,7 @@ export function AuxModelSettings() {
           <button
             type="submit"
             disabled={editor.saving || editor.loading}
-            class="h-9 rounded-md bg-accent-blue px-3 text-[13px] font-semibold text-ink-900
+            class="h-9 rounded-md bg-accent-blue px-3 text-[13px] font-semibold text-on-accent
                    hover:bg-accent-blue/85 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
             {editor.saving ? "Saving…" : "Save"}
@@ -326,8 +326,8 @@ export function AuxModelSettings() {
             onClick={editor.runTest}
             disabled={editor.testing || editor.loading}
             title="Ask the model for one short sentence and report how long it took"
-            class="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/10 px-3 text-[13px]
-                   font-medium text-ink-100 hover:bg-white/[0.07] disabled:opacity-50 disabled:cursor-not-allowed transition"
+            class="inline-flex h-9 items-center gap-1.5 rounded-md border border-line px-3 text-[13px]
+                   font-medium text-ink-100 hover:bg-tint-strong disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
             {editor.testing ? <Loader class="h-3.5 w-3.5 animate-spin" /> : <Zap class="h-3.5 w-3.5" />}
             {editor.testing ? "Testing…" : "Test"}
@@ -339,7 +339,7 @@ export function AuxModelSettings() {
           )}
         </div>
 
-        <p class="rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-2 text-[12px] leading-relaxed text-ink-300">
+        <p class="rounded-md border border-line bg-tint px-2.5 py-2 text-[12px] leading-relaxed text-ink-300">
           <span class="text-ink-100">This never replaces the coding agents.</span> Claude, Codex,
           Kimi, and Antigravity still run every prompt you send, with their own credentials and
           their own models. The auxiliary model only writes the short strings the platform itself
@@ -379,7 +379,7 @@ function JobSourcePicker({
     <div
       role="radiogroup"
       aria-label={`Where ${label} gets its text`}
-      class="inline-flex flex-none rounded-md border border-white/10 bg-black/30 p-0.5"
+      class="inline-flex flex-none rounded-md border border-line bg-inset p-0.5"
     >
       {options.map((source) => (
         <label
@@ -388,7 +388,7 @@ function JobSourcePicker({
           class={`cursor-pointer rounded px-2.5 py-1 text-[12px] transition ${
             value === source.id
               ? "bg-accent-blue/20 text-ink-50"
-              : "text-ink-300 hover:bg-white/[0.07] hover:text-ink-100"
+              : "text-ink-300 hover:bg-tint-strong hover:text-ink-100"
           }`}
         >
           <input

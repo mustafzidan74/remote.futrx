@@ -43,7 +43,7 @@ export function RecentActivityCard({
               <button
                 type="button"
                 onClick={() => onOpenChat(run.chatId)}
-                class="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-white/[0.04]"
+                class="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-tint"
               >
                 <ToneDot
                   tone={run.status === "running" ? "green" : "grey"}

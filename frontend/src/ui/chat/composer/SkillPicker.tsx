@@ -176,7 +176,7 @@ export function SkillPicker({
                     }
                     class={`w-full text-left px-3 py-2.5 focus:outline-none ${
                       selectable
-                        ? "hover:bg-white/[0.07] focus:bg-white/[0.07]"
+                        ? "hover:bg-tint-strong focus:bg-tint-strong"
                         : "cursor-not-allowed opacity-50"
                     }`}
                     role="option"
@@ -188,7 +188,7 @@ export function SkillPicker({
                           class={`flex-none rounded px-1.5 py-0.5 text-[10px] uppercase ${
                             isGlobal && selectable
                               ? "bg-accent-blue/[0.16] text-accent-blue"
-                              : "bg-white/[0.08] text-ink-400"
+                              : "bg-tint-strong text-ink-400"
                           }`}
                         >
                           {badge}

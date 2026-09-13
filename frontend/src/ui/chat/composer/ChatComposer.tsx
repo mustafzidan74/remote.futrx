@@ -180,7 +180,7 @@ export function ChatComposer({
           <button
             type="button"
             onClick={snippets.dismissNotice}
-            class="grid h-5 w-5 flex-none place-items-center rounded text-ink-300 hover:bg-white/[0.08] hover:text-ink-50"
+            class="grid h-5 w-5 flex-none place-items-center rounded text-ink-300 hover:bg-tint-strong hover:text-ink-50"
             aria-label="Dismiss snippet notice"
           >
             <X class="h-3 w-3" />
@@ -197,7 +197,7 @@ export function ChatComposer({
           <button
             type="button"
             onClick={playbooks.dismissNotice}
-            class="grid h-5 w-5 flex-none place-items-center rounded text-ink-300 hover:bg-white/[0.08] hover:text-ink-50"
+            class="grid h-5 w-5 flex-none place-items-center rounded text-ink-300 hover:bg-tint-strong hover:text-ink-50"
             aria-label="Dismiss playbook notice"
           >
             <X class="h-3 w-3" />
@@ -236,7 +236,7 @@ export function ChatComposer({
       <QueuedPromptList queuedPrompts={queuedPrompts} onRemove={onRemoveQueued} />
       <AttachmentTray attachments={attachments} onRemove={onRemoveAttachment} />
 
-      <div class="codex-composer-card relative mx-3 my-2 overflow-visible rounded-xl border border-white/10 bg-[#15171c] shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
+      <div class="codex-composer-card relative mx-3 my-2 overflow-visible rounded-xl border border-line bg-surface shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
         {slash.open && (
           <SlashCommandMenu
             items={slash.items}
@@ -272,7 +272,7 @@ export function ChatComposer({
           />
         </form>
 
-        <div class="codex-composer-control-deck flex min-w-0 flex-wrap items-center gap-1.5 border-t border-white/[0.07] px-2 py-1.5">
+        <div class="codex-composer-control-deck flex min-w-0 flex-wrap items-center gap-1.5 border-t border-line px-2 py-1.5">
           <ComposerAgentControls
             projectId={projectId}
             model={preferences.model}

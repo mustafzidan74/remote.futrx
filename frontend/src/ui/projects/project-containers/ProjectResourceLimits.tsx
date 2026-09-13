@@ -106,7 +106,7 @@ export function ProjectResourceLimits({
             <Loader class="w-4 h-4 animate-spin" /> Loading current limits…
           </div>
         ) : (
-          <div class="space-y-3 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-3">
+          <div class="space-y-3 rounded-md border border-line bg-tint px-3 py-3">
             {meters.map((usage) => (
               <Meter
                 key={usage.label}
@@ -126,7 +126,7 @@ export function ProjectResourceLimits({
         )}
 
         {!editable ? (
-          <div class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[12.5px] text-ink-300">
+          <div class="rounded-md border border-line bg-tint px-3 py-2.5 text-[12.5px] text-ink-300">
             Only an administrator can change container resources.
           </div>
         ) : (

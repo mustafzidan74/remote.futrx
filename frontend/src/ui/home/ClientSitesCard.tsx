@@ -55,7 +55,7 @@ export function ClientSitesCard({
         <button
           type="button"
           onClick={onOpenSettings}
-          class="rounded-md px-2 py-1 text-[11.5px] text-ink-300 transition hover:bg-white/[0.07] hover:text-ink-100"
+          class="rounded-md px-2 py-1 text-[11.5px] text-ink-300 transition hover:bg-tint-strong hover:text-ink-100"
         >
           Manage
         </button>
@@ -100,7 +100,7 @@ export function ClientSitesCard({
                   href={site.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="grid h-7 w-7 flex-none place-items-center rounded-md text-ink-300 transition hover:bg-white/[0.09] hover:text-ink-100"
+                  class="grid h-7 w-7 flex-none place-items-center rounded-md text-ink-300 transition hover:bg-tint-strong hover:text-ink-100"
                   title={`Open ${site.url}`}
                   aria-label={`Open ${site.label}`}
                 >

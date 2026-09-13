@@ -43,13 +43,13 @@ export function ScreenshotCard({
   }
 
   return (
-    <div class="rounded-md border border-white/[0.08] bg-white/[0.03] p-2">
+    <div class="rounded-md border border-line bg-tint p-2">
       <div class="flex items-start gap-2.5">
         <a
           href={screenshot.url}
           target="_blank"
           rel="noopener noreferrer"
-          class="block h-14 w-24 flex-none overflow-hidden rounded border border-white/10 bg-black/40"
+          class="block h-14 w-24 flex-none overflow-hidden rounded border border-line bg-inset"
           title="Open the full-size capture"
         >
           <img
@@ -70,7 +70,7 @@ export function ScreenshotCard({
                 type="button"
                 onClick={onDismiss}
                 class="ml-auto grid h-5 w-5 flex-none place-items-center rounded text-ink-300
-                       hover:bg-white/[0.08] hover:text-ink-50"
+                       hover:bg-tint-strong hover:text-ink-50"
                 aria-label="Dismiss the screenshot"
               >
                 <X class="h-3 w-3" />
@@ -97,8 +97,8 @@ export function ScreenshotCard({
             <a
               href={screenshot.url}
               download={screenshot.file}
-              class="inline-flex h-7 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.05] px-2.5
-                     text-[11.5px] font-medium text-ink-200 transition hover:bg-white/[0.09] hover:text-ink-100"
+              class="inline-flex h-7 items-center gap-1.5 rounded-md border border-line bg-tint px-2.5
+                     text-[11.5px] font-medium text-ink-200 transition hover:bg-tint-strong hover:text-ink-100"
             >
               <Download class="h-3 w-3" />
               Download
@@ -117,7 +117,7 @@ export function ScreenshotCard({
       </div>
 
       {delivered && delivered.length > 0 && (
-        <ul class="mt-1.5 space-y-0.5 border-t border-white/[0.07] pt-1.5">
+        <ul class="mt-1.5 space-y-0.5 border-t border-line pt-1.5">
           {delivered.map((row) => (
             <li key={row.sink} class="text-[10.5px] leading-4">
               <span class="font-mono text-ink-300">{row.sink}</span>{" "}
@@ -170,8 +170,8 @@ function CardButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      class="inline-flex h-7 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.05] px-2.5
-             text-[11.5px] font-medium text-ink-200 transition hover:bg-white/[0.09] hover:text-ink-100
+      class="inline-flex h-7 items-center gap-1.5 rounded-md border border-line bg-tint px-2.5
+             text-[11.5px] font-medium text-ink-200 transition hover:bg-tint-strong hover:text-ink-100
              disabled:cursor-not-allowed disabled:opacity-50"
     >
       {children}

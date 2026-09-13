@@ -57,7 +57,7 @@ export function AutoTestControl({
           role="dialog"
           aria-label="Auto-test settings"
         >
-          <div class="border-b border-white/10 bg-[#191a1f] px-3 py-2">
+          <div class="border-b border-line bg-surface px-3 py-2">
             <div class="text-[12px] font-semibold text-ink-100">Auto-test</div>
             <p class="mt-1 text-[11px] leading-4 text-ink-400">
               After every agent turn, run a Playwright check of the affected journey and report

@@ -97,7 +97,7 @@ export function SnippetEditor({
           placeholder="What this snippet is for"
           maxLength={120}
           autocomplete="off"
-          class="w-full h-9 rounded-md bg-black/30 border border-white/10 px-2.5 text-[13px] text-ink-100
+          class="w-full h-9 rounded-md bg-inset border border-line px-2.5 text-[13px] text-ink-100
                  placeholder:text-ink-400 focus:outline-none focus:border-accent-blue"
         />
       </label>
@@ -113,7 +113,7 @@ export function SnippetEditor({
                   (event.currentTarget as HTMLSelectElement).value === "client" ? "client" : "agent",
               })
             }
-            class="w-full h-9 rounded-md bg-black/30 border border-white/10 px-2 text-[13px] text-ink-100
+            class="w-full h-9 rounded-md bg-inset border border-line px-2 text-[13px] text-ink-100
                    focus:outline-none focus:border-accent-blue"
           >
             <option value="agent">Prompt for the agent</option>
@@ -131,7 +131,7 @@ export function SnippetEditor({
             placeholder="wpfix"
             maxLength={32}
             autocomplete="off"
-            class="w-full h-9 rounded-md bg-black/30 border border-white/10 px-2.5 text-[13px] text-ink-100
+            class="w-full h-9 rounded-md bg-inset border border-line px-2.5 text-[13px] text-ink-100
                    placeholder:text-ink-400 focus:outline-none focus:border-accent-blue"
           />
         </label>
@@ -172,7 +172,7 @@ export function SnippetEditor({
               }
               rows={4}
               dir="ltr"
-              class="w-full rounded-md bg-black/30 border border-white/10 px-2.5 py-2 text-[13px] text-ink-100
+              class="w-full rounded-md bg-inset border border-line px-2.5 py-2 text-[13px] text-ink-100
                      placeholder:text-ink-400 focus:outline-none focus:border-accent-blue resize-y"
             />
           </label>
@@ -190,7 +190,7 @@ export function SnippetEditor({
               }
               rows={4}
               dir="auto"
-              class="w-full rounded-md bg-black/30 border border-white/10 px-2.5 py-2 text-[13px] text-ink-100
+              class="w-full rounded-md bg-inset border border-line px-2.5 py-2 text-[13px] text-ink-100
                      placeholder:text-ink-400 focus:outline-none focus:border-accent-blue resize-y"
             />
           </label>
@@ -204,7 +204,7 @@ export function SnippetEditor({
             rows={6}
             dir="auto"
             placeholder="The prompt to insert. Use {{selection}} to wrap what is already in the composer."
-            class="w-full rounded-md bg-black/30 border border-white/10 px-2.5 py-2 text-[13px] text-ink-100
+            class="w-full rounded-md bg-inset border border-line px-2.5 py-2 text-[13px] text-ink-100
                    placeholder:text-ink-400 focus:outline-none focus:border-accent-blue resize-y"
           />
         </label>
@@ -218,7 +218,7 @@ export function SnippetEditor({
           onInput={(event) => setTagText((event.currentTarget as HTMLInputElement).value)}
           placeholder="wordpress, delivery"
           autocomplete="off"
-          class="w-full h-9 rounded-md bg-black/30 border border-white/10 px-2.5 text-[13px] text-ink-100
+          class="w-full h-9 rounded-md bg-inset border border-line px-2.5 text-[13px] text-ink-100
                  placeholder:text-ink-400 focus:outline-none focus:border-accent-blue"
         />
       </label>
@@ -234,7 +234,7 @@ export function SnippetEditor({
         <button
           type="submit"
           disabled={saving}
-          class="h-9 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[12.5px]
+          class="h-9 px-3 rounded-md bg-accent-blue text-on-accent hover:bg-accent-blue/85 text-[12.5px]
                  font-medium disabled:opacity-50 inline-flex items-center gap-1.5"
         >
           {saving && <Loader class="h-3.5 w-3.5 animate-spin" />}
@@ -243,7 +243,7 @@ export function SnippetEditor({
         <button
           type="button"
           onClick={onCancel}
-          class="h-9 px-3 rounded-md border border-white/10 text-ink-200 hover:bg-white/[0.06] text-[12.5px]"
+          class="h-9 px-3 rounded-md border border-line text-ink-200 hover:bg-tint-strong text-[12.5px]"
         >
           Cancel
         </button>
@@ -269,8 +269,8 @@ function TranslateButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      class="inline-flex h-7 items-center gap-1.5 rounded-md border border-white/10 px-2 text-[11.5px]
-             text-ink-200 hover:bg-white/[0.07] disabled:opacity-50"
+      class="inline-flex h-7 items-center gap-1.5 rounded-md border border-line px-2 text-[11.5px]
+             text-ink-200 hover:bg-tint-strong disabled:opacity-50"
     >
       {busy ? <Loader class="h-3 w-3 animate-spin" /> : <Globe class="h-3 w-3" />}
       {label}

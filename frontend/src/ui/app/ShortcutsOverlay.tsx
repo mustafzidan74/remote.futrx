@@ -54,7 +54,7 @@ export function ShortcutsOverlay() {
         class="dialog-panel popover-surface theme-menu-surface flex w-full max-w-md flex-col"
         onClick={(event) => event.stopPropagation()}
       >
-        <header class="flex flex-none items-center gap-2 border-b border-white/[0.07] px-4 py-3">
+        <header class="flex flex-none items-center gap-2 border-b border-line px-4 py-3">
           <Keyboard class="h-4 w-4 flex-none text-ink-300" aria-hidden="true" />
           <h2 id="shortcuts-overlay-title" class="flex-1 text-[14.5px] font-semibold text-ink-50">
             Keyboard shortcuts
@@ -62,7 +62,7 @@ export function ShortcutsOverlay() {
           <button
             type="button"
             onClick={() => setOpen(false)}
-            class="grid h-8 w-8 flex-none place-items-center rounded-md text-ink-300 hover:bg-white/[0.08] hover:text-ink-50"
+            class="grid h-8 w-8 flex-none place-items-center rounded-md text-ink-300 hover:bg-tint-strong hover:text-ink-50"
             aria-label="Close"
           >
             <X class="h-4 w-4" />
@@ -73,13 +73,13 @@ export function ShortcutsOverlay() {
           {SHORTCUTS.map((shortcut) => (
             <div
               key={shortcut.keys.join("+")}
-              class="flex items-center gap-4 border-b border-white/[0.05] py-2.5 last:border-b-0"
+              class="flex items-center gap-4 border-b border-line py-2.5 last:border-b-0"
             >
               <dt class="flex flex-none items-center gap-1">
                 {shortcut.keys.map((key) => (
                   <kbd
                     key={key}
-                    class="rounded border border-white/10 bg-white/[0.05] px-1.5 py-0.5 text-[11px] font-medium text-ink-100"
+                    class="rounded border border-line bg-tint px-1.5 py-0.5 text-[11px] font-medium text-ink-100"
                   >
                     {key}
                   </kbd>
@@ -92,7 +92,7 @@ export function ShortcutsOverlay() {
           ))}
         </dl>
 
-        <footer class="flex-none border-t border-white/[0.07] px-4 py-2 text-[11px] text-ink-400">
+        <footer class="flex-none border-t border-line px-4 py-2 text-[11px] text-ink-400">
           On macOS, Ctrl means &#8984; Command.
         </footer>
       </div>

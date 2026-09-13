@@ -41,9 +41,9 @@ export function TrashSettings({ trash, isAdmin }: { trash: ProjectTrash; isAdmin
 
   return (
     <div class="space-y-4">
-      <section class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-        <header class="px-4 py-3 border-b border-white/[0.06] flex items-start gap-3">
-          <div class="mt-0.5 w-9 h-9 rounded-md bg-white/[0.06] border border-white/10 grid place-items-center flex-none">
+      <section class="rounded-lg border border-line bg-surface overflow-hidden">
+        <header class="px-4 py-3 border-b border-line flex items-start gap-3">
+          <div class="mt-0.5 w-9 h-9 rounded-md bg-tint-strong border border-line grid place-items-center flex-none">
             <Trash class="w-4 h-4 text-ink-200" />
           </div>
           <div class="flex-1 min-w-0">
@@ -57,8 +57,8 @@ export function TrashSettings({ trash, isAdmin }: { trash: ProjectTrash; isAdmin
             type="button"
             onClick={() => void trash.refresh()}
             disabled={trash.loading}
-            class="h-8 px-2.5 rounded-md border border-white/10 bg-white/[0.04] text-[12.5px]
-                   text-ink-200 hover:bg-white/[0.08] disabled:opacity-50 flex-none"
+            class="h-8 px-2.5 rounded-md border border-line bg-tint text-[12.5px]
+                   text-ink-200 hover:bg-tint-strong disabled:opacity-50 flex-none"
           >
             Refresh
           </button>
@@ -74,7 +74,7 @@ export function TrashSettings({ trash, isAdmin }: { trash: ProjectTrash; isAdmin
           )}
 
           {trash.loading && trash.projects.length === 0 ? (
-            <div class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-4 text-center text-[12.5px] text-ink-300">
+            <div class="rounded-md border border-line bg-tint px-3 py-4 text-center text-[12.5px] text-ink-300">
               Loading the Trash…
             </div>
           ) : trash.projects.length === 0 ? (
@@ -148,7 +148,7 @@ function DangerZone({
         {projects.map((project) => (
           <div
             key={project.id}
-            class="rounded-md border border-accent-red/20 bg-[#101318] px-3 py-2.5 flex items-center gap-3"
+            class="rounded-md border border-accent-red/20 bg-surface px-3 py-2.5 flex items-center gap-3"
           >
             <div class="flex-1 min-w-0">
               <div class="text-[13px] font-medium text-ink-50 truncate">{project.name}</div>
@@ -185,8 +185,8 @@ function TrashedProjectRow({
   const urgent = days !== null && days <= 1;
 
   return (
-    <div class="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 flex items-start gap-3">
-      <div class="mt-0.5 w-8 h-8 rounded-md bg-white/[0.06] border border-white/10 grid place-items-center flex-none">
+    <div class="rounded-md border border-line bg-tint px-3 py-2.5 flex items-start gap-3">
+      <div class="mt-0.5 w-8 h-8 rounded-md bg-tint-strong border border-line grid place-items-center flex-none">
         <Trash class="w-3.5 h-3.5 text-ink-300" />
       </div>
       <div class="flex-1 min-w-0">
@@ -206,8 +206,8 @@ function TrashedProjectRow({
           type="button"
           onClick={onRestore}
           disabled={busy}
-          class="h-8 px-2.5 rounded-md border border-white/10 bg-white/[0.04] text-[12.5px]
-                 text-ink-100 hover:bg-white/[0.08] disabled:opacity-45 inline-flex items-center gap-1.5"
+          class="h-8 px-2.5 rounded-md border border-line bg-tint text-[12.5px]
+                 text-ink-100 hover:bg-tint-strong disabled:opacity-45 inline-flex items-center gap-1.5"
         >
           {busy ? <Loader class="w-3.5 h-3.5 animate-spin" /> : <RotateCcw class="w-3.5 h-3.5" />}
           Restore

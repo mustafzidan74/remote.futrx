@@ -20,8 +20,8 @@ export function EmptyState({
   action?: ComponentChildren;
 }) {
   return (
-    <div class="flex flex-col items-center gap-2 rounded-md border border-white/10 bg-white/[0.03] px-4 py-8 text-center">
-      <span class="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-ink-300">
+    <div class="flex flex-col items-center gap-2 rounded-md border border-line bg-tint px-4 py-8 text-center">
+      <span class="grid h-10 w-10 place-items-center rounded-full border border-line bg-tint text-ink-300">
         <Icon class="h-4 w-4" />
       </span>
       <div class="text-[13px] text-ink-200">{title}</div>

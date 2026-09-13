@@ -52,7 +52,7 @@ export function SecretsVaultSettings({
 
   return (
     <div class="space-y-4">
-      <div class="rounded-lg border border-white/10 bg-[#101318] p-4">
+      <div class="rounded-lg border border-line bg-surface p-4">
         <div class="flex items-start gap-2">
           <Key class="mt-0.5 h-4 w-4 flex-none text-accent-blue" aria-hidden="true" />
           <div class="min-w-0 text-[12.5px] leading-relaxed text-ink-300">
@@ -77,14 +77,14 @@ export function SecretsVaultSettings({
         <button
           type="button"
           onClick={openCreate}
-          class="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent-blue px-3 text-[13px] font-medium text-ink-900 hover:bg-accent-blue/85"
+          class="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent-blue px-3 text-[13px] font-medium text-on-accent hover:bg-accent-blue/85"
         >
           <Plus class="h-4 w-4" /> Add secret
         </button>
       </div>
 
       {vault.loading && !vault.secrets ? (
-        <div class="rounded-lg border border-white/10 bg-[#101318] px-4 py-6 text-[13px] text-ink-300">
+        <div class="rounded-lg border border-line bg-surface px-4 py-6 text-[13px] text-ink-300">
           Loading the vault…
         </div>
       ) : (vault.secrets ?? []).length === 0 ? (
@@ -94,9 +94,9 @@ export function SecretsVaultSettings({
           hint="Add a GitHub token, a plugin licence key, an .npmrc, or an SSH target once and every project inherits it."
         />
       ) : (
-        <div class="overflow-x-auto rounded-lg border border-white/10 bg-[#101318]">
+        <div class="overflow-x-auto rounded-lg border border-line bg-surface">
           <table class="w-full min-w-[46rem] text-left text-[12.5px]">
-            <thead class="border-b border-white/[0.08] text-[11px] uppercase tracking-wide text-ink-400">
+            <thead class="border-b border-line text-[11px] uppercase tracking-wide text-ink-400">
               <tr>
                 <th class="px-3 py-2 font-medium">Key</th>
                 <th class="px-3 py-2 font-medium">Kind</th>
@@ -191,7 +191,7 @@ function SecretRow({
 
   return (
     <>
-      <tr class="border-b border-white/[0.05] align-top last:border-b-0">
+      <tr class="border-b border-line align-top last:border-b-0">
         <td class="px-3 py-2 font-mono text-ink-50">{secret.key}</td>
         <td class="px-3 py-2 text-ink-200">{KIND_LABELS[secret.kind]}</td>
         <td class="px-3 py-2 font-mono text-ink-300">
@@ -218,7 +218,7 @@ function SecretRow({
                 type="button"
                 onClick={test}
                 disabled={busy}
-                class="h-8 rounded px-2 text-[11px] text-ink-300 hover:bg-white/[0.08] hover:text-ink-100 disabled:opacity-50"
+                class="h-8 rounded px-2 text-[11px] text-ink-300 hover:bg-tint-strong hover:text-ink-100 disabled:opacity-50"
               >
                 {busy ? "testing…" : "test"}
               </button>
@@ -226,7 +226,7 @@ function SecretRow({
             <button
               type="button"
               onClick={onEdit}
-              class="h-8 rounded px-2 text-[11px] text-ink-300 hover:bg-white/[0.08] hover:text-ink-100"
+              class="h-8 rounded px-2 text-[11px] text-ink-300 hover:bg-tint-strong hover:text-ink-100"
             >
               edit
             </button>
@@ -235,7 +235,7 @@ function SecretRow({
               onClick={remove}
               disabled={busy}
               aria-label={`Delete ${secret.key}`}
-              class="grid h-8 w-8 place-items-center rounded text-ink-300 hover:bg-white/[0.08] hover:text-accent-red disabled:opacity-50"
+              class="grid h-8 w-8 place-items-center rounded text-ink-300 hover:bg-tint-strong hover:text-accent-red disabled:opacity-50"
             >
               <Trash class="h-3.5 w-3.5" />
             </button>
@@ -243,7 +243,7 @@ function SecretRow({
         </td>
       </tr>
       {(shadowed.length > 0 || secret.description || error || result || secret.envVars) && (
-        <tr class="border-b border-white/[0.05] last:border-b-0">
+        <tr class="border-b border-line last:border-b-0">
           <td colSpan={7} class="px-3 pb-2 text-[11.5px]">
             {secret.description && (
               <div class="text-ink-400" dir="auto">
@@ -343,7 +343,7 @@ function SecretDialog({
   return (
     <form
       onSubmit={submit}
-      class="space-y-3 rounded-lg border border-white/10 bg-[#101318] p-4"
+      class="space-y-3 rounded-lg border border-line bg-surface p-4"
       aria-label={creating ? "Add secret" : `Edit ${editingKey}`}
     >
       <div class="text-[14.5px] font-semibold text-ink-50">
@@ -357,7 +357,7 @@ function SecretDialog({
             disabled={!creating}
             onInput={(event) => patch({ key: (event.target as HTMLInputElement).value })}
             placeholder="GITHUB_TOKEN"
-            class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2.5 font-mono text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none disabled:opacity-60"
+            class="h-9 w-full rounded-md border border-line bg-inset px-2.5 font-mono text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none disabled:opacity-60"
           />
         </Field>
         <Field label="Kind">
@@ -367,7 +367,7 @@ function SecretDialog({
             onChange={(event) =>
               patch({ kind: (event.target as HTMLSelectElement).value as SecretKind })
             }
-            class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2.5 text-[13px] text-ink-50 focus:border-accent-blue/50 focus:outline-none disabled:opacity-60"
+            class="h-9 w-full rounded-md border border-line bg-inset px-2.5 text-[13px] text-ink-50 focus:border-accent-blue/50 focus:outline-none disabled:opacity-60"
           >
             {(Object.keys(KIND_LABELS) as SecretKind[]).map((kind) => (
               <option key={kind} value={kind}>
@@ -384,7 +384,7 @@ function SecretDialog({
             value={draft.path}
             onInput={(event) => patch({ path: (event.target as HTMLInputElement).value })}
             placeholder="/root/.npmrc"
-            class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2.5 font-mono text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
+            class="h-9 w-full rounded-md border border-line bg-inset px-2.5 font-mono text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
           />
         </Field>
       )}
@@ -408,7 +408,7 @@ function SecretDialog({
             spellcheck={false}
             autoComplete="off"
             placeholder={draft.kind === "file" ? "//registry.npmjs.org/:_authToken=…" : "ghp_…"}
-            class="w-full resize-y rounded-md border border-white/10 bg-black/30 px-2.5 py-1.5 font-mono text-[13px] leading-[1.45] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none disabled:opacity-50"
+            class="w-full resize-y rounded-md border border-line bg-inset px-2.5 py-1.5 font-mono text-[13px] leading-[1.45] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none disabled:opacity-50"
           />
         </Field>
       )}
@@ -418,7 +418,7 @@ function SecretDialog({
           value={draft.description}
           onInput={(event) => patch({ description: (event.target as HTMLInputElement).value })}
           placeholder="What this is for"
-          class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2.5 text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
+          class="h-9 w-full rounded-md border border-line bg-inset px-2.5 text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
         />
       </Field>
 
@@ -447,7 +447,7 @@ function SecretDialog({
         <button
           type="submit"
           disabled={submitting}
-          class="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent-blue px-3 text-[13px] font-medium text-ink-900 hover:bg-accent-blue/85 disabled:opacity-50"
+          class="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent-blue px-3 text-[13px] font-medium text-on-accent hover:bg-accent-blue/85 disabled:opacity-50"
         >
           {submitting ? <Loader class="h-4 w-4 animate-spin" /> : <Check class="h-4 w-4" />}
           {creating ? "Add" : "Save"}
@@ -455,7 +455,7 @@ function SecretDialog({
         <button
           type="button"
           onClick={onCancel}
-          class="h-9 rounded-md px-3 text-[13px] text-ink-300 hover:bg-white/[0.08] hover:text-ink-100"
+          class="h-9 rounded-md px-3 text-[13px] text-ink-300 hover:bg-tint-strong hover:text-ink-100"
         >
           Cancel
         </button>
@@ -478,14 +478,14 @@ function SSHFields({
   }
 
   return (
-    <div class="space-y-3 rounded-md border border-white/10 bg-white/[0.02] p-3">
+    <div class="space-y-3 rounded-md border border-line bg-tint p-3">
       <div class="grid gap-3 sm:grid-cols-4">
         <Field label="Name">
           <input
             value={draft.ssh.name}
             onInput={(event) => patchSSH({ name: (event.target as HTMLInputElement).value })}
             placeholder="hestia"
-            class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2.5 font-mono text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
+            class="h-9 w-full rounded-md border border-line bg-inset px-2.5 font-mono text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
           />
         </Field>
         <Field label="Host">
@@ -493,7 +493,7 @@ function SSHFields({
             value={draft.ssh.host}
             onInput={(event) => patchSSH({ host: (event.target as HTMLInputElement).value })}
             placeholder="203.0.113.10"
-            class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2.5 font-mono text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
+            class="h-9 w-full rounded-md border border-line bg-inset px-2.5 font-mono text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
           />
         </Field>
         <Field label="User">
@@ -501,7 +501,7 @@ function SSHFields({
             value={draft.ssh.user}
             onInput={(event) => patchSSH({ user: (event.target as HTMLInputElement).value })}
             placeholder="root"
-            class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2.5 font-mono text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
+            class="h-9 w-full rounded-md border border-line bg-inset px-2.5 font-mono text-[13px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
           />
         </Field>
         <Field label="Port">
@@ -511,7 +511,7 @@ function SSHFields({
             onInput={(event) =>
               patchSSH({ port: Number((event.target as HTMLInputElement).value) || 0 })
             }
-            class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2.5 font-mono text-[13px] text-ink-50 focus:border-accent-blue/50 focus:outline-none"
+            class="h-9 w-full rounded-md border border-line bg-inset px-2.5 font-mono text-[13px] text-ink-50 focus:border-accent-blue/50 focus:outline-none"
           />
         </Field>
       </div>
@@ -527,7 +527,7 @@ function SSHFields({
           spellcheck={false}
           autoComplete="off"
           placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
-          class="w-full resize-y rounded-md border border-white/10 bg-black/30 px-2.5 py-1.5 font-mono text-[12.5px] leading-[1.45] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none disabled:opacity-50"
+          class="w-full resize-y rounded-md border border-line bg-inset px-2.5 py-1.5 font-mono text-[12.5px] leading-[1.45] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none disabled:opacity-50"
         />
       </Field>
 
@@ -541,7 +541,7 @@ function SSHFields({
             patchSSH({ knownHostsLine: (event.target as HTMLInputElement).value })
           }
           placeholder="203.0.113.10 ssh-ed25519 AAAAC3Nz…"
-          class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-2.5 font-mono text-[12.5px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
+          class="h-9 w-full rounded-md border border-line bg-inset px-2.5 font-mono text-[12.5px] text-ink-50 placeholder:text-ink-400 focus:border-accent-blue/50 focus:outline-none"
         />
       </Field>
 
@@ -559,7 +559,7 @@ function SSHFields({
           <button
             type="button"
             onClick={() => void onTest()}
-            class="h-8 rounded-md border border-white/10 px-2.5 text-[12px] text-ink-200 hover:bg-white/[0.08]"
+            class="h-8 rounded-md border border-line px-2.5 text-[12px] text-ink-200 hover:bg-tint-strong"
           >
             Test connection
           </button>
@@ -618,7 +618,7 @@ function ScopePicker({
         </p>
       )}
       {!draft.scopeAll && (
-        <div class="max-h-40 space-y-1 overflow-y-auto rounded-md border border-white/10 bg-black/20 p-2">
+        <div class="max-h-40 space-y-1 overflow-y-auto rounded-md border border-line bg-inset p-2">
           {projects.length === 0 && (
             <div class="text-[12px] text-ink-400">No projects yet.</div>
           )}

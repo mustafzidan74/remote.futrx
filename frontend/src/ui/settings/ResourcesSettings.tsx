@@ -82,7 +82,7 @@ export function ResourcesSettings({
 
   if (loading && view == null) {
     return (
-      <div class="rounded-lg border border-white/10 bg-[#101318] px-4 py-12 flex items-center justify-center gap-2 text-[13px] text-ink-300">
+      <div class="rounded-lg border border-line bg-surface px-4 py-12 flex items-center justify-center gap-2 text-[13px] text-ink-300">
         <Loader class="w-4 h-4 animate-spin" /> Loading resource policy…
       </div>
     );
@@ -127,7 +127,7 @@ export function ResourcesSettings({
           detail={`${formatSize(host?.committedMemoryBytes)} of ${formatSize(host?.budgetMemoryBytes)}`}
           percent={committed}
         />
-        <div class="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[12px] leading-relaxed text-ink-300">
+        <div class="rounded-md border border-line bg-tint px-3 py-2.5 text-[12px] leading-relaxed text-ink-300">
           <span class="inline-flex items-center gap-1.5 text-ink-100">
             <HardDrive class="w-3.5 h-3.5" /> Disk quotas
           </span>
@@ -214,7 +214,7 @@ export function ResourcesSettings({
             <button
               type="submit"
               disabled={saving || !!validationError}
-              class="h-9 px-4 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2"
+              class="h-9 px-4 rounded-md bg-accent-blue text-on-accent hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2"
             >
               {saving && <Loader class="w-3.5 h-3.5 animate-spin" />}
               Save fleet defaults
@@ -238,9 +238,9 @@ function Panel({
   children: preact.ComponentChildren;
 }) {
   return (
-    <section class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-      <header class="px-4 py-3 flex items-start gap-3 border-b border-white/[0.06]">
-        <div class="mt-0.5 w-9 h-9 rounded-md bg-white/[0.06] border border-white/10 grid place-items-center flex-none">
+    <section class="rounded-lg border border-line bg-surface overflow-hidden">
+      <header class="px-4 py-3 flex items-start gap-3 border-b border-line">
+        <div class="mt-0.5 w-9 h-9 rounded-md bg-tint-strong border border-line grid place-items-center flex-none">
           <Icon class="w-4 h-4 text-ink-200" />
         </div>
         <div class="flex-1 min-w-0">
@@ -263,7 +263,7 @@ function Stat({
   value: string;
 }) {
   return (
-    <div class="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2.5">
+    <div class="rounded-md border border-line bg-tint px-3 py-2.5">
       <div class="flex items-center gap-1.5 text-[11px] text-ink-300">
         <Icon class="w-3.5 h-3.5" /> {label}
       </div>
@@ -291,7 +291,7 @@ function Field({
         value={value}
         onInput={(event) => onInput(event.currentTarget.value)}
         spellcheck={false}
-        class="mt-1.5 h-10 w-full rounded-md border border-white/10 bg-[#0c0f13] px-3 font-mono text-[13px] text-ink-50 outline-none placeholder:text-ink-400 focus:border-accent-blue/60 focus:ring-1 focus:ring-accent-blue/25"
+        class="mt-1.5 h-10 w-full rounded-md border border-line bg-inset px-3 font-mono text-[13px] text-ink-50 outline-none placeholder:text-ink-400 focus:border-accent-blue/60 focus:ring-1 focus:ring-accent-blue/25"
       />
       <span class="mt-1 block text-[11px] text-ink-300">{hint}</span>
     </label>

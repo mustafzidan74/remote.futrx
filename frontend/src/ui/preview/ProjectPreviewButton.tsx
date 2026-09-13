@@ -25,7 +25,7 @@ export function ProjectPreviewButton({ project }: { project: ProjectMeta }) {
           event.stopPropagation();
           setOpen((current) => !current);
         }}
-        class={`grid h-10 w-10 flex-none place-items-center rounded-md transition hover:bg-white/[0.08]
+        class={`grid h-10 w-10 flex-none place-items-center rounded-md transition hover:bg-tint-strong
                 ${open ? "text-accent-blue" : "text-ink-300 hover:text-ink-50"}`}
         aria-label={`Preview links for ${project.name}`}
         aria-haspopup="dialog"

@@ -79,7 +79,7 @@ export function TeamPanel({
           role="dialog"
           aria-label="Team"
         >
-          <div class="flex items-start justify-between gap-2 border-b border-white/10 bg-[#191a1f] px-3 py-2">
+          <div class="flex items-start justify-between gap-2 border-b border-line bg-surface px-3 py-2">
             <div class="min-w-0">
               <div class="text-[12px] font-semibold text-ink-100">Team</div>
               <p class="mt-0.5 text-[11px] leading-4 text-ink-400">{view.status}</p>
@@ -87,14 +87,14 @@ export function TeamPanel({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              class="grid h-6 w-6 flex-none place-items-center rounded-md text-ink-300 hover:bg-white/[0.08]"
+              class="grid h-6 w-6 flex-none place-items-center rounded-md text-ink-300 hover:bg-tint-strong"
               aria-label="Close the team panel"
             >
               <X class="h-3.5 w-3.5" />
             </button>
           </div>
 
-          <div class="border-b border-white/10 px-3 py-2 space-y-1">
+          <div class="border-b border-line px-3 py-2 space-y-1">
             <SeatRow seat={view.implementer} onOpenChat={onOpenChat} />
             {view.reviewer.enabled && (
               <SeatRow seat={view.reviewer} onOpenChat={onOpenChat} />
@@ -117,7 +117,7 @@ export function TeamPanel({
           </div>
 
           {!settled && (
-            <div class="border-t border-white/10 px-3 py-2">
+            <div class="border-t border-line px-3 py-2">
               <button
                 type="button"
                 onClick={() => {
@@ -125,8 +125,8 @@ export function TeamPanel({
                   onStop();
                 }}
                 disabled={busy}
-                class="h-8 w-full rounded-md border border-white/10 bg-white/[0.05] text-[12px] font-semibold
-                       text-ink-100 hover:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-40"
+                class="h-8 w-full rounded-md border border-line bg-tint text-[12px] font-semibold
+                       text-ink-100 hover:bg-tint-strong disabled:cursor-not-allowed disabled:opacity-40"
                 title="Stop team mode — a hop already in flight keeps going"
               >
                 Stop team mode
@@ -183,7 +183,7 @@ function HopRow({
   const bad = hop.verdict === "fix" || hop.verdict === "fail" || hop.verdict === "unknown";
 
   return (
-    <li class="rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-2">
+    <li class="rounded-md border border-line bg-tint px-2.5 py-2">
       <div class="flex items-center justify-between gap-2">
         <span class="min-w-0 truncate text-[11px] text-ink-400">{hop.detail}</span>
         {hop.verdictLabel && (
@@ -194,7 +194,7 @@ function HopRow({
                         ? "bg-accent-green/[0.14] text-accent-green"
                         : bad
                           ? "bg-accent-yellow/[0.14] text-accent-yellow"
-                          : "bg-white/[0.06] text-ink-300"
+                          : "bg-tint-strong text-ink-300"
                     }`}
           >
             {good ? (

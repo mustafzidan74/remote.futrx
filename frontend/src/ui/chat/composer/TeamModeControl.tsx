@@ -89,7 +89,7 @@ export function TeamModeControl({
           role="dialog"
           aria-label="Team mode settings"
         >
-          <div class="border-b border-white/10 bg-[#191a1f] px-3 py-2">
+          <div class="border-b border-line bg-surface px-3 py-2">
             <div class="text-[12px] font-semibold text-ink-100">Team mode</div>
             <p class="mt-1 text-[11px] leading-4 text-ink-400">
               After every turn you send, a second agent reviews the diff and a third runs
@@ -131,7 +131,7 @@ export function TeamModeControl({
               onChange={(patch) => onChangeRole("tester", patch)}
             />
 
-            <div class="flex items-center justify-between gap-3 border-t border-white/10 pt-2.5">
+            <div class="flex items-center justify-between gap-3 border-t border-line pt-2.5">
               <label class="flex min-w-0 cursor-pointer items-start gap-2">
                 <input
                   type="checkbox"
@@ -158,7 +158,7 @@ export function TeamModeControl({
                   onChange={(event) =>
                     onChangeLoops(Number.parseInt((event.currentTarget as HTMLInputElement).value, 10))
                   }
-                  class="h-8 w-14 rounded-md border border-white/10 bg-white/[0.04] px-2 text-[12.5px] text-ink-50
+                  class="h-8 w-14 rounded-md border border-line bg-tint px-2 text-[12.5px] text-ink-50
                          focus:border-accent-blue/40 focus:outline-none"
                 />
               </label>
@@ -174,7 +174,7 @@ export function TeamModeControl({
               }}
               class={`h-8 w-full rounded-md text-[12px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${
                 view.enabled
-                  ? "border border-white/10 bg-white/[0.05] text-ink-100 hover:bg-white/[0.09]"
+                  ? "border border-line bg-tint text-ink-100 hover:bg-tint-strong"
                   : "bg-accent-purple/20 text-accent-purple hover:bg-accent-purple/30"
               }`}
             >
@@ -226,7 +226,7 @@ function RolePicker({
           onChange({ provider: (event.currentTarget as HTMLSelectElement).value as ChatProvider })
         }
         aria-label={`${seat.label} provider`}
-        class="h-8 flex-none rounded-md border border-white/10 bg-white/[0.04] px-2 text-[12px] text-ink-50
+        class="h-8 flex-none rounded-md border border-line bg-tint px-2 text-[12px] text-ink-50
                focus:border-accent-blue/40 focus:outline-none disabled:opacity-50"
       >
         {options.map((option) => (

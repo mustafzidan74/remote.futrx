@@ -77,7 +77,7 @@ export function ProjectSnapshotsSection({
         />
       )}
 
-      <div class="rounded-md border border-white/[0.08] bg-white/[0.03] p-3 space-y-2.5">
+      <div class="rounded-md border border-line bg-tint p-3 space-y-2.5">
         <label class="block">
           <span class="text-[11.5px] text-ink-400">Label (optional)</span>
           <input
@@ -86,7 +86,7 @@ export function ProjectSnapshotsSection({
             maxLength={80}
             placeholder="before the plugin upgrade"
             onInput={(event) => setLabel((event.target as HTMLInputElement).value)}
-            class="mt-1 w-full h-9 rounded-md border border-white/10 bg-[#0f1217] px-2.5 text-[13px]
+            class="mt-1 w-full h-9 rounded-md border border-line bg-surface px-2.5 text-[13px]
                    text-ink-100 placeholder:text-ink-400 focus:outline-none focus:border-accent-blue/50"
           />
         </label>
@@ -109,8 +109,8 @@ export function ProjectSnapshotsSection({
           type="button"
           onClick={() => void create()}
           disabled={busy || running}
-          class="h-9 w-full rounded-md border border-white/10 bg-white/[0.06] px-3 text-[13px]
-                 font-medium text-ink-100 hover:bg-white/[0.10] disabled:opacity-45
+          class="h-9 w-full rounded-md border border-line bg-tint-strong px-3 text-[13px]
+                 font-medium text-ink-100 hover:bg-tint-active disabled:opacity-45
                  disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
         >
           {running ? <Loader class="w-4 h-4 animate-spin" /> : <Archive class="w-4 h-4" />}
@@ -160,8 +160,8 @@ function SnapshotRow({
   const failed = snapshot.status === "failed";
 
   return (
-    <div class="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 flex items-start gap-3">
-      <div class="mt-0.5 w-8 h-8 rounded-md bg-white/[0.06] border border-white/10 grid place-items-center flex-none">
+    <div class="rounded-md border border-line bg-tint px-3 py-2.5 flex items-start gap-3">
+      <div class="mt-0.5 w-8 h-8 rounded-md bg-tint-strong border border-line grid place-items-center flex-none">
         {settling ? (
           <Loader class="w-3.5 h-3.5 text-ink-300 animate-spin" />
         ) : (
@@ -199,7 +199,7 @@ function SnapshotRow({
           disabled={busy || !snapshotState.restorable(snapshot)}
           title="Restore this snapshot"
           aria-label="Restore this snapshot"
-          class="h-8 w-8 rounded-md text-ink-300 hover:text-ink-50 hover:bg-white/[0.08]
+          class="h-8 w-8 rounded-md text-ink-300 hover:text-ink-50 hover:bg-tint-strong
                  disabled:opacity-40 disabled:cursor-not-allowed grid place-items-center"
         >
           <RotateCcw class="w-3.5 h-3.5" />

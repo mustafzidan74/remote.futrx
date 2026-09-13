@@ -44,7 +44,7 @@ export function ModelRoutingSettings({ editor }: { editor: ModelRoutingEditor })
 
   if (editor.loading && !draft) {
     return (
-      <div class="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-[#101318] px-4 py-12 text-[13px] text-ink-300">
+      <div class="flex items-center justify-center gap-2 rounded-lg border border-line bg-surface px-4 py-12 text-[13px] text-ink-300">
         <Loader class="h-4 w-4 animate-spin" /> Loading routing policy…
       </div>
     );
@@ -153,7 +153,7 @@ export function ModelRoutingSettings({ editor }: { editor: ModelRoutingEditor })
         <button
           type="button"
           onClick={() => editor.setDraft(addRule(draft))}
-          class="h-9 rounded-md bg-white/[0.08] px-3 text-[13px] text-ink-100 hover:bg-white/[0.12]"
+          class="h-9 rounded-md bg-tint-strong px-3 text-[13px] text-ink-100 hover:bg-tint-active"
         >
           Add rule
         </button>
@@ -161,12 +161,12 @@ export function ModelRoutingSettings({ editor }: { editor: ModelRoutingEditor })
 
       <PolicyTester editor={editor} />
 
-      <div class="sticky bottom-0 flex flex-wrap items-center gap-3 rounded-lg border border-white/10 bg-[#101318] px-4 py-3">
+      <div class="sticky bottom-0 flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3">
         <button
           type="button"
           onClick={() => void editor.save().catch(() => {})}
           disabled={editor.saving || !editor.dirty || editor.problem !== null}
-          class="h-9 rounded-md bg-accent-blue px-4 text-[13px] font-semibold text-ink-900 disabled:opacity-50"
+          class="h-9 rounded-md bg-accent-blue px-4 text-[13px] font-semibold text-on-accent disabled:opacity-50"
         >
           {editor.saving ? "Saving…" : "Save policy"}
         </button>
@@ -175,7 +175,7 @@ export function ModelRoutingSettings({ editor }: { editor: ModelRoutingEditor })
             type="button"
             onClick={editor.revert}
             disabled={editor.saving}
-            class="h-9 rounded-md px-3 text-[13px] text-ink-300 hover:bg-white/[0.07] hover:text-ink-100"
+            class="h-9 rounded-md px-3 text-[13px] text-ink-300 hover:bg-tint-strong hover:text-ink-100"
           >
             Discard changes
           </button>
@@ -220,9 +220,9 @@ function RuleRow({
   const unavailable = !isRefAvailable(rule.use, providers);
 
   return (
-    <div class="rounded-md border border-white/10 bg-white/[0.03] p-3 space-y-3">
+    <div class="rounded-md border border-line bg-tint p-3 space-y-3">
       <div class="flex flex-wrap items-center gap-2">
-        <span class="grid h-6 w-6 flex-none place-items-center rounded bg-white/[0.07] text-[11px] tabular-nums text-ink-300">
+        <span class="grid h-6 w-6 flex-none place-items-center rounded bg-tint-strong text-[11px] tabular-nums text-ink-300">
           {index + 1}
         </span>
         <input
@@ -231,7 +231,7 @@ function RuleRow({
           placeholder="Name this rule"
           onInput={(event) => onChange({ note: event.currentTarget.value })}
           aria-label={`Name for rule ${index + 1}`}
-          class="h-9 min-w-0 flex-1 rounded-md border border-white/10 bg-[#0c0f13] px-3 text-[13px] text-ink-50 outline-none placeholder:text-ink-400 focus:border-accent-blue/60"
+          class="h-9 min-w-0 flex-1 rounded-md border border-line bg-inset px-3 text-[13px] text-ink-50 outline-none placeholder:text-ink-400 focus:border-accent-blue/60"
         />
         <label class="inline-flex flex-none items-center gap-1.5 text-[12.5px] text-ink-200">
           <input
@@ -263,7 +263,7 @@ function RuleRow({
           <select
             value={rule.when.kind}
             onChange={(event) => onKindChange(event.currentTarget.value as RoutingConditionKind)}
-            class="mt-1 h-9 w-full rounded-md border border-white/10 bg-[#0c0f13] px-2 text-[13px] text-ink-50 outline-none focus:border-accent-blue/60"
+            class="mt-1 h-9 w-full rounded-md border border-line bg-inset px-2 text-[13px] text-ink-50 outline-none focus:border-accent-blue/60"
           >
             {ROUTING_CONDITION_KINDS.map((entry) => (
               <option key={entry.kind} value={entry.kind}>
@@ -283,7 +283,7 @@ function RuleRow({
             onInput={(event) =>
               onChange({ when: { kind: rule.when.kind, value: event.currentTarget.value } })
             }
-            class="mt-1 h-9 w-full rounded-md border border-white/10 bg-[#0c0f13] px-3 font-mono text-[12.5px] text-ink-50 outline-none placeholder:text-ink-400 focus:border-accent-blue/60"
+            class="mt-1 h-9 w-full rounded-md border border-line bg-inset px-3 font-mono text-[12.5px] text-ink-50 outline-none placeholder:text-ink-400 focus:border-accent-blue/60"
           />
         </label>
       </div>
@@ -334,7 +334,7 @@ function PolicyTester({ editor }: { editor: ModelRoutingEditor }) {
         rows={4}
         placeholder="Paste a prompt…"
         aria-label="Prompt to test"
-        class="w-full rounded-md border border-white/10 bg-[#0c0f13] p-3 text-[13px] text-ink-50 outline-none placeholder:text-ink-400 focus:border-accent-blue/60"
+        class="w-full rounded-md border border-line bg-inset p-3 text-[13px] text-ink-50 outline-none placeholder:text-ink-400 focus:border-accent-blue/60"
       />
       <div class="flex flex-wrap items-end gap-3">
         <label class="block">
@@ -342,7 +342,7 @@ function PolicyTester({ editor }: { editor: ModelRoutingEditor }) {
           <select
             value={mode}
             onChange={(event) => setMode(event.currentTarget.value)}
-            class="mt-1 h-9 rounded-md border border-white/10 bg-[#0c0f13] px-2 text-[13px] text-ink-50"
+            class="mt-1 h-9 rounded-md border border-line bg-inset px-2 text-[13px] text-ink-50"
           >
             {MODE_SUGGESTIONS.map((value) => (
               <option key={value} value={value}>
@@ -356,7 +356,7 @@ function PolicyTester({ editor }: { editor: ModelRoutingEditor }) {
           <select
             value={synthetic}
             onChange={(event) => setSynthetic(event.currentTarget.value)}
-            class="mt-1 h-9 rounded-md border border-white/10 bg-[#0c0f13] px-2 text-[13px] text-ink-50"
+            class="mt-1 h-9 rounded-md border border-line bg-inset px-2 text-[13px] text-ink-50"
           >
             <option value="">a person typed it</option>
             {ROUTING_SYNTHETIC_VALUES.filter((value) => value !== "any").map((value) => (
@@ -370,7 +370,7 @@ function PolicyTester({ editor }: { editor: ModelRoutingEditor }) {
           type="button"
           onClick={() => void editor.test({ prompt, mode, synthetic: synthetic || undefined })}
           disabled={editor.testing}
-          class="h-9 rounded-md bg-white/[0.08] px-3 text-[13px] text-ink-100 hover:bg-white/[0.12] disabled:opacity-60"
+          class="h-9 rounded-md bg-tint-strong px-3 text-[13px] text-ink-100 hover:bg-tint-active disabled:opacity-60"
         >
           {editor.testing ? "Testing…" : "Test"}
         </button>
@@ -379,7 +379,7 @@ function PolicyTester({ editor }: { editor: ModelRoutingEditor }) {
       {editor.testError && <ErrorBanner message={editor.testError} />}
 
       {decision && (
-        <div class="rounded-md border border-white/10 bg-white/[0.03] p-3">
+        <div class="rounded-md border border-line bg-tint p-3">
           <div class="text-[13px] text-ink-50">
             {decision.routed ? "Routed to " : "Kept the chat's own model: "}
             <span class="font-semibold">
@@ -429,7 +429,7 @@ function ModelPicker({
             )
           }
           aria-label={`${label} agent`}
-          class="h-9 min-w-0 flex-1 rounded-md border border-white/10 bg-[#0c0f13] px-2 text-[13px] text-ink-50 outline-none focus:border-accent-blue/60"
+          class="h-9 min-w-0 flex-1 rounded-md border border-line bg-inset px-2 text-[13px] text-ink-50 outline-none focus:border-accent-blue/60"
         >
           <option value="">Choose an agent…</option>
           {catalog.map((entry) => (
@@ -446,7 +446,7 @@ function ModelPicker({
           onChange={(event) => onChange({ ...value, model: event.currentTarget.value })}
           disabled={!value.provider}
           aria-label={`${label} model`}
-          class="h-9 min-w-0 flex-1 rounded-md border border-white/10 bg-[#0c0f13] px-2 text-[13px] text-ink-50 outline-none focus:border-accent-blue/60 disabled:opacity-50"
+          class="h-9 min-w-0 flex-1 rounded-md border border-line bg-inset px-2 text-[13px] text-ink-50 outline-none focus:border-accent-blue/60 disabled:opacity-50"
         >
           {models.map((model) => (
             <option key={model.value || "auto"} value={model.value}>
@@ -476,7 +476,7 @@ function Toggle({
   hint: string;
 }) {
   return (
-    <label class="flex cursor-pointer items-start gap-2.5 rounded-md border border-white/10 bg-white/[0.03] p-2.5">
+    <label class="flex cursor-pointer items-start gap-2.5 rounded-md border border-line bg-tint p-2.5">
       <input
         type="checkbox"
         checked={checked}
@@ -509,7 +509,7 @@ function IconButton({
       disabled={disabled}
       aria-label={label}
       title={label}
-      class="grid h-8 w-8 flex-none place-items-center rounded-md text-ink-300 hover:bg-white/[0.08] hover:text-ink-100 disabled:opacity-30"
+      class="grid h-8 w-8 flex-none place-items-center rounded-md text-ink-300 hover:bg-tint-strong hover:text-ink-100 disabled:opacity-30"
     >
       <Icon class="h-3.5 w-3.5" />
     </button>
@@ -528,9 +528,9 @@ function Panel({
   children: preact.ComponentChildren;
 }) {
   return (
-    <section class="overflow-hidden rounded-lg border border-white/10 bg-[#101318]">
-      <header class="flex items-start gap-3 border-b border-white/[0.06] px-4 py-3">
-        <div class="mt-0.5 grid h-9 w-9 flex-none place-items-center rounded-md border border-white/10 bg-white/[0.06]">
+    <section class="overflow-hidden rounded-lg border border-line bg-surface">
+      <header class="flex items-start gap-3 border-b border-line px-4 py-3">
+        <div class="mt-0.5 grid h-9 w-9 flex-none place-items-center rounded-md border border-line bg-tint-strong">
           <Icon class="h-4 w-4 text-ink-200" />
         </div>
         <div class="min-w-0 flex-1">

@@ -67,7 +67,7 @@ export function MessageSearchResults({
                       onMouseEnter={() => search.setActiveIndex(index)}
                       onClick={() => onOpenResult(result)}
                       class={`w-full text-left rounded-md px-3 py-1.5 flex items-start gap-2 transition
-                              ${active ? "bg-white/[0.09]" : "hover:bg-white/[0.06]"}`}
+                              ${active ? "bg-tint-strong" : "hover:bg-tint-strong"}`}
                     >
                       <MessageSquare class="w-3.5 h-3.5 mt-0.5 text-ink-400 flex-none" />
                       <span class="min-w-0 flex-1">

@@ -76,10 +76,10 @@ export function NewProjectDialog({
         aria-modal="true"
         aria-labelledby="new-project-title"
         class="dialog-panel w-full md:max-w-2xl flex flex-col rounded-t-xl md:rounded-xl
-               border border-white/10 bg-[#101318] shadow-2xl overflow-hidden"
+               border border-line bg-surface shadow-2xl overflow-hidden"
         onClick={(event) => event.stopPropagation()}
       >
-        <header class="flex-none flex items-start gap-3 px-4 py-3 border-b border-white/[0.08]">
+        <header class="flex-none flex items-start gap-3 px-4 py-3 border-b border-line">
           <div class="flex-1 min-w-0">
             <h2 id="new-project-title" class="text-[15px] font-semibold text-ink-50">
               New project
@@ -92,7 +92,7 @@ export function NewProjectDialog({
           <button
             type="button"
             onClick={onClose}
-            class="h-8 w-8 rounded-md text-ink-300 hover:text-ink-50 hover:bg-white/[0.08] grid place-items-center"
+            class="h-8 w-8 rounded-md text-ink-300 hover:text-ink-50 hover:bg-tint-strong grid place-items-center"
             aria-label="Close"
           >
             <X class="w-4 h-4" />
@@ -116,7 +116,7 @@ export function NewProjectDialog({
                 dir="auto"
                 onInput={(event) => onNameChange((event.target as HTMLInputElement).value)}
                 placeholder="My project"
-                class="mt-1.5 w-full h-10 px-3 rounded-md bg-white/[0.04] border border-white/10
+                class="mt-1.5 w-full h-10 px-3 rounded-md bg-tint border border-line
                        text-[14px] text-ink-50 placeholder:text-ink-400
                        focus:outline-none focus:border-accent-blue/60 focus:ring-1 focus:ring-accent-blue/30"
               />
@@ -147,11 +147,11 @@ export function NewProjectDialog({
             )}
           </div>
 
-          <footer class="flex-none flex justify-end gap-2 px-4 py-3 border-t border-white/[0.08]">
+          <footer class="flex-none flex justify-end gap-2 px-4 py-3 border-t border-line">
             <button
               type="button"
               onClick={onClose}
-              class="h-10 px-3 rounded-md text-[13.5px] text-ink-200 hover:text-ink-50 hover:bg-white/[0.08]"
+              class="h-10 px-3 rounded-md text-[13.5px] text-ink-200 hover:text-ink-50 hover:bg-tint-strong"
             >
               Cancel
             </button>
@@ -188,7 +188,7 @@ function TemplateInputs({
   const template = newProjectState.selectedTemplate(state);
 
   return (
-    <fieldset class="rounded-lg border border-white/10 bg-white/[0.02] p-3 space-y-3">
+    <fieldset class="rounded-lg border border-line bg-tint p-3 space-y-3">
       <legend class="px-1 text-[12.5px] font-medium text-ink-200">
         {template?.title ?? "Template"} setup
       </legend>
@@ -219,9 +219,9 @@ function TemplateInputField({
   const fieldId = `template-input-${input.key}`;
   const describedBy = error ? `${fieldId}-error` : input.help ? `${fieldId}-help` : undefined;
   const control =
-    "w-full h-10 px-3 rounded-md bg-white/[0.04] border text-[14px] text-ink-50 " +
+    "w-full h-10 px-3 rounded-md bg-tint border text-[14px] text-ink-50 " +
     "placeholder:text-ink-400 focus:outline-none focus:ring-1 focus:ring-accent-blue/30 " +
-    (error ? "border-accent-red/60" : "border-white/10 focus:border-accent-blue/60");
+    (error ? "border-accent-red/60" : "border-line focus:border-accent-blue/60");
 
   if (input.type === "checkbox") {
     return (
@@ -234,7 +234,7 @@ function TemplateInputField({
             onChange={(event) =>
               onChange((event.target as HTMLInputElement).checked ? "true" : "false")
             }
-            class="mt-0.5 h-4 w-4 flex-none rounded border-white/20 bg-white/[0.04] accent-[#3b82f6]"
+            class="mt-0.5 h-4 w-4 flex-none rounded border-line-strong bg-tint accent-[#3b82f6]"
           />
           <span dir="auto" class="bidi-auto text-[13px] text-ink-100 leading-snug">{input.label}</span>
         </label>
@@ -266,7 +266,7 @@ function TemplateInputField({
           class={`mt-1.5 ${control}`}
         >
           {input.options?.map((option) => (
-            <option key={option.value} value={option.value} class="bg-[#101318]">
+            <option key={option.value} value={option.value} class="bg-surface">
               {option.label}
             </option>
           ))}
@@ -351,7 +351,7 @@ function TemplatePicker({
             class={`text-left rounded-lg border p-3 transition-colors ${
               active
                 ? "border-accent-blue/60 bg-accent-blue/[0.08]"
-                : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+                : "border-line bg-tint hover:bg-tint-strong"
             }`}
           >
             <div class="flex items-center gap-2">
@@ -377,7 +377,7 @@ function TemplatePicker({
 function TemplateTag({ label, mono = false }: { label: string; mono?: boolean }) {
   return (
     <span
-      class={`inline-flex items-center h-5 px-1.5 rounded bg-white/[0.06] text-[10.5px] text-ink-300 ${
+      class={`inline-flex items-center h-5 px-1.5 rounded bg-tint-strong text-[10.5px] text-ink-300 ${
         mono ? "font-mono" : ""
       }`}
     >

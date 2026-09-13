@@ -71,7 +71,7 @@ export function VoiceInputButton({ voice, disabled }: { voice: VoiceInput; disab
             <button
               type="button"
               onClick={voice.dismiss}
-              class="grid h-4 w-4 flex-none place-items-center rounded text-ink-300 hover:bg-white/[0.08] hover:text-ink-50"
+              class="grid h-4 w-4 flex-none place-items-center rounded text-ink-300 hover:bg-tint-strong hover:text-ink-50"
               aria-label="Dismiss voice input error"
             >
               <X class="h-2.5 w-2.5" />
@@ -91,8 +91,8 @@ export function VoiceInputButton({ voice, disabled }: { voice: VoiceInput; disab
                     active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100
                     ${
                       busy
-                        ? "bg-accent-red/90 text-ink-900 hover:bg-accent-red"
-                        : "bg-white/[0.045] text-ink-300 hover:bg-white/10 hover:text-ink-100"
+                        ? "bg-accent-red/90 text-on-accent hover:bg-accent-red"
+                        : "bg-tint text-ink-300 hover:bg-tint-active hover:text-ink-100"
                     }`}
           >
             {transcribing ? (
@@ -109,8 +109,8 @@ export function VoiceInputButton({ voice, disabled }: { voice: VoiceInput; disab
             onClick={() => setMenuOpen((open) => !open)}
             disabled={disabled}
             class={`grid h-10 w-5 flex-none place-items-center rounded-md text-ink-400 transition
-                    hover:bg-white/[0.07] hover:text-ink-100 disabled:cursor-not-allowed disabled:opacity-50
-                    ${menuOpen ? "bg-white/[0.08] text-ink-100" : ""}`}
+                    hover:bg-tint-strong hover:text-ink-100 disabled:cursor-not-allowed disabled:opacity-50
+                    ${menuOpen ? "bg-tint-strong text-ink-100" : ""}`}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-label={`Voice input options. Language: ${voice.languageLabel}`}
@@ -123,7 +123,7 @@ export function VoiceInputButton({ voice, disabled }: { voice: VoiceInput; disab
       {menuOpen && (
         <div
           class="theme-menu-surface absolute bottom-full right-0 z-40 mb-1.5 max-h-[70vh] w-[min(19rem,calc(100vw-1.5rem))]
-                 overflow-y-auto rounded-lg border border-white/10 bg-[#14161d] p-1 shadow-2xl"
+                 overflow-y-auto rounded-lg border border-line bg-surface p-1 shadow-2xl"
           role="menu"
         >
           <div class="px-2.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-400">
@@ -145,7 +145,7 @@ export function VoiceInputButton({ voice, disabled }: { voice: VoiceInput; disab
                 // menu; dir="auto" lets each row pick its own direction.
                 dir="auto"
                 class={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[12px] font-medium transition
-                        ${active ? "bg-accent-blue/[0.14] text-accent-blue" : "text-ink-100 hover:bg-white/[0.07]"}`}
+                        ${active ? "bg-accent-blue/[0.14] text-accent-blue" : "text-ink-100 hover:bg-tint-strong"}`}
               >
                 <span class="min-w-0 flex-1 truncate">{option.label}</span>
                 {active && <Check class="h-3 w-3 flex-none" />}
@@ -155,8 +155,8 @@ export function VoiceInputButton({ voice, disabled }: { voice: VoiceInput; disab
 
           {voice.serverAvailable && (
             <>
-              <div class="mx-2 my-1 border-t border-white/[0.07]" />
-              <label class="flex cursor-pointer items-start gap-2 rounded-md px-2.5 py-2 hover:bg-white/[0.07]">
+              <div class="mx-2 my-1 border-t border-line" />
+              <label class="flex cursor-pointer items-start gap-2 rounded-md px-2.5 py-2 hover:bg-tint-strong">
                 <input
                   type="checkbox"
                   checked={voice.preferredEngine === "server"}
@@ -186,7 +186,7 @@ export function VoiceInputButton({ voice, disabled }: { voice: VoiceInput; disab
             </div>
           )}
 
-          <div class="mx-2 my-1 border-t border-white/[0.07]" />
+          <div class="mx-2 my-1 border-t border-line" />
           <MicrophoneTestSection voice={voice} disabled={voice.active} />
 
           {!voice.secureContext && (
@@ -197,7 +197,7 @@ export function VoiceInputButton({ voice, disabled }: { voice: VoiceInput; disab
           )}
 
           {voice.diagnostics.length > 0 && (
-            <details class="mx-1 mb-1 rounded-md bg-white/[0.03] px-2.5 py-1.5">
+            <details class="mx-1 mb-1 rounded-md bg-tint px-2.5 py-1.5">
               <summary class="cursor-pointer text-[11px] font-medium text-ink-300">
                 What happened last time
               </summary>
@@ -237,7 +237,7 @@ function MicrophoneTestSection({ voice, disabled }: { voice: VoiceInput; disable
         onClick={voice.runMicrophoneTest}
         disabled={disabled || running}
         class="flex w-full items-center gap-2 rounded-md px-1.5 py-2 text-left text-[12px] font-medium
-               text-ink-100 transition hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-50"
+               text-ink-100 transition hover:bg-tint-strong disabled:cursor-not-allowed disabled:opacity-50"
       >
         <TestTube class="h-3.5 w-3.5 flex-none text-ink-300" aria-hidden="true" />
         <span class="min-w-0 flex-1">{running ? "Testing microphone…" : "Test microphone (2s)"}</span>
@@ -246,7 +246,7 @@ function MicrophoneTestSection({ voice, disabled }: { voice: VoiceInput; disable
 
       {running && (
         <div class="px-1.5 pb-1" aria-hidden="true">
-          <span class="block h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+          <span class="block h-1.5 w-full overflow-hidden rounded-full bg-tint-active">
             <span
               class="block h-full rounded-full bg-accent-green transition-[width] duration-75"
               style={{ width: `${Math.round(test.level * 100)}%` }}
@@ -295,7 +295,7 @@ function VoiceStatusReadout({ voice }: { voice: VoiceInput }) {
 
   return (
     <div
-      class="flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 py-1"
+      class="flex items-center gap-1.5 rounded-md border border-line bg-tint px-2 py-1"
       role="status"
       aria-live="polite"
     >
@@ -315,7 +315,7 @@ function VoiceStatusReadout({ voice }: { voice: VoiceInput }) {
       */}
       {recording && (
         <span
-          class="h-1.5 w-10 flex-none overflow-hidden rounded-full bg-white/10"
+          class="h-1.5 w-10 flex-none overflow-hidden rounded-full bg-tint-active"
           aria-hidden="true"
         >
           <span

@@ -96,7 +96,7 @@ export function CommandPalette({ items }: { items: CommandItem[] }) {
         onClick={(event) => event.stopPropagation()}
         onKeyDown={onKeyDown}
       >
-        <label class="flex flex-none items-center gap-2 border-b border-white/[0.07] px-3 py-2.5">
+        <label class="flex flex-none items-center gap-2 border-b border-line px-3 py-2.5">
           <Search class="h-4 w-4 flex-none text-ink-400" aria-hidden="true" />
           <input
             ref={inputRef}
@@ -116,7 +116,7 @@ export function CommandPalette({ items }: { items: CommandItem[] }) {
             autocomplete="off"
             spellcheck={false}
           />
-          <kbd class="flex-none rounded border border-white/10 px-1.5 py-0.5 text-[10px] text-ink-400">
+          <kbd class="flex-none rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-400">
             Esc
           </kbd>
         </label>
@@ -150,7 +150,7 @@ export function CommandPalette({ items }: { items: CommandItem[] }) {
                       onMouseEnter={() => dispatch({ type: "highlight", index: rowIndex })}
                       onClick={() => pick(item)}
                       class={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition
-                              ${active ? "bg-accent-blue/[0.16] text-ink-50" : "text-ink-100 hover:bg-white/[0.06]"}`}
+                              ${active ? "bg-accent-blue/[0.16] text-ink-50" : "text-ink-100 hover:bg-tint-strong"}`}
                     >
                       <CommandIcon kind={item.kind} active={active} />
                       <span class="min-w-0 flex-1">
@@ -171,7 +171,7 @@ export function CommandPalette({ items }: { items: CommandItem[] }) {
           )}
         </div>
 
-        <footer class="flex flex-none items-center gap-3 border-t border-white/[0.07] px-3 py-2 text-[11px] text-ink-400">
+        <footer class="flex flex-none items-center gap-3 border-t border-line px-3 py-2 text-[11px] text-ink-400">
           <span>&uarr;&darr; move</span>
           <span>&crarr; open</span>
           <span class="ms-auto inline-flex items-center gap-1">

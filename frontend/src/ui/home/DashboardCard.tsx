@@ -23,9 +23,9 @@ export function DashboardCard({
   children: ComponentChildren;
 }) {
   return (
-    <section id={id} class="flex min-w-0 flex-col rounded-lg border border-white/10 bg-[#101318]">
-      <header class="flex flex-none items-center gap-2.5 border-b border-white/[0.06] px-4 py-3">
-        <span class="grid h-7 w-7 flex-none place-items-center rounded-md bg-white/[0.06] text-ink-200">
+    <section id={id} class="flex min-w-0 flex-col rounded-lg border border-line bg-surface">
+      <header class="flex flex-none items-center gap-2.5 border-b border-line px-4 py-3">
+        <span class="grid h-7 w-7 flex-none place-items-center rounded-md bg-tint-strong text-ink-200">
           <Icon class="h-4 w-4" />
         </span>
         <div class="min-w-0 flex-1">
@@ -53,11 +53,11 @@ export function CardSkeleton({ rows = 3 }: { rows?: number }) {
   return (
     <div class="space-y-2 p-3" aria-hidden="true">
       {Array.from({ length: rows }, (_, index) => (
-        <div key={index} class="flex items-center gap-3 rounded-md bg-white/[0.04] p-3">
-          <span class="h-8 w-8 flex-none animate-pulse rounded-md bg-white/[0.07]" />
+        <div key={index} class="flex items-center gap-3 rounded-md bg-tint p-3">
+          <span class="h-8 w-8 flex-none animate-pulse rounded-md bg-tint-strong" />
           <span class="flex-1 space-y-1.5">
-            <span class="block h-3 w-1/3 animate-pulse rounded bg-white/[0.07]" />
-            <span class="block h-2.5 w-2/3 animate-pulse rounded bg-white/[0.05]" />
+            <span class="block h-3 w-1/3 animate-pulse rounded bg-tint-strong" />
+            <span class="block h-2.5 w-2/3 animate-pulse rounded bg-tint" />
           </span>
         </div>
       ))}
@@ -107,7 +107,7 @@ export function RowAction({
 }) {
   const shared =
     "grid h-7 w-7 flex-none place-items-center rounded-md text-ink-300 transition " +
-    "hover:bg-white/[0.09] hover:text-ink-100 focus:outline-none";
+    "hover:bg-tint-strong hover:text-ink-100 focus:outline-none";
 
   if (href) {
     return (

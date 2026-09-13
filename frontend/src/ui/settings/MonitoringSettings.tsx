@@ -8,7 +8,7 @@ import {
 import { AlertCircle, Check, Copy, ExternalLink, Loader, Send, Server, X } from "../primitives/icons";
 
 const inputClass =
-  "w-full h-10 rounded-md bg-black/30 border border-white/10 px-3 text-sm text-ink-100 " +
+  "w-full h-10 rounded-md bg-inset border border-line px-3 text-sm text-ink-100 " +
   "placeholder:text-ink-400 focus:outline-none focus:border-accent-blue";
 
 /**
@@ -27,9 +27,9 @@ export function MonitoringSettings() {
     <div class="space-y-4">
       <HealthEndpointCard healthPath={settings?.healthPath ?? "/healthz"} />
 
-      <section class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-        <header class="px-4 py-3 flex items-start gap-3 border-b border-white/[0.06]">
-          <div class="h-9 w-9 rounded-md bg-white/[0.06] border border-white/10 grid place-items-center flex-none">
+      <section class="rounded-lg border border-line bg-surface overflow-hidden">
+        <header class="px-4 py-3 flex items-start gap-3 border-b border-line">
+          <div class="h-9 w-9 rounded-md bg-tint-strong border border-line grid place-items-center flex-none">
             <Send class="w-4 h-4 text-ink-200" />
           </div>
           <div class="flex-1 min-w-0">
@@ -55,7 +55,7 @@ export function MonitoringSettings() {
         </header>
 
         <form onSubmit={editor.save} class="p-3 space-y-3">
-          <label class="flex items-start gap-2.5 rounded-md border border-white/10 bg-white/[0.03] p-2.5 cursor-pointer">
+          <label class="flex items-start gap-2.5 rounded-md border border-line bg-tint p-2.5 cursor-pointer">
             <input
               type="checkbox"
               checked={editor.enabled}
@@ -101,8 +101,8 @@ export function MonitoringSettings() {
                     type="button"
                     onClick={() => void editor.clearHeartbeatUrl()}
                     disabled={editor.saving}
-                    class="inline-flex items-center gap-1 rounded border border-white/10 px-1.5 py-0.5
-                           text-ink-200 hover:bg-white/[0.07] disabled:opacity-50"
+                    class="inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5
+                           text-ink-200 hover:bg-tint-strong disabled:opacity-50"
                   >
                     <X class="w-3 h-3" /> Remove stored URL
                   </button>
@@ -111,7 +111,7 @@ export function MonitoringSettings() {
                 <span>
                   No URL stored yet. It is a bearer token — anyone holding it can tell your monitor
                   this box is alive — so it is kept at{" "}
-                  <code class="rounded bg-black/30 border border-white/10 px-1 py-0.5 text-[11px]">
+                  <code class="rounded bg-inset border border-line px-1 py-0.5 text-[11px]">
                     DATA_DIR/monitoring.json
                   </code>{" "}
                   with mode 0600 and never returned to this page.
@@ -143,7 +143,7 @@ export function MonitoringSettings() {
             </div>
           </label>
 
-          <div class="rounded-md border border-white/10 bg-white/[0.03] p-2.5 space-y-1">
+          <div class="rounded-md border border-line bg-tint p-2.5 space-y-1">
             <div class="flex flex-wrap items-center gap-2 text-[12px]">
               <span class="text-ink-300">Last push:</span>
               <span
@@ -214,8 +214,8 @@ export function MonitoringSettings() {
               type="button"
               onClick={() => void editor.pingNow()}
               disabled={editor.pinging || !settings?.configured}
-              class="h-9 px-3 rounded-md border border-white/10 text-ink-200 text-[13px]
-                     hover:bg-white/[0.07] disabled:opacity-50 inline-flex items-center gap-1.5"
+              class="h-9 px-3 rounded-md border border-line text-ink-200 text-[13px]
+                     hover:bg-tint-strong disabled:opacity-50 inline-flex items-center gap-1.5"
               title={settings?.configured ? undefined : "Save a heartbeat URL first"}
             >
               {editor.pinging ? (
@@ -260,9 +260,9 @@ function HealthEndpointCard({ healthPath }: { healthPath: string }) {
   }
 
   return (
-    <section class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-      <header class="px-4 py-3 flex items-start gap-3 border-b border-white/[0.06]">
-        <div class="h-9 w-9 rounded-md bg-white/[0.06] border border-white/10 grid place-items-center flex-none">
+    <section class="rounded-lg border border-line bg-surface overflow-hidden">
+      <header class="px-4 py-3 flex items-start gap-3 border-b border-line">
+        <div class="h-9 w-9 rounded-md bg-tint-strong border border-line grid place-items-center flex-none">
           <Server class="w-4 h-4 text-ink-200" />
         </div>
         <div class="flex-1 min-w-0">
@@ -277,25 +277,25 @@ function HealthEndpointCard({ healthPath }: { healthPath: string }) {
 
       <div class="p-3 space-y-3">
         <div class="flex flex-wrap items-center gap-2">
-          <code class="flex-1 min-w-0 rounded-md bg-black/30 border border-white/10 px-2.5 py-2 text-[12.5px] text-ink-100 break-all">
+          <code class="flex-1 min-w-0 rounded-md bg-inset border border-line px-2.5 py-2 text-[12.5px] text-ink-100 break-all">
             {url}
           </code>
           <button
             type="button"
             onClick={() => void copy()}
-            class="h-9 px-3 rounded-md border border-white/10 text-ink-200 text-[13px]
-                   hover:bg-white/[0.07] inline-flex items-center gap-1.5"
+            class="h-9 px-3 rounded-md border border-line text-ink-200 text-[13px]
+                   hover:bg-tint-strong inline-flex items-center gap-1.5"
           >
             {copied ? <Check class="w-3.5 h-3.5" /> : <Copy class="w-3.5 h-3.5" />}
             {copied ? "Copied" : "Copy"}
           </button>
         </div>
 
-        <div class="rounded-md border border-white/10 bg-white/[0.03] p-2.5 text-[12px] text-ink-300 leading-relaxed space-y-1.5">
+        <div class="rounded-md border border-line bg-tint p-2.5 text-[12px] text-ink-300 leading-relaxed space-y-1.5">
           <div>
             In UptimeRobot, Better Stack, or any other HTTP monitor, watch this URL and add a
             keyword check for{" "}
-            <code class="rounded bg-black/30 border border-white/10 px-1 py-0.5 text-[11.5px]">
+            <code class="rounded bg-inset border border-line px-1 py-0.5 text-[11.5px]">
               "status":"ok"
             </code>
             . A degraded platform still answers, so status code alone is not the whole story.

@@ -91,7 +91,7 @@ function TimelineRow({
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        class="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-white/[0.04]"
+        class="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-tint"
         aria-expanded={open}
       >
         {open ? (

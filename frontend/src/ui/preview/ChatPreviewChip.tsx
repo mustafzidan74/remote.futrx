@@ -45,14 +45,14 @@ export function ChatPreviewChip({
   return (
     <div
       ref={anchorRef}
-      class="flex flex-none items-stretch overflow-hidden rounded-md border border-white/10 bg-white/5"
+      class="flex flex-none items-stretch overflow-hidden rounded-md border border-line bg-tint"
     >
       <a
         href={url}
         target="_blank"
         rel="noopener noreferrer"
         class="inline-flex h-8 items-center gap-1.5 px-2 text-[11.5px] font-medium text-ink-200
-               transition hover:bg-white/[0.09] hover:text-ink-100"
+               transition hover:bg-tint-strong hover:text-ink-100"
         title={`Open ${url}`}
       >
         <Globe class="h-3.5 w-3.5 flex-none" aria-hidden="true" />
@@ -62,7 +62,7 @@ export function ChatPreviewChip({
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        class={`grid w-6 flex-none place-items-center border-l border-white/10 transition hover:bg-white/[0.09]
+        class={`grid w-6 flex-none place-items-center border-l border-line transition hover:bg-tint-strong
                 ${open ? "text-accent-blue" : "text-ink-300 hover:text-ink-100"}`}
         aria-label="Preview ports and share links"
         aria-haspopup="dialog"

@@ -111,8 +111,8 @@ export function UpcomingCard({
                     type="button"
                     onClick={() => void runNow(task)}
                     disabled={busyId === task.id}
-                    class="inline-flex h-7 flex-none items-center gap-1 rounded-md bg-white/[0.08] px-2
-                           text-[12px] font-medium text-ink-100 transition hover:bg-white/[0.12]
+                    class="inline-flex h-7 flex-none items-center gap-1 rounded-md bg-tint-strong px-2
+                           text-[12px] font-medium text-ink-100 transition hover:bg-tint-active
                            disabled:opacity-50"
                     title={`Run ${task.name} now`}
                   >

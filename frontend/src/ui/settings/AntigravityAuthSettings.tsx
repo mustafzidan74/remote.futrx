@@ -19,9 +19,9 @@ export function AntigravityAuthSettings({
   hint?: string;
 }) {
   return (
-    <section class="rounded-md border border-white/10 bg-white/[0.03] p-3 space-y-3">
+    <section class="rounded-md border border-line bg-tint p-3 space-y-3">
       <div class="flex items-start gap-3">
-        <div class="h-9 w-9 rounded-md bg-white/[0.06] border border-white/10 grid place-items-center flex-none text-ink-200">
+        <div class="h-9 w-9 rounded-md bg-tint-strong border border-line grid place-items-center flex-none text-ink-200">
           <Key class="w-4 h-4" />
         </div>
         <div class="flex-1 min-w-0">
@@ -45,7 +45,7 @@ export function AntigravityAuthSettings({
       </div>
 
       {!authenticated && !loading && (
-        <ol class="text-[12px] text-ink-300 leading-relaxed list-decimal ps-5 space-y-1 rounded-md border border-white/10 bg-black/20 px-3 py-2.5">
+        <ol class="text-[12px] text-ink-300 leading-relaxed list-decimal ps-5 space-y-1 rounded-md border border-line bg-inset px-3 py-2.5">
           <li>
             Open any project, then its <span class="font-medium text-ink-100">Terminal</span>.
           </li>
@@ -58,7 +58,7 @@ export function AntigravityAuthSettings({
       )}
 
       {authenticated && (
-        <div class="text-[12px] text-ink-300 leading-relaxed rounded-md border border-white/10 bg-black/20 px-3 py-2.5">
+        <div class="text-[12px] text-ink-300 leading-relaxed rounded-md border border-line bg-inset px-3 py-2.5">
           The sign-in was copied to the platform. New projects inherit it on launch — no second
           sign-in.
         </div>

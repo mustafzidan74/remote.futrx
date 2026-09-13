@@ -68,7 +68,7 @@ export function VoiceLiveStrip({ voice }: { voice: VoiceInput }) {
       </div>
       {(recording || session.level > 0) && (
         <span
-          class="mt-1 h-1.5 w-12 flex-none overflow-hidden rounded-full bg-white/10"
+          class="mt-1 h-1.5 w-12 flex-none overflow-hidden rounded-full bg-tint-active"
           aria-hidden="true"
         >
           <span

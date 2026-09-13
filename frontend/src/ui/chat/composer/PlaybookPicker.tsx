@@ -48,7 +48,7 @@ export function PlaybookPicker({ library, disabled }: { library: PlaybookLibrary
           <Zap class="h-4 w-4 flex-none text-ink-400" aria-hidden="true" />
         )}
         <span class="truncate font-semibold text-ink-100">Playbooks</span>
-        <span class="rounded bg-white/10 px-1 py-0.5 text-[10px] leading-none text-ink-300">
+        <span class="rounded bg-tint-active px-1 py-0.5 text-[10px] leading-none text-ink-300">
           {library.loading ? "..." : count}
         </span>
         <ChevronDown class="h-4 w-4 flex-none text-ink-400" aria-hidden="true" />
@@ -60,7 +60,7 @@ export function PlaybookPicker({ library, disabled }: { library: PlaybookLibrary
                  w-[calc(100vw-1.5rem)] sm:left-auto sm:right-0 sm:w-[420px]"
           role="menu"
         >
-          <div class="border-b border-white/10 bg-[#191a1f] px-3 py-2 text-[11px] leading-4 text-ink-400">
+          <div class="border-b border-line bg-surface px-3 py-2 text-[11px] leading-4 text-ink-400">
             Click to load a playbook into the composer. Shift-click to send it immediately.
           </div>
           <div class="max-h-[320px] overflow-y-auto py-1">
@@ -80,7 +80,7 @@ export function PlaybookPicker({ library, disabled }: { library: PlaybookLibrary
                   role="menuitem"
                   onClick={(event) => choose(playbook, event.shiftKey)}
                   disabled={library.running !== null}
-                  class="w-full px-3 py-2.5 text-left focus:outline-none hover:bg-white/[0.07] focus:bg-white/[0.07]
+                  class="w-full px-3 py-2.5 text-left focus:outline-none hover:bg-tint-strong focus:bg-tint-strong
                          disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <div class="flex min-w-0 items-center gap-2">
@@ -88,7 +88,7 @@ export function PlaybookPicker({ library, disabled }: { library: PlaybookLibrary
                       {playbookLabel(playbook)}
                     </span>
                     {playbook.mode && (
-                      <span class="flex-none rounded bg-white/[0.08] px-1.5 py-0.5 text-[10px] uppercase text-ink-400">
+                      <span class="flex-none rounded bg-tint-strong px-1.5 py-0.5 text-[10px] uppercase text-ink-400">
                         {playbook.mode}
                       </span>
                     )}

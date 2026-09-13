@@ -42,8 +42,8 @@ export function ProjectsCard({
         <button
           type="button"
           onClick={onNewProject}
-          class="inline-flex h-7 items-center gap-1 rounded-md bg-white/[0.08] px-2 text-[12px]
-                 font-medium text-ink-100 transition hover:bg-white/[0.12]"
+          class="inline-flex h-7 items-center gap-1 rounded-md bg-tint-strong px-2 text-[12px]
+                 font-medium text-ink-100 transition hover:bg-tint-active"
         >
           <Plus class="h-3.5 w-3.5" /> New
         </button>
@@ -110,7 +110,7 @@ function ProjectRow({
             </span>
           )}
           {previewUrl && (
-            <span class="flex-none rounded bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10.5px] tabular-nums text-ink-200">
+            <span class="flex-none rounded bg-tint-strong px-1.5 py-0.5 font-mono text-[10.5px] tabular-nums text-ink-200">
               :{project.previewPort}
             </span>
           )}

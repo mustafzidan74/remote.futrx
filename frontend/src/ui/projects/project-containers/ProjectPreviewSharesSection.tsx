@@ -113,7 +113,7 @@ function IssuedLink({
         <button
           type="button"
           onClick={onDismiss}
-          class="h-8 w-8 ml-auto rounded text-ink-300 hover:text-ink-50 hover:bg-white/[0.08] grid place-items-center"
+          class="h-8 w-8 ml-auto rounded text-ink-300 hover:text-ink-50 hover:bg-tint-strong grid place-items-center"
           aria-label="Hide link"
           title="Hide link"
         >
@@ -127,7 +127,7 @@ function IssuedLink({
         <button
           type="button"
           onClick={copy}
-          class="h-8 px-2.5 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[12px] font-medium inline-flex items-center gap-1.5 flex-none"
+          class="h-8 px-2.5 rounded-md bg-accent-blue text-on-accent hover:bg-accent-blue/85 text-[12px] font-medium inline-flex items-center gap-1.5 flex-none"
         >
           {copied ? <Check class="w-3.5 h-3.5" /> : null}
           {copied ? "Copied" : "Copy"}
@@ -169,12 +169,12 @@ function SharePortRow({
   };
 
   return (
-    <div class="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 space-y-1">
+    <div class="rounded-md border border-line bg-tint px-3 py-2 space-y-1">
       <div class="flex items-center gap-2 flex-wrap">
         <span class="font-mono text-[12.5px] text-ink-50">:{port}</span>
         {process && <span class="text-[11.5px] text-ink-400 truncate">{process}</span>}
         {shareCount > 0 && (
-          <span class="text-[11px] text-ink-300 rounded px-1.5 py-0.5 bg-white/[0.06] border border-white/10">
+          <span class="text-[11px] text-ink-300 rounded px-1.5 py-0.5 bg-tint-strong border border-line">
             {shareCount} link{shareCount === 1 ? "" : "s"}
           </span>
         )}
@@ -185,7 +185,7 @@ function SharePortRow({
               setTtlHours(Number((event.target as HTMLSelectElement).value))
             }
             aria-label={`Link lifetime for port ${port}`}
-            class="h-8 px-2 rounded-md border border-white/10 bg-black/30 text-[12px] text-ink-100 focus:outline-none focus:border-accent-blue/50"
+            class="h-8 px-2 rounded-md border border-line bg-inset text-[12px] text-ink-100 focus:outline-none focus:border-accent-blue/50"
           >
             {PROJECT_SHARE_TTL_OPTIONS.map((option) => (
               <option key={option.hours} value={String(option.hours)}>
@@ -197,7 +197,7 @@ function SharePortRow({
             type="button"
             onClick={share}
             disabled={busy}
-            class="h-8 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[12px] font-medium disabled:opacity-50"
+            class="h-8 px-3 rounded-md bg-accent-blue text-on-accent hover:bg-accent-blue/85 text-[12px] font-medium disabled:opacity-50"
           >
             {busy ? "Creating…" : "Share"}
           </button>
@@ -258,7 +258,7 @@ function ActiveShareRow({
   };
 
   return (
-    <div class="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 space-y-1">
+    <div class="rounded-md border border-line bg-tint px-3 py-2 space-y-1">
       <div class="flex items-center gap-2 min-w-0">
         <span class="font-mono text-[12.5px] text-ink-50">:{share.port}</span>
         {share.label && (
@@ -274,7 +274,7 @@ function ActiveShareRow({
           type="button"
           onClick={revoke}
           disabled={busy}
-          class="h-8 w-8 rounded text-ink-300 hover:text-accent-red hover:bg-white/[0.08] grid place-items-center disabled:opacity-50"
+          class="h-8 w-8 rounded text-ink-300 hover:text-accent-red hover:bg-tint-strong grid place-items-center disabled:opacity-50"
           aria-label={`Revoke the public link for port ${share.port}`}
           title="Revoke link"
         >

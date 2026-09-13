@@ -60,7 +60,7 @@ export function AiProvidersCard({ onOpenSettings }: { onOpenSettings: () => void
         <button
           type="button"
           onClick={onOpenSettings}
-          class="rounded-md px-2 py-1 text-[11.5px] text-ink-300 transition hover:bg-white/[0.07] hover:text-ink-100"
+          class="rounded-md px-2 py-1 text-[11.5px] text-ink-300 transition hover:bg-tint-strong hover:text-ink-100"
         >
           Manage
         </button>

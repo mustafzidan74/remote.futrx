@@ -5,7 +5,7 @@ import {
 import { AlertCircle, Check, ExternalLink, Loader, Mic, X } from "../primitives/icons";
 
 const inputClass =
-  "w-full h-10 rounded-md bg-black/30 border border-white/10 px-3 text-sm text-ink-100 " +
+  "w-full h-10 rounded-md bg-inset border border-line px-3 text-sm text-ink-100 " +
   "placeholder:text-ink-400 focus:outline-none focus:border-accent-blue";
 
 /**
@@ -19,9 +19,9 @@ export function VoiceInputSettings() {
   const { settings, testResult } = editor;
 
   return (
-    <section class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
-      <header class="px-4 py-3 flex items-start gap-3 border-b border-white/[0.06]">
-        <div class="h-9 w-9 rounded-md bg-white/[0.06] border border-white/10 grid place-items-center flex-none">
+    <section class="rounded-lg border border-line bg-surface overflow-hidden">
+      <header class="px-4 py-3 flex items-start gap-3 border-b border-line">
+        <div class="h-9 w-9 rounded-md bg-tint-strong border border-line grid place-items-center flex-none">
           <Mic class="w-4 h-4 text-ink-200" />
         </div>
         <div class="flex-1 min-w-0">
@@ -47,7 +47,7 @@ export function VoiceInputSettings() {
       </header>
 
       <form onSubmit={editor.save} class="p-3 space-y-3">
-        <label class="flex items-start gap-2.5 rounded-md border border-white/10 bg-white/[0.03] p-2.5 cursor-pointer">
+        <label class="flex items-start gap-2.5 rounded-md border border-line bg-tint p-2.5 cursor-pointer">
           <input
             type="checkbox"
             checked={editor.enabled}
@@ -81,13 +81,13 @@ export function VoiceInputSettings() {
             </span>
           </label>
 
-          <div class="rounded-md border border-white/10 bg-white/[0.03] p-2.5 text-[12px] text-ink-300 leading-relaxed">
+          <div class="rounded-md border border-line bg-tint p-2.5 text-[12px] text-ink-300 leading-relaxed">
             Create a key at{" "}
-            <code class="rounded bg-black/30 border border-white/10 px-1 py-0.5 text-[11.5px] break-all">
+            <code class="rounded bg-inset border border-line px-1 py-0.5 text-[11.5px] break-all">
               platform.openai.com/api-keys
             </code>
             . It is stored at{" "}
-            <code class="rounded bg-black/30 border border-white/10 px-1 py-0.5 text-[11.5px]">
+            <code class="rounded bg-inset border border-line px-1 py-0.5 text-[11.5px]">
               DATA_DIR/transcription.json
             </code>{" "}
             with mode 0600 and is never returned to this page.
@@ -120,8 +120,8 @@ export function VoiceInputSettings() {
                     type="button"
                     onClick={editor.clearApiKey}
                     disabled={editor.saving}
-                    class="inline-flex items-center gap-1 rounded border border-white/10 px-1.5 py-0.5
-                           text-ink-200 hover:bg-white/[0.07] disabled:opacity-50"
+                    class="inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5
+                           text-ink-200 hover:bg-tint-strong disabled:opacity-50"
                   >
                     <X class="w-3 h-3" /> Remove stored key
                   </button>
@@ -210,7 +210,7 @@ export function VoiceInputSettings() {
           <button
             type="submit"
             disabled={editor.saving || editor.loading}
-            class="h-9 rounded-md bg-accent-blue px-3 text-[13px] font-semibold text-ink-900
+            class="h-9 rounded-md bg-accent-blue px-3 text-[13px] font-semibold text-on-accent
                    hover:bg-accent-blue/85 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
             {editor.saving ? "Saving…" : "Save"}
@@ -224,8 +224,8 @@ export function VoiceInputSettings() {
                 ? "Transcribe a one-second silent sample and report the round trip"
                 : "Save an API key first"
             }
-            class="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/10 px-3 text-[13px]
-                   font-medium text-ink-100 hover:bg-white/[0.07] disabled:opacity-50 disabled:cursor-not-allowed transition"
+            class="inline-flex h-9 items-center gap-1.5 rounded-md border border-line px-3 text-[13px]
+                   font-medium text-ink-100 hover:bg-tint-strong disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
             {editor.testing ? <Loader class="h-3.5 w-3.5 animate-spin" /> : <Mic class="h-3.5 w-3.5" />}
             {editor.testing ? "Testing…" : "Test"}

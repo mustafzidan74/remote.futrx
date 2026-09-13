@@ -124,7 +124,7 @@ function WindowRow({
         </span>
       </div>
       {percent != null && (
-        <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
+        <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-tint-strong">
           <div
             class={`h-full rounded-full bg-current ${TONE_TEXT[tone]}`}
             style={{ width: `${Math.min(100, Math.max(2, percent))}%` }}

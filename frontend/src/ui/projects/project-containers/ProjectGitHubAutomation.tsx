@@ -106,7 +106,7 @@ export function ProjectGitHubAutomation({
           maxLength={64}
           autocomplete="off"
           spellcheck={false}
-          class="w-full h-10 rounded-md bg-black/30 border border-white/10 px-3 text-sm text-ink-100
+          class="w-full h-10 rounded-md bg-inset border border-line px-3 text-sm text-ink-100
                  placeholder:text-ink-400 focus:outline-none focus:border-accent-blue font-mono"
         />
         <span class="block text-[11.5px] text-ink-400 leading-relaxed">
@@ -116,7 +116,7 @@ export function ProjectGitHubAutomation({
         </span>
       </label>
 
-      <label class="flex items-start gap-2.5 rounded-md border border-white/10 bg-white/[0.03] p-2.5 cursor-pointer">
+      <label class="flex items-start gap-2.5 rounded-md border border-line bg-tint p-2.5 cursor-pointer">
         <input
           type="checkbox"
           checked={settings?.commentBack === true}
@@ -142,8 +142,8 @@ export function ProjectGitHubAutomation({
       <label
         class={`flex items-start gap-2.5 rounded-md border p-2.5 ${
           isAdmin
-            ? "border-white/10 bg-white/[0.03] cursor-pointer"
-            : "border-white/[0.06] bg-white/[0.02] opacity-70"
+            ? "border-line bg-tint cursor-pointer"
+            : "border-line bg-tint opacity-70"
         }`}
       >
         <input
@@ -171,7 +171,7 @@ export function ProjectGitHubAutomation({
           type="button"
           onClick={() => void run("save", { label: label.trim() })}
           disabled={busy}
-          class="h-10 px-3 rounded-md border border-white/10 text-ink-100 hover:bg-white/[0.06] text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+          class="h-10 px-3 rounded-md border border-line text-ink-100 hover:bg-tint-strong text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
         >
           {action === "save" && <Loader class="w-3.5 h-3.5 animate-spin" />}
           Save label
@@ -185,7 +185,7 @@ export function ProjectGitHubAutomation({
             void run("rotate", { rotate: true });
           }}
           disabled={busy}
-          class="h-10 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+          class="h-10 px-3 rounded-md bg-accent-blue text-on-accent hover:bg-accent-blue/85 text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
         >
           {action === "rotate" && <Loader class="w-3.5 h-3.5 animate-spin" />}
           {configured ? "Rotate secret" : "Generate webhook secret"}
@@ -199,7 +199,7 @@ export function ProjectGitHubAutomation({
               void run("disable", { disable: true });
             }}
             disabled={busy}
-            class="h-10 px-3 rounded-md border border-white/10 text-ink-300 hover:text-accent-red hover:bg-white/[0.06] text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
+            class="h-10 px-3 rounded-md border border-line text-ink-300 hover:text-accent-red hover:bg-tint-strong text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
           >
             {action === "disable" && <Loader class="w-3.5 h-3.5 animate-spin" />}
             Disable webhook
@@ -240,7 +240,7 @@ function IssuedSecret({ secret, onDismiss }: { secret: string; onDismiss: () => 
         <button
           type="button"
           onClick={onDismiss}
-          class="h-7 w-7 rounded-md text-ink-300 hover:text-ink-50 hover:bg-white/[0.08] grid place-items-center flex-none"
+          class="h-7 w-7 rounded-md text-ink-300 hover:text-ink-50 hover:bg-tint-strong grid place-items-center flex-none"
           aria-label="Dismiss"
         >
           <X class="w-3.5 h-3.5" />
@@ -270,7 +270,7 @@ function CopyableValue({ label, value }: { label: string; value: string }) {
   };
 
   return (
-    <div class="rounded-md border border-white/10 bg-black/30 px-3 py-2">
+    <div class="rounded-md border border-line bg-inset px-3 py-2">
       <div class="text-[11px] text-ink-400">{label}</div>
       <div class="mt-0.5 flex items-center gap-2 min-w-0">
         <code class="flex-1 min-w-0 truncate font-mono text-[12.5px] text-ink-100" title={value}>
@@ -279,7 +279,7 @@ function CopyableValue({ label, value }: { label: string; value: string }) {
         <button
           type="button"
           onClick={() => void copy()}
-          class="h-7 px-2 rounded-md border border-white/10 text-ink-300 hover:text-ink-50 hover:bg-white/[0.08] text-[11.5px] inline-flex items-center gap-1.5 flex-none"
+          class="h-7 px-2 rounded-md border border-line text-ink-300 hover:text-ink-50 hover:bg-tint-strong text-[11.5px] inline-flex items-center gap-1.5 flex-none"
         >
           {copied ? <Check class="w-3 h-3" /> : <Copy class="w-3 h-3" />}
           {copied ? "Copied" : "Copy"}
@@ -312,7 +312,7 @@ function DeliveryLog({ deliveries }: { deliveries: GitHubDelivery[] }) {
 
 function DeliveryRow({ delivery }: { delivery: GitHubDelivery }) {
   return (
-    <div class="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2">
+    <div class="rounded-md border border-line bg-tint px-3 py-2">
       <div class="flex items-center gap-2 flex-wrap min-w-0">
         <ChecksBadge tone={deliveryTone(delivery)} text={delivery.outcome} />
         <span class="text-[11.5px] font-mono text-ink-400">{delivery.event}</span>

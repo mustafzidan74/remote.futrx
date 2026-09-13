@@ -91,7 +91,7 @@ export function ProjectMCPSection({
       {available.length === 0 ? (
         <Empty text="No MCP servers reach this project yet." />
       ) : (
-        <div class="divide-y divide-white/[0.05] overflow-hidden rounded-md border border-white/10">
+        <div class="divide-y divide-white/[0.05] overflow-hidden rounded-md border border-line">
           {available.map((entry) => (
             <div key={entry.name} class="flex items-start gap-3 px-3 py-2.5">
               <input
@@ -126,7 +126,7 @@ export function ProjectMCPSection({
                   <button
                     type="button"
                     onClick={() => openEdit(entry)}
-                    class="h-8 rounded px-2 text-[11px] text-ink-300 hover:bg-white/[0.08] hover:text-ink-100"
+                    class="h-8 rounded px-2 text-[11px] text-ink-300 hover:bg-tint-strong hover:text-ink-100"
                   >
                     edit
                   </button>
@@ -135,7 +135,7 @@ export function ProjectMCPSection({
                     disabled={mcp.saving}
                     aria-label={`Remove ${entry.name}`}
                     onClick={() => void run(() => mcp.removeServer(entry.name))}
-                    class="grid h-8 w-8 place-items-center rounded text-ink-300 hover:bg-white/[0.08] hover:text-accent-red disabled:opacity-50"
+                    class="grid h-8 w-8 place-items-center rounded text-ink-300 hover:bg-tint-strong hover:text-accent-red disabled:opacity-50"
                   >
                     <Trash class="h-3.5 w-3.5" />
                   </button>
@@ -167,7 +167,7 @@ export function ProjectMCPSection({
         <button
           type="button"
           onClick={openCreate}
-          class="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/10 px-3 text-[13px] text-ink-200 hover:bg-white/[0.08]"
+          class="inline-flex h-9 items-center gap-1.5 rounded-md border border-line px-3 text-[13px] text-ink-200 hover:bg-tint-strong"
         >
           <Plus class="h-4 w-4" /> Add a server for this project
         </button>

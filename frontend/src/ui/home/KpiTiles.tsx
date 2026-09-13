@@ -142,10 +142,10 @@ function Tile({
   // `block` matters on the button variant: a button centres its content
   // vertically, which would float a tile with no note half a line lower than
   // its neighbours and break the row's shared baseline.
-  const shell = "block rounded-lg border border-white/10 bg-[#101318] p-3.5 text-left";
+  const shell = "block rounded-lg border border-line bg-surface p-3.5 text-left";
   if (!onClick) return <div class={shell}>{body}</div>;
   return (
-    <button type="button" onClick={onClick} class={`${shell} transition hover:bg-white/[0.04]`}>
+    <button type="button" onClick={onClick} class={`${shell} transition hover:bg-tint`}>
       {body}
     </button>
   );

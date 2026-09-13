@@ -436,7 +436,7 @@ export function SettingsPage({
         <SettingsNavigation
           activeTab={activeTab}
           onTabChange={onTabChange}
-          className="theme-submenu-surface hidden md:flex md:flex-col w-56 flex-none overflow-y-auto overflow-x-hidden touch-scroll scrollbar-thin border-r border-white/10 bg-[#0f1217] p-3"
+          className="theme-submenu-surface hidden md:flex md:flex-col w-56 flex-none overflow-y-auto overflow-x-hidden touch-scroll scrollbar-thin border-r border-line bg-surface p-3"
         />
         <SettingsNavigation
           activeTab={activeTab}
@@ -801,7 +801,7 @@ function SettingsNavigation({
 
   return (
     <aside class={className} aria-label="Settings sections">
-      <label class="mb-3 flex h-9 flex-none items-center gap-2 rounded-md border border-white/10 bg-[#0b0d11] px-2.5 transition-colors focus-within:border-accent-blue/70">
+      <label class="mb-3 flex h-9 flex-none items-center gap-2 rounded-md border border-line bg-inset px-2.5 transition-colors focus-within:border-accent-blue/70">
         <Search class="h-4 w-4 flex-none text-ink-400" aria-hidden="true" />
         <input
           value={query}
@@ -817,7 +817,7 @@ function SettingsNavigation({
           <button
             type="button"
             onClick={() => setQuery("")}
-            class="grid h-6 w-6 flex-none place-items-center rounded text-ink-300 hover:bg-white/10 hover:text-ink-100"
+            class="grid h-6 w-6 flex-none place-items-center rounded text-ink-300 hover:bg-tint-active hover:text-ink-100"
             aria-label="Clear settings search"
           >
             <X class="h-3.5 w-3.5" />
@@ -898,8 +898,8 @@ function SettingsTabButton({
       onClick={() => onSelect(id)}
       class={`${mobile ? "h-10 px-3 whitespace-nowrap" : "w-full h-10 px-3"} rounded-md inline-flex items-center gap-2.5 border text-[13px] font-medium transition-colors ${
         active
-          ? "border-white/10 bg-white/[0.08] text-ink-50"
-          : "border-transparent text-ink-300 hover:text-ink-100 hover:bg-white/[0.05]"
+          ? "border-line bg-tint-strong text-ink-50"
+          : "border-transparent text-ink-300 hover:text-ink-100 hover:bg-tint"
       }`}
     >
       <Icon class={`w-4 h-4 flex-none ${active ? "text-accent-blue" : "text-ink-300"}`} />

@@ -25,7 +25,7 @@ export function TwoFactorDisableForm({
           type="text"
           value={code}
           onInput={(event) => setCode((event.currentTarget as HTMLInputElement).value)}
-          class="w-full h-10 rounded-md bg-black/30 border border-white/10 px-3 text-sm text-ink-100 focus:outline-none focus:border-accent-blue"
+          class="w-full h-10 rounded-md bg-inset border border-line px-3 text-sm text-ink-100 focus:outline-none focus:border-accent-blue"
         />
       </label>
       <div class="flex items-center gap-2">
@@ -39,7 +39,7 @@ export function TwoFactorDisableForm({
         <button
           type="button"
           onClick={onCancel}
-          class="h-9 px-2.5 rounded text-ink-300 hover:text-ink-100 hover:bg-white/[0.05] text-[12.5px]"
+          class="h-9 px-2.5 rounded text-ink-300 hover:text-ink-100 hover:bg-tint text-[12.5px]"
         >
           Cancel
         </button>

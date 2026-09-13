@@ -57,7 +57,7 @@ export function ProjectClientMessageSection({
             value={message.selectedId ?? ""}
             onChange={(event) => message.select((event.currentTarget as HTMLSelectElement).value)}
             disabled={message.loading || message.templates.length === 0}
-            class="w-full h-10 rounded-md bg-black/30 border border-white/10 px-2.5 text-sm text-ink-100
+            class="w-full h-10 rounded-md bg-inset border border-line px-2.5 text-sm text-ink-100
                    focus:outline-none focus:border-accent-blue disabled:opacity-50"
           >
             <option value="">
@@ -77,7 +77,7 @@ export function ProjectClientMessageSection({
 
         <div class="flex-none space-y-1.5">
           <span class="block text-xs text-ink-300">Language</span>
-          <div class="inline-flex h-10 overflow-hidden rounded-md border border-white/10">
+          <div class="inline-flex h-10 overflow-hidden rounded-md border border-line">
             {(["en", "ar"] as const).map((code) => (
               <button
                 key={code}
@@ -85,8 +85,8 @@ export function ProjectClientMessageSection({
                 onClick={() => message.setLanguage(code)}
                 class={`h-full px-3 text-[13px] ${
                   message.language === code
-                    ? "bg-accent-blue text-ink-900 font-medium"
-                    : "text-ink-200 hover:bg-white/[0.06]"
+                    ? "bg-accent-blue text-on-accent font-medium"
+                    : "text-ink-200 hover:bg-tint-strong"
                 }`}
               >
                 {code === "en" ? "English" : "العربية"}
@@ -104,7 +104,7 @@ export function ProjectClientMessageSection({
           rows={8}
           dir="auto"
           placeholder="Pick a template, or write the message here."
-          class="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm text-ink-100
+          class="w-full rounded-md bg-inset border border-line px-3 py-2 text-sm text-ink-100
                  placeholder:text-ink-400 focus:outline-none focus:border-accent-blue resize-y"
         />
       </label>
@@ -120,7 +120,7 @@ export function ProjectClientMessageSection({
           type="button"
           onClick={() => void copy()}
           disabled={!hasText}
-          class="h-10 px-3 rounded-md border border-white/10 text-ink-100 hover:bg-white/[0.06]
+          class="h-10 px-3 rounded-md border border-line text-ink-100 hover:bg-tint-strong
                  text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
         >
           {copied ? <Check class="w-3.5 h-3.5" /> : <Copy class="w-3.5 h-3.5" />}
@@ -129,8 +129,8 @@ export function ProjectClientMessageSection({
 
         <a
           href={hasText ? message.mailtoHref() : undefined}
-          class={`h-10 px-3 rounded-md border border-white/10 text-[13px] font-medium inline-flex items-center gap-2 ${
-            hasText ? "text-ink-100 hover:bg-white/[0.06]" : "pointer-events-none opacity-50 text-ink-300"
+          class={`h-10 px-3 rounded-md border border-line text-[13px] font-medium inline-flex items-center gap-2 ${
+            hasText ? "text-ink-100 hover:bg-tint-strong" : "pointer-events-none opacity-50 text-ink-300"
           }`}
         >
           Open in email
@@ -140,7 +140,7 @@ export function ProjectClientMessageSection({
           type="button"
           onClick={() => void message.send()}
           disabled={!hasText || !message.canSend || message.sending}
-          class="h-10 px-3 rounded-md bg-accent-blue text-ink-900 hover:bg-accent-blue/85
+          class="h-10 px-3 rounded-md bg-accent-blue text-on-accent hover:bg-accent-blue/85
                  text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
           title={
             message.canSend
@@ -160,7 +160,7 @@ export function ProjectClientMessageSection({
           type="button"
           onClick={() => void message.publishToPortal()}
           disabled={!hasText || message.publishing}
-          class="h-10 px-3 rounded-md border border-white/10 text-ink-100 hover:bg-white/[0.06]
+          class="h-10 px-3 rounded-md border border-line text-ink-100 hover:bg-tint-strong
                  text-[13px] font-medium disabled:opacity-50 inline-flex items-center gap-2"
           title="Show this message on the client portal page"
         >
@@ -178,7 +178,7 @@ export function ProjectClientMessageSection({
       )}
 
       {message.delivered && (
-        <div class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] text-ink-200">
+        <div class="rounded-md border border-line bg-tint px-3 py-2 text-[12px] text-ink-200">
           {message.delivered.length === 0 ? (
             <span>Nothing was configured to receive it.</span>
           ) : (

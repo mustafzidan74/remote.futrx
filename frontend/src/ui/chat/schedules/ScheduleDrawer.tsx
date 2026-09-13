@@ -219,7 +219,7 @@ export function ScheduleDrawer({
             class={`h-9 rounded-md border px-2.5 text-[12px] inline-flex items-center gap-1.5 disabled:opacity-50
                     ${creating
                       ? "border-accent-blue/35 bg-accent-blue/[0.14] text-accent-blue"
-                      : "border-white/10 bg-white/5 text-ink-200 hover:bg-white/[0.09]"}`}
+                      : "border-line bg-tint text-ink-200 hover:bg-tint-strong"}`}
             title="Create a scheduled task"
           >
             <Plus class="w-3.5 h-3.5" />
@@ -475,7 +475,7 @@ function ScheduledTaskCard({
           class={`h-8 inline-flex items-center gap-1.5 rounded-md border px-2.5 text-[12px] disabled:opacity-45
                   ${historyOpen
                     ? "border-accent-blue/35 bg-accent-blue/[0.14] text-accent-blue"
-                    : "border-white/10 bg-white/[0.04] text-ink-200 hover:bg-white/[0.08]"}`}
+                    : "border-line bg-tint text-ink-200 hover:bg-tint-strong"}`}
           title="Show this task's run history"
         >
           <Clock class="w-3.5 h-3.5" />
@@ -815,7 +815,7 @@ function NewTaskPanel({
                 onDraft(templateToCreateInput(template, draft.timezone || browserTimezone()));
                 setFormError(null);
               }}
-              class="rounded-md border border-white/10 bg-black/25 px-2.5 py-2 text-left hover:border-accent-blue/35 hover:bg-accent-blue/[0.08]"
+              class="rounded-md border border-line bg-inset px-2.5 py-2 text-left hover:border-accent-blue/35 hover:bg-accent-blue/[0.08]"
             >
               <span class="block text-[12px] font-medium text-ink-100">{template.name}</span>
               <span class="mt-0.5 block text-[10.5px] leading-4 text-ink-400">
@@ -834,7 +834,7 @@ function NewTaskPanel({
           type="text"
           value={draft.name}
           onInput={(event) => patch({ name: (event.currentTarget as HTMLInputElement).value })}
-          class="h-8 w-full rounded-md border border-white/10 bg-[#0b0d11] px-2 text-[12.5px] text-ink-100 focus:outline-none focus:border-accent-blue/60"
+          class="h-8 w-full rounded-md border border-line bg-inset px-2 text-[12.5px] text-ink-100 focus:outline-none focus:border-accent-blue/60"
         />
       </RuleField>
       <RuleField label="Prompt">
@@ -843,7 +843,7 @@ function NewTaskPanel({
           onInput={(event) =>
             patch({ prompt: (event.currentTarget as HTMLTextAreaElement).value })}
           rows={6}
-          class="w-full rounded-md border border-white/10 bg-[#0b0d11] px-2 py-1.5 text-[12.5px] leading-5 text-ink-100 focus:outline-none focus:border-accent-blue/60"
+          class="w-full rounded-md border border-line bg-inset px-2 py-1.5 text-[12.5px] leading-5 text-ink-100 focus:outline-none focus:border-accent-blue/60"
         />
       </RuleField>
       <div class="grid grid-cols-2 gap-2">
@@ -853,7 +853,7 @@ function NewTaskPanel({
             value={draft.cron ?? ""}
             onInput={(event) => patch({ cron: (event.currentTarget as HTMLInputElement).value })}
             placeholder="0 6 * * 1"
-            class="h-8 w-full rounded-md border border-white/10 bg-[#0b0d11] px-2 font-mono text-[12px] text-ink-100 focus:outline-none focus:border-accent-blue/60"
+            class="h-8 w-full rounded-md border border-line bg-inset px-2 font-mono text-[12px] text-ink-100 focus:outline-none focus:border-accent-blue/60"
           />
         </RuleField>
         <RuleField label="Timezone">
@@ -863,7 +863,7 @@ function NewTaskPanel({
             onInput={(event) =>
               patch({ timezone: (event.currentTarget as HTMLInputElement).value })}
             placeholder="UTC"
-            class="h-8 w-full rounded-md border border-white/10 bg-[#0b0d11] px-2 text-[12px] text-ink-100 focus:outline-none focus:border-accent-blue/60"
+            class="h-8 w-full rounded-md border border-line bg-inset px-2 text-[12px] text-ink-100 focus:outline-none focus:border-accent-blue/60"
           />
         </RuleField>
       </div>
@@ -887,7 +887,7 @@ function NewTaskPanel({
           type="button"
           onClick={onCancel}
           disabled={saving}
-          class="h-8 rounded-md border border-white/10 bg-white/[0.03] px-2.5 text-[12px] text-ink-300 hover:bg-white/[0.07] disabled:opacity-45"
+          class="h-8 rounded-md border border-line bg-tint px-2.5 text-[12px] text-ink-300 hover:bg-tint-strong disabled:opacity-45"
         >
           Cancel
         </button>

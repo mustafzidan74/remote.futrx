@@ -38,7 +38,7 @@ export function RuleField({
 }
 
 const inputClass =
-  "h-8 w-full rounded-md border border-white/10 bg-[#0b0d11] px-2 text-[12px] text-ink-100 focus:outline-none focus:border-accent-blue/60";
+  "h-8 w-full rounded-md border border-line bg-inset px-2 text-[12px] text-ink-100 focus:outline-none focus:border-accent-blue/60";
 
 // ChainEditor is the "Then run…" picker: which other task in this chat runs
 // after this one settles, on which outcome, and after how long.
@@ -113,7 +113,7 @@ export function ChainEditor({
               <button
                 type="button"
                 onClick={() => onChange(links.filter((_, position) => position !== index))}
-                class="h-8 w-8 flex-none rounded-md border border-white/10 bg-white/[0.03] text-ink-400 grid place-items-center hover:bg-accent-red/[0.08] hover:text-accent-red"
+                class="h-8 w-8 flex-none rounded-md border border-line bg-tint text-ink-400 grid place-items-center hover:bg-accent-red/[0.08] hover:text-accent-red"
                 title="Remove this chain link"
                 aria-label="Remove chain link"
               >
@@ -125,7 +125,7 @@ export function ChainEditor({
             type="button"
             onClick={() =>
               onChange([...links, { taskId: candidates[0].id, when: "success" }])}
-            class="inline-flex h-7 items-center gap-1 rounded-md border border-white/10 bg-white/[0.03] px-2 text-[11.5px] text-ink-300 hover:bg-white/[0.08]"
+            class="inline-flex h-7 items-center gap-1 rounded-md border border-line bg-tint px-2 text-[11.5px] text-ink-300 hover:bg-tint-strong"
           >
             <Plus class="w-3 h-3" /> Add a follow-up
           </button>
@@ -282,7 +282,7 @@ export function ConditionEditor({
                 class={`h-7 rounded-md border px-2 text-[11.5px]
                         ${selected
                           ? "border-accent-blue/35 bg-accent-blue/[0.14] text-accent-blue"
-                          : "border-white/10 bg-white/[0.03] text-ink-300 hover:bg-white/[0.08]"}`}
+                          : "border-line bg-tint text-ink-300 hover:bg-tint-strong"}`}
               >
                 {weekdayName(day)}
               </button>

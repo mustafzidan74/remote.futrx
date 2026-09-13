@@ -78,7 +78,7 @@ export function TestMenu({
                  w-[min(22rem,calc(100vw-1.5rem))] sm:left-auto sm:right-0"
           role="menu"
         >
-          <div class="border-b border-white/10 bg-[#191a1f] px-3 py-2 text-[11px] leading-4 text-ink-400">
+          <div class="border-b border-line bg-surface px-3 py-2 text-[11px] leading-4 text-ink-400">
             Runs Playwright in this project through the <code>playwright-e2e</code> skill and reports
             PASS/FAIL.
           </div>
@@ -87,7 +87,7 @@ export function TestMenu({
             type="button"
             role="menuitem"
             onClick={() => send(AUTO_TEST_PROMPT)}
-            class="w-full px-3 py-2.5 text-left hover:bg-white/[0.07] focus:bg-white/[0.07] focus:outline-none"
+            class="w-full px-3 py-2.5 text-left hover:bg-tint-strong focus:bg-tint-strong focus:outline-none"
           >
             <div class="text-[13px] font-medium text-ink-100">Test the last change</div>
             <div class="mt-0.5 text-[11.5px] leading-4 text-ink-400">
@@ -100,8 +100,8 @@ export function TestMenu({
             role="menuitem"
             onClick={() => setUrlFormOpen((value) => !value)}
             aria-expanded={urlFormOpen}
-            class="w-full border-t border-white/[0.07] px-3 py-2.5 text-left hover:bg-white/[0.07]
-                   focus:bg-white/[0.07] focus:outline-none"
+            class="w-full border-t border-line px-3 py-2.5 text-left hover:bg-tint-strong
+                   focus:bg-tint-strong focus:outline-none"
           >
             <div class="text-[13px] font-medium text-ink-100">Test a URL or flow…</div>
             <div class="mt-0.5 text-[11.5px] leading-4 text-ink-400">
@@ -110,13 +110,13 @@ export function TestMenu({
           </button>
 
           {urlFormOpen && (
-            <div class="border-t border-white/[0.07] bg-white/[0.02] px-3 py-2.5">
+            <div class="border-t border-line bg-tint px-3 py-2.5">
               <input
                 type="text"
                 value={url}
                 placeholder="http://localhost:3000/checkout"
                 onInput={(event) => setUrl((event.currentTarget as HTMLInputElement).value)}
-                class="mb-1.5 h-8 w-full rounded-md border border-white/10 bg-white/[0.04] px-2 text-[12.5px]
+                class="mb-1.5 h-8 w-full rounded-md border border-line bg-tint px-2 text-[12.5px]
                        text-ink-50 placeholder:text-ink-500 focus:border-accent-blue/40 focus:outline-none"
                 aria-label="URL to check"
               />
@@ -131,7 +131,7 @@ export function TestMenu({
                     sendUrlCheck();
                   }
                 }}
-                class="h-8 w-full rounded-md border border-white/10 bg-white/[0.04] px-2 text-[12.5px]
+                class="h-8 w-full rounded-md border border-line bg-tint px-2 text-[12.5px]
                        text-ink-50 placeholder:text-ink-500 focus:border-accent-blue/40 focus:outline-none"
                 aria-label="What to check"
               />
@@ -151,8 +151,8 @@ export function TestMenu({
             type="button"
             role="menuitem"
             onClick={() => send(SMOKE_TEST_PROMPT)}
-            class="w-full border-t border-white/[0.07] px-3 py-2.5 text-left hover:bg-white/[0.07]
-                   focus:bg-white/[0.07] focus:outline-none"
+            class="w-full border-t border-line px-3 py-2.5 text-left hover:bg-tint-strong
+                   focus:bg-tint-strong focus:outline-none"
           >
             <div class="text-[13px] font-medium text-ink-100">Test the whole app</div>
             <div class="mt-0.5 text-[11.5px] leading-4 text-ink-400">

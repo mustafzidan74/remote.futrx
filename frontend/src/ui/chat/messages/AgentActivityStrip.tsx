@@ -52,7 +52,7 @@ export function AgentActivityStrip({
           <button
             type="button"
             onClick={() => setOpen((current) => !current)}
-            class="grid h-5 w-5 flex-none place-items-center rounded text-ink-300 hover:bg-white/[0.08] hover:text-ink-50"
+            class="grid h-5 w-5 flex-none place-items-center rounded text-ink-300 hover:bg-tint-strong hover:text-ink-50"
             aria-expanded={open}
             aria-label={open ? "Hide reasoning" : "Show reasoning"}
           >
@@ -101,7 +101,7 @@ export function AgentActivityStrip({
             type="button"
             onClick={toggleThinking}
             class={`h-6 flex-none rounded px-1.5 text-[11px] font-medium sm:px-2
-                    ${showThinking ? "bg-white/[0.10] text-ink-100" : "text-ink-300 hover:bg-white/[0.07] hover:text-ink-100"}`}
+                    ${showThinking ? "bg-tint-active text-ink-100" : "text-ink-300 hover:bg-tint-strong hover:text-ink-100"}`}
             aria-pressed={showThinking}
             aria-label="Show thinking"
             title="Stream the model's reasoning into this strip"
@@ -133,7 +133,7 @@ export function AgentActivityStrip({
           ref={reasoningRef}
           dir="auto"
           class="bidi-auto max-h-[10.5rem] overflow-y-auto scrollbar-thin whitespace-pre-wrap break-words
-                 border-t border-white/10 px-2.5 py-2 text-[11.5px] leading-[1.05rem] text-ink-300"
+                 border-t border-line px-2.5 py-2 text-[11.5px] leading-[1.05rem] text-ink-300"
         >
           {view.reasoning}
         </pre>

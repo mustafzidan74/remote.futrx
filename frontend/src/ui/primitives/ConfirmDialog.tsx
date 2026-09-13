@@ -126,7 +126,7 @@ export function ConfirmDialog({
             disabled={pending}
             class={`inline-flex items-center gap-[7px] rounded-lg border px-[15px] py-2 text-[13px] font-semibold transition-colors disabled:cursor-not-allowed disabled:border-line disabled:bg-tint-strong disabled:text-ink-400 ${
               danger
-                ? "border-accent-red/40 bg-accent-red text-ink-900 hover:bg-accent-red/90"
+                ? "border-accent-red/40 bg-accent-red text-on-accent hover:bg-accent-red/90"
                 : "border-accent-blue/40 bg-accent-blue text-on-accent hover:bg-accent-blue/90"
             }`}
           >
