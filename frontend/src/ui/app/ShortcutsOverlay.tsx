@@ -7,12 +7,13 @@ import { Keyboard, X } from "../primitives/icons";
  *
  * It lists only shortcuts that exist. A help sheet that advertises a key which
  * does nothing is worse than no help sheet, so every row here maps to a live
- * handler: Ctrl/Cmd+K in `CommandPalette`, Ctrl/Cmd+Enter in `PromptTextarea`,
+ * handler: Ctrl/Cmd+. in `CommandPalette`, Ctrl/Cmd+Enter in `PromptTextarea`,
  * Escape in `useChatKeyboardShortcuts`, and the roving tabindex in the
  * settings and project navigations.
  */
 const SHORTCUTS: Array<{ keys: string[]; description: string }> = [
-  { keys: ["Ctrl", "K"], description: "Open the command palette" },
+  { keys: ["Ctrl", "K"], description: "Search chats and projects" },
+  { keys: ["Ctrl", "."], description: "Open the action palette" },
   { keys: ["Ctrl", "Enter"], description: "Send the prompt from the composer" },
   { keys: ["Esc"], description: "Stop the running agent, or close the open menu" },
   { keys: ["?"], description: "Show this list" },

@@ -9,7 +9,7 @@ import {
 import { Command, MessageSquare, Search, Settings, Folder, Zap } from "../primitives/icons";
 
 /**
- * Ctrl/Cmd+K: one keystroke to anything.
+ * Ctrl/Cmd+.: one keystroke to anything.
  *
  * The workspace hides most of itself behind navigation — a chat lives inside a
  * project group inside the sidebar, a settings page inside a tab list inside a
@@ -26,11 +26,13 @@ export function CommandPalette({ items }: { items: CommandItem[] }) {
   const results = useMemo(() => filterCommands(items, state.query), [items, state.query]);
   const highlight = results.length === 0 ? 0 : Math.min(state.highlight, results.length - 1);
 
-  // Ctrl/Cmd+K works from anywhere, including inside the composer: it is the
+  // Ctrl/Cmd+. works from anywhere, including inside the composer: it is the
   // one shortcut that has to interrupt whatever the operator is typing into.
+  // Ctrl/Cmd+K and +P belong to the chat search palette, so the action
+  // palette takes its own chord rather than opening underneath it.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key.toLowerCase() !== "k" || !(event.ctrlKey || event.metaKey)) return;
+      if (event.key !== "." || !(event.ctrlKey || event.metaKey) || event.shiftKey || event.altKey) return;
       event.preventDefault();
       dispatch({ type: "toggle" });
     }
