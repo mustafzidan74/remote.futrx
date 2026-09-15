@@ -100,6 +100,19 @@ func readsAsPlainWords(text string) bool {
 
 var plainWords = regexp.MustCompile(`^[A-Za-z]+(?:,? +[A-Za-z]+)*[.]?$`)
 
+// textName matches identifiers whose string value is written for people:
+// DetailLXD, Reason, ActionLabel, HealthMessage.
+var textName = regexp.MustCompile(`(Detail|Reason|Message|Label|Title|Hint|Summary|Description|Instructions|Headline|Caption|Note)`)
+
+// namedText reports a lower-case phrase assigned to a text-named identifier.
+func namedText(name, text string) bool {
+	if !textName.MatchString(name) {
+		return false
+	}
+	literal := strings.TrimSpace(text)
+	return plainWords.MatchString(literal) && len(strings.Fields(literal)) >= 2
+}
+
 // fromFormat turns a Printf format into key text: %d → {n}, other verbs → {s}.
 func fromFormat(format string) string {
 	return verb.ReplaceAllStringFunc(format, func(match string) string {
@@ -218,6 +231,39 @@ func (e *extractor) file(path string) error {
 		switch n := node.(type) {
 		case *ast.ImportSpec, *ast.Field:
 			return false // import paths, struct tags
+		case *ast.ValueSpec:
+			for index, value := range n.Values {
+				if index < len(n.Names) {
+					if text, ok := stringValue(value); ok && namedText(n.Names[index].Name, text) {
+						handled[value] = true
+						e.add(text, value.Pos())
+					}
+				}
+			}
+		case *ast.KeyValueExpr:
+			if key, ok := n.Key.(*ast.Ident); ok {
+				if text, ok := stringValue(n.Value); ok && namedText(key.Name, text) {
+					handled[n.Value] = true
+					e.add(text, n.Value.Pos())
+				}
+			}
+		case *ast.AssignStmt:
+			for index, value := range n.Rhs {
+				if index >= len(n.Lhs) {
+					break
+				}
+				name := ""
+				switch target := n.Lhs[index].(type) {
+				case *ast.Ident:
+					name = target.Name
+				case *ast.SelectorExpr:
+					name = target.Sel.Name
+				}
+				if text, ok := stringValue(value); ok && namedText(name, text) {
+					handled[value] = true
+					e.add(text, value.Pos())
+				}
+			}
 		case *ast.CallExpr:
 			name := calleeName(n)
 			if logCalls.MatchString(name) && !isErrorCall(name) {
