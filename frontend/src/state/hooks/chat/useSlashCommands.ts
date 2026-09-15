@@ -10,6 +10,7 @@ import type { Snippet } from "../../../models/snippet";
 import { projectPreviewUrlService } from "../../../services/projects/projectPreviewUrlService";
 import {
   DEPLOY_FALLBACK_PROMPT,
+  PREVIEW_PROMPT,
   REVIEW_PROMPT,
   applySlashCommand,
   buildSlashRegistry,
@@ -356,7 +357,10 @@ export function useSlashCommands({
       const apps = await projectApi.listApps(id);
       const port = apps.map((app) => app.port).filter(isShareablePort).sort((a, b) => a - b)[0];
       if (port === undefined) {
-        report({ tone: "error", text: "No app is listening in this project yet." });
+        // Nothing to open yet: ask the agent to serve its work instead of
+        // leaving the user to start a server themselves.
+        insertText(PREVIEW_PROMPT);
+        report({ tone: "info", text: "No app is running yet. A preview request is ready in the composer — send it." });
         return;
       }
       const url = projectPreviewUrlService.build(project.slug, port, PUBLIC_HOSTNAME);
@@ -371,7 +375,7 @@ export function useSlashCommands({
     } finally {
       if (alive.current) setBusy(false);
     }
-  }, [project, report, requireProject]);
+  }, [insertText, project, report, requireProject]);
 
   const runScreenshot = useCallback(
     async (arg: string) => {

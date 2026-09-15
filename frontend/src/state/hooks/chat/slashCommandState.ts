@@ -109,8 +109,8 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommand[] = [
     group: "builtin",
     action: "preview",
     title: "/preview",
-    hint: "Open this project's running app in a new tab.",
-    keywords: "open app port browser",
+    hint: "Open this project's running app, or ask the agent to start one and send the link.",
+    keywords: "open app port browser serve link",
   },
   {
     id: "builtin:screenshot",
@@ -212,6 +212,16 @@ export const DEPLOY_PLAYBOOK_IDS = ["deploy-hestia", "deploy-to-hestia"];
 
 /** The prompt `/review` puts in the composer. */
 export const REVIEW_PROMPT = "Review the last change.";
+
+/**
+ * What `/preview` puts in the composer when nothing of the project's own is
+ * listening yet: one short request for the agent to make its work viewable.
+ * The how (files preview, durable systemd service, routed URL) lives in the
+ * platform instructions every agent already has.
+ */
+export const PREVIEW_PROMPT =
+  "Make what you built viewable for me now and send me the preview link. " +
+  "Serve it yourself as the platform instructions describe; do not ask me to run anything.";
 
 /**
  * The prompt `/deploy` falls back to when neither a deploy playbook nor a
