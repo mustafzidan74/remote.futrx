@@ -150,6 +150,28 @@ paths, environment variables, keyboard keys (Ctrl, Enter, Esc).
 | theme | السمة | |
 | not configured | غير مهيأ | |
 | invalid / required / not found / unavailable | غير صالح / مطلوب / غير موجود / غير متاح | |
+| job / pooled job | مهمة / مهمة المجموعة | |
+| credentials | بيانات الاعتماد | |
+| checkpoint | نقطة الاستعادة | |
+| subagent | وكيل فرعي | |
+| dependencies | الاعتماديات | |
+| clipboard | الحافظة | |
+| capabilities (agent) | قدرات | |
+| discovery (models, modes) | اكتشاف | |
+| degraded / critical | متدهور / حرج | health |
+| queued / cooling down | في قائمة الانتظار / في فترة تهدئة | |
+| reprovision | إعادة التهيئة | |
+| staging copy / dry run | النسخة التجريبية / تشغيل تجريبي | |
+| ahead / behind (git) | متقدم بـ / متأخر بـ | |
+| setup pending / done / failed | بانتظار الإعداد / اكتمل الإعداد / فشل الإعداد | |
+| service worker, slug, upstream, Token Plan | keep Latin | |
+| Lighthouse metrics | Google's Arabic names | e.g. سرعة عرض المحتوى الأول |
+
+## Counts that do not agree
+
+Where a count reaches a sentence as text (`{s}`) or several counts are joined,
+write "label: number" (حرجة: 3 · تحذيرات: 1) so no noun has to agree with a
+number. Use a plural object only on a `{n}` key.
 
 ## Split sentences that depend on each other
 
@@ -159,7 +181,7 @@ paths, environment variables, keyboard keys (Ctrl, Enter, Esc).
 - GitHub webhook events: the word «أحداث» lives in the `; send the` piece, so
   `events.` is just `.`.
 
-## Known source issues (phase 3)
+## Known source issues
 
 Plurals glued in code render wrong in Arabic until the source uses one `{n}` key:
 ProjectResourceLimits.tsx (`"s"` after "running container"),

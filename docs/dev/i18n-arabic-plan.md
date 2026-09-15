@@ -1,7 +1,7 @@
 # Arabic UI plan (translation + RTL)
 
-> **Status:** phase 1 implemented on `feat/i18n-ar` — see "Phase 1 as built"
-> at the end.
+> **Status:** phases 1–6 implemented on `feat/i18n-ar` — see "Phase 1 as
+> built" and "Phases 2–6 as built" at the end.
 
 Execution plan for a fully Arabic interface of the fork. Written to be
 followed by an implementation session; each phase ends in something
@@ -241,3 +241,89 @@ Phases 4–5 are small. Total: roughly a week of sessions with review gaps.
   (in CI, informational). Sentences split by inline elements appear as
   fragments (`". Remote stores it privately…"`); phase 2 translates them as
   fragments or wraps the sentence in a fork-owned component.
+
+## Phases 2–6 as built
+
+### Catalog files (`frontend/src/i18n/catalog/`)
+
+| File | Holds | Checked against |
+| --- | --- | --- |
+| `en.keys.json` | interface strings, from `npm run i18n:extract` | the frontend source |
+| `en.server-keys.json` | server text the UI shows, from `go run ./cmd/i18n-keys` in `backend/` | the Go source (CI diffs it) |
+| `ar.json` | Arabic for interface strings | `en.keys.json` |
+| `ar.errors.json` | Arabic for server text: errors, alerts, health reasons, agent instructions | `en.server-keys.json` |
+| `ar.formats.json` | text computed at runtime that no scan can list: relative ages ("3w", "5m ago"), status words, joined headlines | — |
+| `ar.untranslated.json` | keys that stay English on purpose: product names, code, agent prompts, search keywords, developer errors | both key lists |
+
+`npm run i18n:check -- --strict` (a CI gate) fails when a key has no Arabic
+entry and is not listed as English on purpose, when an entry no longer matches
+the source, or when either key list is stale. After an upstream sync:
+
+    cd frontend && npm run i18n:extract
+    cd ../backend && go run ./cmd/i18n-keys > ../frontend/src/i18n/catalog/en.server-keys.json
+    cd ../frontend && npm run i18n:check -- --all
+
+### Runtime (`translate.ts`)
+
+- **Patterns.** A key may hold `{s}` text slots besides `{n}` numbers. After an
+  exact miss the shim matches patterns (most literal text first, cached per
+  key) and translates each capture on its own, so "active {s}" and
+  "{n} d ago" compose into one Arabic phrase.
+- **Text runs.** Adjacent text children (`{count} link{count === 1 ? "" : "s"}`)
+  are looked up as one sentence before piece by piece.
+- **Dot-joined lines.** A slot never captures across " · "; a line with no
+  entry of its own is translated part by part.
+- **Bidi isolation.** Untranslated Latin text reaching a host element in the
+  Arabic interface is wrapped in U+2068/U+2069, so "exit: killed" keeps its
+  order. Component props are left untouched (they may be compared).
+- **Native dialogs.** `alert`/`confirm`/`prompt` messages go through `t()`.
+
+### Extractor (`tools/extract.ts`, `backend/cmd/i18n-keys`)
+
+Besides JSX text and text props, both extractors list prose-shaped strings
+wherever they sit (capitalised or punctuated), lower-case phrases beside a slot
+or in text-named identifiers, templates and `+` concatenations as pattern keys
+(`%d` → `{n}`, other verbs → `{s}` on the Go side), and glued plural endings as
+both spellings. Code-shaped strings, machine attributes, comparisons, log calls,
+SQL and wrapped errors are skipped.
+
+### RTL (phase 3)
+
+- `postcss.config.cjs` gives every `--tw-translate-x` utility a negated
+  `[dir="rtl"]` twin in the same media query, so drawers anchored at the right
+  by rtlcss also slide out to the right.
+- `arabic.css`: directional icons (chevrons, sign-out, Enter) mirror by path,
+  except inside `[dir="ltr"]` islands; `truncate` labels use
+  `unicode-bidi: plaintext` so English titles keep their beginning; Cairo comes
+  first in the monospace stack so Arabic in `font-mono` fields joins.
+- Fork-owned `AuditLogSettings.tsx` marks emails, action codes, targets and IPs
+  `dir="ltr"`.
+
+### Formatting (phase 4)
+
+`format.ts` points `Date#toLocale*String` and `Number#toLocaleString` calls that
+name no locale at `ar-EG-u-nu-latn` under Arabic (Latin digits); calls that name
+a locale are untouched. Compact ages ("3w", "22 d") are keys through the
+one-letter-unit rule in `normalize.ts` and entries in `ar.formats.json`.
+
+### Shell (phase 5)
+
+`public/offline.html` switches to Arabic when the remembered choice (or the
+browser, under "auto") is Arabic. The product name in the title and manifest
+stays as is.
+
+### Notifications (phase 6)
+
+`notifications.json` gains `language` ("" English, "ar"), set in Settings →
+Notifications. Telegram and WhatsApp headlines, field labels, status words,
+captions and the weekly report are written in it (`service/notify/locale.go`).
+Agent output, project names, health reasons composed elsewhere and the webhook
+payload are sent as they are.
+
+### Known limits
+
+- Health reasons and alert details built from several server-side parts are
+  English where their parts have no entry.
+- Text an upstream component composes in ways the extractors cannot see shows
+  English until a pattern entry is added; the screenshot pass is the check.
+- A locale switch remounts the app (it returns to the chat view).
