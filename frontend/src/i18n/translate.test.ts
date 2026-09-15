@@ -145,3 +145,17 @@ test("a line of parts joined by a middle dot is translated part by part", () => 
   assert.equal(t("Nothing · here"), "Nothing · here");
   setActiveTranslations("en", {});
 });
+
+test("a pattern is not applied when its slot would keep an English phrase", () => {
+  setActiveTranslations("ar", {
+    "{s} responded {n}: {s}": "رد {s} بالحالة {n}: {s}",
+    "{s} is down": "{s} متوقف",
+  });
+  const error = "no provider in the pool can take this request: the provider responded 404: model missing";
+  // Left whole: English in order beats Arabic words scattered through it.
+  assert.equal(t(error), error);
+  // A value in the slot is still fine.
+  assert.equal(t("shop.example.com is down"), "shop.example.com متوقف");
+  assert.equal(t("Claude Opus is down"), "Claude Opus متوقف");
+  setActiveTranslations("en", {});
+});

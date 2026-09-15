@@ -91,7 +91,8 @@ function lookup(text: string): string | null {
     return keyed.leading + fill(pick(entry, keyed.values[0]), keyed.values) + keyed.trailing;
   }
   const match = matchPattern(keyed.key);
-  if (match) return keyed.leading + renderPattern(match, keyed) + keyed.trailing;
+  const rendered = match ? renderPattern(match, keyed) : null;
+  if (rendered !== null) return keyed.leading + rendered + keyed.trailing;
   return lookupSegments(text);
 }
 
@@ -193,11 +194,26 @@ function matchPattern(key: string): PatternMatch | null {
  * `{n}`) or to a slot's capture (they go back into that capture before it is
  * translated in turn). Walking the key in order tells which is which.
  */
-function renderPattern(match: PatternMatch, keyed: KeyedText): string {
+/**
+ * An English phrase, not a value: three or more lower-case words ("the
+ * provider responded"). A name, model id or number never looks like this.
+ */
+function isEnglishPhrase(text: string): boolean {
+  if (/[\u0600-\u06FF]/.test(text)) return false;
+  return (text.match(/(?:^|\s)[a-z]{2,}(?=[\s,.:;]|$)/g) ?? []).length >= 3;
+}
+
+/**
+ * The pattern's translation with its slots filled, or null when a slot would
+ * leave an English phrase inside the Arabic: a long server error matched by a
+ * short pattern reads worse half-translated than left whole in English.
+ */
+function renderPattern(match: PatternMatch, keyed: KeyedText): string | null {
   const { pattern, captures } = match;
   const ownValues: string[] = [];
   const texts: string[] = [];
   let valueIndex = 0;
+  let untranslatedPhrase = false;
   const takeNumbers = (segment: string, into: string[]) => {
     let at = segment.indexOf(NUMBER_PLACEHOLDER);
     while (at !== -1) {
@@ -210,8 +226,12 @@ function renderPattern(match: PatternMatch, keyed: KeyedText): string {
     if (index >= captures.length) return;
     const captureValues: string[] = [];
     takeNumbers(captures[index], captureValues);
-    texts.push(t(fill(captures[index], captureValues)));
+    const capture = fill(captures[index], captureValues);
+    const translated = t(capture);
+    if (isEnglishPhrase(translated)) untranslatedPhrase = true;
+    texts.push(translated);
   });
+  if (untranslatedPhrase) return null;
   const entry = (active as ActiveTranslations).catalog[pattern.key] as CatalogEntry;
   return fill(pick(entry, ownValues[0]), ownValues, texts);
 }
