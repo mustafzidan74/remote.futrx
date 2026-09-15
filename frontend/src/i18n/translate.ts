@@ -39,7 +39,12 @@ export function t(text: string): string {
   if (!active) return text;
   const keyed = keyOf(text);
   if (!keyed) return text;
-  if (active.locale === "qps") return `${keyed.leading}⟦${text.trim()}⟧${keyed.trailing}`;
+  if (active.locale === "qps") {
+    // A component can pass a prop it received on to a host element, so the
+    // same string may reach the shim twice; bracket it once.
+    const core = text.trim();
+    return core.startsWith("⟦") ? text : `${keyed.leading}⟦${core}⟧${keyed.trailing}`;
+  }
   const entry = active.catalog[keyed.key];
   if (entry === undefined) return text;
   const template =

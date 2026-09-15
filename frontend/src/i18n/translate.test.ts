@@ -79,6 +79,7 @@ test("content marked as someone's words or as code is never translated", () => {
 test("the pseudo-locale brackets every string the shim reaches", () => {
   setActiveTranslations("qps", {});
   assert.equal(t("  Anything at all "), "  ⟦Anything at all⟧ ");
+  assert.equal(t(t("Twice through the shim")), "⟦Twice through the shim⟧");
   assert.equal(t("42"), "42");
   setActiveTranslations("en", {});
 });
