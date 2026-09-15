@@ -19,6 +19,11 @@ const keysFile = path.join(catalogDir, "en.keys.json");
 const arabicFile = path.join(catalogDir, "ar.json");
 // Keys that stay English on purpose: product names, code, example values.
 const untranslatedFile = path.join(catalogDir, "ar.untranslated.json");
+// Server text the interface shows, listed by `go run ./cmd/i18n-keys` in
+// backend/, and its Arabic (errors, alerts) plus runtime-computed text.
+const serverKeysFile = path.join(catalogDir, "en.server-keys.json");
+const serverArabicFile = path.join(catalogDir, "ar.errors.json");
+const formatsFile = path.join(catalogDir, "ar.formats.json");
 
 // The i18n machinery itself, dev-only previews and tests are not interface.
 const SKIPPED_DIRS = new Set([path.join(srcDir, "i18n"), path.join(srcDir, "dev")]);
@@ -90,8 +95,13 @@ const untranslated = new Set(readJson<string[]>(untranslatedFile, []));
 const keySet = new Set(keys);
 
 const stale = committed.length !== keys.length || committed.some((key, index) => key !== keys[index]);
-const missing = keys.filter((key) => !(key in arabic) && !untranslated.has(key));
-const orphaned = [...Object.keys(arabic), ...untranslated].filter((key) => !keySet.has(key));
+const formats = readJson<Record<string, unknown>>(path.join(catalogDir, "ar.formats.json"), {});
+const missing = keys.filter((key) => !(key in arabic) && !(key in formats) && !untranslated.has(key));
+const serverKeySet = new Set(readJson<string[]>(serverKeysFile, []));
+// ar.untranslated.json serves both lists, so an entry is stale only when neither has it.
+const orphaned = [...Object.keys(arabic), ...[...untranslated].filter((key) => !serverKeySet.has(key))].filter(
+  (key) => !keySet.has(key),
+);
 const doubled = [...untranslated].filter((key) => key in arabic);
 
 console.log(`interface strings: ${keys.length}`);
@@ -102,7 +112,23 @@ console.log(
 console.log(`unkeyable sites:   ${unkeyable.length} (npm run i18n:extract -- --unkeyable)`);
 if (stale) console.log("en.keys.json is out of date: run npm run i18n:extract");
 
+// Server text is covered by any catalog the runtime merges.
+const serverKeys = readJson<string[]>(serverKeysFile, []);
+const everyArabic = new Set([
+  ...Object.keys(readJson<Record<string, unknown>>(serverArabicFile, {})),
+  ...Object.keys(formats),
+  ...Object.keys(arabic),
+  ...untranslated,
+]);
+const serverMissing = serverKeys.filter((key) => !everyArabic.has(key));
+console.log(`server strings:    ${serverKeys.length}, ${serverMissing.length} missing (refresh the list: cd backend && go run ./cmd/i18n-keys)`);
+
 const limit = flags.includes("--all") ? Infinity : 40;
+if (serverMissing.length) {
+  console.log("\nserver text missing from ar.errors.json:");
+  for (const key of serverMissing.slice(0, limit)) console.log(`  ${JSON.stringify(key)}`);
+  if (serverMissing.length > limit) console.log(`  ... ${serverMissing.length - limit} more (--all)`);
+}
 if (missing.length) {
   console.log("\nmissing from ar.json:");
   for (const key of missing.slice(0, limit)) console.log(`  ${JSON.stringify(key)}  ${where(byKey.get(key))}`);
@@ -117,4 +143,6 @@ if (orphaned.length) {
   for (const key of orphaned.slice(0, limit)) console.log(`  ${JSON.stringify(key)}`);
 }
 
-process.exit(strict && (stale || missing.length > 0 || orphaned.length > 0 || doubled.length > 0) ? 1 : 0);
+process.exit(
+  strict && (stale || missing.length > 0 || orphaned.length > 0 || doubled.length > 0 || serverMissing.length > 0) ? 1 : 0,
+);

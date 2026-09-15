@@ -245,23 +245,33 @@ function AuditTable({ entries }: { entries: AuditEntry[] }) {
                 </span>
               </AuditCell>
               <AuditCell>
-                <span class="text-ink-100 break-all" title={entry.actor.sub ?? ""}>
-                  {entry.actor.email || "system"}
-                </span>
+                {entry.actor.email ? (
+                  <span class="text-ink-100 break-all" title={entry.actor.sub ?? ""} dir="ltr">
+                    {entry.actor.email}
+                  </span>
+                ) : (
+                  <span class="text-ink-100" title={entry.actor.sub ?? ""}>
+                    system
+                  </span>
+                )}
                 {entry.actor.isAdmin && (
-                  <span class="ml-1.5 inline-flex items-center h-4 px-1 rounded text-[10px] text-accent-blue bg-accent-blue/[0.14]">
+                  <span class="ms-1.5 inline-flex items-center h-4 px-1 rounded text-[10px] text-accent-blue bg-accent-blue/[0.14]">
                     admin
                   </span>
                 )}
               </AuditCell>
               <AuditCell>
-                <span class="text-ink-100 whitespace-nowrap">{entry.action}</span>
+                <span class="text-ink-100 whitespace-nowrap" dir="ltr">
+                  {entry.action}
+                </span>
               </AuditCell>
               <AuditCell>
                 <AuditTargetCell entry={entry} />
               </AuditCell>
               <AuditCell>
-                <span class="whitespace-nowrap text-ink-300">{entry.ip || "—"}</span>
+                <span class="whitespace-nowrap text-ink-300" dir="ltr">
+                  {entry.ip || "—"}
+                </span>
               </AuditCell>
               <AuditCell>
                 <AuditStatus entry={entry} />
@@ -276,7 +286,7 @@ function AuditTable({ entries }: { entries: AuditEntry[] }) {
 
 function AuditHeaderCell({ children }: { children: ComponentChildren }) {
   return (
-    <th class="text-left px-3 py-1.5 font-semibold border-b border-line text-ink-100 whitespace-nowrap">
+    <th class="text-start px-3 py-1.5 font-semibold border-b border-line text-ink-100 whitespace-nowrap">
       {children}
     </th>
   );
@@ -290,7 +300,7 @@ function AuditTargetCell({ entry }: { entry: AuditEntry }) {
   const label = entry.target?.name || entry.target?.id;
   if (!label) return <span class="text-ink-300">—</span>;
   return (
-    <span class="text-ink-200 break-all" title={entry.target?.id ?? ""}>
+    <span class="text-ink-200 break-all" title={entry.target?.id ?? ""} dir="ltr">
       {entry.target?.type ? `${entry.target.type}: ` : ""}
       {label}
     </span>

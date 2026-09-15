@@ -2,8 +2,8 @@
   "now": "الآن",
   "{n}m": "{n} د",
   "{n}h": "{n} س",
-  "{n}d": "{n} ي",
-  "{n}w": "{n} أسب",
+  "{n}d": "{n} يوم",
+  "{n}w": "{n} أسبوع",
   "{n}y": "{n} سنة",
   "{n}s ago": {
     "one": "منذ ثانية",
@@ -84,9 +84,25 @@
     "other": "{n} دقيقة"
   },
   "{n} h": "{n} س",
-  "{n} d": "{n} ي",
+  "{n} d": "{n} يوم",
   "light": "الفاتحة",
   "dark": "الداكنة",
   "less than": "أقل من",
-  "more than": "أكثر من"
+  "more than": "أكثر من",
+  "project": "المشروع",
+  "user": "المستخدم",
+  "provider": "المزوّد",
+  "model": "النموذج",
+  "day": "اليوم",
+  "{n} to review": "للمراجعة: {n}",
+  "{n} warning": "تحذيرات: {n}",
+  "{n} warning · {n} to review": "تحذيرات: {n} · للمراجعة: {n}",
+  "{n} warnings": "تحذيرات: {n}",
+  "{n} warnings · {n} to review": "تحذيرات: {n} · للمراجعة: {n}",
+  "{n} critical": "حرجة: {n}",
+  "{n} critical · {n} to review": "حرجة: {n} · للمراجعة: {n}",
+  "{n} critical · {n} warning": "حرجة: {n} · تحذيرات: {n}",
+  "{n} critical · {n} warning · {n} to review": "حرجة: {n} · تحذيرات: {n} · للمراجعة: {n}",
+  "{n} critical · {n} warnings": "حرجة: {n} · تحذيرات: {n}",
+  "{n} critical · {n} warnings · {n} to review": "حرجة: {n} · تحذيرات: {n} · للمراجعة: {n}"
 }

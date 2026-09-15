@@ -49,6 +49,10 @@ jobs:
           fi
       - name: Go vet
         run: go vet ./...
+      # The Arabic interface translates server text by its English; the list
+      # the frontend catalog check reads must match the source.
+      - name: Server text list is current
+        run: go run ./cmd/i18n-keys | diff -u ../frontend/src/i18n/catalog/en.server-keys.json -
       - name: Go test
         run: go test ./...
       - name: Go build

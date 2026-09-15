@@ -371,7 +371,11 @@ export function extractFromSource(file: string, source: string): ExtractionResul
     }
     if (outer !== node) return;
     if (ts.isTemplateExpression(node) || isConcatenation(node)) {
-      const keys = compose(node).filter((text) => readsAsProse(text.replace(/\{[ns]\}/g, "0")));
+      // A glued plural ending (`run${n === 1 ? "" : "s"}`) only ever builds
+      // text for people, capitalised or not.
+      const gluedPlural =
+        ts.isTemplateExpression(node) && node.templateSpans.some((span) => suffixAlternatives(span.expression) !== null);
+      const keys = compose(node).filter((text) => gluedPlural || readsAsProse(text.replace(/\{[ns]\}/g, "0")));
       if (keys.length) recordComposed(node, keys);
     } else if (readsAsProse(node.text)) {
       record(node.text, node);
