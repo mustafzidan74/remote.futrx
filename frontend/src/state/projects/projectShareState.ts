@@ -12,7 +12,8 @@ export const DEFAULT_SHARE_TTL_HOURS = 24;
 /** The agent browser's noVNC port is never shareable; the backend refuses it too. */
 export const AGENT_BROWSER_PORT = 6080;
 /** Platform plumbing ports (IDE proxy, code-server, CDP) are never shareable either. */
-export const RESERVED_SHARE_PORTS: ReadonlySet<number> = new Set([AGENT_BROWSER_PORT, 8842, 8081, 9222]);
+/** 8843 is the files preview: it serves all of /workspace, .env included. */
+export const RESERVED_SHARE_PORTS: ReadonlySet<number> = new Set([AGENT_BROWSER_PORT, 8842, 8081, 9222, 8843]);
 
 const MIN_SHARE_PORT = 1024;
 const MAX_SHARE_PORT = 65535;

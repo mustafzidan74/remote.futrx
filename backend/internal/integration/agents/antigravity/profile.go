@@ -44,8 +44,19 @@ const (
 // releaseBaseURL contains version-addressed Antigravity CLI assets.
 const releaseBaseURL = "https://github.com/google-antigravity/antigravity-cli/releases/download"
 
+// containerInstructions is agy's global rules file. Verified on this platform:
+// a rule placed there is followed in a workspace that has no rules of its own.
+const (
+	containerInstructions     = "/root/.gemini/GEMINI.md"
+	containerInstructionsHash = "/root/.gemini/.agents-md.sha256"
+)
+
 var antigravityProfile = provisioning.Profile{
 	ID: string(agent.ProviderAntigravity),
+	Instructions: &provisioning.InstructionTarget{
+		Path:     containerInstructions,
+		HashPath: containerInstructionsHash,
+	},
 	CLI: provisioning.CLISpec{
 		Name:               "antigravity",
 		ImageLabel:         "antigravity",

@@ -7,6 +7,7 @@ import type { ChatMessageBlock } from "../../../models/chatMessage";
 import { projectApi } from "../../../api/projectApi";
 import { projectPreviewUrlService } from "../../../services/projects/projectPreviewUrlService.ts";
 import { chatBrowserState } from "./chatBrowserState";
+import { isShareablePort } from "../../projects/projectShareState.ts";
 
 export function useChatBrowserController({
   chat,
@@ -58,7 +59,10 @@ export function useChatBrowserController({
         if (prev != null && apps.some((app) => app.port === prev)) return prev;
         const hinted = projectPreviewUrlService.port(browserUrl);
         if (hinted != null && apps.some((app) => app.port === hinted)) return hinted;
-        return apps[apps.length - 1].port;
+        // The project's own server before platform listeners such as the
+        // files preview, which would otherwise win as the highest port.
+        const own = apps.filter((app) => isShareablePort(app.port));
+        return (own.length > 0 ? own[own.length - 1] : apps[apps.length - 1]).port;
       });
     } catch {
       setContainerApps([]);

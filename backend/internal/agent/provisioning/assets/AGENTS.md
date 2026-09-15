@@ -104,6 +104,29 @@ variable, or use the application's normal dotenv loading. Do not place literal
 secret values in commands, unit descriptions, process arguments, or logs.
 Restart the service after credentials change.
 
+## Previews — the user must be able to open what you built
+
+The user works from a browser on another machine. Never finish by telling
+them to run a server, open a local file, or use `localhost`: make the result
+reachable yourself and hand back its URL.
+
+**Static files are already online.** A read-only file server runs in every
+project container on port 8843 and serves all of `/workspace`. A plain
+HTML/CSS/JS page at `/workspace/<path>` is live at:
+
+```
+https://<this-project-slug>--8843.dev.{{PUBLIC_HOSTNAME}}/<path>
+```
+
+For example `/workspace/landing/index.html` →
+`https://<slug>--8843.dev.{{PUBLIC_HOSTNAME}}/landing/index.html`. Check it with
+`curl -sI http://127.0.0.1:8843/<path>` before handing it back. This URL is
+for the signed-in user only; it cannot be shared publicly.
+
+**Anything that needs a build, a runtime, or a public share link** — Vite,
+Next.js, a backend, a page the user wants to send to a client — gets its own
+durable server on its own port, as described next.
+
 ## Dev servers — start durably and hand back the routed URL
 
 Whenever the user asks for a dev server, **the URL they reach it at

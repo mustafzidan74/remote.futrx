@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"time"
 
+	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/containers/command"
 	"github.com/futrx-com/remote.futrx.com/internal/shared/output"
 )
@@ -32,7 +33,7 @@ var installScript []byte
 // It sits next to code-server's 8842 in the platform's own band rather than in
 // the 3000/5173/8080 range an operator's dev server would take, so enabling
 // this can never collide with the thing it is meant to sit beside.
-const Port = 8843
+const Port = configconstants.ProjectPreviewFilesPort
 
 // InstallScript returns the install program with the port filled in.
 func InstallScript() []byte {

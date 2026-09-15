@@ -14,4 +14,8 @@ const (
 	ProjectPreviewIDEDirectPort = 8081
 	// ProjectPreviewBrowserDevToolsPort is Chromium's loopback CDP listener.
 	ProjectPreviewBrowserDevToolsPort = 9222
+	// ProjectPreviewFilesPort is the read-only static server over /workspace
+	// (integration/containers/filepreview). It serves every file there,
+	// .env included, so it is for signed-in viewing only.
+	ProjectPreviewFilesPort = 8843
 )

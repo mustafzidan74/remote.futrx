@@ -15,7 +15,10 @@ func ShareablePort(port int) error {
 	case configconstants.ProjectPreviewAgentBrowserPort,
 		configconstants.ProjectPreviewIDEProxyPort,
 		configconstants.ProjectPreviewIDEDirectPort,
-		configconstants.ProjectPreviewBrowserDevToolsPort:
+		configconstants.ProjectPreviewBrowserDevToolsPort,
+		// The files preview serves all of /workspace, secrets mirrored into
+		// .env among them; a public link would publish them.
+		configconstants.ProjectPreviewFilesPort:
 		return ErrPortNotShareable
 	default:
 		return nil

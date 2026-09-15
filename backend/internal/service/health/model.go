@@ -83,6 +83,7 @@ var platformPorts = map[int]struct{}{
 	configconstants.ProjectPreviewIDEProxyPort:        {},
 	configconstants.ProjectPreviewIDEDirectPort:       {},
 	configconstants.ProjectPreviewBrowserDevToolsPort: {},
+	configconstants.ProjectPreviewFilesPort:           {},
 }
 
 // FirstAppPort is firstAppPort for callers outside this package. The home
