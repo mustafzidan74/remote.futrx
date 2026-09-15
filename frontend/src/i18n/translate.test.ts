@@ -131,3 +131,17 @@ test("English left in the Arabic interface keeps its own direction", () => {
   assert.deepEqual(localizeProps("span", { children: "12" }), { children: "12" });
   setActiveTranslations("en", {});
 });
+
+test("a line of parts joined by a middle dot is translated part by part", () => {
+  setActiveTranslations("ar", {
+    Running: "جارٍ تشغيل",
+    "{s} ago": "منذ {s}",
+    "{n} d ago": "منذ {n} يوم",
+    "· active {s}": "· نشط {s}",
+  });
+  // "{s} ago" must not swallow the whole line as its slot.
+  assert.equal(t("Running · active 22 d ago"), "جارٍ تشغيل · نشط منذ 22 يوم");
+  assert.equal(t("35K · 22 d ago"), "35K · منذ 22 يوم");
+  assert.equal(t("Nothing · here"), "Nothing · here");
+  setActiveTranslations("en", {});
+});

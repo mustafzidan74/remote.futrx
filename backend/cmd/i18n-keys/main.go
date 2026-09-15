@@ -79,6 +79,27 @@ func readsAsProse(text string) bool {
 	return upperStart.MatchString(core) || sentenceEnd.MatchString(core)
 }
 
+// readsAsPlainWords mirrors readsAsPlainWords in the frontend extractor for
+// composed text: lower-case words around a value ("{s} has never been
+// snapshotted"), the shape of a status line rather than of an identifier.
+func readsAsPlainWords(text string) bool {
+	if !strings.Contains(text, "{s}") && !strings.Contains(text, "{n}") {
+		return false
+	}
+	literal := strings.TrimSpace(strings.NewReplacer("{s}", " ", "{n}", " ").Replace(text))
+	if !plainWords.MatchString(literal) {
+		return false
+	}
+	for _, word := range strings.FieldsFunc(literal, func(r rune) bool { return r == ' ' || r == ',' || r == '.' }) {
+		if len(word) >= 2 {
+			return true
+		}
+	}
+	return false
+}
+
+var plainWords = regexp.MustCompile(`^[A-Za-z]+(?:,? +[A-Za-z]+)*[.]?$`)
+
 // fromFormat turns a Printf format into key text: %d → {n}, other verbs → {s}.
 func fromFormat(format string) string {
 	return verb.ReplaceAllStringFunc(format, func(match string) string {
@@ -229,7 +250,7 @@ func (e *extractor) file(path string) error {
 			if n.Op == token.ADD && !handled[n] {
 				if text, ok := composed(n); ok && strings.Contains(text, "{s}") {
 					markLiterals(n, handled)
-					if readsAsProse(strings.ReplaceAll(text, "{s}", "x")) {
+					if readsAsProse(strings.ReplaceAll(text, "{s}", "x")) || readsAsPlainWords(text) {
 						e.add(text, n.Pos())
 					}
 				}

@@ -91,8 +91,62 @@ function lookup(text: string): string | null {
     return keyed.leading + fill(pick(entry, keyed.values[0]), keyed.values) + keyed.trailing;
   }
   const match = matchPattern(keyed.key);
-  if (!match) return null;
-  return keyed.leading + renderPattern(match, keyed) + keyed.trailing;
+  if (match) return keyed.leading + renderPattern(match, keyed) + keyed.trailing;
+  return lookupSegments(text);
+}
+
+const SEGMENT_SEPARATOR = " · ";
+
+/**
+ * A part as an entry written with its leading separator ("· active {s}"),
+ * rendered without that separator. Only entries that really start with "·"
+ * count, so a catch-all such as "{s} ago" cannot claim the dot as its slot.
+ */
+function lookupWithSeparator(part: string): string | null {
+  const state = active as ActiveTranslations;
+  const keyed = keyOf("· " + part.trim());
+  if (!keyed) return null;
+  let rendered: string | null = null;
+  const entry = state.catalog[keyed.key];
+  if (entry !== undefined) {
+    rendered = fill(pick(entry, keyed.values[0]), keyed.values);
+  } else {
+    const match = matchPattern(keyed.key);
+    if (match && match.pattern.key.startsWith("·")) rendered = renderPattern(match, keyed);
+  }
+  if (rendered === null) return null;
+  const leading = /^\s*/.exec(part)?.[0] ?? "";
+  const trailing = /\s*$/.exec(part)?.[0] ?? "";
+  return leading + rendered.replace(/^\s*·\s?/, "") + trailing;
+}
+
+/**
+ * A line built from parts joined by " · " ("Running · active 22 d ago") with
+ * no entry of its own: each part is looked up alone, and a part after the
+ * first may also match an entry written with its separator ("· active {s}").
+ */
+function lookupSegments(text: string): string | null {
+  if (!text.includes(SEGMENT_SEPARATOR)) return null;
+  const parts = text.split(SEGMENT_SEPARATOR);
+  let changed = false;
+  const translated = parts.map((part, index) => {
+    // The entry written with its separator is the more specific one, so it
+    // goes first: "· active {s}" before a catch-all "{s} ago".
+    if (index > 0) {
+      const joined = lookupWithSeparator(part);
+      if (joined !== null) {
+        changed = true;
+        return joined;
+      }
+    }
+    const alone = lookup(part);
+    if (alone !== null) {
+      changed = true;
+      return alone;
+    }
+    return part;
+  });
+  return changed ? translated.join(SEGMENT_SEPARATOR) : null;
 }
 
 function pick(entry: CatalogEntry, count: string | undefined): string {
@@ -122,7 +176,9 @@ function matchPattern(key: string): PatternMatch | null {
   for (const pattern of state.patterns) {
     if (pattern.hint && !key.includes(pattern.hint)) continue;
     const result = pattern.regex.exec(key);
-    if (result) {
+    // A slot holds one value, not a whole " · "-joined line; those are
+    // translated part by part instead (lookupSegments).
+    if (result && !result.slice(1).some((capture) => capture.includes(SEGMENT_SEPARATOR))) {
       found = { pattern, captures: result.slice(1) };
       break;
     }

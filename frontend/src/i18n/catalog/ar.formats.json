@@ -120,5 +120,9 @@
   "not required": "غير مطلوبة",
   "required": "مطلوبة",
   "page": "صفحة",
-  "pages": "صفحات"
+  "pages": "صفحات",
+  "degraded": "متدهور",
+  "critical": "حرج",
+  "warning": "تحذير",
+  "healthy": "سليم"
 }

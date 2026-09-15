@@ -147,7 +147,8 @@ export function readsAsPlainWords(text: string): boolean {
   if (!/^[A-Za-z]+(?:,? +[A-Za-z]+)*[.]?$/.test(literal)) return false;
   const words = literal.split(/[ ,.]+/).filter(Boolean);
   const hasSlot = /\{[ns]\}/.test(text);
-  return words.some((word) => word.length >= 3) && (hasSlot ? words.length >= 1 : words.length >= 2);
+  // Beside a slot even a short word carries the sentence ("of {s}").
+  return hasSlot ? words.some((word) => word.length >= 2) : words.length >= 2 && words.some((word) => word.length >= 3);
 }
 
 /** Attributes whose values are machine-read even when they look like words. */
