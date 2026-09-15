@@ -345,20 +345,29 @@ when `Fork` is true.
 
 ### Antigravity
 
-Antigravity print mode is unstructured. Production
+Antigravity runs with `agy --print … --output-format stream-json`, and
 [`antigravity.Provider.Run`](../../../backend/internal/integration/agents/antigravity/provider.go)
-therefore bypasses `RunProcess` and streams raw stdout chunks as assistant
-deltas so blank lines and Markdown paragraphs survive. It captures a 4 KiB
-combined output tail for errors, maps sign-in-looking failures to a focused
-instruction, and emits completion itself.
+goes through `RunProcess` like the other line-oriented adapters.
+[`parser.go`](../../../backend/internal/integration/agents/antigravity/parser.go)
+reads three NDJSON line kinds:
 
-Because print mode does not report a new conversation ID, the adapter snapshots
-the provider's `brain` directory before and after a fresh run. Exactly one new,
-valid directory becomes `session.updated`; zero or multiple candidates are
-treated as ambiguous and no session is saved. See
-[`antigravity/session.go`](../../../backend/internal/integration/agents/antigravity/session.go).
-Its [`parser.go`](../../../backend/internal/integration/agents/antigravity/parser.go) is a
-line-oriented test/helper parser, not the production chunk-streaming path.
+| Line | Becomes |
+| --- | --- |
+| `init` (`conversation_id`) | `session.updated`, once, unless it is the resumed id |
+| `step_update` with `step_type: tool` | `tool.started` on the first sighting of a `step_index` (parameters), `tool.completed` when the step leaves `ACTIVE` (output, error) |
+| `step_update` with `step_type: agent_response` | `assistant.delta` from `text_delta` |
+| `result` | `run.completed` with input/output/cache-read/thinking tokens, or `run.failed` when `status` is not `SUCCESS` |
+
+Tool names are agy's own and are mapped onto the cards the chat renders:
+`run_command` → `Bash`, `view_file` → `Read`, `write_to_file` → `Write`,
+`replace_file_content`/`multi_replace_file_content`/`sed_file` → `Edit`,
+`grep_search` → `Grep`, `find_by_name`/`list_dir` → `Glob`, `search_web` →
+`WebSearch`, `read_url_content` → `WebFetch`; the original parameters travel
+along. The recorded stream in `testdata/stream-json-tools.jsonl` pins the shape.
+
+A process that exits non-zero without a `result` failure is reported from its
+stderr, with sign-in-looking failures mapped to a focused instruction. A clean
+exit without a `result` line is closed with a model-only completion.
 Antigravity and Kimi both clear resume state for requested forks because their
 descriptors do not declare native fork support.
 

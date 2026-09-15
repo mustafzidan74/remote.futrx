@@ -16,10 +16,12 @@ import (
 const printTimeout = "240m"
 
 func (p *Provider) args(req agent.RunRequest) []string {
-	// agy takes the prompt via --print (positional value). Default mode disables
-	// interactive permission prompts for headless execution. Plan uses agy's
-	// native mode and deliberately omits that bypass.
-	args := []string{"--print", req.Prompt, "--print-timeout", printTimeout}
+	// agy takes the prompt via --print (positional value). stream-json turns
+	// the run into NDJSON steps (tool calls with their parameters and output,
+	// reply text, token usage) that Parser maps onto chat events. Default mode
+	// disables interactive permission prompts for headless execution. Plan uses
+	// agy's native mode and deliberately omits that bypass.
+	args := []string{"--print", req.Prompt, "--print-timeout", printTimeout, "--output-format", "stream-json"}
 	if req.Mode == agent.RunModePlan {
 		args = append(args, "--mode", string(agent.RunModePlan))
 	} else {

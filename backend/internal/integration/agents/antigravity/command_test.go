@@ -3,8 +3,6 @@ package antigravity
 import (
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -24,6 +22,9 @@ func TestArgsComposition(t *testing.T) {
 	}
 	if !strings.Contains(joined, "--dangerously-skip-permissions") {
 		t.Fatalf("headless run must auto-approve tools: %v", base)
+	}
+	if !strings.Contains(joined, "--output-format stream-json") {
+		t.Fatalf("args must request the structured stream: %v", base)
 	}
 	if !strings.Contains(joined, "--print-timeout") {
 		t.Fatalf("args missing print timeout: %v", base)
@@ -303,53 +304,6 @@ func TestInstallScriptPinsVersionedRelease(t *testing.T) {
 	}
 	if strings.Contains(script, "/manifests/") {
 		t.Fatal("install script must not consult the moving latest manifest")
-	}
-}
-
-func TestParserEmitsTextDeltas(t *testing.T) {
-	parser := NewParser(agent.RunRequest{ConversationID: "c1"})
-	events, err := parser.ParseLine([]byte("hello world"))
-	if err != nil || len(events) != 1 {
-		t.Fatalf("ParseLine = (%v, %v)", events, err)
-	}
-	if events[0].Type != agent.EventAssistantTextDelta || events[0].Text != "hello world\n" {
-		t.Fatalf("unexpected event: %#v", events[0])
-	}
-}
-
-func TestConversationDiscovery(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	brain := filepath.Join(home, stateDirUnderHome, "brain")
-	if err := os.MkdirAll(filepath.Join(brain, "0aa89f21-1111-4222-8333-abcdef012345"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	store := conversationStore{}
-	before := store.list(context.Background())
-	if len(before) != 1 {
-		t.Fatalf("expected 1 existing conversation, got %d", len(before))
-	}
-
-	// No new conversation yet -> ambiguous/none.
-	if id := store.newConversation(context.Background(), before); id != "" {
-		t.Fatalf("expected no new conversation, got %q", id)
-	}
-
-	fresh := "1bb99a32-2222-4333-9444-bcdef0123456"
-	if err := os.MkdirAll(filepath.Join(brain, fresh), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if id := store.newConversation(context.Background(), before); id != fresh {
-		t.Fatalf("newConversation = %q, want %q", id, fresh)
-	}
-
-	// Junk entries are ignored.
-	if err := os.MkdirAll(filepath.Join(brain, "not a conversation!"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if id := store.newConversation(context.Background(), before); id != fresh {
-		t.Fatalf("junk entry changed discovery: %q", id)
 	}
 }
 

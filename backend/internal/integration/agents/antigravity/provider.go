@@ -10,6 +10,7 @@ import (
 
 	"github.com/futrx-com/remote.futrx.com/internal/agent"
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
+	agentruntime "github.com/futrx-com/remote.futrx.com/internal/integration/agents/runtime"
 )
 
 // credentialSyncTimeout bounds the post-run copy of the sign-in back to the
@@ -68,22 +69,33 @@ func (p *Provider) Run(ctx context.Context, req agent.RunRequest, emit func(agen
 		return err
 	}
 
-	store := conversationStore{containerName: containerName}
-	var before map[string]struct{}
-	if req.ResumeID == "" {
-		before = store.list(ctx)
+	parser := NewParser(req)
+	reportedFailure := false
+	forward := func(ev agent.Event) {
+		if ev.Type == agent.EventRunFailed {
+			reportedFailure = true
+		}
+		emit(ev)
 	}
-
-	output, runErr := streamPrintRun(ctx, cmd, req, emit)
+	runErr := agentruntime.RunProcess(ctx, cmd, parser, forward, agentruntime.ProcessOptions{
+		Name:           "agy",
+		LogID:          req.ConversationID,
+		Provider:       agent.ProviderAntigravity,
+		ConversationID: req.ConversationID,
+	})
 	if errors.Is(ctx.Err(), context.Canceled) {
 		return nil
 	}
+	if reportedFailure {
+		return agent.ErrRunFailed
+	}
 	if runErr != nil {
+		stderr := strings.TrimSpace(agentruntime.ErrorStderr(runErr))
 		message := fmt.Sprintf("agy run failed: %v", runErr)
-		if tail := strings.TrimSpace(output); tail != "" {
-			message = fmt.Sprintf("%s; output: %s", message, tail)
+		if stderr != "" {
+			message = fmt.Sprintf("%s; output: %s", message, tail(stderr, 4096))
 		}
-		if isSignInError(output) {
+		if isSignInError(stderr) {
 			message = signInHint
 		}
 		emit(agent.Event{
@@ -96,33 +108,31 @@ func (p *Provider) Run(ctx context.Context, req agent.RunRequest, emit func(agen
 		return agent.ErrRunFailed
 	}
 
-	if req.ResumeID == "" {
-		if id := store.newConversation(ctx, before); id != "" {
-			emit(agent.Event{
-				T:              time.Now().UnixMilli(),
-				Type:           agent.EventSessionUpdated,
-				Provider:       agent.ProviderAntigravity,
-				ConversationID: req.ConversationID,
-				SessionID:      id,
-			})
-		}
-	}
 	// A run that worked proves this container holds a usable credential. Pull
 	// it up to the host so every other project inherits it. Best effort on
 	// purpose — the turn the operator asked for has already succeeded, and
 	// failing it now over a credential copy would be the wrong trade.
 	p.syncCredentialToHost(containerName, req.ConversationID)
 
-	// agy print mode reports no tokens and no price, so the completion event
-	// carries the model alone; cost is recorded as unknown downstream.
-	emit(agent.Event{
-		T:              time.Now().UnixMilli(),
-		Type:           agent.EventRunCompleted,
-		Provider:       agent.ProviderAntigravity,
-		ConversationID: req.ConversationID,
-		Usage:          agent.Usage{Model: req.Model}.Raw(),
-	})
+	// The result line closes the run with its token usage. A stream that ended
+	// cleanly without one still has to be closed for the chat to settle.
+	if !parser.Completed() {
+		emit(agent.Event{
+			T:              time.Now().UnixMilli(),
+			Type:           agent.EventRunCompleted,
+			Provider:       agent.ProviderAntigravity,
+			ConversationID: req.ConversationID,
+			Usage:          agent.Usage{Model: req.Model}.Raw(),
+		})
+	}
 	return nil
+}
+
+func tail(text string, limit int) string {
+	if len(text) <= limit {
+		return text
+	}
+	return text[len(text)-limit:]
 }
 
 func isSignInError(output string) bool {
