@@ -23,11 +23,11 @@ func parseCLIOutputCatalog(modelsOutput, help string) agent.Capabilities {
 			reasoning = append(reasoning, agent.CapabilityOption{Value: effort, Label: capabilityLabel(effort)})
 		}
 	}
-	modelIDs := parseCLIModelIDs(modelsOutput)
-	models := make([]agent.ModelCapability, 0, len(modelIDs))
-	for _, id := range modelIDs {
+	entries := parseCLIModels(modelsOutput)
+	models := make([]agent.ModelCapability, 0, len(entries))
+	for _, entry := range entries {
 		models = append(models, agent.ModelCapability{
-			ID: id, Label: id, ReasoningEfforts: append([]agent.CapabilityOption(nil), reasoning...),
+			ID: entry.id, Label: entry.label, ReasoningEfforts: append([]agent.CapabilityOption(nil), reasoning...),
 		})
 	}
 	modes := parseCLIChoices(cliModeChoicesPattern, help)
@@ -39,6 +39,43 @@ func parseCLIOutputCatalog(modelsOutput, help string) agent.Capabilities {
 		Modes:       agent.ProviderModes(containsCLIChoice(modes, string(agent.RunModePlan))),
 		DefaultMode: agent.RunModeDefault,
 	}
+}
+
+type cliModel struct {
+	id    string
+	label string
+}
+
+// parseCLIModels reads `agy models`. Current CLIs print one model per line as
+// "<id>\t<display name>" ("gemini-3.8-flash-high\tGemini 3.8 Flash (High)")
+// after a "Fetching available models..." line; older ones printed display
+// names alone. The id is what --model accepts, so it is the value; the
+// display name is the label.
+func parseCLIModels(output string) []cliModel {
+	var models []cliModel
+	seen := map[string]bool{}
+	for _, raw := range strings.Split(strings.TrimSpace(output), "\n") {
+		id, label, tabbed := strings.Cut(strings.TrimSpace(raw), "\t")
+		if !tabbed {
+			continue
+		}
+		id, label = normalizeCLIModel(id), normalizeCLIModel(label)
+		if id == "" || seen[id] {
+			continue
+		}
+		if label == "" {
+			label = id
+		}
+		seen[id] = true
+		models = append(models, cliModel{id: id, label: label})
+	}
+	if len(models) > 0 {
+		return models
+	}
+	for _, id := range parseCLIModelIDs(output) {
+		models = append(models, cliModel{id: id, label: id})
+	}
+	return models
 }
 
 func parseCLIModelIDs(output string) []string {
@@ -70,6 +107,7 @@ func parseCLIModelIDs(output string) []string {
 		line = strings.TrimSpace(line)
 		lower := strings.ToLower(line)
 		if line == "" || strings.Contains(lower, "sign in") || strings.Contains(lower, "available model") ||
+			strings.HasPrefix(lower, "fetching") ||
 			strings.HasPrefix(lower, "usage") || strings.HasPrefix(lower, "flags") ||
 			strings.EqualFold(line, "model") || strings.HasPrefix(line, "---") {
 			continue

@@ -24,8 +24,17 @@ import (
 type Parser struct {
 	req            agent.RunRequest
 	sessionEmitted bool
+	sessionID      string
 	startedTools   map[int]bool
 	completed      bool
+}
+
+// SessionID is the conversation the stream reported, resumed or new.
+func (p *Parser) SessionID() string {
+	if p.sessionID != "" {
+		return p.sessionID
+	}
+	return p.req.ResumeID
 }
 
 func NewParser(req agent.RunRequest) *Parser {
@@ -117,6 +126,9 @@ func (p *Parser) event(kind agent.EventType) agent.Event {
 
 func (p *Parser) session(id string) []agent.Event {
 	id = strings.TrimSpace(id)
+	if id != "" {
+		p.sessionID = id
+	}
 	if id == "" || p.sessionEmitted || id == p.req.ResumeID {
 		return nil
 	}

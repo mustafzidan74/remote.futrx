@@ -64,15 +64,76 @@ func (p *Provider) Run(ctx context.Context, req agent.RunRequest, emit func(agen
 		req.ResumeID = ""
 	}
 
+	tried := map[string]bool{}
+	var catalog []string
+	// Fallbacks are ranked against the model the user asked for, not the last
+	// one tried, so the chain walks one family in a stable order.
+	origin := ""
+	for attempt := 0; ; attempt++ {
+		outcome, err := p.runOnce(ctx, req, emit, attempt < maxCapacityFallbacks)
+		if err != nil || !outcome.capacity {
+			return err
+		}
+
+		// Google had no capacity for the model. Try the nearest model of the same
+		// family, continuing the conversation when one was started.
+		current := firstNonEmpty(req.Model, outcome.capacityModel)
+		tried[current] = true
+		if origin == "" {
+			origin = current
+		}
+		if catalog == nil {
+			catalog = p.modelCatalog(ctx, outcome.containerName)
+		}
+		next := nextCapacityFallback(origin, catalog, tried)
+		if next == "" {
+			emit(outcome.failure)
+			return agent.ErrRunFailed
+		}
+		emit(agent.Event{
+			T:              time.Now().UnixMilli(),
+			Type:           agent.EventAssistantTextDelta,
+			Provider:       agent.ProviderAntigravity,
+			ConversationID: req.ConversationID,
+			ItemKind:       agent.ItemMessage,
+			ItemID:         fmt.Sprintf("agy-fallback-%d", attempt),
+			Text:           fmt.Sprintf("\n\n> ⚠️ `%s` has no capacity at Google right now — switched to `%s` and retrying.\n\n", current, next),
+		})
+		req.Model = next
+		if outcome.sessionID != "" {
+			req.ResumeID = outcome.sessionID
+			req.Prompt = capacityContinuePrompt
+		}
+	}
+}
+
+// runOutcome is what one agy process left behind for the fallback loop.
+type runOutcome struct {
+	containerName string
+	sessionID     string
+	// capacity is set when the run failed only because its model had no
+	// capacity and a fallback may still be tried; failure is the event that
+	// was held back, emitted if no fallback remains.
+	capacity      bool
+	capacityModel string
+	failure       agent.Event
+}
+
+func (p *Provider) runOnce(ctx context.Context, req agent.RunRequest, emit func(agent.Event), mayFallback bool) (runOutcome, error) {
 	cmd, containerName, err := p.buildCmd(ctx, req, p.args(req), emit)
 	if err != nil {
-		return err
+		return runOutcome{}, err
 	}
+	outcome := runOutcome{containerName: containerName}
 
 	parser := NewParser(req)
 	reportedFailure := false
 	forward := func(ev agent.Event) {
 		if ev.Type == agent.EventRunFailed {
+			if isCapacity, model := capacityFailure(ev.Message); isCapacity && mayFallback {
+				outcome.capacity, outcome.capacityModel, outcome.failure = true, model, ev
+				return
+			}
 			reportedFailure = true
 		}
 		emit(ev)
@@ -83,11 +144,15 @@ func (p *Provider) Run(ctx context.Context, req agent.RunRequest, emit func(agen
 		Provider:       agent.ProviderAntigravity,
 		ConversationID: req.ConversationID,
 	})
+	outcome.sessionID = parser.SessionID()
 	if errors.Is(ctx.Err(), context.Canceled) {
-		return nil
+		return runOutcome{}, nil
 	}
 	if reportedFailure {
-		return agent.ErrRunFailed
+		return runOutcome{}, agent.ErrRunFailed
+	}
+	if outcome.capacity {
+		return outcome, nil
 	}
 	if runErr != nil {
 		stderr := strings.TrimSpace(agentruntime.ErrorStderr(runErr))
@@ -98,14 +163,19 @@ func (p *Provider) Run(ctx context.Context, req agent.RunRequest, emit func(agen
 		if isSignInError(stderr) {
 			message = signInHint
 		}
-		emit(agent.Event{
+		failure := agent.Event{
 			T:              time.Now().UnixMilli(),
 			Type:           agent.EventRunFailed,
 			Provider:       agent.ProviderAntigravity,
 			ConversationID: req.ConversationID,
 			Message:        message,
-		})
-		return agent.ErrRunFailed
+		}
+		if isCapacity, model := capacityFailure(stderr); isCapacity && mayFallback {
+			outcome.capacity, outcome.capacityModel, outcome.failure = true, model, failure
+			return outcome, nil
+		}
+		emit(failure)
+		return runOutcome{}, agent.ErrRunFailed
 	}
 
 	// A run that worked proves this container holds a usable credential. Pull
@@ -125,7 +195,22 @@ func (p *Provider) Run(ctx context.Context, req agent.RunRequest, emit func(agen
 			Usage:          agent.Usage{Model: req.Model}.Raw(),
 		})
 	}
-	return nil
+	return runOutcome{}, nil
+}
+
+// modelCatalog lists the model ids agy offers in the run's container. An empty
+// list simply means no fallback.
+func (p *Provider) modelCatalog(ctx context.Context, containerName string) []string {
+	lookupCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	cmd := agentruntime.NewCapabilityCommand(lookupCtx, agent.CapabilityRequest{ContainerName: containerName},
+		[]string{"HOME=" + containerAgentHome}, "agy", "models")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("antigravity: list models for capacity fallback: %v", err)
+		return []string{}
+	}
+	return modelIDs(string(output))
 }
 
 func tail(text string, limit int) string {

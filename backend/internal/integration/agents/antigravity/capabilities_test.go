@@ -28,3 +28,23 @@ Claude Opus 4.6 (Thinking)
 		t.Fatalf("modes = %+v", caps.Modes)
 	}
 }
+
+// Recorded from agy on this platform: a tab separates the id --model accepts
+// from its display name. A tab is a control character, and rejecting it used
+// to drop every model, leaving the picker with nothing but "default".
+func TestParseTabSeparatedModelCatalog(t *testing.T) {
+	models := "Fetching available models...\n" +
+		"gemini-3.8-flash-high\tGemini 3.8 Flash (High)\n" +
+		"gemini-3.7-flash-high\tGemini 3.7 Flash (High)\n" +
+		"claude-sonnet-4-6\tClaude Sonnet 4.6 (Thinking)\n"
+	caps := parseCLIOutputCatalog(models, "")
+	if len(caps.Models) != 4 {
+		t.Fatalf("models = %+v", caps.Models)
+	}
+	if caps.Models[1].ID != "gemini-3.8-flash-high" || caps.Models[1].Label != "Gemini 3.8 Flash (High)" {
+		t.Fatalf("first model = %+v", caps.Models[1])
+	}
+	if caps.Models[3].ID != "claude-sonnet-4-6" {
+		t.Fatalf("last model = %+v", caps.Models[3])
+	}
+}
