@@ -6,6 +6,10 @@ import arCatalog from "./catalog/ar.json";
 // Backend text the UI shows verbatim: error messages and dashboard alerts. Kept apart because the source
 // check (npm run i18n:check) can only see frontend strings.
 import arErrors from "./catalog/ar.errors.json";
+// Text the app computes at runtime, which no source scan can list: relative
+// ages and durations ("3w", "5m ago").
+import arFormats from "./catalog/ar.formats.json";
+import { applyFormattingLocale } from "./format.ts";
 import { STORAGE_KEYS } from "../config/storageKeys.ts";
 import { browserStorageService } from "../services/platform/browserStorageService.ts";
 import {
@@ -17,12 +21,12 @@ import {
   type LanguageChoice,
 } from "./locale.ts";
 import type { Catalog } from "./normalize.ts";
-import { setActiveTranslations, type Locale } from "./translate.ts";
+import { setActiveTranslations, t, type Locale } from "./translate.ts";
 
 type Listener = (locale: Locale) => void;
 
 const CATALOGS: Record<Exclude<Locale, "en">, Catalog> = {
-  ar: { ...(arErrors as Catalog), ...(arCatalog as Catalog) },
+  ar: { ...(arFormats as Catalog), ...(arErrors as Catalog), ...(arCatalog as Catalog) },
   qps: {},
 };
 
@@ -33,6 +37,7 @@ class LocaleStore {
 
   /** Resolve and apply the locale before the first render. */
   boot(): void {
+    translateNativeDialogs();
     this.#override = typeof location === "undefined" ? null : localeOverride(location.search);
     this.#apply(this.#resolve(this.remembered()));
   }
@@ -70,6 +75,7 @@ class LocaleStore {
 
   #apply(locale: Locale): void {
     setActiveTranslations(locale, locale === "en" ? {} : CATALOGS[locale]);
+    applyFormattingLocale(locale);
     if (typeof document !== "undefined") {
       const root = document.documentElement;
       root.lang = documentLanguageOf(locale);
@@ -79,6 +85,21 @@ class LocaleStore {
     this.#locale = locale;
     for (const listener of this.#listeners) listener(locale);
   }
+}
+
+/**
+ * `alert("...")`, `confirm("...")` and `prompt("...")` never pass through JSX.
+ * Their message goes through the catalog on the way to the browser instead;
+ * in English `t` returns it untouched.
+ */
+function translateNativeDialogs(): void {
+  if (typeof window === "undefined" || (window as { __remoteDialogsLocalized?: boolean }).__remoteDialogsLocalized) return;
+  (window as { __remoteDialogsLocalized?: boolean }).__remoteDialogsLocalized = true;
+  const localize = (message: unknown) => (typeof message === "string" ? t(message) : message);
+  const { alert, confirm, prompt } = window;
+  window.alert = (message?: unknown) => alert.call(window, localize(message));
+  window.confirm = (message?: string) => confirm.call(window, localize(message) as string | undefined);
+  window.prompt = (message?: string, fallback?: string) => prompt.call(window, localize(message) as string | undefined, fallback);
 }
 
 export const localeStore = new LocaleStore();

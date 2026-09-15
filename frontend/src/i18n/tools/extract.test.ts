@@ -29,10 +29,12 @@ test("finds interface text under the keys the runtime computes", () => {
   const { occurrences, unkeyable } = extractFromSource("src/ui/Panel.tsx", source);
   const keys = occurrences.map((o) => o.key).sort();
   assert.deepEqual(keys, [
+    "Delete it?",
     "Explicit text",
     "Opens the terminal",
     "Saved",
     "Saving",
+    "Search {n} items",
     "Settings for this project",
     "Tokens and cost per project.",
     "Usage",
@@ -41,8 +43,42 @@ test("finds interface text under the keys the runtime computes", () => {
     "chats & projects",
   ]);
   assert.equal(occurrences.find((o) => o.key === "Usage panel")?.line, 6);
-  // A template literal and a browser dialog never reach the shim as one key.
-  assert.deepEqual(unkeyable.map((o) => o.key), ["`Search ${count} items`", 'confirm("Delete it?")']);
+  assert.deepEqual(unkeyable, []);
+});
+
+test("composed text becomes pattern keys", () => {
+  const composed = `
+export function Row({ name, count, error, on }: { name: string; count: number; error: Error; on: boolean }) {
+  alert("update failed: " + error.message);
+  confirm({ title: \`Delete \${name}?\`, message: "It cannot be undone." });
+  return (
+    <div title={\`Open \${name}\`} aria-label={\`Auto-test — \${on ? "on" : "off"}\`}>
+      {\`\${count} result\${count === 1 ? "" : "s"}\`}
+      <span>
+        {count} link{count === 1 ? "" : "s"}
+      </span>
+      {\`\${name} · \${name}\`}
+    </div>
+  );
+}
+`;
+  const { occurrences, unkeyable } = extractFromSource("src/ui/Row.tsx", composed);
+  assert.deepEqual([...new Set(occurrences.map((o) => o.key))].sort(), [
+    // Short alternatives expand into whole sentences rather than slots.
+    "Auto-test — off",
+    "Auto-test — on",
+    "Delete {s}?",
+    "It cannot be undone.",
+    "Open {s}",
+    "link",
+    "update failed: {s}",
+    "{n} link",
+    "{n} links",
+    "{n} result",
+    "{n} results",
+  ]);
+  // Nothing but slots and punctuation: no words to translate.
+  assert.deepEqual(unkeyable.map((o) => o.key), ["`${name} · ${name}`"]);
 });
 
 test("code-shaped strings are left out of the catalog", () => {

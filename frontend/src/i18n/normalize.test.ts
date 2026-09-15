@@ -18,7 +18,7 @@ test("decimal and grouped numbers are one placeholder each", () => {
 // Numbers, punctuation and text already in another script have nothing to
 // look up, and must not cost a catalog lookup on every render.
 test("text without two Latin letters in a row is not a key", () => {
-  for (const text of ["", "  ", "42", "·", "—", "3h", "لغة الواجهة", "a"]) {
+  for (const text of ["", "  ", "42", "·", "—", "3 h x", "لغة الواجهة", "a"]) {
     assert.equal(keyOf(text), null, JSON.stringify(text));
   }
 });
@@ -53,4 +53,15 @@ test("multi-line JSX text collapses the way the JSX compiler collapses it", () =
   const raw = "\n            Pick a project on the left,\n            then create a chat.\n          ";
   assert.equal(jsxTextValue(raw), "Pick a project on the left, then create a chat.");
   assert.equal(jsxTextValue(" · "), " · ");
+});
+
+test("fill places text captures where the translation puts {s}", () => {
+  assert.equal(fill("{s} · {n} من {n}", ["3", "12"], ["Acme"]), "Acme · 3 من 12");
+});
+
+test("a number with a one-letter unit is a key; a lone number or letter is not", () => {
+  assert.equal(keyOf("3w")?.key, "{n}w");
+  assert.equal(keyOf("22 d")?.key, "{n} d");
+  assert.equal(keyOf("42"), null);
+  assert.equal(keyOf("x"), null);
 });

@@ -5,7 +5,16 @@
 // Preact. That is what lets the fork re-sync upstream without hand-merging a
 // `t()` call into every string in every component.
 
-import { fill, keyOf, selectPlural, type Catalog } from "./normalize.ts";
+import {
+  NUMBER_PLACEHOLDER,
+  TEXT_PLACEHOLDER,
+  fill,
+  keyOf,
+  selectPlural,
+  type Catalog,
+  type CatalogEntry,
+  type KeyedText,
+} from "./normalize.ts";
 
 /**
  * The locale the shim renders. `qps` is a development pseudo-locale: it
@@ -14,11 +23,32 @@ import { fill, keyOf, selectPlural, type Catalog } from "./normalize.ts";
  */
 export type Locale = "en" | "ar" | "qps";
 
+/** A catalog key with `{s}` slots, compiled for matching. */
+interface Pattern {
+  key: string;
+  /** Literal text around the slots, in order; one more than there are slots. */
+  literals: string[];
+  regex: RegExp;
+  /** The longest literal, checked with `includes` before the regex runs. */
+  hint: string;
+}
+
+interface PatternMatch {
+  pattern: Pattern;
+  captures: string[];
+}
+
 interface ActiveTranslations {
   locale: Exclude<Locale, "en">;
   catalog: Catalog;
   plurals: Intl.PluralRules;
+  patterns: Pattern[];
+  /** Normalised key → pattern match (null for none), so a miss is paid once. */
+  matches: Map<string, PatternMatch | null>;
 }
+
+/** Enough for every distinct composed string one session renders. */
+const MATCH_CACHE_LIMIT = 4000;
 
 let active: ActiveTranslations | null = null;
 
@@ -27,7 +57,13 @@ export function setActiveTranslations(locale: Locale, catalog: Catalog): void {
   active =
     locale === "en"
       ? null
-      : { locale, catalog, plurals: new Intl.PluralRules(locale === "qps" ? "en" : locale) };
+      : {
+          locale,
+          catalog,
+          plurals: new Intl.PluralRules(locale === "qps" ? "en" : locale),
+          patterns: compilePatterns(catalog),
+          matches: new Map(),
+        };
 }
 
 export function activeLocale(): Locale {
@@ -36,20 +72,92 @@ export function activeLocale(): Locale {
 
 /** Translate one string, or return it unchanged when there is nothing to do. */
 export function t(text: string): string {
-  if (!active) return text;
+  return lookup(text) ?? text;
+}
+
+/** The translation of a string, or null when the catalog has none. */
+function lookup(text: string): string | null {
+  if (!active) return null;
   const keyed = keyOf(text);
-  if (!keyed) return text;
+  if (!keyed) return null;
   if (active.locale === "qps") {
     // A component can pass a prop it received on to a host element, so the
     // same string may reach the shim twice; bracket it once.
     const core = text.trim();
-    return core.startsWith("⟦") ? text : `${keyed.leading}⟦${core}⟧${keyed.trailing}`;
+    return core.startsWith("⟦") ? null : `${keyed.leading}⟦${core}⟧${keyed.trailing}`;
   }
   const entry = active.catalog[keyed.key];
-  if (entry === undefined) return text;
-  const template =
-    typeof entry === "string" ? entry : selectPlural(entry, keyed.values[0], active.plurals);
-  return keyed.leading + fill(template, keyed.values) + keyed.trailing;
+  if (entry !== undefined) {
+    return keyed.leading + fill(pick(entry, keyed.values[0]), keyed.values) + keyed.trailing;
+  }
+  const match = matchPattern(keyed.key);
+  if (!match) return null;
+  return keyed.leading + renderPattern(match, keyed) + keyed.trailing;
+}
+
+function pick(entry: CatalogEntry, count: string | undefined): string {
+  return typeof entry === "string" ? entry : selectPlural(entry, count, (active as ActiveTranslations).plurals);
+}
+
+function compilePatterns(catalog: Catalog): Pattern[] {
+  const patterns: Pattern[] = [];
+  for (const key of Object.keys(catalog)) {
+    if (!key.includes(TEXT_PLACEHOLDER)) continue;
+    const literals = key.split(TEXT_PLACEHOLDER);
+    // Two slots with nothing between them cannot be told apart.
+    if (literals.slice(1, -1).some((literal) => literal === "")) continue;
+    const hint = literals.reduce((longest, literal) => (literal.length > longest.length ? literal : longest), "");
+    const source = literals.map((literal) => literal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("(.+?)");
+    patterns.push({ key, literals, regex: new RegExp(`^${source}$`), hint });
+  }
+  // The most specific pattern wins: more literal text first.
+  return patterns.sort((a, b) => b.literals.join("").length - a.literals.join("").length);
+}
+
+function matchPattern(key: string): PatternMatch | null {
+  const state = active as ActiveTranslations;
+  const cached = state.matches.get(key);
+  if (cached !== undefined) return cached;
+  let found: PatternMatch | null = null;
+  for (const pattern of state.patterns) {
+    if (pattern.hint && !key.includes(pattern.hint)) continue;
+    const result = pattern.regex.exec(key);
+    if (result) {
+      found = { pattern, captures: result.slice(1) };
+      break;
+    }
+  }
+  if (state.matches.size >= MATCH_CACHE_LIMIT) state.matches.clear();
+  state.matches.set(key, found);
+  return found;
+}
+
+/**
+ * Numbers in the key belong either to the pattern's own text (they fill its
+ * `{n}`) or to a slot's capture (they go back into that capture before it is
+ * translated in turn). Walking the key in order tells which is which.
+ */
+function renderPattern(match: PatternMatch, keyed: KeyedText): string {
+  const { pattern, captures } = match;
+  const ownValues: string[] = [];
+  const texts: string[] = [];
+  let valueIndex = 0;
+  const takeNumbers = (segment: string, into: string[]) => {
+    let at = segment.indexOf(NUMBER_PLACEHOLDER);
+    while (at !== -1) {
+      into.push(keyed.values[valueIndex++] ?? NUMBER_PLACEHOLDER);
+      at = segment.indexOf(NUMBER_PLACEHOLDER, at + NUMBER_PLACEHOLDER.length);
+    }
+  };
+  pattern.literals.forEach((literal, index) => {
+    takeNumbers(literal, ownValues);
+    if (index >= captures.length) return;
+    const captureValues: string[] = [];
+    takeNumbers(captures[index], captureValues);
+    texts.push(t(fill(captures[index], captureValues)));
+  });
+  const entry = (active as ActiveTranslations).catalog[pattern.key] as CatalogEntry;
+  return fill(pick(entry, ownValues[0]), ownValues, texts);
 }
 
 /** Attributes a browser shows to people on a native element. */
@@ -70,6 +178,8 @@ const COMPONENT_TEXT_PROPS = [
   "capNote",
   "sub",
   "confirmLabel",
+  "cancelLabel",
+  "pendingLabel",
   "aria-label",
 ];
 
@@ -125,11 +235,59 @@ function isVerbatim(type: string, props: Record<string, unknown>): boolean {
 function localizeChildren(children: unknown): unknown {
   if (typeof children === "string") return t(children);
   if (!Array.isArray(children)) return children;
-  let next: unknown[] | null = null;
+  const merged = new Set<number>();
+  let next: unknown[] | null = mergeTextRuns(children, merged);
   for (let index = 0; index < children.length; index++) {
+    if (merged.has(index)) continue;
     const child = children[index];
     const translated = localizeChildren(child);
     if (translated !== child) (next ??= children.slice())[index] = translated;
   }
   return next ?? children;
+}
+
+/** Children that render as text. */
+function isText(child: unknown): child is string | number {
+  return typeof child === "string" || typeof child === "number";
+}
+
+/** `false`, `null` and `undefined` render nothing, so they do not break a run of text. */
+function isInvisible(child: unknown): boolean {
+  return child === null || child === undefined || typeof child === "boolean";
+}
+
+/**
+ * `{count} link{count === 1 ? "" : "s"}` reaches the runtime as three
+ * children. Read together they are one catalog key ("{n} links"), so a run of
+ * adjacent text children is looked up as a whole first and only translated
+ * piece by piece when the whole has no entry. The translation takes the run's
+ * first slot and the rest become empty strings, so the array keeps its shape.
+ */
+function mergeTextRuns(children: unknown[], merged: Set<number>): unknown[] | null {
+  let next: unknown[] | null = null;
+  let index = 0;
+  while (index < children.length) {
+    if (!isText(children[index])) {
+      index++;
+      continue;
+    }
+    const members: number[] = [];
+    let end = index;
+    while (end < children.length && (isText(children[end]) || isInvisible(children[end]))) {
+      if (isText(children[end])) members.push(end);
+      end++;
+    }
+    if (members.length > 1 && members.some((member) => typeof children[member] === "string")) {
+      const translated = lookup(members.map((member) => String(children[member])).join(""));
+      if (translated !== null) {
+        const copy: unknown[] = (next ??= children.slice());
+        members.forEach((member, position) => {
+          copy[member] = position === 0 ? translated : "";
+          merged.add(member);
+        });
+      }
+    }
+    index = end;
+  }
+  return next;
 }
