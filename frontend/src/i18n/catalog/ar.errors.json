@@ -200,6 +200,7 @@
   "agent interaction response queue is full": "قائمة انتظار ردود التفاعل مع الوكيل ممتلئة",
   "agent preferences are unavailable": "تفضيلات الوكيل غير متاحة",
   "agent updates may only pause or resume; delete and recreate to redefine": "تحديثات الوكيل يمكنها الإيقاف المؤقت أو الاستئناف فقط؛ احذف المهمة وأعد إنشاءها لإعادة تعريفها",
+  "agy run ended with status {s}": "انتهى تشغيل Antigravity بالحالة {s}",
   "an MCP server with that name already exists": "يوجد خادم MCP بهذا الاسم بالفعل",
   "an agent endpoint with that id already exists": "توجد نقطة اتصال وكيل بهذا المعرف بالفعل",
   "an argument may not contain a line break or a null byte": "لا يجوز أن تحتوي الوسيطة على سطر جديد أو بايت فارغ",
