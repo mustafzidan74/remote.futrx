@@ -108,6 +108,7 @@ func (n *Notifier) SendImage(ctx context.Context, event Event, image Image) []Si
 		image.MIME = "image/png"
 	}
 	cfg := n.currentConfig()
+	event.Language = cfg.Language
 	results := make([]SinkResult, 0, len(n.sinks))
 	for _, sink := range n.sinks {
 		result := SinkResult{Sink: sink.Name(), Configured: sink.Configured(cfg)}

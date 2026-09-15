@@ -136,6 +136,20 @@ export function readsAsProse(text: string): boolean {
   return /^[A-Z]/.test(core) || /[.?!…:]$/.test(core);
 }
 
+/**
+ * Lower-case words and nothing else — "no fleet default", "limit {s}" — the
+ * shape of a short status or value label. Class lists, ids, CSS values and
+ * paths all carry a hyphen, colon, slash, digit or bracket, so they fail it.
+ */
+export function readsAsPlainWords(text: string): boolean {
+  const literal = text.replace(/\{[ns]\}/g, " ").trim();
+  // Words joined by spaces or commas; a dot only at the end ("remote.futrx.language" is a key).
+  if (!/^[A-Za-z]+(?:,? +[A-Za-z]+)*[.]?$/.test(literal)) return false;
+  const words = literal.split(/[ ,.]+/).filter(Boolean);
+  const hasSlot = /\{[ns]\}/.test(text);
+  return words.some((word) => word.length >= 3) && (hasSlot ? words.length >= 1 : words.length >= 2);
+}
+
 /** Attributes whose values are machine-read even when they look like words. */
 const MACHINE_ATTRIBUTES = new Set([
   "class",
@@ -375,9 +389,11 @@ export function extractFromSource(file: string, source: string): ExtractionResul
       // text for people, capitalised or not.
       const gluedPlural =
         ts.isTemplateExpression(node) && node.templateSpans.some((span) => suffixAlternatives(span.expression) !== null);
-      const keys = compose(node).filter((text) => gluedPlural || readsAsProse(text.replace(/\{[ns]\}/g, "0")));
+      const keys = compose(node).filter(
+        (text) => gluedPlural || readsAsProse(text.replace(/\{[ns]\}/g, "0")) || readsAsPlainWords(text),
+      );
       if (keys.length) recordComposed(node, keys);
-    } else if (readsAsProse(node.text)) {
+    } else if (readsAsProse(node.text) || readsAsPlainWords(node.text)) {
       record(node.text, node);
     }
   };

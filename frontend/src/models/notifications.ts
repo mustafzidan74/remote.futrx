@@ -58,8 +58,12 @@ export interface NotificationDigestSettings {
   lastDigestSentAt?: number;
 }
 
+/** Language of Telegram and WhatsApp messages. "" is English. */
+export type NotificationLanguage = "" | "ar";
+
 export interface NotificationSettings {
   enabled: boolean;
+  language?: NotificationLanguage;
   telegram: NotificationTelegramSettings;
   webhook: NotificationWebhookSettings;
   whatsapp: NotificationWhatsAppSettings;
@@ -75,6 +79,7 @@ export interface NotificationSettings {
  */
 export interface UpdateNotificationSettingsInput {
   enabled: boolean;
+  language: NotificationLanguage;
   telegram: {
     botToken: string;
     clearBotToken?: boolean;

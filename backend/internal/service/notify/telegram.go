@@ -92,7 +92,7 @@ func TelegramMessage(event Event) string {
 	var out strings.Builder
 	out.WriteString(telegramIcon(event))
 	out.WriteString(" <b>")
-	out.WriteString(escapeTelegramHTML(EventHeadline(event)))
+	out.WriteString(escapeTelegramHTML(headline(event)))
 	out.WriteString("</b>")
 
 	writeField := func(label, value string) {
@@ -100,14 +100,14 @@ func TelegramMessage(event Event) string {
 			return
 		}
 		out.WriteString("\n<b>")
-		out.WriteString(label)
+		out.WriteString(localize(event.Language, label))
 		out.WriteString(":</b> ")
 		out.WriteString(escapeTelegramHTML(value))
 	}
 	writeField("Project", event.ProjectName)
 	writeField("Chat", event.ChatTitle)
 	writeField("Agent", event.Provider)
-	writeField("Status", event.Status)
+	writeField("Status", localize(event.Language, event.Status))
 
 	if summary := strings.TrimSpace(event.Summary); summary != "" {
 		out.WriteString("\n\n")
@@ -116,7 +116,7 @@ func TelegramMessage(event Event) string {
 	if link := strings.TrimSpace(event.URL); link != "" {
 		out.WriteString("\n\n<a href=\"")
 		out.WriteString(escapeTelegramHTML(link))
-		out.WriteString("\">Open in Remote</a>")
+		out.WriteString("\">" + localize(event.Language, "Open in Remote") + "</a>")
 	}
 	return truncate(out.String(), telegramMessageLimit)
 }

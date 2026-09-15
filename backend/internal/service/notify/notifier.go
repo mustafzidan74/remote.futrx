@@ -207,6 +207,7 @@ func (n *Notifier) run(ctx context.Context) {
 
 func (n *Notifier) deliver(ctx context.Context, event Event) {
 	cfg := n.currentConfig()
+	event.Language = cfg.Language
 	for _, sink := range n.sinks {
 		if !sink.Configured(cfg) {
 			continue
@@ -279,6 +280,7 @@ func (n *Notifier) SendTest(ctx context.Context, event Event) []SinkResult {
 		return nil
 	}
 	cfg := n.currentConfig()
+	event.Language = cfg.Language
 	results := make([]SinkResult, 0, len(n.sinks))
 	for _, sink := range n.sinks {
 		result := SinkResult{Sink: sink.Name(), Configured: sink.Configured(cfg)}

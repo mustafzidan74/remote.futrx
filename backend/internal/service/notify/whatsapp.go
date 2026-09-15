@@ -418,7 +418,7 @@ func WhatsAppMessage(event Event) string {
 	var out strings.Builder
 	out.WriteString(whatsAppIcon(event))
 	out.WriteString(" ")
-	out.WriteString(EventHeadline(event))
+	out.WriteString(headline(event))
 
 	if project := strings.TrimSpace(event.ProjectName); project != "" {
 		out.WriteString(" — ")

@@ -168,7 +168,7 @@ func (s *WhatsAppSink) uploadCloudMedia(
 func WhatsAppCaption(event Event, image Image) string {
 	var out strings.Builder
 	out.WriteString("\U0001f4f7 ")
-	out.WriteString(EventHeadline(event))
+	out.WriteString(headline(event))
 	if caption := strings.TrimSpace(image.Caption); caption != "" {
 		out.WriteString("\n")
 		out.WriteString(caption)

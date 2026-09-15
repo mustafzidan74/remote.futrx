@@ -90,17 +90,34 @@
         </svg>
       </div>
       <div>
-        <h1>You&rsquo;re offline</h1>
-        <p>remote.futrx needs a connection to reach your agents. It will reconnect on its own as soon as you&rsquo;re back online.</p>
+        <h1 id="title">You&rsquo;re offline</h1>
+        <p id="body">remote.futrx needs a connection to reach your agents. It will reconnect on its own as soon as you&rsquo;re back online.</p>
       </div>
       <button id="retry" type="button">
         <svg class="spinner" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
           <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
         </svg>
-        Try again
+        <span id="retry-label">Try again</span>
       </button>
     </div>
     <script>
+      // Arabic when the app last ran in Arabic (the choice index.html reads),
+      // or when it follows the browser and the browser prefers Arabic.
+      (function () {
+        try {
+          var choice = localStorage.getItem("remote.futrx.language") || "auto";
+          var browser = (navigator.languages || [navigator.language || ""])[0] || "";
+          var arabic = choice === "ar" || (choice === "auto" && /^ar\b/i.test(browser));
+          if (!arabic) return;
+          document.documentElement.lang = "ar";
+          document.documentElement.dir = "rtl";
+          document.getElementById("title").textContent = "أنت غير متصل";
+          document.getElementById("body").textContent =
+            "يحتاج remote.futrx إلى اتصال للوصول إلى وكلائك. سيعيد الاتصال تلقائيا فور عودتك إلى الإنترنت.";
+          document.getElementById("retry-label").textContent = "إعادة المحاولة";
+        } catch (error) {}
+      })();
+
       var retry = document.getElementById("retry");
       function reload() {
         retry.classList.add("retrying");

@@ -63,6 +63,8 @@ export function NotificationsSettings() {
     error,
     events,
     healthMonitorEnabled,
+    language,
+    setLanguage,
     loading,
     notificationsEnabled,
     save,
@@ -433,6 +435,36 @@ export function NotificationsSettings() {
               Remove stored webhook secret
             </button>
           )}
+        </fieldset>
+
+        <fieldset class="space-y-2">
+          <legend class="text-xs font-semibold text-ink-200 uppercase tracking-wide">Message language</legend>
+          <p class="text-[12px] text-ink-300 leading-relaxed">
+            The language of Telegram and WhatsApp messages. Agent output, project names and the webhook payload are
+            sent as they are.
+          </p>
+          <div class="segmented grid-cols-2" role="radiogroup" aria-label="Message language">
+            {(
+              [
+                { value: "", label: "English", lang: "en" },
+                { value: "ar", label: "العربية", lang: "ar" },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.value || "en"}
+                type="button"
+                role="radio"
+                aria-checked={language === option.value}
+                onClick={() => setLanguage(option.value)}
+                class="segmented-option disabled:cursor-wait"
+                disabled={loading || saving}
+              >
+                <span class="truncate" lang={option.lang} translate={false}>
+                  {option.label}
+                </span>
+              </button>
+            ))}
+          </div>
         </fieldset>
 
         <fieldset class="space-y-2">

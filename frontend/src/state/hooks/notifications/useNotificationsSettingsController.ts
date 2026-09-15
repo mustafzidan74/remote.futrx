@@ -6,6 +6,7 @@ import type {
   NotificationEventToggles,
   NotificationSettings,
   NotificationTestResult,
+  NotificationLanguage,
   UpdateNotificationSettingsInput,
   WhatsAppProvider,
 } from "../../../models/notifications";
@@ -61,6 +62,7 @@ interface ClearFlags {
 export function useNotificationsSettingsController() {
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [language, setLanguageState] = useState<NotificationLanguage>("");
   const [botToken, setBotToken] = useState("");
   const [chatId, setChatId] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
@@ -83,6 +85,7 @@ export function useNotificationsSettingsController() {
   function adopt(value: NotificationSettings) {
     setSettings(value);
     setNotificationsEnabled(value.enabled);
+    setLanguageState(value.language === "ar" ? "ar" : "");
     setChatId(value.telegram.chatId ?? "");
     setWebhookUrl(value.webhook.url ?? "");
     setEvents(value.events ?? DEFAULT_EVENTS);
@@ -150,9 +153,15 @@ export function useNotificationsSettingsController() {
     setSaved(false);
   }
 
+  function setLanguage(next: NotificationLanguage) {
+    setLanguageState(next);
+    setSaved(false);
+  }
+
   function payload(flags: ClearFlags = {}): UpdateNotificationSettingsInput {
     return {
       enabled: notificationsEnabled,
+      language,
       telegram: {
         botToken: flags.clearBotToken ? "" : botToken.trim(),
         clearBotToken: flags.clearBotToken === true,
@@ -258,6 +267,8 @@ export function useNotificationsSettingsController() {
     botToken,
     chatId,
     healthMonitorEnabled,
+    language,
+    setLanguage,
     clearCallMeBotApiKey,
     clearTelegramToken,
     clearWebhookSecret,

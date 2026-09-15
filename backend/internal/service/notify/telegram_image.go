@@ -75,7 +75,7 @@ func (s *TelegramSink) SendImage(ctx context.Context, cfg Config, event Event, i
 func TelegramCaption(event Event, image Image) string {
 	var out strings.Builder
 	out.WriteString("\U0001f4f7 <b>")
-	out.WriteString(escapeTelegramHTML(EventHeadline(event)))
+	out.WriteString(escapeTelegramHTML(headline(event)))
 	out.WriteString("</b>")
 	if caption := strings.TrimSpace(image.Caption); caption != "" {
 		out.WriteString("\n")
@@ -84,7 +84,7 @@ func TelegramCaption(event Event, image Image) string {
 	if link := strings.TrimSpace(event.URL); link != "" {
 		out.WriteString("\n\n<a href=\"")
 		out.WriteString(escapeTelegramHTML(link))
-		out.WriteString("\">Open in Remote</a>")
+		out.WriteString("\">" + localize(event.Language, "Open in Remote") + "</a>")
 	}
 	return truncate(out.String(), telegramCaptionLimit)
 }

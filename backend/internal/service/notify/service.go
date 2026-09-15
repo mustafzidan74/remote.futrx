@@ -377,10 +377,12 @@ func (s *Service) digestEvent(ctx context.Context, occurrence time.Time) (Event,
 		return Event{}, err
 	}
 	digest.From, digest.To = from, to
+	cfg := s.Config()
 	return Event{
-		Event:     KindDigest,
-		Status:    StatusFinished,
-		Summary:   DigestSummary(digest, s.Config().Digest.Location()) + "\nOpen Settings → Usage in Remote for the full breakdown.",
+		Event:  KindDigest,
+		Status: StatusFinished,
+		Summary: digestSummaryIn(cfg.Language, digest, cfg.Digest.Location()) + "\n" +
+			localize(cfg.Language, "Open Settings → Usage in Remote for the full breakdown."),
 		URL:       UsageURL(s.baseURL),
 		At:        occurrence.UnixMilli(),
 		DedupeKey: fmt.Sprintf("digest:%d", occurrence.UnixMilli()),

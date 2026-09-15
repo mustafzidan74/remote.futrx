@@ -56,6 +56,11 @@ type Event struct {
 	URL         string `json:"url,omitempty"`
 	At          int64  `json:"at"`
 
+	// Language is the configured notification language, stamped on the event
+	// just before delivery so message formatters can read it. The webhook
+	// payload stays machine-readable English and never carries it.
+	Language string `json:"-"`
+
 	// DedupeKey collapses repeated deliveries of the same logical event (for
 	// example one "finished" per run). It never reaches the wire.
 	DedupeKey string `json:"-"`
@@ -64,13 +69,15 @@ type Event struct {
 // Config is the global notification configuration persisted at
 // DATA_DIR/notifications.json.
 type Config struct {
-	Enabled   bool           `json:"enabled"`
-	Telegram  TelegramConfig `json:"telegram"`
-	Webhook   WebhookConfig  `json:"webhook"`
-	WhatsApp  WhatsAppConfig `json:"whatsapp"`
-	Events    EventToggles   `json:"events"`
-	Digest    DigestConfig   `json:"digest"`
-	UpdatedAt int64          `json:"updatedAt,omitempty"`
+	Enabled  bool           `json:"enabled"`
+	Telegram TelegramConfig `json:"telegram"`
+	Webhook  WebhookConfig  `json:"webhook"`
+	WhatsApp WhatsAppConfig `json:"whatsapp"`
+	Events   EventToggles   `json:"events"`
+	Digest   DigestConfig   `json:"digest"`
+	// Language of message-shaped notifications: "" (English) or "ar".
+	Language  string `json:"language,omitempty"`
+	UpdatedAt int64  `json:"updatedAt,omitempty"`
 }
 
 type TelegramConfig struct {
@@ -122,6 +129,7 @@ func (c Config) Normalize() Config {
 	c.Webhook.Secret = strings.TrimSpace(c.Webhook.Secret)
 	c.WhatsApp = c.WhatsApp.normalize()
 	c.Digest = c.Digest.normalize()
+	c.Language = normalizeLanguage(c.Language)
 	return c
 }
 
@@ -176,6 +184,7 @@ type PublicConfig struct {
 	WhatsApp  PublicWhatsApp `json:"whatsapp"`
 	Events    EventToggles   `json:"events"`
 	Digest    PublicDigest   `json:"digest"`
+	Language  string         `json:"language"`
 	UpdatedAt int64          `json:"updatedAt,omitempty"`
 }
 
@@ -209,6 +218,7 @@ func (c Config) Public() PublicConfig {
 		WhatsApp:  c.WhatsApp.public(),
 		Events:    c.Events,
 		Digest:    c.Digest.public(),
+		Language:  c.Language,
 		UpdatedAt: c.UpdatedAt,
 	}
 }
@@ -240,6 +250,7 @@ type UpdateInput struct {
 	WhatsApp WhatsAppInput `json:"whatsapp"`
 	Events   EventToggles  `json:"events"`
 	Digest   DigestInput   `json:"digest"`
+	Language string        `json:"language"`
 }
 
 type TelegramInput struct {
@@ -263,6 +274,7 @@ func (c Config) Apply(input UpdateInput) Config {
 		Events:   input.Events,
 		WhatsApp: current.WhatsApp.apply(input.WhatsApp),
 		Digest:   current.Digest.apply(input.Digest),
+		Language: normalizeLanguage(input.Language),
 		Telegram: TelegramConfig{
 			BotToken: current.Telegram.BotToken,
 			ChatID:   strings.TrimSpace(input.Telegram.ChatID),
