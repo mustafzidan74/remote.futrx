@@ -82,3 +82,17 @@ html {
   unicode-bidi: plaintext;
 }
 /*rtl:end:ignore*/
+
+/*
+ * Monospace faces carry no Arabic, and the browser's fallback squeezes each
+ * letter into a fixed cell, so an Arabic value in a `font-mono` field reads
+ * as separate letters. The Arabic subset comes first here too; its
+ * unicode-range keeps every Latin glyph, digit and symbol in the code font.
+ */
+.font-mono,
+code,
+kbd,
+samp,
+pre {
+  font-family: "Remote Arabic", theme("fontFamily.mono");
+}
