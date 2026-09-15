@@ -47,9 +47,9 @@ test("host elements translate their visible attributes and text children", () =>
 test("components translate the props they conventionally render", () => {
   setActiveTranslations("ar", catalog);
   const Component = () => null;
-  assert.deepEqual(localizeProps(Component, { label: "Settings", title: "Close", id: "Settings" }), {
+  assert.deepEqual(localizeProps(Component, { label: "Settings", subtitle: "Close", id: "Settings" }), {
     label: "الإعدادات",
-    title: "إغلاق",
+    subtitle: "إغلاق",
     id: "Settings",
   });
 });

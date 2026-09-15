@@ -1,4 +1,5 @@
 import type { AppearanceTheme, LanguageChoice } from "../../models/settings";
+import { activeLocale } from "../../i18n/translate";
 import { Check, Globe, Loader, Monitor, Moon, Sun } from "../primitives/icons";
 
 const options: Array<{
@@ -85,7 +86,12 @@ export function AppearanceSettings({
           <div class="flex items-center gap-1.5 text-[12px] font-medium text-ink-300">
             <Globe class="h-3.5 w-3.5" />
             <span>Interface language</span>
-            <span translate={false} class="text-ink-400">· لغة الواجهة</span>
+            {/* A pointer for Arabic readers who land on another language; redundant in Arabic itself. */}
+            {activeLocale() !== "ar" && (
+              <span translate={false} class="text-ink-400">
+                · لغة الواجهة
+              </span>
+            )}
           </div>
           <div
             class="segmented grid-cols-3"

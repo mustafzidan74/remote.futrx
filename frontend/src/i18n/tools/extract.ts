@@ -19,6 +19,13 @@ export const TEXT_ATTRIBUTES = new Set([
   "description",
   "hint",
   "message",
+  "text",
+  "subtitle",
+  "tooltip",
+  "note",
+  "capNote",
+  "sub",
+  "confirmLabel",
 ]);
 
 /** Object properties that conventionally end up rendered as text. */

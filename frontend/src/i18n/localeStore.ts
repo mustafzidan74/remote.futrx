@@ -3,7 +3,7 @@
 // the translation shim in one place.
 
 import arCatalog from "./catalog/ar.json";
-// Backend error messages the UI shows verbatim. Kept apart because the source
+// Backend text the UI shows verbatim: error messages and dashboard alerts. Kept apart because the source
 // check (npm run i18n:check) can only see frontend strings.
 import arErrors from "./catalog/ar.errors.json";
 import { STORAGE_KEYS } from "../config/storageKeys.ts";

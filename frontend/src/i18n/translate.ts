@@ -56,7 +56,22 @@ export function t(text: string): string {
 const HOST_TEXT_PROPS = ["title", "placeholder", "aria-label", "aria-description", "aria-placeholder", "alt"];
 
 /** Props components conventionally render as visible text. */
-const COMPONENT_TEXT_PROPS = ["title", "label", "placeholder", "description", "hint", "message"];
+const COMPONENT_TEXT_PROPS = [
+  "title",
+  "label",
+  "placeholder",
+  "description",
+  "hint",
+  "message",
+  "text",
+  "subtitle",
+  "tooltip",
+  "note",
+  "capNote",
+  "sub",
+  "confirmLabel",
+  "aria-label",
+];
 
 /**
  * Elements whose text is content rather than interface: code, terminals and
