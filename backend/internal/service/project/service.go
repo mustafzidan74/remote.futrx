@@ -369,16 +369,21 @@ func (s *Service) create(ctx context.Context, in CreateInput, callerEmail string
 		if err := s.authorizeStart(ctx, m, false); err != nil {
 			return s.repo.SetStatus(ctx, m.ID, StatusError, err.Error())
 		}
-		if err := s.containerLifecycle.Ensure(ctx, s.withEffectiveLimits(ctx, m)); err != nil {
+		// Launching unpacks the base image and can outlast the request that
+		// asked for it. A closed tab or a dropped connection must not kill
+		// `lxc init` halfway and leave a half-created container behind.
+		launch := context.WithoutCancel(ctx)
+		if err := s.containerLifecycle.Ensure(launch, s.withEffectiveLimits(launch, m)); err != nil {
 			log.Printf("projects: ensure %s failed: %v", m.ContainerName, err)
-			return s.repo.SetStatus(ctx, m.ID, StatusError, err.Error())
+			return s.repo.SetStatus(launch, m.ID, StatusError, err.Error())
 		}
 		// Push any pre-existing project secrets into the freshly launched
 		// container's env. Empty on first create; matters on recreate
 		// (delete + relaunch with secrets already stored).
-		if syncErr := s.syncContainerEnv(ctx, m.ID, m.ContainerName); syncErr != nil {
+		if syncErr := s.syncContainerEnv(launch, m.ID, m.ContainerName); syncErr != nil {
 			log.Printf("projects: sync env to %s after launch: %v", m.ContainerName, syncErr)
 		}
+		return s.repo.SetStatus(launch, m.ID, StatusRunning, "")
 	}
 	return s.repo.SetStatus(ctx, m.ID, StatusRunning, "")
 }
@@ -584,8 +589,9 @@ func (s *Service) startLocked(ctx context.Context, id ID, options StartOptions) 
 				return Meta{}, converged, err
 			}
 		}
-		if err := s.containerLifecycle.Ensure(ctx, s.withEffectiveLimits(ctx, m)); err != nil {
-			meta, startErr := s.setStartError(ctx, id, err)
+		// Detached from the caller for the same reason as in create.
+		if err := s.containerLifecycle.Ensure(context.WithoutCancel(ctx), s.withEffectiveLimits(ctx, m)); err != nil {
+			meta, startErr := s.setStartError(context.WithoutCancel(ctx), id, err)
 			return meta, converged, startErr
 		}
 		if state == ContainerStateMissing {
@@ -655,8 +661,8 @@ func (s *Service) upgrade(ctx context.Context, id ID, includeBusy bool) (Meta, e
 			return s.setStartError(ctx, id, err)
 		}
 	}
-	if err := s.containerLifecycle.Ensure(ctx, s.withEffectiveLimits(ctx, m)); err != nil {
-		return s.setStartError(ctx, id, err)
+	if err := s.containerLifecycle.Ensure(context.WithoutCancel(ctx), s.withEffectiveLimits(ctx, m)); err != nil {
+		return s.setStartError(context.WithoutCancel(ctx), id, err)
 	}
 	if syncErr := s.syncContainerEnv(ctx, id, m.ContainerName); syncErr != nil {
 		log.Printf("projects: sync env to %s after upgrade: %v", m.ContainerName, syncErr)
