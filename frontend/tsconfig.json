@@ -12,7 +12,7 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "preserve",
-    "jsxImportSource": "preact",
+    "jsxImportSource": "remote-i18n",
 
     "strict": true,
     "noUnusedLocals": false,
@@ -24,6 +24,8 @@
     "allowSyntheticDefaultImports": true,
 
     "paths": {
+      "remote-i18n/jsx-runtime": ["./src/i18n/jsx-runtime.ts"],
+      "remote-i18n/jsx-dev-runtime": ["./src/i18n/jsx-dev-runtime.ts"],
       "react": ["./node_modules/preact/compat/"],
       "react-dom": ["./node_modules/preact/compat/"]
     }

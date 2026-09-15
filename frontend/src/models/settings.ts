@@ -1,3 +1,4 @@
+import type { LanguageChoice } from "../i18n/locale.ts";
 import type {
   ApprovalPolicy,
   ChatMode,
@@ -9,8 +10,12 @@ import type {
 
 export type AppearanceTheme = "system" | "dark" | "light";
 
+/** The interface language; "auto" follows the browser. See src/i18n/locale.ts. */
+export type { LanguageChoice };
+
 export interface AppearanceSettings {
   theme: AppearanceTheme;
+  language: LanguageChoice;
 }
 
 export interface ChatSettings {

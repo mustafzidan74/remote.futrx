@@ -50,6 +50,33 @@
         } catch (error) {
           document.documentElement.dataset.theme = "dark";
         }
+        // Language and direction, for the same reason: an Arabic user's first
+        // frame must not lay out left-to-right. Mirrors src/i18n/locale.ts.
+        try {
+          var root = document.documentElement;
+          var forced = new URLSearchParams(location.search).get("lang");
+          var locale = forced === "ar" || forced === "en" || forced === "qps" ? forced : null;
+          if (!locale) {
+            var language = localStorage.getItem("remote.futrx.language") || "auto";
+            if (language === "ar" || language === "en") {
+              locale = language;
+            } else {
+              var preferred = navigator.languages || [navigator.language || "en"];
+              locale = "en";
+              for (var i = 0; i < preferred.length; i++) {
+                var primary = String(preferred[i]).toLowerCase().split("-")[0];
+                if (primary === "ar" || primary === "en") {
+                  locale = primary;
+                  break;
+                }
+              }
+            }
+          }
+          root.lang = locale === "ar" ? "ar" : "en";
+          root.dir = locale === "ar" ? "rtl" : "ltr";
+        } catch (error) {
+          document.documentElement.dir = "ltr";
+        }
       })();
     </script>
   </head>

@@ -37,7 +37,7 @@ function Parts() {
         </Section>
 
         <Section title="Settings section">
-          <AppearanceSettings theme="dark" loading={false} saving={false} error={null} onThemeChange={noop} />
+          <AppearanceSettings theme="dark" language="auto" loading={false} saving={false} error={null} onThemeChange={noop} onLanguageChange={noop} />
           <div class="flex items-start gap-2">
             <UsagePill
               totals={{ inputTokens: 18422, outputTokens: 3120, cacheReadTokens: 90210, cacheWriteTokens: 1200 }}

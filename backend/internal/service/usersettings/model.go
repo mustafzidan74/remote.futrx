@@ -13,6 +13,7 @@ var (
 	ErrNotFound               = errors.New("user settings not found")
 	ErrInvalidIdentity        = errors.New("user settings identity is required")
 	ErrInvalidTheme           = errors.New("invalid appearance theme")
+	ErrInvalidLanguage        = errors.New("invalid interface language")
 	ErrInvalidChatProvider    = errors.New("invalid chat provider")
 	ErrInvalidChatMode        = errors.New("invalid chat mode")
 	ErrInvalidReasoningEffort = errors.New("invalid reasoning effort")
@@ -39,6 +40,17 @@ const (
 	ThemeLight  Theme = "light"
 )
 
+// Language is the interface language this user reads the app in. It says
+// nothing about the language agents reply in: that is Agent.ReplyLanguage.
+type Language string
+
+const (
+	// LanguageAuto follows the browser's preferred languages.
+	LanguageAuto    Language = "auto"
+	LanguageEnglish Language = "en"
+	LanguageArabic  Language = "ar"
+)
+
 type Settings struct {
 	Appearance  Appearance `json:"appearance"`
 	Chat        Chat       `json:"chat"`
@@ -58,7 +70,8 @@ type Agent struct {
 }
 
 type Appearance struct {
-	Theme Theme `json:"theme"`
+	Theme    Theme    `json:"theme"`
+	Language Language `json:"language"`
 }
 
 type ChatProvider = agent.ProviderID
@@ -125,7 +138,8 @@ type AgentUpdate struct {
 }
 
 type AppearanceUpdate struct {
-	Theme *Theme `json:"theme,omitempty"`
+	Theme    *Theme    `json:"theme,omitempty"`
+	Language *Language `json:"language,omitempty"`
 }
 
 type ChatUpdate struct {
@@ -141,7 +155,7 @@ type ChatUpdate struct {
 func DefaultSettings() Settings {
 	chat := defaultChatSettings()
 	return Settings{
-		Appearance:  Appearance{Theme: ThemeSystem},
+		Appearance:  Appearance{Theme: ThemeSystem, Language: LanguageAuto},
 		Chat:        chat,
 		ProjectChat: chat,
 		Agent:       Agent{ReplyLanguage: ""},
@@ -165,6 +179,15 @@ func defaultChatSettings() Chat {
 func ValidReplyLanguage(language string) bool {
 	return utf8.RuneCountInString(language) <= MaxReplyLanguageLength &&
 		!strings.ContainsAny(language, "\n\r")
+}
+
+func ValidLanguage(language Language) bool {
+	switch language {
+	case LanguageAuto, LanguageEnglish, LanguageArabic:
+		return true
+	default:
+		return false
+	}
 }
 
 func ValidTheme(theme Theme) bool {

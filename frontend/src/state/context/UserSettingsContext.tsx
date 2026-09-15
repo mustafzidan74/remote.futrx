@@ -5,8 +5,10 @@ import { useAuthContext } from "./AuthContext";
 import {
   type AppearanceTheme,
   type ChatSettings,
+  type LanguageChoice,
   type UserSettings,
 } from "../../models/settings";
+import { localeStore } from "../../i18n/localeStore";
 import { settingsApi } from "../../api/settingsApi";
 import { DEFAULT_USER_SETTINGS } from "../../config/settings";
 import { appearanceThemeState } from "./appearanceThemeState";
@@ -18,6 +20,7 @@ interface UserSettingsContextValue {
   error: string | null;
   refresh: () => Promise<void>;
   setTheme: (theme: AppearanceTheme) => Promise<void>;
+  setLanguage: (language: LanguageChoice) => Promise<void>;
   setChatSettings: (
     scope: "host" | "project",
     chat: Partial<ChatSettings>
@@ -38,7 +41,11 @@ const UserSettingsContext = createContext<UserSettingsContextValue | null>(null)
 function settingsFromCachedAppearance(): UserSettings {
   return {
     ...DEFAULT_USER_SETTINGS,
-    appearance: { ...DEFAULT_USER_SETTINGS.appearance, theme: appearanceThemeState.remembered() },
+    appearance: {
+      ...DEFAULT_USER_SETTINGS.appearance,
+      theme: appearanceThemeState.remembered(),
+      language: localeStore.remembered(),
+    },
   };
 }
 
@@ -80,6 +87,23 @@ export function UserSettingsProvider({ children }: { children: ComponentChildren
     setSaving(true);
     try {
       setSettings(await settingsApi.update({ appearance: { theme } }));
+      setError(null);
+    } catch (e) {
+      setSettings(previous);
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }, [settings]);
+
+  // Optimistic like the theme. Applying a different locale remounts the app
+  // (see i18n/LocaleRoot), and the save is already on the wire by then.
+  const setLanguage = useCallback(async (language: LanguageChoice) => {
+    const previous = settings;
+    setSettings({ ...settings, appearance: { ...settings.appearance, language } });
+    setSaving(true);
+    try {
+      setSettings(await settingsApi.update({ appearance: { language } }));
       setError(null);
     } catch (e) {
       setSettings(previous);
@@ -138,6 +162,10 @@ export function UserSettingsProvider({ children }: { children: ComponentChildren
     return appearanceThemeState.observeSystemChanges(settings.appearance.theme);
   }, [settings.appearance.theme]);
 
+  useEffect(() => {
+    localeStore.setChoice(settings.appearance.language);
+  }, [settings.appearance.language]);
+
   ////////////////
   // Context Value
   ////////////////
@@ -148,9 +176,10 @@ export function UserSettingsProvider({ children }: { children: ComponentChildren
     error,
     refresh,
     setTheme,
+    setLanguage,
     setChatSettings,
     setReplyLanguage,
-  }), [settings, loading, saving, error, refresh, setTheme, setChatSettings, setReplyLanguage]);
+  }), [settings, loading, saving, error, refresh, setTheme, setLanguage, setChatSettings, setReplyLanguage]);
 
   return (
     <UserSettingsContext.Provider value={value}>

@@ -1,0 +1,46 @@
+/*
+ * Arabic typography. Kept apart from index.css so upstream's stylesheet stays
+ * untouched.
+ *
+ * Cairo is self-hosted (the app runs on its own server and must not depend on
+ * a font CDN) and carries only the Arabic subset, declared with the Arabic
+ * unicode-range. Putting it first in the stack therefore changes nothing for
+ * Latin text: the browser only reaches for it when a glyph is Arabic, in the
+ * Arabic interface and in Arabic chat content alike. License: public/fonts/Cairo-OFL.txt.
+ */
+@font-face {
+  font-family: "Remote Arabic";
+  font-style: normal;
+  font-weight: 200 1000;
+  font-display: swap;
+  src: url("/fonts/cairo-arabic.woff2") format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1,
+    U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74,
+    U+FE76-FEFC;
+}
+
+html {
+  font-family: "Remote Arabic", theme("fontFamily.sans");
+}
+
+/* Arabic script sits higher and wider than Latin at the same size; a touch
+   more line height keeps two-line labels from touching. */
+:root[lang="ar"] body {
+  line-height: 1.6;
+}
+
+/*
+ * Content that carries its own `dir` also carries its own alignment: the chat
+ * and markdown renderers pair `dir="rtl"` with `text-right` and `dir="ltr"`
+ * with `text-left`. The generated right-to-left rules flip `text-left` and
+ * `text-right` for interface labels, which must not reach these, or Arabic
+ * messages would align left in the Arabic interface.
+ */
+/*rtl:begin:ignore*/
+[dir="rtl"] [dir].text-left {
+  text-align: left;
+}
+[dir="rtl"] [dir].text-right {
+  text-align: right;
+}
+/*rtl:end:ignore*/

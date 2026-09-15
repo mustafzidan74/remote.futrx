@@ -83,6 +83,7 @@ func sendUserSettingsError(w http.ResponseWriter, err error) {
 	case errors.Is(err, serviceusersettings.ErrInvalidIdentity):
 		httptransport.SendErr(w, http.StatusUnauthorized, "authentication required")
 	case errors.Is(err, serviceusersettings.ErrInvalidTheme),
+		errors.Is(err, serviceusersettings.ErrInvalidLanguage),
 		errors.Is(err, serviceusersettings.ErrInvalidChatProvider),
 		errors.Is(err, serviceusersettings.ErrInvalidChatMode),
 		errors.Is(err, serviceusersettings.ErrInvalidReasoningEffort),

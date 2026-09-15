@@ -84,6 +84,13 @@ func (s *Service) Update(ctx context.Context, key Key, input UpdateInput) (Setti
 		}
 		settings.Appearance.Theme = theme
 	}
+	if input.Appearance != nil && input.Appearance.Language != nil {
+		language := Language(strings.TrimSpace(string(*input.Appearance.Language)))
+		if !ValidLanguage(language) {
+			return Settings{}, ErrInvalidLanguage
+		}
+		settings.Appearance.Language = language
+	}
 
 	if err := s.applyChatUpdate(&settings.Chat, input.Chat, agentmodule.ScopeHost); err != nil {
 		return Settings{}, err
@@ -108,6 +115,12 @@ func (s *Service) normalize(settings Settings) Settings {
 	defaults := s.defaultSettings()
 	if !ValidTheme(settings.Appearance.Theme) {
 		settings.Appearance.Theme = defaults.Appearance.Theme
+	}
+	// Settings saved before the interface language existed read back as
+	// "auto", which is what those users were already getting: English until
+	// the app could follow the browser.
+	if !ValidLanguage(settings.Appearance.Language) {
+		settings.Appearance.Language = defaults.Appearance.Language
 	}
 
 	// Settings written before projectChat existed used chat for both scopes.

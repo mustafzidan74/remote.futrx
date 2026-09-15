@@ -72,6 +72,10 @@ jobs:
         run: npm ci
       - name: Run frontend tests
         run: npm test
+      # Reports interface strings the Arabic catalog lacks. Informational until
+      # the catalog is complete; then add --strict to make it a gate.
+      - name: Check translation catalog
+        run: npm run i18n:check
       - name: Build frontend
         run: npm run build
 

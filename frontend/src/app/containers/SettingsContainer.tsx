@@ -130,6 +130,7 @@ export function SettingsContainer({
       auditLog={auditLog}
       projectTrash={projectTrash}
       appearanceTheme={userSettings.settings.appearance.theme}
+      appearanceLanguage={userSettings.settings.appearance.language}
       appearanceReplyLanguage={userSettings.settings.agent.replyLanguage}
       appearanceLoading={userSettings.loading}
       appearanceSaving={userSettings.saving}
@@ -142,6 +143,7 @@ export function SettingsContainer({
       onCheckForUpdates={selfUpdate.check}
       onApplyUpdate={selfUpdate.apply}
       onAppearanceThemeChange={(theme) => void userSettings.setTheme(theme)}
+      onAppearanceLanguageChange={(language) => void userSettings.setLanguage(language)}
       onReplyLanguageChange={(language) => void userSettings.setReplyLanguage(language)}
       security={security}
     />

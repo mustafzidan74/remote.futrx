@@ -4,6 +4,7 @@ import {
   type UserSettings,
 } from "../models/settings";
 import { API_ROUTES } from "../config/routes";
+import { isLanguageChoice } from "../i18n/locale.ts";
 import {
   DEFAULT_USER_SETTINGS,
   VALID_APPEARANCE_THEMES,
@@ -35,6 +36,10 @@ function normalizeUserSettings(settings: UserSettings): UserSettings {
       theme: VALID_APPEARANCE_THEMES.has(theme)
         ? theme
         : DEFAULT_USER_SETTINGS.appearance.theme,
+      // A server from before the setting existed sends none: that is "auto".
+      language: isLanguageChoice(settings?.appearance?.language)
+        ? settings.appearance.language
+        : DEFAULT_USER_SETTINGS.appearance.language,
     },
     chat,
     projectChat,

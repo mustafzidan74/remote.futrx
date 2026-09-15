@@ -1,5 +1,5 @@
-import type { AppearanceTheme } from "../../models/settings";
-import { Check, Loader, Monitor, Moon, Sun } from "../primitives/icons";
+import type { AppearanceTheme, LanguageChoice } from "../../models/settings";
+import { Check, Globe, Loader, Monitor, Moon, Sun } from "../primitives/icons";
 
 const options: Array<{
   theme: AppearanceTheme;
@@ -11,18 +11,37 @@ const options: Array<{
   { theme: "light", label: "Light", Icon: Sun },
 ];
 
+/**
+ * Language names are written in their own language and marked so the
+ * translation shim leaves them alone: someone who cannot read the current
+ * interface still has to be able to find their way back to one they can.
+ */
+const languageOptions: Array<{
+  language: LanguageChoice;
+  label: string;
+  lang?: string;
+}> = [
+  { language: "auto", label: "Auto" },
+  { language: "en", label: "English", lang: "en" },
+  { language: "ar", label: "العربية", lang: "ar" },
+];
+
 export function AppearanceSettings({
   theme,
+  language,
   loading,
   saving,
   error,
   onThemeChange,
+  onLanguageChange,
 }: {
   theme: AppearanceTheme;
+  language: LanguageChoice;
   loading: boolean;
   saving: boolean;
   error: string | null;
   onThemeChange: (theme: AppearanceTheme) => void;
+  onLanguageChange: (language: LanguageChoice) => void;
 }) {
   return (
     <section class="overflow-hidden rounded-card border border-line bg-surface">
@@ -32,7 +51,7 @@ export function AppearanceSettings({
         </div>
         <div class="flex-1 min-w-0">
           <div class="text-[14.5px] font-semibold text-ink-50">Appearance</div>
-          <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug">Theme preference</div>
+          <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug">Theme and interface language</div>
         </div>
         {(loading || saving) && <Loader class="w-4 h-4 mt-2 text-ink-300 animate-spin" />}
       </header>
@@ -60,6 +79,40 @@ export function AppearanceSettings({
               </button>
             );
           })}
+        </div>
+
+        <div class="space-y-1.5">
+          <div class="flex items-center gap-1.5 text-[12px] font-medium text-ink-300">
+            <Globe class="h-3.5 w-3.5" />
+            <span>Interface language</span>
+            <span translate={false} class="text-ink-400">· لغة الواجهة</span>
+          </div>
+          <div
+            class="segmented grid-cols-3"
+            role="radiogroup"
+            aria-label="Interface language"
+          >
+            {languageOptions.map(({ language: optionLanguage, label, lang }) => {
+              const selected = optionLanguage === language;
+              return (
+                <button
+                  key={optionLanguage}
+                  type="button"
+                  disabled={loading || saving}
+                  onClick={() => onLanguageChange(optionLanguage)}
+                  class="segmented-option disabled:cursor-wait"
+                  aria-checked={selected}
+                  role="radio"
+                >
+                  {lang ? (
+                    <span class="truncate" lang={lang} translate={false}>{label}</span>
+                  ) : (
+                    <span class="truncate">{label}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div class="min-h-5 text-[12px]">

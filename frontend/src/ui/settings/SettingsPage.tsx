@@ -1,4 +1,4 @@
-import type { AppearanceTheme } from "../../models/settings";
+import type { AppearanceTheme, LanguageChoice } from "../../models/settings";
 import type { UserDirectory } from "../../state/hooks/users/useUserDirectory";
 import type { GlobalSkillLibrary } from "../../state/hooks/settings/useGlobalSkills";
 import type { PlaybookLibraryEditor } from "../../state/hooks/settings/usePlaybookLibrary";
@@ -339,6 +339,7 @@ export function SettingsPage({
   auditLog,
   projectTrash,
   appearanceTheme,
+  appearanceLanguage,
   appearanceReplyLanguage,
   appearanceLoading,
   appearanceSaving,
@@ -352,6 +353,7 @@ export function SettingsPage({
   onCheckForUpdates,
   onApplyUpdate,
   onAppearanceThemeChange,
+  onAppearanceLanguageChange,
   onReplyLanguageChange,
 }: {
   activeTab: SettingsTab;
@@ -390,6 +392,7 @@ export function SettingsPage({
   auditLog: AuditLog;
   projectTrash: ProjectTrash;
   appearanceTheme: AppearanceTheme;
+  appearanceLanguage: LanguageChoice;
   appearanceReplyLanguage: string;
   appearanceLoading: boolean;
   appearanceSaving: boolean;
@@ -403,6 +406,7 @@ export function SettingsPage({
   onCheckForUpdates: () => Promise<void>;
   onApplyUpdate: (tag?: string) => Promise<void>;
   onAppearanceThemeChange: (theme: AppearanceTheme) => void;
+  onAppearanceLanguageChange: (language: LanguageChoice) => void;
   onReplyLanguageChange: (language: string) => void;
 }) {
   const activeTabDetails = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
@@ -462,10 +466,12 @@ export function SettingsPage({
               <div class="space-y-4">
                 <AppearanceSettings
                   theme={appearanceTheme}
+                  language={appearanceLanguage}
                   loading={appearanceLoading}
                   saving={appearanceSaving}
                   error={appearanceError}
                   onThemeChange={onAppearanceThemeChange}
+                  onLanguageChange={onAppearanceLanguageChange}
                 />
                 <ReplyLanguagePreference
                   language={appearanceReplyLanguage}

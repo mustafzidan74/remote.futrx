@@ -9,6 +9,8 @@
  */
 export const STORAGE_KEYS = {
   themeChoice: "remote.futrx.theme",
+  /** Also read by the bootstrap script in `index.html`, like `themeChoice`. */
+  languageChoice: "remote.futrx.language",
   sidebarCollapsed: "remote.futrx.sidebarCollapsed",
   collapsedProjects: "remote.futrx.collapsedProjects",
   workspaceBoot: "remote.futrx.workspaceBoot",

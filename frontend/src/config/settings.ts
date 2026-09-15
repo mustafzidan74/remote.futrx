@@ -1,7 +1,7 @@
 import type { AppearanceTheme, UserSettings } from "../models/settings";
 
 export const DEFAULT_USER_SETTINGS: UserSettings = {
-  appearance: { theme: "system" },
+  appearance: { theme: "system", language: "auto" },
   chat: {
     provider: "codex",
     model: "",
