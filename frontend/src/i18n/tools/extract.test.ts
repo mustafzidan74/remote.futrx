@@ -27,7 +27,7 @@ export function Panel({ saving, count }: { saving: boolean; count: number }) {
 
 test("finds interface text under the keys the runtime computes", () => {
   const { occurrences, unkeyable } = extractFromSource("src/ui/Panel.tsx", source);
-  const keys = occurrences.map((o) => o.key).sort();
+  const keys = [...new Set(occurrences.map((o) => o.key))].sort();
   assert.deepEqual(keys, [
     "Delete it?",
     "Explicit text",

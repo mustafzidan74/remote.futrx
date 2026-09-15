@@ -121,6 +121,50 @@ export interface ExtractionResult {
   unkeyable: Occurrence[];
 }
 
+/**
+ * A string that reads as a sentence or a label, wherever it sits: a variable
+ * (`const title = ok ? "Saved" : "Failed"`), a return value, an error message.
+ * Such text ends up on screen far more often than not, so it is listed even
+ * outside the positions the rules above understand. Capitalised or ending in
+ * sentence punctuation, so class lists, ids and enum values stay out.
+ */
+export function readsAsProse(text: string): boolean {
+  const core = text.trim();
+  if (!/[A-Za-z]{2}/.test(core)) return false;
+  const words = core.split(/\s+/).filter((word) => /[A-Za-z]{2}/.test(word));
+  if (words.length < 2 && !/^[A-Z][a-z]+$/.test(core)) return false;
+  return /^[A-Z]/.test(core) || /[.?!…:]$/.test(core);
+}
+
+/** Attributes whose values are machine-read even when they look like words. */
+const MACHINE_ATTRIBUTES = new Set([
+  "class",
+  "className",
+  "id",
+  "key",
+  "type",
+  "href",
+  "src",
+  "d",
+  "viewBox",
+  "role",
+  "name",
+  "value",
+  "for",
+  "rel",
+  "target",
+  "method",
+  "action",
+  "autocomplete",
+  "inputMode",
+  "pattern",
+  "lang",
+  "dir",
+  "style",
+  "accept",
+  "download",
+]);
+
 /** Most keys a composed expression may expand to before it is reported instead. */
 const MAX_ALTERNATIVES = 4;
 
@@ -284,7 +328,64 @@ export function extractFromSource(file: string, source: string): ExtractionResul
     flush();
   };
 
+  // Where a literal is an identifier, a comparison operand, a type or a lookup
+  // rather than text for people.
+  const isMachineContext = (node: ts.Node): boolean => {
+    // Inside a machine-read attribute's value, up to any element nested in it
+    // (`action={<button title="…">}` still holds interface text).
+    for (let at = node.parent; at; at = at.parent) {
+      if (ts.isJsxElement(at) || ts.isJsxSelfClosingElement(at) || ts.isJsxFragment(at)) break;
+      if (ts.isJsxAttribute(at)) {
+        if (MACHINE_ATTRIBUTES.has(at.name.getText(sourceFile))) return true;
+        break;
+      }
+    }
+    const parent = node.parent;
+    if (!parent) return false;
+    if (ts.isPropertyAssignment(parent) && parent.name === node) return true;
+    if (ts.isElementAccessExpression(parent) || ts.isLiteralTypeNode(parent) || ts.isCaseClause(parent)) return true;
+    if (
+      ts.isBinaryExpression(parent) &&
+      [
+        ts.SyntaxKind.EqualsEqualsEqualsToken,
+        ts.SyntaxKind.ExclamationEqualsEqualsToken,
+        ts.SyntaxKind.EqualsEqualsToken,
+        ts.SyntaxKind.ExclamationEqualsToken,
+      ].includes(parent.operatorToken.kind)
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  const isConcatenation = (node: ts.Node): node is ts.BinaryExpression =>
+    ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken;
+
+  const recordProse = (node: ts.StringLiteral | ts.NoSubstitutionTemplateLiteral | ts.TemplateExpression | ts.BinaryExpression) => {
+    if (isMachineContext(node)) return;
+    // A piece of `"a " + b` is judged as the whole concatenation, once.
+    let outer: ts.Node = node;
+    for (let at = node.parent; at; at = at.parent) {
+      if (isConcatenation(at)) outer = at;
+      else if (!ts.isParenthesizedExpression(at)) break;
+    }
+    if (outer !== node) return;
+    if (ts.isTemplateExpression(node) || isConcatenation(node)) {
+      const keys = compose(node).filter((text) => readsAsProse(text.replace(/\{[ns]\}/g, "0")));
+      if (keys.length) recordComposed(node, keys);
+    } else if (readsAsProse(node.text)) {
+      record(node.text, node);
+    }
+  };
+
   const visit = (node: ts.Node): void => {
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) return;
+    if (ts.isCallExpression(node) && /^console\./.test(node.expression.getText(sourceFile))) return;
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node)) {
+      recordProse(node);
+    } else if (isConcatenation(node) && !isConcatenation(node.parent)) {
+      recordProse(node);
+    }
     if (ts.isJsxElement(node) && isVerbatimElement(node.openingElement, sourceFile)) {
       // The runtime leaves these children alone (translate.ts), so their text
       // is content, not catalog material. The tag's own attributes still are.

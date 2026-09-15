@@ -118,3 +118,16 @@ test("adjacent text children are looked up as one sentence first", () => {
   });
   setActiveTranslations("en", {});
 });
+
+test("English left in the Arabic interface keeps its own direction", () => {
+  setActiveTranslations("ar", { Settings: "الإعدادات" });
+  assert.deepEqual(localizeProps("span", { children: ["exit: killed", "Settings", "12", "اهلا"] }), {
+    children: ["\u2068exit: killed\u2069", "الإعدادات", "12", "اهلا"],
+  });
+  assert.deepEqual(localizeProps("button", { title: "Claude · Opus" }), { title: "\u2068Claude · Opus\u2069" });
+  // Only for display: t() itself returns untranslated text unchanged.
+  assert.equal(t("exit: killed"), "exit: killed");
+  setActiveTranslations("qps", {});
+  assert.deepEqual(localizeProps("span", { children: "12" }), { children: "12" });
+  setActiveTranslations("en", {});
+});

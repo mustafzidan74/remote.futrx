@@ -160,6 +160,25 @@ function renderPattern(match: PatternMatch, keyed: KeyedText): string {
   return fill(pick(entry, ownValues[0]), ownValues, texts);
 }
 
+const FIRST_STRONG_ISOLATE = "\u2068";
+const POP_DIRECTIONAL_ISOLATE = "\u2069";
+const LATIN = /[A-Za-z]/;
+const RIGHT_TO_LEFT = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
+
+/**
+ * Text as the page shows it. English left untranslated inside the Arabic
+ * interface (a product name, an error from a CLI, a string upstream added
+ * since the last catalog update) is wrapped in a Unicode first-strong isolate,
+ * so it keeps its own left-to-right order: "exit: killed" instead of
+ * ":exit: killed" with the colon thrown to the far end.
+ */
+function display(text: string): string {
+  const translated = t(text);
+  if (translated !== text || !active || active.locale !== "ar") return translated;
+  if (!LATIN.test(text) || RIGHT_TO_LEFT.test(text) || text.startsWith(FIRST_STRONG_ISOLATE)) return text;
+  return FIRST_STRONG_ISOLATE + text + POP_DIRECTIONAL_ISOLATE;
+}
+
 /** Attributes a browser shows to people on a native element. */
 const HOST_TEXT_PROPS = ["title", "placeholder", "aria-label", "aria-description", "aria-placeholder", "alt"];
 
@@ -205,13 +224,15 @@ export function localizeProps(type: unknown, props: Props): Props {
   for (const name of names) {
     const value = props[name];
     if (typeof value !== "string") continue;
-    const translated = t(value);
+    // Isolation marks only where text meets the DOM: a component's props may
+    // be compared or used as ids before they are rendered.
+    const translated = host ? display(value) : t(value);
     if (translated !== value) (next ??= { ...props })[name] = translated;
   }
 
   if (!(host && isVerbatim(type as string, props)) && "children" in props) {
     const children = props.children;
-    const translated = localizeChildren(children);
+    const translated = localizeChildren(children, host);
     if (translated !== children) (next ??= { ...props }).children = translated;
   }
 
@@ -232,15 +253,15 @@ function isVerbatim(type: string, props: Record<string, unknown>): boolean {
   );
 }
 
-function localizeChildren(children: unknown): unknown {
-  if (typeof children === "string") return t(children);
+function localizeChildren(children: unknown, host: boolean): unknown {
+  if (typeof children === "string") return host ? display(children) : t(children);
   if (!Array.isArray(children)) return children;
   const merged = new Set<number>();
   let next: unknown[] | null = mergeTextRuns(children, merged);
   for (let index = 0; index < children.length; index++) {
     if (merged.has(index)) continue;
     const child = children[index];
-    const translated = localizeChildren(child);
+    const translated = localizeChildren(child, host);
     if (translated !== child) (next ??= children.slice())[index] = translated;
   }
   return next ?? children;

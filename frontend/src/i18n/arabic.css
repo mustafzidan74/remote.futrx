@@ -69,3 +69,16 @@ html {
   scale: none;
 }
 /*rtl:end:ignore*/
+
+/*
+ * A one-line label that may be cut short (`truncate`) often holds text of
+ * either script: chat and project titles, model names, file names. Letting its
+ * content set the paragraph direction keeps an English title's beginning
+ * visible, with the ellipsis at its end, instead of cutting its first words
+ * off on the left. Text that does not overflow keeps the element's alignment.
+ */
+/*rtl:begin:ignore*/
+[dir="rtl"] .truncate {
+  unicode-bidi: plaintext;
+}
+/*rtl:end:ignore*/
