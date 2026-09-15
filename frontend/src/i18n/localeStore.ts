@@ -3,6 +3,9 @@
 // the translation shim in one place.
 
 import arCatalog from "./catalog/ar.json";
+// Backend error messages the UI shows verbatim. Kept apart because the source
+// check (npm run i18n:check) can only see frontend strings.
+import arErrors from "./catalog/ar.errors.json";
 import { STORAGE_KEYS } from "../config/storageKeys.ts";
 import { browserStorageService } from "../services/platform/browserStorageService.ts";
 import {
@@ -19,7 +22,7 @@ import { setActiveTranslations, type Locale } from "./translate.ts";
 type Listener = (locale: Locale) => void;
 
 const CATALOGS: Record<Exclude<Locale, "en">, Catalog> = {
-  ar: arCatalog as Catalog,
+  ar: { ...(arErrors as Catalog), ...(arCatalog as Catalog) },
   qps: {},
 };
 

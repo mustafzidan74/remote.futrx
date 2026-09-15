@@ -41,7 +41,8 @@ export const TEXT_PROPERTIES = new Set([
  */
 export function looksLikeCode(key: string): boolean {
   if (/^[-=_*#─]{3,}/.test(key)) return true;
-  if (/^--?[a-z]/i.test(key)) return true;
+  // A flag, unless it is the tail of a sentence split around code ("-style secrets and…").
+  if (/^--?[a-z]/i.test(key) && key.split(/\s+/).length < 4) return true;
   if (/^[{[]/.test(key) || /":/.test(key)) return true;
   if (/\(\?[a-z]+\)/i.test(key)) return true;
   if (!/\s/.test(key)) {
@@ -53,7 +54,12 @@ export function looksLikeCode(key: string): boolean {
   return false;
 }
 
-const ENTITIES: Record<string, string> = { lt: "<", gt: ">", amp: "&", quot: '"', apos: "'", nbsp: " " };
+const ENTITIES: Record<string, string> = {
+  lt: "<", gt: ">", amp: "&", quot: '"', apos: "'", nbsp: " ",
+  rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“",
+  mdash: "—", ndash: "–", hellip: "…", middot: "·",
+  times: "×", rarr: "→", larr: "←", uarr: "↑", darr: "↓", crarr: "↵", bull: "•", copy: "©",
+};
 
 /** JSX text reaches the runtime with entities decoded; keys must match that. */
 export function decodeEntities(text: string): string {

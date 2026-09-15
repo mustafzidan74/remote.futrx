@@ -49,11 +49,12 @@ test("code-shaped strings are left out of the catalog", () => {
   for (const key of ["--env KEY=VALUE", "src/app.tsx", "(?i)refactor", '"status":"ok"', "projectId", "snake_case_name", "-----BEGIN"]) {
     assert.equal(looksLikeCode(key), true, key);
   }
-  for (const key of ["Sign in", "Settings", "Don't show again", "Uptime (30 days)"]) {
+  for (const key of ["-style secrets and links every site it finds", "Sign in", "Settings", "Don't show again", "Uptime (30 days)"]) {
     assert.equal(looksLikeCode(key), false, key);
   }
 });
 
 test("entities decode the way the JSX compiler decodes them", () => {
   assert.equal(decodeEntities("a &lt;skill&gt; &amp; &#39;b&#x27;"), "a <skill> & 'b'");
+  assert.equal(decodeEntities("project&rsquo;s chat &mdash; done&hellip; &uarr;&darr; &crarr;"), "project’s chat — done… ↑↓ ↵");
 });
