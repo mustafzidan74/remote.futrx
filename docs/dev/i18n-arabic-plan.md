@@ -233,7 +233,7 @@ Phases 4–5 are small. Total: roughly a week of sessions with review gaps.
   natively and marked untranslatable.
 - Cairo Arabic subset self-hosted at `public/fonts/` (OFL), declared with the
   Arabic unicode-range and first in the stack, in `src/i18n/arabic.css`.
-- `postcss-rtlcss` in override mode: every original rule is kept unchanged
+- `postcss-rtlcss` in override mode (`frontend/postcss.config.cjs`): every original rule is kept unchanged
   (verified: all 1,140 rules of the pre-change bundle are present verbatim),
   `[dir="rtl"]` rules are added. Rules that set `direction` are exempted
   automatically; content with its own `dir` keeps its own `text-left/right`.
