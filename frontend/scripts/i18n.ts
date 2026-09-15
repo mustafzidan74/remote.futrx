@@ -17,6 +17,8 @@ const srcDir = path.join(root, "src");
 const catalogDir = path.join(srcDir, "i18n", "catalog");
 const keysFile = path.join(catalogDir, "en.keys.json");
 const arabicFile = path.join(catalogDir, "ar.json");
+// Keys that stay English on purpose: product names, code, example values.
+const untranslatedFile = path.join(catalogDir, "ar.untranslated.json");
 
 // The i18n machinery itself, dev-only previews and tests are not interface.
 const SKIPPED_DIRS = new Set([path.join(srcDir, "i18n"), path.join(srcDir, "dev")]);
@@ -84,14 +86,19 @@ if (command !== "check") {
 const strict = flags.includes("--strict");
 const committed = readJson<string[]>(keysFile, []);
 const arabic = readJson<Record<string, unknown>>(arabicFile, {});
+const untranslated = new Set(readJson<string[]>(untranslatedFile, []));
 const keySet = new Set(keys);
 
 const stale = committed.length !== keys.length || committed.some((key, index) => key !== keys[index]);
-const missing = keys.filter((key) => !(key in arabic));
-const orphaned = Object.keys(arabic).filter((key) => !keySet.has(key));
+const missing = keys.filter((key) => !(key in arabic) && !untranslated.has(key));
+const orphaned = [...Object.keys(arabic), ...untranslated].filter((key) => !keySet.has(key));
+const doubled = [...untranslated].filter((key) => key in arabic);
 
 console.log(`interface strings: ${keys.length}`);
-console.log(`arabic catalog:    ${Object.keys(arabic).length} entries, ${missing.length} missing, ${orphaned.length} orphaned`);
+console.log(
+  `arabic catalog:    ${Object.keys(arabic).length} entries, ${untranslated.size} kept English, ` +
+    `${missing.length} missing, ${orphaned.length} orphaned`,
+);
 console.log(`unkeyable sites:   ${unkeyable.length} (npm run i18n:extract -- --unkeyable)`);
 if (stale) console.log("en.keys.json is out of date: run npm run i18n:extract");
 
@@ -101,9 +108,13 @@ if (missing.length) {
   for (const key of missing.slice(0, limit)) console.log(`  ${JSON.stringify(key)}  ${where(byKey.get(key))}`);
   if (missing.length > limit) console.log(`  ... ${missing.length - limit} more (--all)`);
 }
+if (doubled.length) {
+  console.log("\nboth translated and listed in ar.untranslated.json:");
+  for (const key of doubled.slice(0, limit)) console.log(`  ${JSON.stringify(key)}`);
+}
 if (orphaned.length) {
-  console.log("\nin ar.json but no longer in the source:");
+  console.log("\nin ar.json or ar.untranslated.json but no longer in the source:");
   for (const key of orphaned.slice(0, limit)) console.log(`  ${JSON.stringify(key)}`);
 }
 
-process.exit(strict && (stale || missing.length > 0 || orphaned.length > 0) ? 1 : 0);
+process.exit(strict && (stale || missing.length > 0 || orphaned.length > 0 || doubled.length > 0) ? 1 : 0);

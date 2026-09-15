@@ -44,3 +44,28 @@ html {
   text-align: right;
 }
 /*rtl:end:ignore*/
+
+/*
+ * Icons that point along the reading direction — disclosure chevrons, back and
+ * forward, sign-out, the Enter glyph — mirror in right-to-left text. The icons
+ * are inline SVGs from upstream's primitives/icons.tsx, recognised here by
+ * their path so that file stays untouched. `scale` composes after the
+ * element's own `transform`, so a chevron rotated to point down stays down.
+ * An icon inside a left-to-right island (a diff, a code block) keeps pointing
+ * the way that island reads. Attribute selectors, not `:dir()`: the CSS
+ * minifier rewrites `:dir()` into `:lang()`, which cannot see islands.
+ */
+/*rtl:begin:ignore*/
+[dir="rtl"] svg:has(> path[d="m9 6 6 6-6 6"]),
+[dir="rtl"] svg:has(> path[d="m15 18-6-6 6-6"]),
+[dir="rtl"] svg:has(> path[d="m16 17 5-5-5-5M21 12H9"]),
+[dir="rtl"] svg:has(> path[d="M9 10 4 15l5 5"]) {
+  scale: -1 1;
+}
+[dir="rtl"] [dir="ltr"] svg:has(> path[d="m9 6 6 6-6 6"]),
+[dir="rtl"] [dir="ltr"] svg:has(> path[d="m15 18-6-6 6-6"]),
+[dir="rtl"] [dir="ltr"] svg:has(> path[d="m16 17 5-5-5-5M21 12H9"]),
+[dir="rtl"] [dir="ltr"] svg:has(> path[d="M9 10 4 15l5 5"]) {
+  scale: none;
+}
+/*rtl:end:ignore*/

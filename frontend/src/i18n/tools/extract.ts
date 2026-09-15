@@ -156,7 +156,8 @@ function composedKey(text: string): string | null {
   const { key } = keyed;
   const literal = key.replace(/\{[ns]\}/g, " ");
   if (!/[A-Za-z]{2}/.test(literal)) return null;
-  if (/\{s\}\s*\{s\}/.test(key)) return null;
+  // Two slots need literal text between them for the runtime to split them.
+  if (key.includes("{s}{s}")) return null;
   if (looksLikeCode(key)) return null;
   return key;
 }
@@ -207,7 +208,16 @@ export function extractFromSource(file: string, source: string): ExtractionResul
     // Literals inside the slot (`${on ? "on" : "off"}`) are keys of their own:
     // the runtime translates what a slot captures separately.
     recordExpression(expression);
-    return NUMERIC_EXPRESSION.test(expression.getText(sourceFile)) ? ["{n}"] : ["{s}"];
+    // A choice between two strings is text, whatever the condition counts.
+    if (
+      ts.isConditionalExpression(inner) &&
+      [inner.whenTrue, inner.whenFalse].every((branch) => ts.isStringLiteral(branch) || ts.isNoSubstitutionTemplateLiteral(branch))
+    ) {
+      return ["{s}"];
+    }
+    // Judge the code, not the words inside its string literals (" · runs").
+    const code = expression.getText(sourceFile).replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`/g, '""');
+    return NUMERIC_EXPRESSION.test(code) ? ["{n}"] : ["{s}"];
   };
 
   const recordComposed = (expression: ts.Node, alternatives: string[]): boolean => {
