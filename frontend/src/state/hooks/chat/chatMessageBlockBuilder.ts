@@ -132,6 +132,16 @@ class ChatMessageBlockBuilder {
         }
         return next;
       }
+      case "system": {
+        if (event.subtype !== "model_fallback") return blocks;
+        const { blocks: next, assistant } = this.ensureTrailingAssistant(blocks, event.t);
+        assistant.parts.push({
+          kind: "model-fallback",
+          from: String(event.data?.from ?? ""),
+          to: String(event.data?.to ?? ""),
+        });
+        return next;
+      }
       // Provider-native fallback events stay in the persisted event stream for
       // diagnostics and future typed projections. They are protocol telemetry,
       // not conversation content, so the normal transcript does not render them.

@@ -255,3 +255,38 @@ func readAllTranscriptContent(
 		after = page.NextAfter
 	}
 }
+
+func TestTranscriptProjectionKeepsModelFallbackNoticesOnly(t *testing.T) {
+	root := t.TempDir()
+	events := []servicechat.Event{
+		{Seq: 1, T: 1, Type: "user", TurnID: "turn-1", Text: "plan it"},
+		{Seq: 2, T: 2, Type: "assistant_text", TurnID: "turn-1", Text: "Here is the plan."},
+		{Seq: 3, T: 3, Type: "system", TurnID: "turn-1", Subtype: "keepalive"},
+		{Seq: 4, T: 4, Type: "system", TurnID: "turn-1", Subtype: servicechat.SystemModelFallback,
+			Data: json.RawMessage(`{"from":"gemini-3.8-flash-high","to":"gemini-3.7-flash-high"}`)},
+		{Seq: 5, T: 5, Type: "complete", TurnID: "turn-1"},
+	}
+	writeStoredChat(t, root, "abcd", events)
+	store := newIndexedTestStore(t, root)
+	if _, err := store.index.syncChat(context.Background(), "abcd", store.eventsPath("abcd")); err != nil {
+		t.Fatal(err)
+	}
+	page, err := store.ReadTranscriptPage(context.Background(), "abcd", servicechat.TranscriptPageQuery{Limit: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var systems []servicechat.Event
+	for _, turn := range page.Turns {
+		for _, event := range turn.Events {
+			if event.Type == "system" {
+				systems = append(systems, event)
+			}
+		}
+	}
+	if len(systems) != 1 || systems[0].Subtype != servicechat.SystemModelFallback || systems[0].Seq != 4 {
+		t.Fatalf("system events in transcript = %#v", systems)
+	}
+	if !strings.Contains(string(systems[0].Data), "gemini-3.7-flash-high") {
+		t.Fatalf("fallback lost its models: %s", systems[0].Data)
+	}
+}

@@ -105,6 +105,18 @@ function renderAssistantParts(
       return;
     }
 
+    if (part.kind === "model-fallback") {
+      rendered.push(
+        <div key={`fallback-${index}`} role="status" class="my-2 flex items-center gap-2 text-[11px] text-ink-400">
+          <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-yellow" aria-hidden="true" />
+          <span class="min-w-0 [overflow-wrap:anywhere]">
+            {part.from} had no capacity at Google, so the rest of this reply comes from {part.to}.
+          </span>
+        </div>
+      );
+      return;
+    }
+
     if (part.kind === "turn-status") {
       const providerLabel = part.provider ? providerDisplayLabel(part.provider) : "Agent";
       rendered.push(

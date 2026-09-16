@@ -31,7 +31,12 @@ const (
 
 func transcriptItemIdentity(event servicechat.Event, ordinal int64) (string, transcriptItemMode, bool) {
 	switch event.Type {
-	case "provider_event", "usage_update", "session", "sync", "system", "permission_request":
+	case "system":
+		if event.Subtype == servicechat.SystemModelFallback {
+			return "event:" + strconv.FormatInt(ordinal, 10), transcriptItemSingle, true
+		}
+		return "", transcriptItemSingle, false
+	case "provider_event", "usage_update", "session", "sync", "permission_request":
 		return "", transcriptItemSingle, false
 	case "collaboration":
 		if event.Name == "wait" {

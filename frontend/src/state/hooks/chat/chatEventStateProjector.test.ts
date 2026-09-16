@@ -436,3 +436,30 @@ test("carries the routing decision onto the user block", () => {
     { type: "user", text: "routed check", t: 3, synthetic: "autotest", routing },
   ]);
 });
+
+test("a model switch is a status line beside the reply, not reply text", () => {
+  const events: ChatEvent[] = [
+    { type: "user", text: "plan the topbar", t: 1 },
+    { type: "assistant_text", text: "Here is the plan.", t: 2 },
+    {
+      type: "system",
+      subtype: "model_fallback",
+      data: { from: "gemini-3.8-flash-high", to: "gemini-3.7-flash-high", reason: "capacity" },
+      t: 3,
+    },
+    { type: "system", subtype: "keepalive", t: 4 },
+    { type: "assistant_text", text: "Continuing.", t: 5 },
+    { type: "complete", t: 6 },
+  ];
+
+  const state = chatEventStateProjector.fromEvents(events, { hasMore: false });
+  const assistant = state.blocks[1];
+  assert.equal(assistant.type, "assistant");
+  if (assistant.type !== "assistant") return;
+  assert.deepEqual(assistant.parts, [
+    { kind: "text", text: "Here is the plan." },
+    { kind: "model-fallback", from: "gemini-3.8-flash-high", to: "gemini-3.7-flash-high" },
+    { kind: "text", text: "Continuing." },
+  ]);
+  assert.equal(assistant.isComplete, true);
+});

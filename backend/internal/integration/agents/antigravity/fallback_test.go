@@ -1,6 +1,11 @@
 package antigravity
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+
+	"github.com/futrx-com/remote.futrx.com/internal/agent"
+)
 
 func TestCapacityFailureRecognisesGoogleUnavailability(t *testing.T) {
 	ok, model := capacityFailure("API error (attempt 1): UNAVAILABLE (code 503): No capacity available for model gemini-3.8-flash-high on the server")
@@ -63,5 +68,19 @@ func TestCapacityFallbackStaysInItsFamily(t *testing.T) {
 	}
 	if next := nextCapacityFallback("gemini-3.6-flash-low", recordedCatalog, map[string]bool{}); next != "" {
 		t.Fatalf("the lowest flash model got fallback %q", next)
+	}
+}
+
+func TestModelFallbackIsASystemEventNotReplyText(t *testing.T) {
+	ev := modelFallbackEvent("c", "gemini-3.8-flash-high", "gemini-3.7-flash-high")
+	if ev.Type != agent.EventSystem || ev.Subtype != agent.SystemModelFallback || ev.Text != "" {
+		t.Fatalf("event = %+v", ev)
+	}
+	var data map[string]string
+	if err := json.Unmarshal(ev.Data, &data); err != nil {
+		t.Fatal(err)
+	}
+	if data["from"] != "gemini-3.8-flash-high" || data["to"] != "gemini-3.7-flash-high" {
+		t.Fatalf("data = %v", data)
 	}
 }

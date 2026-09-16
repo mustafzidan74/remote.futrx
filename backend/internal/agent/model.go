@@ -45,6 +45,11 @@ const (
 	EventQuotaUpdated EventType = "quota.updated"
 )
 
+// SystemModelFallback is the subtype of an EventSystem saying the run moved to
+// another model because the one asked for was unavailable. Its data carries
+// "from" and "to".
+const SystemModelFallback = "model_fallback"
+
 type ItemKind string
 
 const (

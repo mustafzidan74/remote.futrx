@@ -1,10 +1,14 @@
 package antigravity
 
 import (
+	"encoding/json"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/futrx-com/remote.futrx.com/internal/agent"
 )
 
 // maxCapacityFallbacks bounds how many other models one turn tries after
@@ -17,6 +21,20 @@ const maxCapacityFallbacks = 3
 // work done, so the agent continues rather than starting over.
 const capacityContinuePrompt = "The previous model stopped because it had no capacity. " +
 	"Continue the same task from exactly where you stopped; do not redo finished steps."
+
+// modelFallbackEvent tells the chat that the run moved to another model. The
+// chat renders it as a status line beside the reply rather than inside it.
+func modelFallbackEvent(conversationID, from, to string) agent.Event {
+	data, _ := json.Marshal(map[string]string{"from": from, "to": to, "reason": "capacity"})
+	return agent.Event{
+		T:              time.Now().UnixMilli(),
+		Type:           agent.EventSystem,
+		Provider:       agent.ProviderAntigravity,
+		ConversationID: conversationID,
+		Subtype:        agent.SystemModelFallback,
+		Data:           data,
+	}
+}
 
 var (
 	// Transient, provider-side unavailability — not the account's quota and not

@@ -90,15 +90,10 @@ func (p *Provider) Run(ctx context.Context, req agent.RunRequest, emit func(agen
 			emit(outcome.failure)
 			return agent.ErrRunFailed
 		}
-		emit(agent.Event{
-			T:              time.Now().UnixMilli(),
-			Type:           agent.EventAssistantTextDelta,
-			Provider:       agent.ProviderAntigravity,
-			ConversationID: req.ConversationID,
-			ItemKind:       agent.ItemMessage,
-			ItemID:         fmt.Sprintf("agy-fallback-%d", attempt),
-			Text:           fmt.Sprintf("\n\n> ⚠️ `%s` has no capacity at Google right now — switched to `%s` and retrying.\n\n", current, next),
-		})
+		// A status line, not reply text: written into the reply it was copied,
+		// searched and summarised in the project journal as if the model had
+		// said it.
+		emit(modelFallbackEvent(req.ConversationID, current, next))
 		req.Model = next
 		if outcome.sessionID != "" {
 			req.ResumeID = outcome.sessionID

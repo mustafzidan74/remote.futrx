@@ -128,6 +128,11 @@ type SkillRef struct {
 	Source   string   `json:"source,omitempty"`
 }
 
+// SystemModelFallback is the system event saying a run moved to another model.
+// Unlike other system events it is part of the transcript: it explains why the
+// rest of the reply came from a model the operator did not pick.
+const SystemModelFallback = agent.SystemModelFallback
+
 type Event struct {
 	Seq                  int64           `json:"seq,omitempty"`
 	T                    int64           `json:"t"`

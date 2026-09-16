@@ -38,7 +38,11 @@ export type AssistantMessagePart =
       data: Record<string, unknown>;
       status: string;
     }
-  | { kind: "turn-status"; status: string; data?: Record<string, unknown>; provider?: ChatProvider };
+  | { kind: "turn-status"; status: string; data?: Record<string, unknown>; provider?: ChatProvider }
+  // Something the platform did during the turn, shown beside the reply rather
+  // than inside it: today, moving to another model when the chosen one had no
+  // capacity.
+  | { kind: "model-fallback"; from: string; to: string };
 
 export type AssistantMessageBlock = {
   type: "assistant";
