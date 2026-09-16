@@ -98,13 +98,7 @@ export function ThreadHeader({
           <MessageSquare class="w-4 h-4" />
         </div>
 
-        <h1
-          dir="auto"
-          title={title}
-          class="bidi-auto min-w-0 truncate text-[14px] font-semibold text-ink-50"
-        >
-          {title}
-        </h1>
+        <ChatTitle chatId={chat.id} title={title} />
         <RegenerateTitleButton chatId={chat.id} />
         <span class="flex-1" />
       </div>
@@ -198,6 +192,87 @@ function AnswerOnlyBadge({ badge }: { badge: { short: string; title: string } })
  * refreshed title arrives through the workspace socket like every other chat
  * change, so nothing here has to hold state beyond "am I waiting".
  */
+/**
+ * The chat's name, and the place to change it: one click opens an input,
+ * Enter saves, Escape leaves the old name alone. The new title reaches the
+ * rest of the app the same way the auxiliary model's does — through the chat
+ * meta the server sends back — so nothing here has to be told about it.
+ */
+function ChatTitle({ chatId, title }: { chatId: string; title: string }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(title);
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  // The name this component saved, shown until the chat meta comes back around
+  // with it, so a rename is visible the moment it succeeds.
+  const [saved, setSaved] = useState<string | null>(null);
+  const shown = saved && saved !== title ? saved : title;
+
+  function open() {
+    setDraft(shown);
+    setFailed(null);
+    setEditing(true);
+  }
+
+  async function save() {
+    const next = draft.trim();
+    if (!next || next === shown) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      await chatApi.update(chatId, { title: next });
+      setSaved(next);
+      setEditing(false);
+      setFailed(null);
+    } catch (cause) {
+      setFailed((cause as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={open}
+        dir="auto"
+        title={failed ? `Rename failed: ${failed}` : "Click to rename this chat"}
+        class={`bidi-auto min-w-0 truncate rounded px-1 text-start text-[14px] font-semibold
+                text-ink-50 hover:bg-tint-strong ${failed ? "text-accent-red" : ""}`}
+      >
+        {shown}
+      </button>
+    );
+  }
+
+  return (
+    <input
+      value={draft}
+      autoFocus
+      disabled={saving}
+      dir="auto"
+      aria-label="Chat name"
+      onInput={(event) => setDraft((event.currentTarget as HTMLInputElement).value)}
+      onBlur={() => void save()}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          void save();
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setEditing(false);
+        }
+      }}
+      class="min-w-0 flex-1 rounded border border-accent-blue bg-inset px-1 text-[14px] font-semibold
+             text-ink-50 focus:outline-none disabled:opacity-60"
+    />
+  );
+}
+
 function RegenerateTitleButton({ chatId }: { chatId: string }) {
   const available = useAuxModelJob("chatTitle");
   const [busy, setBusy] = useState(false);
