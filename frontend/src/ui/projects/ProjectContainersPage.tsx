@@ -21,6 +21,8 @@ import {
   type SecretDraft,
 } from "./project-containers/ProjectSecretsSection";
 import { ProjectMCPSection } from "./project-containers/ProjectMCPSection";
+import { ProjectJournalSection } from "./project-containers/ProjectJournalSection";
+import type { useProjectJournal } from "../../state/hooks/projects/useProjectJournal";
 import { ProjectSnapshotsSection } from "./project-containers/ProjectSnapshotsSection";
 import { ProjectLighthouseSection } from "./project-containers/ProjectLighthouseSection";
 import type { ProjectLighthouseState } from "../../state/hooks/projects/useProjectLighthouse";
@@ -63,6 +65,7 @@ import type { ProjectHealth } from "../../models/health";
 import type { UsageSummary } from "../../models/usage";
 import {
   Archive,
+  Clock,
   ChevronLeft,
   ExternalLink,
   GitFork,
@@ -92,6 +95,7 @@ export type ProjectSettingsTab =
   | "settings"
   | "github"
   | "snapshots"
+  | "journal"
   | "lighthouse"
   | "visual"
   | "secrets"
@@ -129,6 +133,14 @@ const tabs: Array<{
     description:
       "Archive this project's files and database, and roll back to an earlier copy.",
     Icon: Archive,
+  },
+  {
+    id: "journal",
+    label: "History",
+    description:
+      "Every agent run in this project, with what was asked, what came back, and the files it " +
+      "changed. Search it by feature or by date.",
+    Icon: Clock,
   },
   {
     id: "lighthouse",
@@ -176,6 +188,7 @@ export function ProjectContainersPage({
   sharesRecord,
   snapshotsRecord,
   snapshotsRunning,
+  journal,
   lighthouse,
   lighthousePorts,
   visual,
@@ -226,6 +239,8 @@ export function ProjectContainersPage({
   sharesRecord: SharesRecord;
   snapshotsRecord: SnapshotsRecord;
   snapshotsRunning: boolean;
+  /** Everything the History tab reads and does, from useProjectJournal. */
+  journal: ReturnType<typeof useProjectJournal>;
   /** Everything the Lighthouse tab reads and does, from useProjectLighthouse. */
   lighthouse: ProjectLighthouseState;
   /** The project's listening application ports, so the tab offers a choice. */
@@ -472,6 +487,24 @@ export function ProjectContainersPage({
                       />
                     </ProjectSettingsPanel>
                   </div>
+                )}
+
+                {activeTab === "journal" && (
+                  <ProjectSettingsPanel
+                    title="History"
+                    description="Every agent run in this project, newest first."
+                    Icon={Clock}
+                  >
+                    <ProjectJournalSection
+                      record={journal.record}
+                      filters={journal.filters}
+                      onFiltersChange={journal.setFilters}
+                      onClearFilters={journal.clearFilters}
+                      onLoadMore={journal.loadMore}
+                      exportUrl={journal.exportUrl}
+                      onOpenChat={onOpenChat}
+                    />
+                  </ProjectSettingsPanel>
                 )}
 
                 {activeTab === "snapshots" && (

@@ -17,6 +17,7 @@ import (
 	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
+	servicejournal "github.com/futrx-com/remote.futrx.com/internal/service/journal"
 	servicelighthouse "github.com/futrx-com/remote.futrx.com/internal/service/lighthouse"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	serviceresources "github.com/futrx-com/remote.futrx.com/internal/service/resources"
@@ -45,6 +46,7 @@ type ProjectHandler struct {
 	mcp                *MCPHandler
 	publicHostname     string
 	usage              *UsageHandler
+	journal            *servicejournal.Service
 	projectHostPattern *regexp.Regexp
 	codeHostPattern    *regexp.Regexp
 }
@@ -290,6 +292,11 @@ func (h *ProjectHandler) HandleResource(w http.ResponseWriter, r *http.Request) 
 
 	if len(parts) >= 2 && parts[1] == "agent-browser" {
 		h.handleAgentBrowser(w, r, id, parts)
+		return
+	}
+
+	if len(parts) >= 2 && parts[1] == "journal" {
+		h.handleJournal(w, r, id, parts)
 		return
 	}
 

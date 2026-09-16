@@ -9,6 +9,7 @@ import { useProjectContainersController } from "../../state/hooks/projects/usePr
 import { useProjectUsage } from "../../state/hooks/usage/useProjectUsage";
 import { useProjectResources } from "../../state/hooks/projects/useProjectResources";
 import { useProjectMCP } from "../../state/hooks/projects/useProjectMCP";
+import { useProjectJournal } from "../../state/hooks/projects/useProjectJournal";
 import { useProjectLighthouse } from "../../state/hooks/projects/useProjectLighthouse";
 import { useProjectPreviewLinks } from "../../state/hooks/projects/useProjectPreviewLinks";
 import { useProjectVisual } from "../../state/hooks/projects/useProjectVisual";
@@ -74,6 +75,7 @@ export function ProjectContainersContainer({
   );
   const visual = useProjectVisual(selectedProject?.id ?? "");
   const lighthouse = useProjectLighthouse(selectedProject?.id ?? "", activeTab === "lighthouse");
+  const journal = useProjectJournal(selectedProject, activeTab === "journal");
 
   const githubChats = useMemo(
     () =>
@@ -100,6 +102,7 @@ export function ProjectContainersContainer({
       sharesRecord={shares.record}
       snapshotsRecord={snapshots.record}
       snapshotsRunning={snapshots.running}
+      journal={journal}
       lighthouse={lighthouse}
       lighthousePorts={previewablePorts}
       visual={visual}

@@ -85,6 +85,8 @@ export const API_ROUTES = {
     restore: (id: string) => `/api/projects/${encodeURIComponent(id)}/restore`,
     purge: (id: string) => `/api/projects/${encodeURIComponent(id)}/purge`,
     snapshots: (id: string) => `/api/projects/${encodeURIComponent(id)}/snapshots`,
+    journal: (id: string) => `/api/projects/${encodeURIComponent(id)}/journal`,
+    journalExport: (id: string) => `/api/projects/${encodeURIComponent(id)}/journal/export`,
     snapshot: (id: string, snapshotId: string) =>
       `/api/projects/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(snapshotId)}`,
     snapshotRestore: (id: string, snapshotId: string) =>

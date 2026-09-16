@@ -14,6 +14,7 @@ import (
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicegithub "github.com/futrx-com/remote.futrx.com/internal/service/github"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
+	servicejournal "github.com/futrx-com/remote.futrx.com/internal/service/journal"
 	servicelighthouse "github.com/futrx-com/remote.futrx.com/internal/service/lighthouse"
 	servicemcp "github.com/futrx-com/remote.futrx.com/internal/service/mcp"
 	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
@@ -46,6 +47,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filechat"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filegithub"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileglobalsecrets"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filejournal"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filelighthouse"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filemcp"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filemonitoring"
@@ -158,7 +160,9 @@ type Stores struct {
 	Usage           serviceusage.Repository
 	Transcription   servicetranscribe.Store
 	Audit           serviceaudit.Store
-	AuxModel        serviceauxmodel.Store
+	// Journal is the per-project change history: one record per agent run.
+	Journal  servicejournal.Store
+	AuxModel serviceauxmodel.Store
 	// Providers is the free-tier provider pool registry; ProviderUsage is the
 	// append-only ledger beside it. Either one nil leaves the pool
 	// unavailable rather than half-wired.
@@ -341,6 +345,10 @@ func New(dataDir string) (Stores, error) {
 	if err != nil {
 		return Stores{}, fmt.Errorf("init audit store: %w", err)
 	}
+	journalLog, err := filejournal.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init project journal store: %w", err)
+	}
 	agentPreferences, err := fileagentprefs.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init agent preferences store: %w", err)
@@ -389,6 +397,7 @@ func New(dataDir string) (Stores, error) {
 		Usage:            usage,
 		Transcription:    transcription,
 		Audit:            auditLog,
+		Journal:          journalLog,
 		ScheduleHistory:  scheduleHistory,
 		GitHub:           gitHub,
 		AgentPreferences: agentPreferences,

@@ -164,7 +164,8 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			WithClientMessages(clientMessageService(deps.Services.Notifications)).
 			WithGitHub(gitHubHandler).
 			WithMCP(mcpHandler).
-			WithUsage(usageHandler),
+			WithUsage(usageHandler).
+			WithJournal(deps.Services.Journal),
 		ProjectHealth: httphandlers.NewProjectHealthHandler(
 			deps.Services.Projects,
 			deps.Services.Health,

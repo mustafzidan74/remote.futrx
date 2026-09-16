@@ -178,6 +178,7 @@ func main() {
 		Backups:                 backupProber,
 		GitHistory:              gitHistoryService,
 		Audit:                   storeSet.Audit,
+		Journal:                 storeSet.Journal,
 		AuditRetention:          cfg.Audit.RetentionMonths,
 		TrashRetention:          cfg.Trash.Retention,
 		AuthBaseURL:             cfg.BaseURL,

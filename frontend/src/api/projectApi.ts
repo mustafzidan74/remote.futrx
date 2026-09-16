@@ -7,6 +7,7 @@ import { projectSecretsApi } from "./project/projectSecretsApi";
 import { projectPortalApi } from "./project/projectPortalApi";
 import { projectScreenshotApi } from "./project/projectScreenshotApi";
 import { projectSharesApi } from "./project/projectSharesApi";
+import { projectJournalApi } from "./project/projectJournalApi";
 import { projectSnapshotsApi } from "./project/projectSnapshotsApi";
 import { projectTrashApi } from "./project/projectTrashApi";
 import type { ProjectMeta, TrashedProject } from "../models/project";
@@ -42,5 +43,6 @@ export const projectApi = {
   ...projectGitHubApi,
   ...projectAccessApi,
   ...projectSnapshotsApi,
+  ...projectJournalApi,
   ...projectTrashApi,
 };

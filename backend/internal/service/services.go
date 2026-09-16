@@ -27,6 +27,7 @@ import (
 	servicegithub "github.com/futrx-com/remote.futrx.com/internal/service/github"
 	serviceglobalsecrets "github.com/futrx-com/remote.futrx.com/internal/service/globalsecrets"
 	servicehealth "github.com/futrx-com/remote.futrx.com/internal/service/health"
+	servicejournal "github.com/futrx-com/remote.futrx.com/internal/service/journal"
 	servicelighthouse "github.com/futrx-com/remote.futrx.com/internal/service/lighthouse"
 	servicemcp "github.com/futrx-com/remote.futrx.com/internal/service/mcp"
 	servicemonitoring "github.com/futrx-com/remote.futrx.com/internal/service/monitoring"
@@ -210,6 +211,9 @@ type Dependencies struct {
 	GitHistory     serviceportal.History
 	Audit          serviceaudit.Store
 	AuditRetention int
+	// Journal is the per-project change history: one record per settled run.
+	// Nil leaves projects without a history tab.
+	Journal servicejournal.Store
 	// TrashRetention is how long a soft-deleted project survives before the
 	// janitor purges it. Zero disables the sweep.
 	TrashRetention    time.Duration
@@ -360,7 +364,9 @@ type Services struct {
 	// AuxJobs drives the chat-shaped auxiliary jobs (a better title, the
 	// search subtitle) off settled runs, and serves the "rename this chat"
 	// action. Nil on a deployment with no auxiliary model store.
-	AuxJobs        *AuxJobDriver
+	AuxJobs *AuxJobDriver
+	// Journal is the per-project change history written from settled runs.
+	Journal        *servicejournal.Service
 	SiteWatch      *servicesitewatch.Service
 	Transcription  *servicetranscribe.Service
 	Playbooks      *serviceplaybooks.Service
@@ -735,6 +741,15 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		auxModel = serviceauxmodel.New(ctx, deps.AuxModel, auxOptions...)
 		auxJobs = newAuxJobDriver(auxModel, chats)
 	}
+	// The project journal records what each run was asked for and what it
+	// changed. Without a store there is nowhere to write, and every project
+	// simply has no history tab.
+	var journalService *servicejournal.Service
+	var journalDriver *JournalDriver
+	if deps.Journal != nil {
+		journalService = servicejournal.New(deps.Journal)
+		journalDriver = newJournalDriver(journalService, chats)
+	}
 	// The direct-model responder joins the pool and the local model behind one
 	// list. It is built even when both are absent — it simply offers nothing,
 	// and every chat runs an agent as before.
@@ -803,6 +818,9 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		// The auxiliary jobs observer schedules its work and returns; it never
 		// holds up a run. A nil driver is dropped by WithRunObserver itself.
 		prompt.WithRunObserver(auxRunObserver(auxJobs)),
+		// The journal observer schedules its transcript read and returns, so a
+		// project's change history never delays the run that made it.
+		prompt.WithRunObserver(journalRunObserver(journalDriver)),
 		prompt.WithReplyPreferences(replyPreferencePreamble{prefs: agentPreferences}),
 	}
 	if deps.PromptStartGate != nil {
@@ -1033,6 +1051,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		DirectModels:      directModels,
 		AgentQuota:        agentQuota,
 		AuxJobs:           auxJobs,
+		Journal:           journalService,
 		SiteWatch:         siteWatchService,
 		Transcription:     transcription,
 		Playbooks:         playbookService,
