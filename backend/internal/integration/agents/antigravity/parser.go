@@ -3,6 +3,7 @@ package antigravity
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -26,6 +27,7 @@ type Parser struct {
 	sessionEmitted bool
 	sessionID      string
 	startedTools   map[int]bool
+	finishedTools  map[int]bool
 	completed      bool
 }
 
@@ -41,7 +43,7 @@ func NewParser(req agent.RunRequest) *Parser {
 	if req.Provider == "" {
 		req.Provider = agent.ProviderAntigravity
 	}
-	return &Parser{req: req, startedTools: map[int]bool{}}
+	return &Parser{req: req, startedTools: map[int]bool{}, finishedTools: map[int]bool{}}
 }
 
 // Completed reports whether the stream ended with a result line, so the
@@ -221,6 +223,7 @@ func (p *Parser) tool(step wireStep) []agent.Event {
 	if step.State == "ACTIVE" {
 		return events
 	}
+	p.finishedTools[step.StepIndex] = true
 	done := p.event(agent.EventToolCompleted)
 	done.ItemKind = agent.ItemToolCall
 	done.ItemID = itemID
@@ -234,6 +237,31 @@ func (p *Parser) tool(step wireStep) []agent.Event {
 		}
 	}
 	return append(events, done)
+}
+
+// FailOpenTools closes every tool card that started but never finished. agy
+// can stop mid-step — a headless run that hits a permission it cannot ask for
+// exits without reporting the step — and a card left open reads as a tool
+// that is still running.
+func (p *Parser) FailOpenTools(reason string) []agent.Event {
+	var open []int
+	for index := range p.startedTools {
+		if !p.finishedTools[index] {
+			open = append(open, index)
+		}
+	}
+	sort.Ints(open)
+	events := make([]agent.Event, 0, len(open))
+	for _, index := range open {
+		p.finishedTools[index] = true
+		done := p.event(agent.EventToolCompleted)
+		done.ItemKind = agent.ItemToolCall
+		done.ItemID = fmt.Sprintf("agy-step-%d", index)
+		done.IsError = true
+		done.Output = reason
+		events = append(events, done)
+	}
+	return events
 }
 
 func (p *Parser) result(result wireResult) []agent.Event {

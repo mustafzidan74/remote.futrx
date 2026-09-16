@@ -127,6 +127,7 @@ func (p *Provider) runOnce(ctx context.Context, req agent.RunRequest, emit func(
 	outcome := runOutcome{containerName: containerName}
 
 	parser := NewParser(req)
+	var stderr stderrLines
 	reportedFailure := false
 	forward := func(ev agent.Event) {
 		if ev.Type == agent.EventRunFailed {
@@ -143,6 +144,7 @@ func (p *Provider) runOnce(ctx context.Context, req agent.RunRequest, emit func(
 		LogID:          req.ConversationID,
 		Provider:       agent.ProviderAntigravity,
 		ConversationID: req.ConversationID,
+		OnStderr:       stderr.add,
 	})
 	outcome.sessionID = parser.SessionID()
 	if errors.Is(ctx.Err(), context.Canceled) {
@@ -183,6 +185,26 @@ func (p *Provider) runOnce(ctx context.Context, req agent.RunRequest, emit func(
 	// purpose — the turn the operator asked for has already succeeded, and
 	// failing it now over a credential copy would be the wrong trade.
 	p.syncCredentialToHost(containerName, req.ConversationID)
+
+	// agy exits cleanly, without a result line, when a headless run needs a
+	// permission it cannot ask for. Closing that as a success left the chat
+	// with a tool card that looked like it was still running and no reply.
+	if !parser.Completed() {
+		if permission, denied := deniedPermission(stderr.text()); denied {
+			reason := permissionStopReason(req.Mode, permission)
+			for _, ev := range parser.FailOpenTools(reason) {
+				emit(ev)
+			}
+			emit(agent.Event{
+				T:              time.Now().UnixMilli(),
+				Type:           agent.EventRunFailed,
+				Provider:       agent.ProviderAntigravity,
+				ConversationID: req.ConversationID,
+				Message:        reason,
+			})
+			return runOutcome{}, agent.ErrRunFailed
+		}
+	}
 
 	// The result line closes the run with its token usage. A stream that ended
 	// cleanly without one still has to be closed for the chat to settle.

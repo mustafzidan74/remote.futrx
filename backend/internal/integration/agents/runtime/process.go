@@ -20,6 +20,11 @@ type ProcessOptions struct {
 	ConversationID     string
 	StdoutMaxLineBytes int
 	StderrMaxLineBytes int
+	// OnStderr sees every stderr line as it arrives. A process that exits
+	// cleanly returns no error, and with it no stderr, so a provider whose CLI
+	// explains a quiet exit only on stderr reads it here. It is called from a
+	// separate goroutine; RunProcess returns only after the last call.
+	OnStderr func(line string)
 }
 
 type ProcessError struct {
@@ -80,6 +85,9 @@ func RunProcess(
 		for sc.Scan() {
 			line := sc.Text()
 			log.Printf("%s[%s] stderr: %s", name, logID, line)
+			if opts.OnStderr != nil {
+				opts.OnStderr(line)
+			}
 			if captured.Len() < 64<<10 {
 				captured.WriteString(line)
 				captured.WriteByte('\n')
