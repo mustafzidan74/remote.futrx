@@ -65,24 +65,59 @@ type wireStep struct {
 	ToolName       string        `json:"tool_name"`
 	ToolInfo       *wireToolInfo `json:"tool_info"`
 	TextDelta      string        `json:"text_delta"`
-	Error          string        `json:"error"`
+	Error          wireError     `json:"error"`
 }
 
 type wireToolInfo struct {
 	Name       string         `json:"name"`
 	Parameters map[string]any `json:"parameters"`
 	Output     *string        `json:"output"`
-	Error      string         `json:"error"`
+	Error      wireError      `json:"error"`
 }
 
 type wireResult struct {
 	ConversationID  string    `json:"conversation_id"`
 	Status          string    `json:"status"`
 	Response        string    `json:"response"`
-	Error           string    `json:"error"`
+	Error           wireError `json:"error"`
 	DurationSeconds float64   `json:"duration_seconds"`
 	NumTurns        int64     `json:"num_turns"`
 	Usage           wireUsage `json:"usage"`
+}
+
+// wireError is agy's error field, which is a bare string on some lines and an
+// object on others — a denied tool arrives as
+// {"type":"TOOL_ERROR","message":"permission check failed for read_file …"}.
+// Decoding it as a string made the whole line fail to parse, so the step that
+// failed never reached the UI and its card sat there looking like it was still
+// running. Anything unrecognised is kept verbatim rather than dropped.
+type wireError string
+
+func (e *wireError) UnmarshalJSON(data []byte) error {
+	text := strings.TrimSpace(string(data))
+	if text == "" || text == "null" {
+		*e = ""
+		return nil
+	}
+	var asString string
+	if err := json.Unmarshal(data, &asString); err == nil {
+		*e = wireError(asString)
+		return nil
+	}
+	var asObject struct {
+		Type    string `json:"type"`
+		Message string `json:"message"`
+		Error   string `json:"error"`
+		Detail  string `json:"detail"`
+	}
+	if err := json.Unmarshal(data, &asObject); err == nil {
+		if message := firstNonEmpty(asObject.Message, asObject.Error, asObject.Detail, asObject.Type); message != "" {
+			*e = wireError(message)
+			return nil
+		}
+	}
+	*e = wireError(text)
+	return nil
 }
 
 type wireUsage struct {
@@ -159,7 +194,7 @@ func (p *Parser) tool(step wireStep) []agent.Event {
 	name := step.ToolName
 	var params map[string]any
 	var output *string
-	errText := step.Error
+	errText := string(step.Error)
 	if step.ToolInfo != nil {
 		if name == "" {
 			name = step.ToolInfo.Name
@@ -167,7 +202,7 @@ func (p *Parser) tool(step wireStep) []agent.Event {
 		params = step.ToolInfo.Parameters
 		output = step.ToolInfo.Output
 		if errText == "" {
-			errText = step.ToolInfo.Error
+			errText = string(step.ToolInfo.Error)
 		}
 	}
 	itemID := fmt.Sprintf("agy-step-%d", step.StepIndex)
@@ -206,7 +241,7 @@ func (p *Parser) result(result wireResult) []agent.Event {
 	p.completed = true
 	if !strings.EqualFold(result.Status, "SUCCESS") {
 		failed := p.event(agent.EventRunFailed)
-		failed.Message = firstNonEmpty(result.Error, strings.TrimSpace(result.Response), "agy run ended with status "+result.Status)
+		failed.Message = firstNonEmpty(string(result.Error), strings.TrimSpace(result.Response), "agy run ended with status "+result.Status)
 		return append(events, failed)
 	}
 	completed := p.event(agent.EventRunCompleted)

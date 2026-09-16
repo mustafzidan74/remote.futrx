@@ -150,3 +150,22 @@ func TestFailedResultAndFailedToolStep(t *testing.T) {
 		t.Fatalf("failed result = %+v", events[2])
 	}
 }
+
+// A denied tool is the one failure a headless run hits constantly, and agy
+// reports it as an object rather than a string. Recorded from agy on this
+// platform: a plan-mode run whose read_file had no allow-rule.
+func TestDeniedToolCarriesItsMessageInsteadOfFailingTheLine(t *testing.T) {
+	parser := NewParser(agent.RunRequest{ConversationID: "c"})
+	line := `{"event":"step_update","step_update":{"conversation_id":"5e3c6b96","step_index":2,"state":"ERROR","step_type":"tool","tool_name":"list_dir","duration_seconds":0.23,"tool_info":{"name":"list_dir","parameters":{"DirectoryPath":"/workspace"},"error":{"type":"TOOL_ERROR","message":"permission check failed for read_file \"/workspace\": user denied permission for read_file(/workspace)"}}}}`
+	events, err := parser.ParseLine([]byte(line))
+	if err != nil {
+		t.Fatalf("an object-shaped error must not fail the line: %v", err)
+	}
+	done := events[len(events)-1]
+	if done.Type != agent.EventToolCompleted || !done.IsError {
+		t.Fatalf("denied tool = %+v", done)
+	}
+	if !strings.Contains(done.Output, "user denied permission for read_file") {
+		t.Fatalf("denial message lost: %q", done.Output)
+	}
+}
