@@ -38,7 +38,9 @@ func NewFactory() (agentmodule.Factory, error) {
 			),
 			Auth: &binding,
 		}, nil
-	})
+	}, agentmodule.WithProjectPreparation(agentmodule.ProjectPreparationPolicy{
+		BeforeCredentials: ensureReadOnlyPermissions,
+	}))
 }
 
 var (
