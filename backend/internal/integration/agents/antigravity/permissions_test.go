@@ -78,3 +78,14 @@ func TestAllowRulesLeaveMissingOrUnreadableSettingsAlone(t *testing.T) {
 		t.Fatalf("broken settings were rewritten: %s", data)
 	}
 }
+
+func TestAllowRulesNeverFailTheRun(t *testing.T) {
+	original := hostSettingsPath
+	t.Cleanup(func() { hostSettingsPath = original })
+	// A directory where the file should be: reading it fails, and the run
+	// must still go ahead.
+	hostSettingsPath = t.TempDir()
+	if err := ensureReadOnlyPermissions(Profile()); err != nil {
+		t.Fatalf("a settings file that cannot be read stopped the run: %v", err)
+	}
+}
