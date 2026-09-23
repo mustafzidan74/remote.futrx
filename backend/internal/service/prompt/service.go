@@ -136,6 +136,25 @@ type StartGate interface {
 	Blocked() bool
 }
 
+// ErrServerRestarting is what a new run is told while the server waits for
+// the runs already in flight to finish before it restarts.
+var ErrServerRestarting = errors.New("the server is restarting after the running tasks finish; send this again in a minute")
+
+// blockedReason lets a gate say why it is closed. A gate without one is the
+// maintenance window.
+type blockedReason interface {
+	BlockedReason() error
+}
+
+func startGateError(gate StartGate) error {
+	if reasoned, ok := gate.(blockedReason); ok {
+		if err := reasoned.BlockedReason(); err != nil {
+			return err
+		}
+	}
+	return ErrMaintenance
+}
+
 func WithStartGate(gate StartGate) Option {
 	return func(service *Service) {
 		service.startGate = gate
@@ -313,10 +332,11 @@ func (rnr *Service) Start(input StartInput, emitTransient func(ChatEvent)) (RunH
 		emitTransient = func(ChatEvent) {}
 	}
 	if rnr.startGate != nil && rnr.startGate.Blocked() {
+		err := startGateError(rnr.startGate)
 		emitTransient(ChatEvent{
-			T: time.Now().UnixMilli(), Type: "error", Message: ErrMaintenance.Error(),
+			T: time.Now().UnixMilli(), Type: "error", Message: err.Error(),
 		})
-		return RunHandle{}, ErrMaintenance
+		return RunHandle{}, err
 	}
 	parentCtx := input.ParentContext
 	if parentCtx == nil {

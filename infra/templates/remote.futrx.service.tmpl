@@ -15,6 +15,10 @@ Environment=BASE_URL=https://${HOSTNAME}
 # tmux server inherits this cgroup; KillMode=process keeps long-running
 # child processes (claude, codex, lxc exec) alive during a backend restart.
 KillMode=process
+# A stop waits for agent runs in flight to finish (REMOTE_DRAIN_TIMEOUT,
+# 10 minutes by default); this must outlast that wait or systemd kills the
+# backend mid-drain. A second `systemctl stop` or SIGINT skips the wait.
+TimeoutStopSec=11min
 Restart=always
 RestartSec=2
 User=root
