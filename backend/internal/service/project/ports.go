@@ -90,6 +90,8 @@ type ProjectStorage interface {
 // normal answer for a template that ships no database.
 type ContainerDatabase interface {
 	Dump(ctx context.Context, containerName string) ([]byte, string, error)
+	// Import feeds a Dump back in; engine is the one Dump reported.
+	Import(ctx context.Context, containerName, engine string, dump []byte) error
 }
 
 // ContainerPolicy supplies the fleet-wide resource policy that per-project

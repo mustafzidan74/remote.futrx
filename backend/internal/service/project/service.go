@@ -640,6 +640,7 @@ func (s *Service) upgrade(ctx context.Context, id ID, includeBusy bool) (Meta, e
 	if err != nil {
 		return s.setStartError(ctx, id, err)
 	}
+	var savedDatabase *upgradeDump
 	if state != ContainerStateMissing {
 		busy, err := s.containerLifecycle.Busy(ctx, m.ContainerName)
 		if err != nil {
@@ -656,12 +657,24 @@ func (s *Service) upgrade(ctx context.Context, id ID, includeBusy bool) (Meta, e
 		if err := s.containerLifecycle.Ensure(ctx, s.withEffectiveLimits(ctx, m)); err != nil {
 			return s.setStartError(ctx, id, err)
 		}
+		// The old container is running now; save its databases before it
+		// goes. A failed save stops the upgrade with nothing deleted.
+		savedDatabase, err = s.saveDatabaseForUpgrade(ctx, m)
+		if err != nil {
+			return m, err
+		}
 		s.browsers.stopBeforeUpgrade(ctx, id, m.ContainerName)
 		if err := s.containerLifecycle.Delete(ctx, m.ContainerName); err != nil {
 			return s.setStartError(ctx, id, err)
 		}
 	}
 	if err := s.containerLifecycle.Ensure(context.WithoutCancel(ctx), s.withEffectiveLimits(ctx, m)); err != nil {
+		if savedDatabase != nil {
+			err = fmt.Errorf("%w (the database dump is kept at %s)", err, savedDatabase.path)
+		}
+		return s.setStartError(context.WithoutCancel(ctx), id, err)
+	}
+	if err := s.restoreDatabaseAfterUpgrade(context.WithoutCancel(ctx), m, savedDatabase); err != nil {
 		return s.setStartError(context.WithoutCancel(ctx), id, err)
 	}
 	if syncErr := s.syncContainerEnv(ctx, id, m.ContainerName); syncErr != nil {
