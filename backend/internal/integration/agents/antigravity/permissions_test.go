@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 )
 
@@ -41,7 +42,8 @@ func TestAllowRulesAreAddedWithoutTouchingTheOperatorsSettings(t *testing.T) {
 	if !reflect.DeepEqual(got.Permissions.Deny, []string{"command(rm)"}) {
 		t.Fatalf("deny changed: %v", got.Permissions.Deny)
 	}
-	if info, _ := os.Stat(path); info.Mode().Perm() != 0o600 {
+	// Windows has no POSIX mode bits to check; the platform runs on Linux.
+	if info, _ := os.Stat(path); runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
 		t.Fatalf("mode = %v", info.Mode().Perm())
 	}
 
@@ -74,5 +76,16 @@ func TestAllowRulesLeaveMissingOrUnreadableSettingsAlone(t *testing.T) {
 	}
 	if data, _ := os.ReadFile(broken); string(data) != `{"trustedWorkspaces":` {
 		t.Fatalf("broken settings were rewritten: %s", data)
+	}
+}
+
+func TestAllowRulesNeverFailTheRun(t *testing.T) {
+	original := hostSettingsPath
+	t.Cleanup(func() { hostSettingsPath = original })
+	// A directory where the file should be: reading it fails, and the run
+	// must still go ahead.
+	hostSettingsPath = t.TempDir()
+	if err := ensureReadOnlyPermissions(Profile()); err != nil {
+		t.Fatalf("a settings file that cannot be read stopped the run: %v", err)
 	}
 }

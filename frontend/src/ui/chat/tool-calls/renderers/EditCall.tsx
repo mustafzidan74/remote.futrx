@@ -26,6 +26,7 @@ export function EditCall({ input, output, outputExpanded, status, isError, defau
       status={status}
       isError={isError}
       defaultOpen={defaultOpen ?? true}
+      revealSignal={outputExpanded}
     >
       <div class="divide-y divide-ink-500">
         {patches.map((parts, index) => (

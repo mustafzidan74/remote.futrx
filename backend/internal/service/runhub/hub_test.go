@@ -245,3 +245,36 @@ func receiveRunning(t *testing.T, updates <-chan bool) bool {
 		return false
 	}
 }
+
+func TestWaitIdleReturnsWhenTheLastRunFinishes(t *testing.T) {
+	store, err := filechat.New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	hub := New(store)
+	first, _ := hub.StartRun("aaaa", func() {})
+	second, _ := hub.StartRun("bbbb", func() {})
+	if got := hub.ActiveRuns(); got != 2 {
+		t.Fatalf("active runs = %d, want 2", got)
+	}
+
+	short, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	defer cancel()
+	if err := hub.WaitIdle(short); err == nil {
+		t.Fatal("WaitIdle returned while two runs were in flight")
+	}
+
+	hub.FinishRun("aaaa", first)
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		hub.FinishRun("bbbb", second)
+	}()
+	ctx, cancel2 := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel2()
+	if err := hub.WaitIdle(ctx); err != nil {
+		t.Fatalf("WaitIdle after the last run finished: %v", err)
+	}
+	if got := hub.ActiveRuns(); got != 0 {
+		t.Fatalf("active runs = %d, want 0", got)
+	}
+}

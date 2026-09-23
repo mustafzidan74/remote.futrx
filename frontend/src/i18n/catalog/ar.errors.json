@@ -655,6 +655,7 @@
   "the public HTTPS edge is not accepting connections": "واجهة HTTPS العامة لا تقبل الاتصالات",
   "the run did not finish cleanly": "لم ينته التشغيل بشكل سليم",
   "the secrets vault is unavailable, so deploy access cannot be managed": "خزنة الأسرار غير متاحة، لذا لا يمكن إدارة صلاحية النشر",
+  "the server is restarting after the running tasks finish; send this again in a minute": "الخادم سيُعاد تشغيله بعد انتهاء المهام الجارية؛ أرسل هذا مرة أخرى بعد دقيقة",
   "the usage ledger is unavailable": "سجل الاستهلاك غير متاح",
   "the vault has no value for {s}, which {s} needs": "لا توجد في الخزنة قيمة لـ {s}، التي يحتاجها {s}",
   "the workspace diff could not be read": "تعذرت قراءة تغييرات مساحة العمل",

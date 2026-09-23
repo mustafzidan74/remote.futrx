@@ -480,6 +480,11 @@ func (d *trashDatabase) Dump(context.Context, string) ([]byte, string, error) {
 	return []byte("DUMP"), "mysql", nil
 }
 
+func (d *trashDatabase) Import(context.Context, string, string, []byte) error {
+	d.h.step("import")
+	return nil
+}
+
 type trashStorage struct {
 	h          *trashHarness
 	untrashErr error

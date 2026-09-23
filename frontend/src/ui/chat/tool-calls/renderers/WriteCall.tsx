@@ -15,6 +15,7 @@ export function WriteCall({ input, output, outputExpanded, status, isError, defa
       status={status}
       isError={isError}
       defaultOpen={defaultOpen}
+      revealSignal={outputExpanded}
     >
       <CodeBlock text={truncate(content, 8000)} />
       {output && (isError || outputExpanded) ? (

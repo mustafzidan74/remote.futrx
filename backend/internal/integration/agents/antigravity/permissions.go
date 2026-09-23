@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -33,11 +34,22 @@ var readOnlyAllowRules = []string{
 //
 // It only ever adds entries: the operator's trusted folders, telemetry choice
 // and any rules of their own stay as they are. A host that has not signed in
-// yet has no file, and a file that is not valid JSON is left for the operator —
-// neither is a reason to fail a run.
+// yet has no file, and a file that is not valid JSON is left for the operator.
+//
+// It never fails the run it precedes. Without the rules a Plan-mode run has
+// its reads refused and says so; with a failing hook every run would stop at
+// credential seeding, which is far worse — CI found exactly that, as a
+// non-root user who cannot read /root.
 func ensureReadOnlyPermissions(provisioning.Profile) error {
-	return addAllowRules(hostStateDir+settingsFile, readOnlyAllowRules)
+	if err := addAllowRules(hostSettingsPath, readOnlyAllowRules); err != nil {
+		log.Printf("antigravity: read-only allow rules not applied: %v", err)
+	}
+	return nil
 }
+
+// hostSettingsPath is the host copy every container's settings.json is seeded
+// from. A variable so tests never touch the real one.
+var hostSettingsPath = hostStateDir + settingsFile
 
 func addAllowRules(path string, rules []string) error {
 	data, err := os.ReadFile(path)

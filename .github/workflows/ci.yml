@@ -102,6 +102,7 @@ jobs:
           bash infra/tests/swap-provision-test.sh
           bash infra/tests/release-version-test.sh
           bash infra/tests/deploy-app-script-test.sh
+          bash infra/tests/release-entrypoints-test.sh
           # qa-scripts-test.sh drives infra/install.sh, which refuses to run
           # as anyone but root before it reaches the argument validation the
           # test is actually asserting on.

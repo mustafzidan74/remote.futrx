@@ -230,6 +230,41 @@ func (h *Hub) IsRunning(chatID servicechat.ID) bool {
 	return r.running != nil
 }
 
+// ActiveRuns counts the chats with a run in flight.
+func (h *Hub) ActiveRuns() int {
+	h.mu.Lock()
+	rooms := make([]*room, 0, len(h.rooms))
+	for _, r := range h.rooms {
+		rooms = append(rooms, r)
+	}
+	h.mu.Unlock()
+	active := 0
+	for _, r := range rooms {
+		r.mu.Lock()
+		if r.running != nil {
+			active++
+		}
+		r.mu.Unlock()
+	}
+	return active
+}
+
+// WaitIdle blocks until no run is in flight or ctx ends, and returns ctx's
+// error in the second case. It polls: a restart waits on it once, and a
+// second of latency there costs nothing.
+func (h *Hub) WaitIdle(ctx context.Context) error {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for h.ActiveRuns() > 0 {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+		}
+	}
+	return nil
+}
+
 func (h *Hub) Cancel(ctx context.Context, chatID servicechat.ID) error {
 	h.CancelRun(chatID)
 	return nil

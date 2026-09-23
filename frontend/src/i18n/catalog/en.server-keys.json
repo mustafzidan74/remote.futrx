@@ -884,6 +884,7 @@
   "the public HTTPS edge is not accepting connections",
   "the run did not finish cleanly",
   "the secrets vault is unavailable, so deploy access cannot be managed",
+  "the server is restarting after the running tasks finish; send this again in a minute",
   "the usage ledger is unavailable",
   "the vault has no value for {s}, which {s} needs",
   "the workspace diff could not be read",

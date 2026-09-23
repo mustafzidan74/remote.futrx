@@ -106,7 +106,8 @@ export function WorkspaceProvider({
     newProjectState.createInitial()
   );
   const activeChat = workspaceSidebarService.activeChat(data.chats, ui.activeChatId);
-  const capabilityUserId = auth.email || auth.adminEmail || "anonymous";
+  const account = auth.email || auth.adminEmail;
+  const capabilityUserId = account || "anonymous";
   const activeCapabilityProjectId = activeChat?.projectId;
   // A health notification links to `/?project=<id>`. It opens the project's
   // settings page, whose Info tab is the same view the sidebar dot opens.
@@ -236,6 +237,7 @@ export function WorkspaceProvider({
   }, [enabled, capabilityUserId, activeCapabilityProjectId, activeChat?.id]);
 
   useWorkspacePushLifecycle({
+    account: enabled ? account : "",
     activeChatId: ui.activeChatId,
     view: ui.view,
     openChat: openPushChat,

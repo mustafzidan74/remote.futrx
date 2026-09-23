@@ -15,6 +15,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	remote "github.com/futrx-com/remote.futrx.com"
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
@@ -32,7 +35,9 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/integration/sshprobe"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/tmuxcli"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/updatecli"
+	"github.com/futrx-com/remote.futrx.com/internal/lifecycle"
 	service "github.com/futrx-com/remote.futrx.com/internal/service"
+	servicedrain "github.com/futrx-com/remote.futrx.com/internal/service/drain"
 	servicegithistory "github.com/futrx-com/remote.futrx.com/internal/service/githistory"
 	servicemaintenance "github.com/futrx-com/remote.futrx.com/internal/service/maintenance"
 	serviceselfupdate "github.com/futrx-com/remote.futrx.com/internal/service/selfupdate"
@@ -52,8 +57,9 @@ func main() {
 	// follow dependency direction from configuration and outbound adapters to
 	// application policy, inbound transport, and process-owned runtime work.
 
-	// Configuration and composition inputs: load process settings, choose the
-	// executable mode, and validate values shared by the layers composed below.
+	////////////////////////////////////////
+	// Configuration
+	////////////////////////////////////////
 	ctx := context.Background()
 	cfg := config.Load()
 	// Non-server subcommands run and exit before anything is started: an
@@ -74,8 +80,9 @@ func main() {
 		log.Fatalf("configure public hostname: %v", err)
 	}
 
-	// Outbound integrations and container composition: bind compiled agent
-	// providers and LXD-backed capabilities behind application-facing contracts.
+	////////////////////////////////////////
+	// Container and workspace capabilities
+	////////////////////////////////////////
 	agentModules, err := config.NewAgentModules()
 	if err != nil {
 		log.Fatalf("configure agent modules: %v", err)
@@ -97,14 +104,22 @@ func main() {
 	snapshotArchiver := hostarchive.NewArchiver(filesnapshot.ArchiveRoot)
 	projectTrash := hostarchive.NewTrashStorage(filesnapshot.TrashRoot)
 
-	// Application services and startup reconciliation: compose policy from
-	// persistence contracts and outbound capabilities, then initialize it.
+	////////////////////////////////////////
+	// Application services
+	////////////////////////////////////////
 	maintenanceGuard := servicemaintenance.New(cfg.DataDir)
+	// New runs are refused once a restart starts draining; see drainOnSignal.
+	startGate := servicedrain.NewGate(maintenanceGuard)
+
+	// The update publisher is process-wide. Producers receive only the
+	// publishing capability declared by their own service contract.
+	updateLifecycle := lifecycle.NewUpdatePublisher()
 	selfUpdateService := serviceselfupdate.New(
 		version.Version,
 		cfg.InstallDir,
 		cfg.DataDir,
 		updatecli.New(),
+		updateLifecycle,
 	)
 
 	tmuxClient := tmuxcli.New()
@@ -231,10 +246,15 @@ func main() {
 			Blobs:    storeSet.Visual,
 			Capturer: containerscreenshot.NewAdapter(lxcClient),
 		},
-		PromptStartGate: maintenanceGuard,
+		PromptStartGate: startGate,
 	})
 	if err != nil {
 		log.Fatalf("init services: %v", err)
+	}
+	// Terminal self-update events are reconciled from disk so a backend
+	// replacement can deliver the completion started by its predecessor.
+	if err := selfUpdateService.StartLifecycleReconciler(ctx); err != nil {
+		log.Printf("self-update: lifecycle reconcile warning: %v", err)
 	}
 	log.Printf(
 		"auth: local admin enabled; Google OAuth configured=%t; BASE_URL=%s",
@@ -256,9 +276,9 @@ func main() {
 		log.Printf("services: reconcile warning: %v", err)
 	}
 
-	// Inbound delivery and transport adapters: prepare embedded assets and
-	// delivery-facing collaborators, then bind application services to HTTP and
-	// WebSocket endpoints.
+	////////////////////////////////////////
+	// HTTP transport
+	////////////////////////////////////////
 	static, err := fs.Sub(remote.PublicFS, "public")
 	if err != nil {
 		log.Fatal(err)
@@ -295,8 +315,9 @@ func main() {
 		log.Fatalf("init http handler: %v", err)
 	}
 
-	// Runtime lifecycle: launch process-owned background work and start the
-	// HTTP listener. Background scheduling stays at this composition boundary.
+	////////////////////////////////////////
+	// Process runtime
+	////////////////////////////////////////
 	address := cfg.Addr()
 	server := transport.NewHTTPServer(address, handler)
 	startChatIndexWarmup(
@@ -306,7 +327,69 @@ func main() {
 		log.Default(),
 	)
 	log.Printf("remote.futrx listening on %s", address)
+	go drainOnSignal(server, startGate, serviceSet.Runs, drainTimeout())
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
+	}
+	// ListenAndServe returns as soon as Shutdown begins; give Shutdown the
+	// moment it needs to close idle connections before the process ends.
+	time.Sleep(time.Second)
+}
+
+// defaultDrainTimeout bounds how long a restart waits for runs in flight. The
+// systemd unit's TimeoutStopSec must be longer, or systemd kills the process
+// mid-wait.
+const defaultDrainTimeout = 10 * time.Minute
+
+// drainTimeout reads REMOTE_DRAIN_TIMEOUT (a Go duration, "0" to stop at
+// once), falling back to defaultDrainTimeout.
+func drainTimeout() time.Duration {
+	raw := os.Getenv("REMOTE_DRAIN_TIMEOUT")
+	if raw == "" {
+		return defaultDrainTimeout
+	}
+	parsed, err := time.ParseDuration(raw)
+	if err != nil || parsed < 0 {
+		log.Printf("drain: ignoring REMOTE_DRAIN_TIMEOUT=%q, using %s", raw, defaultDrainTimeout)
+		return defaultDrainTimeout
+	}
+	return parsed
+}
+
+// runWaiter is the part of the run hub a restart waits on.
+type runWaiter interface {
+	ActiveRuns() int
+	WaitIdle(ctx context.Context) error
+}
+
+// drainOnSignal turns SIGTERM or SIGINT into a graceful stop: refuse new runs,
+// let the runs in flight finish (up to limit), then close the HTTP server so
+// main returns. The HTTP server keeps serving while it waits, so the people
+// watching those runs still see them through to the end.
+func drainOnSignal(server *http.Server, gate *servicedrain.Gate, runs runWaiter, limit time.Duration) {
+	signals := make(chan os.Signal, 2)
+	signal.Notify(signals, syscall.SIGTERM, os.Interrupt)
+	sig := <-signals
+	gate.Start()
+	if active := runs.ActiveRuns(); active > 0 && limit > 0 {
+		log.Printf("drain: %s received; refusing new runs and waiting up to %s for %d running", sig, limit, active)
+		ctx, cancel := context.WithTimeout(context.Background(), limit)
+		go func() {
+			// A second signal means the operator wants out now.
+			<-signals
+			log.Printf("drain: second signal, stopping without waiting")
+			cancel()
+		}()
+		if err := runs.WaitIdle(ctx); err != nil {
+			log.Printf("drain: stopping with %d run(s) still in flight", runs.ActiveRuns())
+		} else {
+			log.Printf("drain: all runs finished")
+		}
+		cancel()
+	}
+	shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := server.Shutdown(shutdown); err != nil {
+		log.Printf("drain: http shutdown: %v", err)
 	}
 }

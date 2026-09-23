@@ -13,6 +13,7 @@ export function GenericCall({ name, input, output, outputExpanded, status, isErr
       status={status}
       isError={isError}
       defaultOpen={defaultOpen}
+      revealSignal={outputExpanded}
     >
       <div class="divide-y divide-ink-500">
         {input && Object.keys(input).length > 0 && (
