@@ -82,3 +82,20 @@ wp --allow-root db query "SELECT option_value FROM wp_options WHERE option_name=
 
 Port 8080 is published as a preview URL by the platform. Bind any additional
 server to `0.0.0.0`, never `127.0.0.1`, or it will not be reachable.
+
+## More than one site in this project
+
+A project can hold extra WordPress installs beside `/workspace/public`, each
+in its own folder with its own database and port. Their preview servers are
+systemd units outside `/workspace`, so list them where a replaced container
+can find them again — one `<folder> <port>` per line:
+
+```bash
+mkdir -p /workspace/.remote
+echo "center2 8081" >> /workspace/.remote/wordpress-sites
+```
+
+After a workspace upgrade the template recreates `remote-wordpress-<folder>`
+for every line, as long as `/workspace/<folder>/wp-config.php` exists. Ports
+8080, 8842 and 8843 are taken. The extra databases need nothing: the upgrade
+carries every database in the container across.

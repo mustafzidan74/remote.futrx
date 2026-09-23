@@ -166,6 +166,56 @@ systemctl daemon-reload
 systemctl enable remote-wordpress.service
 systemctl restart remote-wordpress.service || true
 
+# Extra sites. A project can hold more WordPress installs beside the main one
+# (/workspace/<dir>, each with its own database and port). Their preview units
+# live in the rootfs, so a replaced container would lose them; the list that
+# brings them back lives in the workspace, one "<dir> <port>" per line.
+# Their databases travel with the container's database dump.
+SITES_FILE=/workspace/.remote/wordpress-sites
+if [ -f "$SITES_FILE" ]; then
+    echo "--- restoring extra site units from $SITES_FILE ---"
+    while read -r site_dir site_port _; do
+        case "$site_dir" in ''|\#*) continue ;; esac
+        if ! printf '%s' "$site_dir" | grep -Eq '^[a-z0-9][a-z0-9_-]{0,40}$' || [ "$site_dir" = public ]; then
+            echo "skipping extra site '$site_dir': not a plain folder name"
+            continue
+        fi
+        case "$site_port" in
+            ''|*[!0-9]*) echo "skipping $site_dir: port '$site_port' is not a number"; continue ;;
+        esac
+        if [ "$site_port" -lt 1024 ] || [ "$site_port" -gt 65535 ] ||
+            [ "$site_port" = 8080 ] || [ "$site_port" = 8842 ] || [ "$site_port" = 8843 ]; then
+            echo "skipping $site_dir: port $site_port is reserved or out of range"
+            continue
+        fi
+        if [ ! -f "/workspace/$site_dir/wp-config.php" ]; then
+            echo "skipping $site_dir: /workspace/$site_dir/wp-config.php not found"
+            continue
+        fi
+        cat > "/etc/systemd/system/remote-wordpress-$site_dir.service" <<UNIT
+[Unit]
+Description=WordPress preview server for $site_dir (PHP built-in, port $site_port)
+After=network.target mariadb.service
+Wants=mariadb.service
+
+[Service]
+Type=simple
+Environment=PHP_CLI_SERVER_WORKERS=4
+WorkingDirectory=/workspace/$site_dir
+ExecStart=/usr/bin/php -S 0.0.0.0:$site_port -t /workspace/$site_dir /usr/local/share/remote-wordpress-router.php
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+        systemctl daemon-reload
+        systemctl enable "remote-wordpress-$site_dir.service"
+        systemctl restart "remote-wordpress-$site_dir.service" || true
+        echo "extra site $site_dir on port $site_port"
+    done < "$SITES_FILE"
+fi
+
 # ---------------------------------------------------------------------------
 # Site setup. Everything below is guarded so a re-run (a failed install, a
 # recycled container, a workspace that outlived its rootfs) is a no-op rather
