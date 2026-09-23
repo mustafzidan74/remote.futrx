@@ -43,7 +43,7 @@ func TestPreparerAppliesSharedWorkflowInOrder(t *testing.T) {
 	}
 	wantCalls := []string{
 		"get", "start", "cli:future", "before-credentials", "credentials",
-		"instructions", "runtime-assets", "skill-links", "browser-skill", "browser-script",
+		"instructions", "git-credentials", "runtime-assets", "skill-links", "browser-skill", "browser-script",
 		"browser-mcp", "browser-core", "schedule", "lifecycle", "secrets",
 	}
 	if !slices.Equal(recorder.calls, wantCalls) {
@@ -105,7 +105,7 @@ func TestPreparerRuntimeAssetFailurePreservesErrorAndShortCircuits(t *testing.T)
 		t.Fatalf("Prepare error = %v", err)
 	}
 	wantCalls := []string{
-		"get", "start", "cli:future", "credentials", "instructions", "runtime-assets",
+		"get", "start", "cli:future", "credentials", "instructions", "git-credentials", "runtime-assets",
 	}
 	if !slices.Equal(recorder.calls, wantCalls) {
 		t.Fatalf("preparation calls\n got: %v\nwant: %v", recorder.calls, wantCalls)
@@ -160,6 +160,11 @@ type preparationWorkspace struct{ recorder *preparationRecorder }
 func (p preparationWorkspace) EnsureAgentInstructions(context.Context, string) error {
 	p.recorder.calls = append(p.recorder.calls, "instructions")
 	return nil
+}
+
+func (p preparationWorkspace) EnsureGitCredentialHelper(context.Context, string) error {
+	p.recorder.calls = append(p.recorder.calls, "git-credentials")
+	return errors.New("a failed git step must not stop the run")
 }
 
 func (p preparationWorkspace) EnsureSkillLinks(context.Context, string) error {

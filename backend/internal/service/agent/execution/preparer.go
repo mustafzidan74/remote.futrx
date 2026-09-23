@@ -37,6 +37,12 @@ type Options struct {
 	BrowserMCPRuntime bool
 }
 
+// gitCredentialProvisioner is the optional workspace step that lets git use
+// the container's GitHub token.
+type gitCredentialProvisioner interface {
+	EnsureGitCredentialHelper(ctx context.Context, containerName string) error
+}
+
 type Preparer struct {
 	projects   agent.ProjectResolver
 	containers provisioning.ContainerDependencies
@@ -150,6 +156,12 @@ func (p *Preparer) prepareContainer(
 	// precondition for it: a workspace whose AGENTS.md cannot be rewritten
 	// still runs, just without the managed block.
 	_ = p.containers.Workspace.EnsureReplyPreferences(ctx, containerName, string(project.ID))
+	// Same footing: a git that cannot find the GitHub token is a worse run,
+	// not a reason to refuse one. Optional, so a workspace provisioner that
+	// predates it (and every test double) still satisfies the interface.
+	if git, ok := p.containers.Workspace.(gitCredentialProvisioner); ok {
+		_ = git.EnsureGitCredentialHelper(ctx, containerName)
+	}
 	if err := p.containers.RuntimeAssets.Ensure(ctx, containerName, p.options.Profile.RuntimeAssets); err != nil {
 		return "", fmt.Errorf("push agent runtime assets to container: %w", err)
 	}
