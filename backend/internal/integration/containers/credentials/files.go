@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -92,13 +93,59 @@ func (s *fileSynchronizer) syncFromContainer(ctx context.Context, containerName 
 			}
 			continue
 		}
-		if out, err := s.runner.Run(pctx, "file", "pull", containerName+file.ContainerPath, file.HostPath); err != nil {
-			return fmt.Errorf("pull %s: %w; output: %s",
-				file.ContainerPath, err, out)
+		if err := s.pullIfNewer(pctx, file, containerName); err != nil {
+			return err
 		}
-		_ = os.Chmod(file.HostPath, 0o600)
-		now := time.Now()
-		_ = os.Chtimes(file.HostPath, now, now)
+	}
+	return nil
+}
+
+// pullIfNewer copies a container's credential file over the host's canonical
+// copy, but only when the container's is newer, and never in place.
+//
+// The host file is shared: every project's next run is seeded from it. The
+// pull used to write straight into it, and unconditionally. So a project
+// whose run started while another was pulling could be seeded with a
+// half-written file, and a container still holding an older sign-in than the
+// host overwrote the newer one. Now the pull is skipped unless the
+// container's copy changed after the host's, and the file lands beside the
+// canonical copy and is renamed into place, so readers see the old file or
+// the new one and nothing in between.
+//
+// The result is stamped with the current time, as before: `lxc file push`
+// gives a seeded copy the push time, so only a fresh stamp makes the pulled
+// sign-in newer than the copies already sitting in other containers.
+func (s *fileSynchronizer) pullIfNewer(ctx context.Context, file provisioning.CredentialFile, containerName string) error {
+	var containerTime time.Time
+	if out, err := s.runner.Run(ctx, "exec", containerName, "--", "stat", "-c", "%Y", file.ContainerPath); err == nil {
+		if unix, parseErr := strconv.ParseInt(strings.TrimSpace(out), 10, 64); parseErr == nil {
+			containerTime = time.Unix(unix, 0)
+		}
+	}
+	if hostInfo, err := os.Stat(file.HostPath); err == nil && !containerTime.IsZero() &&
+		!containerTime.After(hostInfo.ModTime()) {
+		return nil
+	}
+
+	staging, err := os.CreateTemp(filepath.Dir(file.HostPath), "."+filepath.Base(file.HostPath)+".pull-*")
+	if err != nil {
+		return fmt.Errorf("stage %s: %w", file.HostPath, err)
+	}
+	stagingPath := staging.Name()
+	staging.Close()
+	defer os.Remove(stagingPath)
+
+	if out, err := s.runner.Run(ctx, "file", "pull", containerName+file.ContainerPath, stagingPath); err != nil {
+		return fmt.Errorf("pull %s: %w; output: %s", file.ContainerPath, err, out)
+	}
+	if info, err := os.Stat(stagingPath); err != nil || info.Size() == 0 {
+		return fmt.Errorf("pull %s: container file was empty or unreadable", file.ContainerPath)
+	}
+	_ = os.Chmod(stagingPath, 0o600)
+	now := time.Now()
+	_ = os.Chtimes(stagingPath, now, now)
+	if err := os.Rename(stagingPath, file.HostPath); err != nil {
+		return fmt.Errorf("replace %s: %w", file.HostPath, err)
 	}
 	return nil
 }
