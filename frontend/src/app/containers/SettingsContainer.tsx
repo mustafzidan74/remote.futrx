@@ -91,7 +91,10 @@ export function SettingsContainer({
   // Members see their own trashed projects here too, so this is not gated on
   // admin: the backend already scopes the listing to the caller.
   const projectTrash = useProjectTrash(activeTab === "trash");
-  const push = usePushNotifications(activeTab === "notifications");
+  const push = usePushNotifications(
+    activeTab === "notifications",
+    auth.email || auth.adminEmail
+  );
 
   return (
     <SettingsPage

@@ -31,12 +31,28 @@
 #   --include-busy      also replace containers with an active agent process
 set -euo pipefail
 
+begin_maintenance() {
+    local maintenance_dir temporary
+    maintenance_dir="$(dirname "$MAINTENANCE_FILE")"
+    mkdir -p "$maintenance_dir"
+    chmod 700 "$maintenance_dir"
+    temporary="${MAINTENANCE_FILE}.tmp.$$"
+    printf '{"pid":%d,"startedAt":%d}\n' "$$" "$(date +%s)" > "$temporary"
+    chmod 600 "$temporary"
+    mv "$temporary" "$MAINTENANCE_FILE"
+}
+end_maintenance() {
+    rm -f "$MAINTENANCE_FILE"
+}
+remote_load_configuration() {
 INFRA_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 # shellcheck source=lib/common.sh
 . "$INFRA_DIR/lib/common.sh"
 DATA_DIR="${FUTRX_DATA_DIR:-/opt/remote.futrx/data}"
 MAINTENANCE_FILE="${FUTRX_MAINTENANCE_FILE:-$DATA_DIR/self-update/maintenance.json}"
+}
 
+remote_parse_workspace_arguments() {
 DRY_RUN=0
 REBAKE=1
 REBAKE_TEMPLATES=0
@@ -50,12 +66,17 @@ for a in "$@"; do
         *) err "unknown flag: $a"; exit 1 ;;
     esac
 done
+}
 
-require_root "upgrade-workspaces"
+remote_validate_host() {
+# ───────────────── 0. validate ─────────────────
 if ! command -v lxc >/dev/null; then
     err "lxc CLI not found"
     exit 1
 fi
+}
+
+remote_rebake_base_image() {
 # ───────────────── 1. rebake ─────────────────
 if [ "$REBAKE" -eq 1 ]; then
     if [ "$DRY_RUN" -eq 1 ]; then
@@ -68,7 +89,9 @@ if [ "$REBAKE" -eq 1 ]; then
 else
     log "Skipping rebake (--no-rebake) — recycling containers onto the existing image"
 fi
+}
 
+remote_rebake_template_images() {
 # ───────── 1b. project-template images ─────────
 # Projects created from a template that has a published image launch from that
 # image, NOT from futrx-remote-dev-base. Rebaking the base alone therefore
@@ -99,7 +122,9 @@ if [ -n "$TEMPLATE_ALIASES" ]; then
         warn "projects on those templates keep the old base layer until you rerun with --rebake-templates"
     fi
 fi
+}
 
+remote_migrate_containers() {
 # ───────────────── 2. migrate + replace through Go ─────────────────
 log "Migrating and replacing project containers"
 GO_ARGS=()
@@ -110,19 +135,6 @@ GO_ARGS=()
 # Keep the control plane and update-status polling available throughout the
 # migration. The backend checks this live-PID marker before accepting a new
 # prompt, closing the race that previously required stopping the whole service.
-begin_maintenance() {
-    local maintenance_dir temporary
-    maintenance_dir="$(dirname "$MAINTENANCE_FILE")"
-    mkdir -p "$maintenance_dir"
-    chmod 700 "$maintenance_dir"
-    temporary="${MAINTENANCE_FILE}.tmp.$$"
-    printf '{"pid":%d,"startedAt":%d}\n' "$$" "$(date +%s)" > "$temporary"
-    chmod 600 "$temporary"
-    mv "$temporary" "$MAINTENANCE_FILE"
-}
-end_maintenance() {
-    rm -f "$MAINTENANCE_FILE"
-}
 if [ "$DRY_RUN" -eq 0 ]; then
     begin_maintenance
     trap end_maintenance EXIT
@@ -136,3 +148,22 @@ if [ "$DRY_RUN" -eq 0 ]; then
     trap - EXIT
 fi
 ok "workspace lifecycle convergence complete"
+}
+
+main() {
+    remote_load_configuration
+    remote_parse_workspace_arguments "$@"
+    require_root "upgrade-workspaces"
+    remote_validate_host
+    remote_rebake_base_image
+    remote_rebake_template_images
+    remote_migrate_containers
+}
+
+# Sourced (e.g. by tests) - definitions only. Note the guard
+# defaults to *executing*: BASH_SOURCE is unset when bash reads
+# from stdin (`bash -s`), which must still run (curl|bash mode).
+if [[ -n "${BASH_SOURCE[0]:-}" ]] && [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    return 0 2>/dev/null || exit 0
+fi
+main "$@"

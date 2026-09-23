@@ -16,6 +16,7 @@ export function BashCall({ input, output, outputExpanded, status, isError, defau
       status={status}
       isError={isError}
       defaultOpen={defaultOpen}
+      revealSignal={outputExpanded}
     >
       {output ? <CodeBlock text={outputExpanded ? output : truncate(output, DEFAULT_TOOL_OUTPUT_PREVIEW_CHARS)} /> : null}
     </ToolShell>

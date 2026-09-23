@@ -1,15 +1,10 @@
 import { sendHttpRequest } from "../transport/http.ts";
 import type { HttpMethod } from "../types/transport";
 import { API_RESPONSE_STATUS } from "../config/api.ts";
+import { ApiError } from "./apiError.ts";
 
-/**
- * An HTTP failure that keeps its status code. Callers that must distinguish
- * "refused because the host is full" (409) from an ordinary failure read
- * `status`; everyone else keeps treating it as a plain Error.
- */
-export interface ApiError extends Error {
-  status: number;
-}
+// The fork's callers import ApiError from here; it is upstream's class now.
+export { ApiError };
 
 export async function requestJson<T>(
   method: HttpMethod,
@@ -26,9 +21,7 @@ export async function requestJson<T>(
     try {
       msg = (await response.json()).error || msg;
     } catch {}
-    const error = new Error(msg) as ApiError;
-    error.status = response.status;
-    throw error;
+    throw new ApiError(msg, response.status);
   }
   if (response.status === API_RESPONSE_STATUS.noContent) return undefined as T;
   return response.json() as Promise<T>;

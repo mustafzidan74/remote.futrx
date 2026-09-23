@@ -35,6 +35,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/integration/sshprobe"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/tmuxcli"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/updatecli"
+	"github.com/futrx-com/remote.futrx.com/internal/lifecycle"
 	service "github.com/futrx-com/remote.futrx.com/internal/service"
 	servicedrain "github.com/futrx-com/remote.futrx.com/internal/service/drain"
 	servicegithistory "github.com/futrx-com/remote.futrx.com/internal/service/githistory"
@@ -56,8 +57,9 @@ func main() {
 	// follow dependency direction from configuration and outbound adapters to
 	// application policy, inbound transport, and process-owned runtime work.
 
-	// Configuration and composition inputs: load process settings, choose the
-	// executable mode, and validate values shared by the layers composed below.
+	////////////////////////////////////////
+	// Configuration
+	////////////////////////////////////////
 	ctx := context.Background()
 	cfg := config.Load()
 	// Non-server subcommands run and exit before anything is started: an
@@ -78,8 +80,9 @@ func main() {
 		log.Fatalf("configure public hostname: %v", err)
 	}
 
-	// Outbound integrations and container composition: bind compiled agent
-	// providers and LXD-backed capabilities behind application-facing contracts.
+	////////////////////////////////////////
+	// Container and workspace capabilities
+	////////////////////////////////////////
 	agentModules, err := config.NewAgentModules()
 	if err != nil {
 		log.Fatalf("configure agent modules: %v", err)
@@ -101,16 +104,22 @@ func main() {
 	snapshotArchiver := hostarchive.NewArchiver(filesnapshot.ArchiveRoot)
 	projectTrash := hostarchive.NewTrashStorage(filesnapshot.TrashRoot)
 
-	// Application services and startup reconciliation: compose policy from
-	// persistence contracts and outbound capabilities, then initialize it.
+	////////////////////////////////////////
+	// Application services
+	////////////////////////////////////////
 	maintenanceGuard := servicemaintenance.New(cfg.DataDir)
 	// New runs are refused once a restart starts draining; see drainOnSignal.
 	startGate := servicedrain.NewGate(maintenanceGuard)
+
+	// The update publisher is process-wide. Producers receive only the
+	// publishing capability declared by their own service contract.
+	updateLifecycle := lifecycle.NewUpdatePublisher()
 	selfUpdateService := serviceselfupdate.New(
 		version.Version,
 		cfg.InstallDir,
 		cfg.DataDir,
 		updatecli.New(),
+		updateLifecycle,
 	)
 
 	tmuxClient := tmuxcli.New()
@@ -242,6 +251,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("init services: %v", err)
 	}
+	// Terminal self-update events are reconciled from disk so a backend
+	// replacement can deliver the completion started by its predecessor.
+	if err := selfUpdateService.StartLifecycleReconciler(ctx); err != nil {
+		log.Printf("self-update: lifecycle reconcile warning: %v", err)
+	}
 	log.Printf(
 		"auth: local admin enabled; Google OAuth configured=%t; BASE_URL=%s",
 		serviceSet.Auth.GoogleOAuthEnabled(),
@@ -262,9 +276,9 @@ func main() {
 		log.Printf("services: reconcile warning: %v", err)
 	}
 
-	// Inbound delivery and transport adapters: prepare embedded assets and
-	// delivery-facing collaborators, then bind application services to HTTP and
-	// WebSocket endpoints.
+	////////////////////////////////////////
+	// HTTP transport
+	////////////////////////////////////////
 	static, err := fs.Sub(remote.PublicFS, "public")
 	if err != nil {
 		log.Fatal(err)
@@ -301,8 +315,9 @@ func main() {
 		log.Fatalf("init http handler: %v", err)
 	}
 
-	// Runtime lifecycle: launch process-owned background work and start the
-	// HTTP listener. Background scheduling stays at this composition boundary.
+	////////////////////////////////////////
+	// Process runtime
+	////////////////////////////////////////
 	address := cfg.Addr()
 	server := transport.NewHTTPServer(address, handler)
 	startChatIndexWarmup(
